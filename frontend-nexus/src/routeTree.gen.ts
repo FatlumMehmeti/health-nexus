@@ -9,137 +9,224 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as HomeIndexRouteImport } from './routes/_home/index'
-import { Route as AboutAboutRouteImport } from './routes/_about/about'
-import { Route as BlogBlogRouteRouteImport } from './routes/_blog/blog.route'
-import { Route as BlogBlogIndexRouteImport } from './routes/_blog/blog.index'
-import { Route as BlogBlogPostIdRouteImport } from './routes/_blog/blog.$postId'
+import { Route as TenantDashboardRouteRouteImport } from './routes/_tenant/dashboard.route'
+import { Route as TenantDashboardIndexRouteImport } from './routes/_tenant/dashboard.index'
+import { Route as TenantDashboardZustandRouteImport } from './routes/_tenant/dashboard.zustand'
+import { Route as TenantDashboardFormsRouteImport } from './routes/_tenant/dashboard.forms'
+import { Route as TenantDashboardDataRouteImport } from './routes/_tenant/dashboard.data'
+import { Route as TenantDashboardLandingPagesRouteRouteImport } from './routes/_tenant/dashboard.landing-pages.route'
+import { Route as TenantDashboardLandingPagesIndexRouteImport } from './routes/_tenant/dashboard.landing-pages.index'
+import { Route as TenantDashboardLandingPagesPageIdRouteImport } from './routes/_tenant/dashboard.landing-pages.$pageId'
 
-const HomeIndexRoute = HomeIndexRouteImport.update({
-  id: '/_home/',
-  path: '/',
+const TenantDashboardRouteRoute = TenantDashboardRouteRouteImport.update({
+  id: '/_tenant/dashboard',
+  path: '/dashboard',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AboutAboutRoute = AboutAboutRouteImport.update({
-  id: '/_about/about',
-  path: '/about',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const BlogBlogRouteRoute = BlogBlogRouteRouteImport.update({
-  id: '/_blog/blog',
-  path: '/blog',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const BlogBlogIndexRoute = BlogBlogIndexRouteImport.update({
+const TenantDashboardIndexRoute = TenantDashboardIndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => BlogBlogRouteRoute,
+  getParentRoute: () => TenantDashboardRouteRoute,
 } as any)
-const BlogBlogPostIdRoute = BlogBlogPostIdRouteImport.update({
-  id: '/$postId',
-  path: '/$postId',
-  getParentRoute: () => BlogBlogRouteRoute,
+const TenantDashboardZustandRoute = TenantDashboardZustandRouteImport.update({
+  id: '/zustand',
+  path: '/zustand',
+  getParentRoute: () => TenantDashboardRouteRoute,
 } as any)
+const TenantDashboardFormsRoute = TenantDashboardFormsRouteImport.update({
+  id: '/forms',
+  path: '/forms',
+  getParentRoute: () => TenantDashboardRouteRoute,
+} as any)
+const TenantDashboardDataRoute = TenantDashboardDataRouteImport.update({
+  id: '/data',
+  path: '/data',
+  getParentRoute: () => TenantDashboardRouteRoute,
+} as any)
+const TenantDashboardLandingPagesRouteRoute =
+  TenantDashboardLandingPagesRouteRouteImport.update({
+    id: '/landing-pages',
+    path: '/landing-pages',
+    getParentRoute: () => TenantDashboardRouteRoute,
+  } as any)
+const TenantDashboardLandingPagesIndexRoute =
+  TenantDashboardLandingPagesIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => TenantDashboardLandingPagesRouteRoute,
+  } as any)
+const TenantDashboardLandingPagesPageIdRoute =
+  TenantDashboardLandingPagesPageIdRouteImport.update({
+    id: '/$pageId',
+    path: '/$pageId',
+    getParentRoute: () => TenantDashboardLandingPagesRouteRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
-  '/blog': typeof BlogBlogRouteRouteWithChildren
-  '/about': typeof AboutAboutRoute
-  '/': typeof HomeIndexRoute
-  '/blog/$postId': typeof BlogBlogPostIdRoute
-  '/blog/': typeof BlogBlogIndexRoute
+  '/dashboard': typeof TenantDashboardRouteRouteWithChildren
+  '/dashboard/landing-pages': typeof TenantDashboardLandingPagesRouteRouteWithChildren
+  '/dashboard/data': typeof TenantDashboardDataRoute
+  '/dashboard/forms': typeof TenantDashboardFormsRoute
+  '/dashboard/zustand': typeof TenantDashboardZustandRoute
+  '/dashboard/': typeof TenantDashboardIndexRoute
+  '/dashboard/landing-pages/$pageId': typeof TenantDashboardLandingPagesPageIdRoute
+  '/dashboard/landing-pages/': typeof TenantDashboardLandingPagesIndexRoute
 }
 export interface FileRoutesByTo {
-  '/about': typeof AboutAboutRoute
-  '/': typeof HomeIndexRoute
-  '/blog/$postId': typeof BlogBlogPostIdRoute
-  '/blog': typeof BlogBlogIndexRoute
+  '/dashboard/data': typeof TenantDashboardDataRoute
+  '/dashboard/forms': typeof TenantDashboardFormsRoute
+  '/dashboard/zustand': typeof TenantDashboardZustandRoute
+  '/dashboard': typeof TenantDashboardIndexRoute
+  '/dashboard/landing-pages/$pageId': typeof TenantDashboardLandingPagesPageIdRoute
+  '/dashboard/landing-pages': typeof TenantDashboardLandingPagesIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
-  '/_blog/blog': typeof BlogBlogRouteRouteWithChildren
-  '/_about/about': typeof AboutAboutRoute
-  '/_home/': typeof HomeIndexRoute
-  '/_blog/blog/$postId': typeof BlogBlogPostIdRoute
-  '/_blog/blog/': typeof BlogBlogIndexRoute
+  '/_tenant/dashboard': typeof TenantDashboardRouteRouteWithChildren
+  '/_tenant/dashboard/landing-pages': typeof TenantDashboardLandingPagesRouteRouteWithChildren
+  '/_tenant/dashboard/data': typeof TenantDashboardDataRoute
+  '/_tenant/dashboard/forms': typeof TenantDashboardFormsRoute
+  '/_tenant/dashboard/zustand': typeof TenantDashboardZustandRoute
+  '/_tenant/dashboard/': typeof TenantDashboardIndexRoute
+  '/_tenant/dashboard/landing-pages/$pageId': typeof TenantDashboardLandingPagesPageIdRoute
+  '/_tenant/dashboard/landing-pages/': typeof TenantDashboardLandingPagesIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/blog' | '/about' | '/' | '/blog/$postId' | '/blog/'
+  fullPaths:
+    | '/dashboard'
+    | '/dashboard/landing-pages'
+    | '/dashboard/data'
+    | '/dashboard/forms'
+    | '/dashboard/zustand'
+    | '/dashboard/'
+    | '/dashboard/landing-pages/$pageId'
+    | '/dashboard/landing-pages/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/about' | '/' | '/blog/$postId' | '/blog'
+  to:
+    | '/dashboard/data'
+    | '/dashboard/forms'
+    | '/dashboard/zustand'
+    | '/dashboard'
+    | '/dashboard/landing-pages/$pageId'
+    | '/dashboard/landing-pages'
   id:
     | '__root__'
-    | '/_blog/blog'
-    | '/_about/about'
-    | '/_home/'
-    | '/_blog/blog/$postId'
-    | '/_blog/blog/'
+    | '/_tenant/dashboard'
+    | '/_tenant/dashboard/landing-pages'
+    | '/_tenant/dashboard/data'
+    | '/_tenant/dashboard/forms'
+    | '/_tenant/dashboard/zustand'
+    | '/_tenant/dashboard/'
+    | '/_tenant/dashboard/landing-pages/$pageId'
+    | '/_tenant/dashboard/landing-pages/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-  BlogBlogRouteRoute: typeof BlogBlogRouteRouteWithChildren
-  AboutAboutRoute: typeof AboutAboutRoute
-  HomeIndexRoute: typeof HomeIndexRoute
+  TenantDashboardRouteRoute: typeof TenantDashboardRouteRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/_home/': {
-      id: '/_home/'
+    '/_tenant/dashboard': {
+      id: '/_tenant/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof TenantDashboardRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_tenant/dashboard/': {
+      id: '/_tenant/dashboard/'
       path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof HomeIndexRouteImport
-      parentRoute: typeof rootRouteImport
+      fullPath: '/dashboard/'
+      preLoaderRoute: typeof TenantDashboardIndexRouteImport
+      parentRoute: typeof TenantDashboardRouteRoute
     }
-    '/_about/about': {
-      id: '/_about/about'
-      path: '/about'
-      fullPath: '/about'
-      preLoaderRoute: typeof AboutAboutRouteImport
-      parentRoute: typeof rootRouteImport
+    '/_tenant/dashboard/zustand': {
+      id: '/_tenant/dashboard/zustand'
+      path: '/zustand'
+      fullPath: '/dashboard/zustand'
+      preLoaderRoute: typeof TenantDashboardZustandRouteImport
+      parentRoute: typeof TenantDashboardRouteRoute
     }
-    '/_blog/blog': {
-      id: '/_blog/blog'
-      path: '/blog'
-      fullPath: '/blog'
-      preLoaderRoute: typeof BlogBlogRouteRouteImport
-      parentRoute: typeof rootRouteImport
+    '/_tenant/dashboard/forms': {
+      id: '/_tenant/dashboard/forms'
+      path: '/forms'
+      fullPath: '/dashboard/forms'
+      preLoaderRoute: typeof TenantDashboardFormsRouteImport
+      parentRoute: typeof TenantDashboardRouteRoute
     }
-    '/_blog/blog/': {
-      id: '/_blog/blog/'
+    '/_tenant/dashboard/data': {
+      id: '/_tenant/dashboard/data'
+      path: '/data'
+      fullPath: '/dashboard/data'
+      preLoaderRoute: typeof TenantDashboardDataRouteImport
+      parentRoute: typeof TenantDashboardRouteRoute
+    }
+    '/_tenant/dashboard/landing-pages': {
+      id: '/_tenant/dashboard/landing-pages'
+      path: '/landing-pages'
+      fullPath: '/dashboard/landing-pages'
+      preLoaderRoute: typeof TenantDashboardLandingPagesRouteRouteImport
+      parentRoute: typeof TenantDashboardRouteRoute
+    }
+    '/_tenant/dashboard/landing-pages/': {
+      id: '/_tenant/dashboard/landing-pages/'
       path: '/'
-      fullPath: '/blog/'
-      preLoaderRoute: typeof BlogBlogIndexRouteImport
-      parentRoute: typeof BlogBlogRouteRoute
+      fullPath: '/dashboard/landing-pages/'
+      preLoaderRoute: typeof TenantDashboardLandingPagesIndexRouteImport
+      parentRoute: typeof TenantDashboardLandingPagesRouteRoute
     }
-    '/_blog/blog/$postId': {
-      id: '/_blog/blog/$postId'
-      path: '/$postId'
-      fullPath: '/blog/$postId'
-      preLoaderRoute: typeof BlogBlogPostIdRouteImport
-      parentRoute: typeof BlogBlogRouteRoute
+    '/_tenant/dashboard/landing-pages/$pageId': {
+      id: '/_tenant/dashboard/landing-pages/$pageId'
+      path: '/$pageId'
+      fullPath: '/dashboard/landing-pages/$pageId'
+      preLoaderRoute: typeof TenantDashboardLandingPagesPageIdRouteImport
+      parentRoute: typeof TenantDashboardLandingPagesRouteRoute
     }
   }
 }
 
-interface BlogBlogRouteRouteChildren {
-  BlogBlogPostIdRoute: typeof BlogBlogPostIdRoute
-  BlogBlogIndexRoute: typeof BlogBlogIndexRoute
+interface TenantDashboardLandingPagesRouteRouteChildren {
+  TenantDashboardLandingPagesPageIdRoute: typeof TenantDashboardLandingPagesPageIdRoute
+  TenantDashboardLandingPagesIndexRoute: typeof TenantDashboardLandingPagesIndexRoute
 }
 
-const BlogBlogRouteRouteChildren: BlogBlogRouteRouteChildren = {
-  BlogBlogPostIdRoute: BlogBlogPostIdRoute,
-  BlogBlogIndexRoute: BlogBlogIndexRoute,
+const TenantDashboardLandingPagesRouteRouteChildren: TenantDashboardLandingPagesRouteRouteChildren =
+  {
+    TenantDashboardLandingPagesPageIdRoute:
+      TenantDashboardLandingPagesPageIdRoute,
+    TenantDashboardLandingPagesIndexRoute:
+      TenantDashboardLandingPagesIndexRoute,
+  }
+
+const TenantDashboardLandingPagesRouteRouteWithChildren =
+  TenantDashboardLandingPagesRouteRoute._addFileChildren(
+    TenantDashboardLandingPagesRouteRouteChildren,
+  )
+
+interface TenantDashboardRouteRouteChildren {
+  TenantDashboardLandingPagesRouteRoute: typeof TenantDashboardLandingPagesRouteRouteWithChildren
+  TenantDashboardDataRoute: typeof TenantDashboardDataRoute
+  TenantDashboardFormsRoute: typeof TenantDashboardFormsRoute
+  TenantDashboardZustandRoute: typeof TenantDashboardZustandRoute
+  TenantDashboardIndexRoute: typeof TenantDashboardIndexRoute
 }
 
-const BlogBlogRouteRouteWithChildren = BlogBlogRouteRoute._addFileChildren(
-  BlogBlogRouteRouteChildren,
-)
+const TenantDashboardRouteRouteChildren: TenantDashboardRouteRouteChildren = {
+  TenantDashboardLandingPagesRouteRoute:
+    TenantDashboardLandingPagesRouteRouteWithChildren,
+  TenantDashboardDataRoute: TenantDashboardDataRoute,
+  TenantDashboardFormsRoute: TenantDashboardFormsRoute,
+  TenantDashboardZustandRoute: TenantDashboardZustandRoute,
+  TenantDashboardIndexRoute: TenantDashboardIndexRoute,
+}
+
+const TenantDashboardRouteRouteWithChildren =
+  TenantDashboardRouteRoute._addFileChildren(TenantDashboardRouteRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
-  BlogBlogRouteRoute: BlogBlogRouteRouteWithChildren,
-  AboutAboutRoute: AboutAboutRoute,
-  HomeIndexRoute: HomeIndexRoute,
+  TenantDashboardRouteRoute: TenantDashboardRouteRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

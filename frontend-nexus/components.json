@@ -11,6 +11,9 @@
   },
   "aliases": {
     "components": "@/components",
+    "ui": "@/components/ui",
+    "atoms": "@/components/atoms",
+    "molecules": "@/components/molecules",
     "utils": "@/lib/utils"
   }
 }

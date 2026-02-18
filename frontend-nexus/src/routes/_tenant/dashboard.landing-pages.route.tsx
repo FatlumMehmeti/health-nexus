@@ -1,10 +1,10 @@
 import { createFileRoute, Outlet } from '@tanstack/react-router'
 
-export const Route = createFileRoute('/_blog/blog')({
-  component: BlogLayout,
+export const Route = createFileRoute('/_tenant/dashboard/landing-pages')({
+  component: LandingPagesLayout,
 })
 
-function BlogLayout() {
+function LandingPagesLayout() {
   return (
     <div className="p-8">
       <Outlet />
