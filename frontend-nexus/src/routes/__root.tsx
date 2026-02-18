@@ -12,7 +12,7 @@ function RootLayout() {
       <div className="min-h-screen">
         <Outlet />
       </div>
-      <TanStackRouterDevtools position="bottom-right" />
+      <TanStackRouterDevtools position="top-right" />
     </>
   )
 }

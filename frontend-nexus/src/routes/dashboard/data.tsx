@@ -1,26 +1,35 @@
-import { createFileRoute } from '@tanstack/react-router'
-import { useQuery } from '@tanstack/react-query'
-import { fetchUsers } from '@/server/users'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Skeleton } from '@/components/ui/skeleton'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { createFileRoute } from "@tanstack/react-router";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { fetchUsers } from "@/server/users";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
 
-export const Route = createFileRoute('/dashboard/data')({
+export const Route = createFileRoute("/dashboard/data")({
   component: DataFetchingPage,
-})
+});
 
 function DataFetchingPage() {
   const { data, isLoading, isError, error } = useQuery({
-    queryKey: ['users'],
+    queryKey: ["users"],
     queryFn: fetchUsers,
-  })
-
+  });
+  const queryClient = useQueryClient();
   if (isLoading) {
     return (
       <div className="space-y-8 p-8">
         <div>
           <h1 className="text-3xl font-bold">Data Fetching</h1>
-          <p className="mt-2 text-muted-foreground">Users from DummyJSON API via React Query</p>
+          <p className="mt-2 text-muted-foreground">
+            Users from DummyJSON API via React Query
+          </p>
         </div>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 6 }).map((_, i) => (
@@ -38,19 +47,21 @@ function DataFetchingPage() {
           ))}
         </div>
       </div>
-    )
+    );
   }
 
   if (isError) {
     return (
       <div className="p-8">
         <h1 className="text-3xl font-bold">Data Fetching</h1>
-        <p className="mt-4 text-destructive">Error: {error?.message ?? 'Failed to load users'}</p>
+        <p className="mt-4 text-destructive">
+          Error: {error?.message ?? "Failed to load users"}
+        </p>
       </div>
-    )
+    );
   }
 
-  const users = data?.users ?? []
+  const users = data?.users ?? [];
 
   return (
     <div className="space-y-8 p-8">
@@ -66,22 +77,35 @@ function DataFetchingPage() {
             <CardHeader className="flex flex-row items-center gap-4 space-y-0">
               <Avatar>
                 <AvatarImage src={user.image} alt={user.firstName} />
-                <AvatarFallback>{user.firstName[0]}{user.lastName[0]}</AvatarFallback>
+                <AvatarFallback>
+                  {user.firstName[0]}
+                  {user.lastName[0]}
+                </AvatarFallback>
               </Avatar>
               <div className="flex-1 space-y-1">
                 <CardTitle className="text-base">
                   {user.firstName} {user.lastName}
                 </CardTitle>
-                <CardDescription>{user.company?.title ?? user.email}</CardDescription>
+                <CardDescription>
+                  {user.company?.title ?? user.email}
+                </CardDescription>
               </div>
             </CardHeader>
             <CardContent>
               <p className="text-sm text-muted-foreground">{user.email}</p>
-              <p className="mt-1 text-xs text-muted-foreground">{user.company?.name}</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {user.company?.name}
+              </p>
             </CardContent>
           </Card>
         ))}
       </div>
+      <Button
+        onClick={() => queryClient.invalidateQueries({ queryKey: ["users"] })}
+        type="button"
+      >
+        Invalidate Users
+      </Button>
     </div>
-  )
+  );
 }
