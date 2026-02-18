@@ -8,7 +8,7 @@ import {
 } from '@/components/ui/card'
 import { IconLayout } from '@tabler/icons-react'
 
-export const Route = createFileRoute('/_tenant/dashboard/landing-pages/')({
+export const Route = createFileRoute('/dashboard/landing-pages/')({
   component: LandingPagesIndexPage,
 })
 

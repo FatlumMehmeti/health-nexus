@@ -5,7 +5,7 @@ import { SectionCards } from '@/components/molecules/section-cards'
 import dashboardData from '@/lib/dashboard-data.json'
 import { z } from 'zod'
 
-export const Route = createFileRoute('/_tenant/dashboard/')({
+export const Route = createFileRoute('/dashboard/')({
   component: DashboardPage,
 })
 

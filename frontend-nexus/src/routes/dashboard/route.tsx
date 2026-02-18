@@ -3,7 +3,7 @@ import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
 import { AppSidebar } from '@/components/molecules/app-sidebar'
 import { SiteHeader } from '@/components/molecules/site-header'
 
-export const Route = createFileRoute('/_tenant/dashboard')({
+export const Route = createFileRoute('/dashboard')({
   component: TenantLayout,
 })
 

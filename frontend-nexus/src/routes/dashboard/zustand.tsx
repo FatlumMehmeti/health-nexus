@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 
-export const Route = createFileRoute('/_tenant/dashboard/zustand')({
+export const Route = createFileRoute('/dashboard/zustand')({
   component: ZustandExamplePage,
 })
 

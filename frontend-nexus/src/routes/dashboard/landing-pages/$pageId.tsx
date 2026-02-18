@@ -2,7 +2,7 @@ import { createFileRoute, Link } from '@tanstack/react-router'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
 export const Route = createFileRoute(
-  '/_tenant/dashboard/landing-pages/$pageId'
+  '/dashboard/landing-pages/$pageId'
 )({
   component: LandingPageDetail,
 })

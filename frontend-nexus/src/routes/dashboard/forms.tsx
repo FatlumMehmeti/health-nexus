@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 
-export const Route = createFileRoute('/_tenant/dashboard/forms')({
+export const Route = createFileRoute('/dashboard/forms')({
   component: FormsExamplePage,
 })
 
