@@ -48,8 +48,8 @@ const data = {
       icon: IconFileDescription,
     },
     {
-      title: "Zustand",
-      url: "/dashboard/zustand",
+      title: "Global State",
+      url: "/dashboard/global-state",
       icon: IconDatabase,
     },
     {

@@ -12,7 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as DashboardRouteRouteImport } from './routes/dashboard/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as DashboardIndexRouteImport } from './routes/dashboard/index'
-import { Route as DashboardZustandRouteImport } from './routes/dashboard/zustand'
+import { Route as DashboardGlobalStateRouteImport } from './routes/dashboard/global-state'
 import { Route as DashboardFormsRouteImport } from './routes/dashboard/forms'
 import { Route as DashboardDataRouteImport } from './routes/dashboard/data'
 import { Route as DashboardLandingPagesRouteRouteImport } from './routes/dashboard/landing-pages/route'
@@ -34,9 +34,9 @@ const DashboardIndexRoute = DashboardIndexRouteImport.update({
   path: '/',
   getParentRoute: () => DashboardRouteRoute,
 } as any)
-const DashboardZustandRoute = DashboardZustandRouteImport.update({
-  id: '/zustand',
-  path: '/zustand',
+const DashboardGlobalStateRoute = DashboardGlobalStateRouteImport.update({
+  id: '/global-state',
+  path: '/global-state',
   getParentRoute: () => DashboardRouteRoute,
 } as any)
 const DashboardFormsRoute = DashboardFormsRouteImport.update({
@@ -74,7 +74,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/landing-pages': typeof DashboardLandingPagesRouteRouteWithChildren
   '/dashboard/data': typeof DashboardDataRoute
   '/dashboard/forms': typeof DashboardFormsRoute
-  '/dashboard/zustand': typeof DashboardZustandRoute
+  '/dashboard/global-state': typeof DashboardGlobalStateRoute
   '/dashboard/': typeof DashboardIndexRoute
   '/dashboard/landing-pages/$pageId': typeof DashboardLandingPagesPageIdRoute
   '/dashboard/landing-pages/': typeof DashboardLandingPagesIndexRoute
@@ -83,7 +83,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/dashboard/data': typeof DashboardDataRoute
   '/dashboard/forms': typeof DashboardFormsRoute
-  '/dashboard/zustand': typeof DashboardZustandRoute
+  '/dashboard/global-state': typeof DashboardGlobalStateRoute
   '/dashboard': typeof DashboardIndexRoute
   '/dashboard/landing-pages/$pageId': typeof DashboardLandingPagesPageIdRoute
   '/dashboard/landing-pages': typeof DashboardLandingPagesIndexRoute
@@ -95,7 +95,7 @@ export interface FileRoutesById {
   '/dashboard/landing-pages': typeof DashboardLandingPagesRouteRouteWithChildren
   '/dashboard/data': typeof DashboardDataRoute
   '/dashboard/forms': typeof DashboardFormsRoute
-  '/dashboard/zustand': typeof DashboardZustandRoute
+  '/dashboard/global-state': typeof DashboardGlobalStateRoute
   '/dashboard/': typeof DashboardIndexRoute
   '/dashboard/landing-pages/$pageId': typeof DashboardLandingPagesPageIdRoute
   '/dashboard/landing-pages/': typeof DashboardLandingPagesIndexRoute
@@ -108,7 +108,7 @@ export interface FileRouteTypes {
     | '/dashboard/landing-pages'
     | '/dashboard/data'
     | '/dashboard/forms'
-    | '/dashboard/zustand'
+    | '/dashboard/global-state'
     | '/dashboard/'
     | '/dashboard/landing-pages/$pageId'
     | '/dashboard/landing-pages/'
@@ -117,7 +117,7 @@ export interface FileRouteTypes {
     | '/'
     | '/dashboard/data'
     | '/dashboard/forms'
-    | '/dashboard/zustand'
+    | '/dashboard/global-state'
     | '/dashboard'
     | '/dashboard/landing-pages/$pageId'
     | '/dashboard/landing-pages'
@@ -128,7 +128,7 @@ export interface FileRouteTypes {
     | '/dashboard/landing-pages'
     | '/dashboard/data'
     | '/dashboard/forms'
-    | '/dashboard/zustand'
+    | '/dashboard/global-state'
     | '/dashboard/'
     | '/dashboard/landing-pages/$pageId'
     | '/dashboard/landing-pages/'
@@ -162,11 +162,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardIndexRouteImport
       parentRoute: typeof DashboardRouteRoute
     }
-    '/dashboard/zustand': {
-      id: '/dashboard/zustand'
-      path: '/zustand'
-      fullPath: '/dashboard/zustand'
-      preLoaderRoute: typeof DashboardZustandRouteImport
+    '/dashboard/global-state': {
+      id: '/dashboard/global-state'
+      path: '/global-state'
+      fullPath: '/dashboard/global-state'
+      preLoaderRoute: typeof DashboardGlobalStateRouteImport
       parentRoute: typeof DashboardRouteRoute
     }
     '/dashboard/forms': {
@@ -227,7 +227,7 @@ interface DashboardRouteRouteChildren {
   DashboardLandingPagesRouteRoute: typeof DashboardLandingPagesRouteRouteWithChildren
   DashboardDataRoute: typeof DashboardDataRoute
   DashboardFormsRoute: typeof DashboardFormsRoute
-  DashboardZustandRoute: typeof DashboardZustandRoute
+  DashboardGlobalStateRoute: typeof DashboardGlobalStateRoute
   DashboardIndexRoute: typeof DashboardIndexRoute
 }
 
@@ -235,7 +235,7 @@ const DashboardRouteRouteChildren: DashboardRouteRouteChildren = {
   DashboardLandingPagesRouteRoute: DashboardLandingPagesRouteRouteWithChildren,
   DashboardDataRoute: DashboardDataRoute,
   DashboardFormsRoute: DashboardFormsRoute,
-  DashboardZustandRoute: DashboardZustandRoute,
+  DashboardGlobalStateRoute: DashboardGlobalStateRoute,
   DashboardIndexRoute: DashboardIndexRoute,
 }
 
