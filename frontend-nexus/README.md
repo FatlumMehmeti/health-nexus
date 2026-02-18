@@ -19,6 +19,9 @@ npm run dev
   - **/** – redirects to /dashboard
   - **Tenant** (`/dashboard`) – sidebar + header
 - **`src/components/`** – shared UI (ui, atoms, molecules)
+  - `ui/` – shadcn components (`npx shadcn add <component>`)
+  - `atoms/` – smallest building blocks
+  - `molecules/` – compositions of atoms
 - **`src/routes/<route>/-components/`** – route-specific components
 - **`public/`** – static assets (images, icons, files)
   - `images/` – photos, graphics
