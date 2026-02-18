@@ -1,9 +1,8 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { DataTable } from '@/components/data-table'
-import { ChartAreaInteractive } from '@/components/chart-area-interactive'
-import { SectionCards } from '@/components/section-cards'
+import { DataTable, schema } from '@/components/molecules/data-table'
+import { ChartAreaInteractive } from '@/components/molecules/chart-area-interactive'
+import { SectionCards } from '@/components/molecules/section-cards'
 import dashboardData from '@/lib/dashboard-data.json'
-import { schema } from '@/components/data-table'
 import { z } from 'zod'
 
 export const Route = createFileRoute('/_tenant/dashboard/')({

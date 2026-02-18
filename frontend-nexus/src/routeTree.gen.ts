@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as IndexRouteImport } from './routes/index'
 import { Route as TenantDashboardRouteRouteImport } from './routes/_tenant/dashboard.route'
 import { Route as TenantDashboardIndexRouteImport } from './routes/_tenant/dashboard.index'
 import { Route as TenantDashboardZustandRouteImport } from './routes/_tenant/dashboard.zustand'
@@ -18,6 +19,11 @@ import { Route as TenantDashboardLandingPagesRouteRouteImport } from './routes/_
 import { Route as TenantDashboardLandingPagesIndexRouteImport } from './routes/_tenant/dashboard.landing-pages.index'
 import { Route as TenantDashboardLandingPagesPageIdRouteImport } from './routes/_tenant/dashboard.landing-pages.$pageId'
 
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TenantDashboardRouteRoute = TenantDashboardRouteRouteImport.update({
   id: '/_tenant/dashboard',
   path: '/dashboard',
@@ -63,6 +69,7 @@ const TenantDashboardLandingPagesPageIdRoute =
   } as any)
 
 export interface FileRoutesByFullPath {
+  '/': typeof IndexRoute
   '/dashboard': typeof TenantDashboardRouteRouteWithChildren
   '/dashboard/landing-pages': typeof TenantDashboardLandingPagesRouteRouteWithChildren
   '/dashboard/data': typeof TenantDashboardDataRoute
@@ -73,6 +80,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/landing-pages/': typeof TenantDashboardLandingPagesIndexRoute
 }
 export interface FileRoutesByTo {
+  '/': typeof IndexRoute
   '/dashboard/data': typeof TenantDashboardDataRoute
   '/dashboard/forms': typeof TenantDashboardFormsRoute
   '/dashboard/zustand': typeof TenantDashboardZustandRoute
@@ -82,6 +90,7 @@ export interface FileRoutesByTo {
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
+  '/': typeof IndexRoute
   '/_tenant/dashboard': typeof TenantDashboardRouteRouteWithChildren
   '/_tenant/dashboard/landing-pages': typeof TenantDashboardLandingPagesRouteRouteWithChildren
   '/_tenant/dashboard/data': typeof TenantDashboardDataRoute
@@ -94,6 +103,7 @@ export interface FileRoutesById {
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
+    | '/'
     | '/dashboard'
     | '/dashboard/landing-pages'
     | '/dashboard/data'
@@ -104,6 +114,7 @@ export interface FileRouteTypes {
     | '/dashboard/landing-pages/'
   fileRoutesByTo: FileRoutesByTo
   to:
+    | '/'
     | '/dashboard/data'
     | '/dashboard/forms'
     | '/dashboard/zustand'
@@ -112,6 +123,7 @@ export interface FileRouteTypes {
     | '/dashboard/landing-pages'
   id:
     | '__root__'
+    | '/'
     | '/_tenant/dashboard'
     | '/_tenant/dashboard/landing-pages'
     | '/_tenant/dashboard/data'
@@ -123,11 +135,19 @@ export interface FileRouteTypes {
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
+  IndexRoute: typeof IndexRoute
   TenantDashboardRouteRoute: typeof TenantDashboardRouteRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_tenant/dashboard': {
       id: '/_tenant/dashboard'
       path: '/dashboard'
@@ -226,6 +246,7 @@ const TenantDashboardRouteRouteWithChildren =
   TenantDashboardRouteRoute._addFileChildren(TenantDashboardRouteRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
+  IndexRoute: IndexRoute,
   TenantDashboardRouteRoute: TenantDashboardRouteRouteWithChildren,
 }
 export const routeTree = rootRouteImport

@@ -1,3 +1,3 @@
 # molecules
 
-Compositions of atoms (e.g. FormField, CardHeader, SearchInput)
+Compositions of atoms and ui components (e.g. AppSidebar, SiteHeader, NavMain, SectionCards, DataTable, ChartAreaInteractive)

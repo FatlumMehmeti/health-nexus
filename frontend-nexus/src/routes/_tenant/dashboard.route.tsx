@@ -1,7 +1,7 @@
 import { Outlet, createFileRoute } from '@tanstack/react-router'
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
-import { AppSidebar } from '@/components/app-sidebar'
-import { SiteHeader } from '@/components/site-header'
+import { AppSidebar } from '@/components/molecules/app-sidebar'
+import { SiteHeader } from '@/components/molecules/site-header'
 
 export const Route = createFileRoute('/_tenant/dashboard')({
   component: TenantLayout,
