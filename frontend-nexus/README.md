@@ -4,7 +4,7 @@ Health Nexus frontend – Vite, React, TanStack Router.
 
 ## Tech stack
 
-Vite, React, TypeScript, TanStack Router, TanStack Query, Zustand, shadcn/ui, Tailwind CSS, React Hook Form, Zod
+Vite, React, TypeScript, TanStack Router, TanStack Query, Zustand, shadcn/ui, Tailwind CSS, React Hook Form, Zod, Inter (font)
 
 ## Development
 
@@ -12,6 +12,22 @@ Vite, React, TypeScript, TanStack Router, TanStack Query, Zustand, shadcn/ui, Ta
 npm install
 npm run dev
 ```
+
+## Project structure
+
+- **`src/components/`** – shared UI
+  - `ui/` – shadcn components (`npx shadcn add <component>`)
+  - `atoms/` – smallest building blocks
+  - `molecules/` – compositions of atoms
+- **`src/routes/<route>/-components/`** – route-specific components
+- **`public/`** – static assets (images, icons, files)
+  - `images/` – photos, graphics
+  - `icons/` – favicons, SVGs
+  - `files/` – PDFs, documents
+
+## Font
+
+Inter is loaded via `@fontsource/inter` (400, 600, 700) and applied globally.
 
 ## Commit convention
 

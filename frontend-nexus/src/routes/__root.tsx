@@ -1,6 +1,7 @@
 import { Link, Outlet, createRootRoute } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 
+
 export const Route = createRootRoute({
   component: RootLayout,
 })
@@ -10,6 +11,9 @@ function RootLayout() {
     <>
       <nav className="border-b bg-muted/30 px-6 py-3">
         <ul className="flex gap-6">
+          <li>
+            <img src="/images/logo.webp" alt="Logo" className="w-10 h-10" />
+          </li>
           <li>
             <Link to="/" className="hover:text-primary" activeProps={{ className: 'font-semibold' }}>
               Home
