@@ -30,7 +30,7 @@ If someone has old local Postgres volume data with mismatched migration history,
 `docker compose down -v`
 `docker compose up --build`
 
-For future schema changes:
+## For future schema changes:
 
 You run alembic revision --autogenerate -m "..." locally.
 Commit the new file in alembic/versions.
