@@ -1,0 +1,5 @@
+node_modules
+.tanstack
+.vite
+.DS_Store
+.cursor
