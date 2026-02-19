@@ -20,10 +20,6 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-          cache: "pip"
-          cache-dependency-path: |
-            backend-nexus/requirements.txt
-            backend-nexus/pyproject.toml
 
       - name: Install backend deps
         run: |
