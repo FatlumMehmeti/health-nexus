@@ -9,9 +9,6 @@ jobs:
   backend:
     name: Backend (FastAPI)
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: backend-nexus
 
     steps:
       - uses: actions/checkout@v4
@@ -21,14 +18,36 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install backend deps
+      - name: Backend - install (only if backend folder exists)
+        shell: bash
         run: |
+          set -e
+          if [ -d "backend-nexus" ]; then
+            cd backend-nexus
+          elif [ -d "backend" ]; then
+            cd backend
+          else
+            echo "No backend folder found. Skipping backend job."
+            exit 0
+          fi
+
           python -m pip install --upgrade pip
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
           if [ -f pyproject.toml ]; then pip install -e ".[dev]" || pip install -e .; fi
 
-      - name: Lint (ruff) / Format check (optional)
+      - name: Backend - lint/tests (optional)
+        shell: bash
         run: |
+          set -e
+          if [ -d "backend-nexus" ]; then
+            cd backend-nexus
+          elif [ -d "backend" ]; then
+            cd backend
+          else
+            echo "No backend folder found. Skipping."
+            exit 0
+          fi
+
           if command -v ruff >/dev/null 2>&1; then
             ruff check .
             ruff format --check .
@@ -36,10 +55,6 @@ jobs:
             echo "ruff not installed - skipping"
           fi
 
-      - name: Run tests (optional)
-        env:
-          DATABASE_URL: "postgresql://postgres:postgres@localhost:5432/test_db"
-        run: |
           if command -v pytest >/dev/null 2>&1; then
             pytest -q
           else
@@ -74,3 +89,4 @@ jobs:
 
       - name: Build
         run: npm run build --if-present
+
