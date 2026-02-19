@@ -1,6 +1,16 @@
 from .base import Base
 from .role import Role
 from .user import User
-from .tenant import Tenant
+from .tenant import Tenant, TenantStatus
 from .membership import Membership
 from .tenant_subscription import TenantSubscription
+
+__all__ = [
+    "Base",
+    "Role",
+    "User",
+    "Tenant",
+    "TenantStatus",
+    "Membership",
+    "TenantSubscription",
+]

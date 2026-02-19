@@ -18,19 +18,55 @@ This is the initial commit, used as a base for the project setup.
 2. Start services:
    `docker compose up --build`
 
-On startup, the backend now:
+On startup, backend now:
 - waits for Postgres,
 - runs `alembic upgrade head`,
-- auto-recovers stale DB revision pointers (for errors like `Can't locate revision identified by ...`) by stamping the current head.
+- seeds deterministic baseline data for PRD-01 and PRD-02 (`app.seed`),
+- verifies migration + seed baseline (`app.verify_seed`).
+
+You can control bootstrap behavior via env vars:
+- `SEED_ON_BOOT=true|false` (default `true`)
+- `VERIFY_SEED_ON_BOOT=true|false` (default `true`)
+
+## Reproducible seed baseline
+
+Seeded roles:
+- `SUPER_ADMIN`
+- `TENANT_MANAGER`
+- `DOCTOR`
+- `SALES`
+- `CLIENT`
+
+Seeded tenants:
+- `Iliria Hospital`
+- `Dardania Clinic`
+- `American Hospital`
+- `Polyclinic Diagnoze`
+
+Seeded memberships:
+- `Small Clinic` (`1500` / 30 days)
+- `Medium Clinic` (`5000` / 30 days)
+- `Hospital` (`10000` / 30 days)
+
+## Migration + seed verification steps
+
+- Full clean bootstrap:
+  - `docker compose down -v`
+  - `docker compose up --build`
+- Verify startup logs include:
+  - `Running migrations...`
+  - `Seed completed.`
+  - `Seed verification passed.`
 
 ## Clean reset (recommended when sharing with teammates)
 
-If someone has old local Postgres volume data with mismatched migration history, run:
+If someone has old local Postgres volume data, run:
 
 `docker compose down -v`
 `docker compose up --build`
 
-## For future schema changes:
+## For future schema changes
 
-You run alembic revision --autogenerate -m "..." locally.
-Commit the new file in alembic/versions.
+1. Run `alembic revision --autogenerate -m "..."`
+2. Review migration output
+3. Commit new file in `backend-nexus/alembic/versions/`
