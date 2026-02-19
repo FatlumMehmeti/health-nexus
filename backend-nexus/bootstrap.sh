@@ -29,5 +29,17 @@ else
 fi
 rm -f "$MIGRATION_LOG"
 
+SEED_ON_BOOT="${SEED_ON_BOOT:-true}"
+if [ "$SEED_ON_BOOT" = "true" ]; then
+    echo "Seeding baseline data..."
+    python -m app.seed
+fi
+
+VERIFY_SEED_ON_BOOT="${VERIFY_SEED_ON_BOOT:-true}"
+if [ "$VERIFY_SEED_ON_BOOT" = "true" ]; then
+    echo "Verifying migration + seed baseline..."
+    python -m app.verify_seed
+fi
+
 echo "Starting FastAPI..."
 uvicorn app.main:app --host 0.0.0.0 --port 8000

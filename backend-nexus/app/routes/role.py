@@ -48,11 +48,11 @@ def update_role(role_id: int, role: RoleUpdate, db: Session = Depends(get_db)):
     db_role = db.query(Role).filter(Role.id == role_id).first()
     if not db_role:
         raise HTTPException(status_code=404, detail="Role not found")
-    
+
     update_data = role.model_dump(exclude_unset=True)
     for key, value in update_data.items():
         setattr(db_role, key, value)
-    
+
     db.commit()
     db.refresh(db_role)
     return db_role
@@ -63,7 +63,7 @@ def delete_role(role_id: int, db: Session = Depends(get_db)):
     db_role = db.query(Role).filter(Role.id == role_id).first()
     if not db_role:
         raise HTTPException(status_code=404, detail="Role not found")
-    
+
     db.delete(db_role)
     db.commit()
     return None
