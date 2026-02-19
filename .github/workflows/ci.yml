@@ -7,7 +7,7 @@ on:
 
 jobs:
   backend:
-    name: Backend (FastAPI)
+    name: Backend
     runs-on: ubuntu-latest
 
     steps:
@@ -18,7 +18,7 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Backend - install (only if backend folder exists)
+      - name: Backend - install dependencies
         shell: bash
         run: |
           set -e
@@ -35,7 +35,7 @@ jobs:
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
           if [ -f pyproject.toml ]; then pip install -e ".[dev]" || pip install -e .; fi
 
-      - name: Backend - lint/tests (optional)
+      - name: Backend - lint/tests
         shell: bash
         run: |
           set -e
