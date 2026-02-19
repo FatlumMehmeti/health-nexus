@@ -1,0 +1,69 @@
+import { create } from 'zustand'
+import type { Role } from '@/lib/rbacMatrix'
+
+// Centralized client-side authentication store.
+export type AuthStatus = 'loading' | 'authenticated' | 'unauthenticated'
+
+export interface AuthUser {
+  id: string
+  email: string
+  fullName?: string
+}
+
+// Minimal shape required by guards and authenticated UI.
+interface AuthState {
+  status: AuthStatus
+  user?: AuthUser
+  role?: Role
+  tenantId?: string
+  isAuthenticated: boolean
+  setMockUser: (role: Role, tenantId?: string) => void
+  clearAuth: () => void
+  login: () => never
+  logout: () => never
+  refresh: () => never
+  loadProfile: () => never
+}
+
+// Default unauthenticated state used by clearAuth and initialization.
+const initialState: Pick<AuthState, 'status' | 'user' | 'role' | 'tenantId' | 'isAuthenticated'> = {
+  status: 'unauthenticated',
+  user: undefined,
+  role: undefined,
+  tenantId: undefined,
+  isAuthenticated: false,
+}
+
+// Shared auth store instance to be used across the application.
+export const useAuthStore = create<AuthState>((set) => ({
+  ...initialState,
+  // DEV-only helper that simulates a successful login for demos and tests.
+  setMockUser: (role, tenantId) =>
+    set({
+      status: 'authenticated',
+      user: {
+        id: 'mock-user-id',
+        email: 'mock.user@example.com',
+        fullName: 'Mock User',
+      },
+      role,
+      tenantId,
+      isAuthenticated: true,
+    }),
+  clearAuth: () => set(initialState),
+  // Placeholders for future real auth flows.
+  // These are intentionally strict so accidental usage is visible during DEV.
+  login: () => {
+    throw new Error('Not implemented: login')
+  },
+  logout: () => {
+    throw new Error('Not implemented: logout')
+  },
+  refresh: () => {
+    throw new Error('Not implemented: refresh')
+  },
+  loadProfile: () => {
+    throw new Error('Not implemented: loadProfile')
+  },
+}))
+
