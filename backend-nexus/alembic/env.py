@@ -16,8 +16,9 @@ config = context.config
 
 config.set_main_option("sqlalchemy.url", DATABASE_URL)
 
-if config.config_file_name is not None:
-    fileConfig(config.config_file_name)
+# Disable fileConfig for logging as we're using SQLAlchemy 2.0
+# if config.config_file_name is not None:
+#     fileConfig(config.config_file_name)
 
 target_metadata = Base.metadata
 
