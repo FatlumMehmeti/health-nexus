@@ -21,15 +21,11 @@ MIGRATION_LOG="$(mktemp)"
 if alembic upgrade head >"$MIGRATION_LOG" 2>&1; then
     cat "$MIGRATION_LOG"
 else
+    echo "Migration failed."
     cat "$MIGRATION_LOG"
-    if grep -q "Can't locate revision identified by" "$MIGRATION_LOG"; then
-        echo "Detected stale Alembic revision in database. Stamping current head..."
-        alembic stamp --purge head
-    else
-        echo "Migration failed with a non-recoverable error."
-        rm -f "$MIGRATION_LOG"
-        exit 1
-    fi
+    rm -f "$MIGRATION_LOG"
+    echo "Fix (dev): docker compose down -v && docker compose up --build"
+    exit 1
 fi
 rm -f "$MIGRATION_LOG"
 

@@ -1,4 +1,5 @@
 from fastapi import APIRouter, HTTPException, Depends, status
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from app.db import SessionLocal
 from app.models import Role
@@ -18,8 +19,12 @@ def get_db():
 @router.post("", response_model=RoleRead, status_code=status.HTTP_201_CREATED)
 def create_role(role: RoleCreate, db: Session = Depends(get_db)):
     db_role = Role(**role.model_dump())
-    db.add(db_role)
-    db.commit()
+    try:
+        db.add(db_role)
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=409, detail="Role name already exists")
     db.refresh(db_role)
     return db_role
 
