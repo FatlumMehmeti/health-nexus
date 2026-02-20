@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from passlib.context import CryptContext
 
 from app.db import SessionLocal
 from app.models import Membership, Role, Tenant, TenantStatus, User
@@ -47,6 +48,12 @@ SEED_MEMBERSHIPS = [
     {"name": "Hospital", "price": 10000.00, "duration": 30},
 ]
 
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+
+def hash_password(raw_password: str) -> str:
+    return pwd_context.hash(raw_password)
+
 
 def seed_roles(session):
     roles_by_name = {role.name: role for role in session.query(Role).all()}
@@ -91,7 +98,7 @@ def seed_users(session, roles_by_name):
                 first_name=user.first_name,
                 last_name=user.last_name,
                 email=user.email,
-                password=user.password,
+                password=hash_password(user.password),
                 role_id=roles_by_name[user.role_name].id,
             )
         )

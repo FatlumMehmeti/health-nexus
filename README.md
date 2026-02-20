@@ -69,4 +69,5 @@ If someone has old local Postgres volume data, run:
 
 1. Run `alembic revision --autogenerate -m "..."`
 2. Review migration output
-3. Commit new file in `backend-nexus/alembic/versions/`
+3. Run alembic upgrade head
+4. Commit new file in `backend-nexus/alembic/versions/`

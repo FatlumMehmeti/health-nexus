@@ -4,7 +4,7 @@ from datetime import datetime
 
 class TenantBase(BaseModel):
     logo: str | None = None
-    moto: str
+    moto: str | None = None
 
 
 class TenantCreate(TenantBase):
