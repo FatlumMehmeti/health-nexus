@@ -14,7 +14,7 @@ app.add_middleware(
 
 # Include routers
 app.include_router(role_router)
-app.include_router(superadmin_tenants_router, prefix="/api/superadmin", tags=["SuperAdmin Tenants"])
+app.include_router(superadmin_tenants_router, prefix="/api/superadmin", tags=["Super Admin - Tenant Management"])
 app.include_router(public_tenant_requests_router, prefix="/api/public", tags=["Public Tenant Requests"])
 
 @app.get("/")
