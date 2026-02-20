@@ -29,7 +29,9 @@ interface AuthState {
   revokeSession: () => void
   login: () => never
   logout: () => never
-  refresh: () => never
+  // Attempts to refresh an expired access token/session.
+  // Returns true when refresh succeeds and callers may retry requests.
+  refresh: () => Promise<boolean>
   loadProfile: () => never
 }
 
@@ -85,9 +87,8 @@ export const useAuthStore = create<AuthState>((set) => ({
   logout: () => {
     throw new Error('Not implemented: logout')
   },
-  refresh: () => {
-    throw new Error('Not implemented: refresh')
-  },
+  // Token refresh flow placeholder (no backend yet).
+  refresh: async () => false,
   loadProfile: () => {
     throw new Error('Not implemented: loadProfile')
   },
