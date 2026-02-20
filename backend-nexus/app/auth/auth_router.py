@@ -1,0 +1,18 @@
+from fastapi import APIRouter, Depends
+
+from app.auth.auth_schema import LoginRequest, TokenResponse
+from app.auth.auth_service import login_user
+from app.auth.auth_utils import get_current_user
+
+# Router for authentication endpoints
+router = APIRouter(prefix="/auth", tags=["auth"])
+
+# Login endpoint - returns JWT token
+@router.post("/login", response_model=TokenResponse)
+def login(body: LoginRequest) -> TokenResponse:
+    return login_user(body.email, body.password)
+
+
+@router.get("/me")
+def get_me(user=Depends(get_current_user)):
+    return {"message": "You are authenticated", "user": user}
