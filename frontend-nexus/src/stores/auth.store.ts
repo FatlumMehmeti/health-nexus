@@ -5,6 +5,7 @@ import type { Role } from '@/lib/rbacMatrix'
 export type AuthStatus = 'loading' | 'authenticated' | 'unauthenticated'
 
 // Auth error reasons used to drive UX (eg. redirect messaging) without backend coupling.
+// Session-expiration handling sets this so guards can redirect with a `?reason=` query.
 export type AuthErrorReason = 'expired' | 'revoked' | null
 
 export interface AuthUser {
@@ -20,6 +21,7 @@ interface AuthState {
   role?: Role
   tenantId?: string
   isAuthenticated: boolean
+  // When present, guards can redirect to `/login?reason=...` for user-facing messaging.
   authErrorReason: AuthErrorReason
   setMockUser: (role: Role, tenantId?: string) => void
   clearAuth: () => void
@@ -61,14 +63,15 @@ export const useAuthStore = create<AuthState>((set) => ({
       isAuthenticated: true,
       authErrorReason: null,
     }),
+  // Clears auth and any session-expiration reason (fresh unauthenticated state).
   clearAuth: () => set(initialState),
-  // Marks the current session as expired and clears auth data.
+  // Marks the current session as expired and clears auth data (no backend required).
   expireSession: () =>
     set({
       ...initialState,
       authErrorReason: 'expired',
     }),
-  // Marks the current session as revoked and clears auth data.
+  // Marks the current session as revoked and clears auth data (no backend required).
   revokeSession: () =>
     set({
       ...initialState,

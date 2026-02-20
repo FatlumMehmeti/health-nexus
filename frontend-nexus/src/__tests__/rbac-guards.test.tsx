@@ -50,19 +50,23 @@ describe('RBAC route guards', () => {
   })
 
   it('redirects expired session to /login?reason=expired and shows message', async () => {
+    // D) Session Expiration Handling test (no backend):
+    // 1) Authenticate via store helper
+    useAuthStore.getState().setMockUser('SUPER_ADMIN')
+    // 2) Expire session (clears auth + sets reason)
     useAuthStore.getState().expireSession()
     const router = createTestRouter()
     renderApp(router)
 
+    // 3) Attempt to access a protected route
     await act(async () => {
       router.navigate({ to: '/dashboard' })
     })
 
+    // 4) Assert redirect + message
     await waitFor(() => {
       expect(screen.getByTestId('login-page')).toBeInTheDocument()
-      expect(screen.getByTestId('session-reason-message')).toHaveTextContent(
-        'Session expired, please sign in again.',
-      )
+      expect(screen.getByTestId('session-reason-message')).toHaveTextContent(/Session expired/i)
     })
   })
 

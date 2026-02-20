@@ -4,7 +4,7 @@ import { useAuthStore } from '@/stores/auth.store'
 
 // Login placeholder used for DEV-only auth flows.
 export const Route = createFileRoute('/login')({
-  // Minimal search parsing to support reason-based messaging (eg. session expired).
+  // Minimal search parsing to support reason-based messaging (eg. session expired/revoked).
   validateSearch: (search: Record<string, unknown>) => ({
     reason: typeof search.reason === 'string' ? search.reason : undefined,
   }),
@@ -14,6 +14,7 @@ export const Route = createFileRoute('/login')({
 function LoginPage() {
   const setMockUser = useAuthStore((state) => state.setMockUser)
   const { reason } = Route.useSearch()
+  // Note: Jest runs without Vite, so `import.meta.env` may be undefined in tests.
   const isDev = import.meta.env?.DEV ?? false
   const reasonMessage =
     reason === 'expired'

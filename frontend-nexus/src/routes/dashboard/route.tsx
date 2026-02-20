@@ -5,10 +5,14 @@ import { SiteHeader } from '@/components/molecules/site-header'
 import { useAuthStore } from '@/stores/auth.store'
 
 // Protects the whole dashboard: unauthenticated users are sent to login.
+// Session-expiration handling optionally adds a `?reason=` query so the login page can explain why.
 export const Route = createFileRoute('/dashboard')({
   beforeLoad: () => {
     const { isAuthenticated, authErrorReason } = useAuthStore.getState()
     if (!isAuthenticated) {
+      // Guard behavior:
+      // - expired/revoked → /login?reason=...
+      // - otherwise → /login
       if (authErrorReason === 'expired') throw redirect({ to: '/login', search: { reason: 'expired' } })
       if (authErrorReason === 'revoked') throw redirect({ to: '/login', search: { reason: 'revoked' } })
       throw redirect({ to: '/login', search: { reason: undefined } })
