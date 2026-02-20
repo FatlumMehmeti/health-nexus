@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.routes import role_router
+from app.routes import role_router, superadmin_tenants_router, public_tenant_requests_router
 
 app = FastAPI(title="Healthcare SaaS API", version="0.1.0")
 
@@ -14,7 +14,8 @@ app.add_middleware(
 
 # Include routers
 app.include_router(role_router)
-
+app.include_router(superadmin_tenants_router, prefix="/api/superadmin", tags=["SuperAdmin Tenants"])
+app.include_router(public_tenant_requests_router, prefix="/api/public", tags=["Public Tenant Requests"])
 
 @app.get("/")
 def health_check():

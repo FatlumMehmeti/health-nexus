@@ -4,3 +4,7 @@ node_modules
 .DS_Store
 .cursor
 .env
+
+backend-nexus/.venv/
+backend-nexus/__pycache__/
+*.pyc

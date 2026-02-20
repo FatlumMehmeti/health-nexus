@@ -8,6 +8,8 @@ class TenantStatus(enum.Enum):
     pending = "pending"
     approved = "approved"
     rejected = "rejected"
+    suspended = "suspended"
+    archived = "archived"
 
 
 class Tenant(Base, TimestampMixin):
