@@ -1,6 +1,5 @@
 import { Outlet, createRootRoute } from '@tanstack/react-router'
-import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
-
+import { GlobalDialog } from '@/components/global-dialog'
 
 export const Route = createRootRoute({
   component: RootLayout,
@@ -12,7 +11,7 @@ function RootLayout() {
       <div className="min-h-screen">
         <Outlet />
       </div>
-      <TanStackRouterDevtools position="top-right" />
+      <GlobalDialog />
     </>
   )
 }
