@@ -4,6 +4,9 @@ import type { Role } from '@/lib/rbacMatrix'
 // Centralized client-side authentication store.
 export type AuthStatus = 'loading' | 'authenticated' | 'unauthenticated'
 
+// Auth error reasons used to drive UX (eg. redirect messaging) without backend coupling.
+export type AuthErrorReason = 'expired' | 'revoked' | null
+
 export interface AuthUser {
   id: string
   email: string
@@ -17,8 +20,11 @@ interface AuthState {
   role?: Role
   tenantId?: string
   isAuthenticated: boolean
+  authErrorReason: AuthErrorReason
   setMockUser: (role: Role, tenantId?: string) => void
   clearAuth: () => void
+  expireSession: () => void
+  revokeSession: () => void
   login: () => never
   logout: () => never
   refresh: () => never
@@ -26,12 +32,16 @@ interface AuthState {
 }
 
 // Default unauthenticated state used by clearAuth and initialization.
-const initialState: Pick<AuthState, 'status' | 'user' | 'role' | 'tenantId' | 'isAuthenticated'> = {
+const initialState: Pick<
+  AuthState,
+  'status' | 'user' | 'role' | 'tenantId' | 'isAuthenticated' | 'authErrorReason'
+> = {
   status: 'unauthenticated',
   user: undefined,
   role: undefined,
   tenantId: undefined,
   isAuthenticated: false,
+  authErrorReason: null,
 }
 
 // Shared auth store instance to be used across the application.
@@ -49,8 +59,21 @@ export const useAuthStore = create<AuthState>((set) => ({
       role,
       tenantId,
       isAuthenticated: true,
+      authErrorReason: null,
     }),
   clearAuth: () => set(initialState),
+  // Marks the current session as expired and clears auth data.
+  expireSession: () =>
+    set({
+      ...initialState,
+      authErrorReason: 'expired',
+    }),
+  // Marks the current session as revoked and clears auth data.
+  revokeSession: () =>
+    set({
+      ...initialState,
+      authErrorReason: 'revoked',
+    }),
   // Placeholders for future real auth flows.
   // These are intentionally strict so accidental usage is visible during DEV.
   login: () => {

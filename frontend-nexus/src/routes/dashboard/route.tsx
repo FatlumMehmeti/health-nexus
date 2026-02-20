@@ -7,8 +7,12 @@ import { useAuthStore } from '@/stores/auth.store'
 // Protects the whole dashboard: unauthenticated users are sent to login.
 export const Route = createFileRoute('/dashboard')({
   beforeLoad: () => {
-    const { isAuthenticated } = useAuthStore.getState()
-    if (!isAuthenticated) throw redirect({ to: '/login' })
+    const { isAuthenticated, authErrorReason } = useAuthStore.getState()
+    if (!isAuthenticated) {
+      if (authErrorReason === 'expired') throw redirect({ to: '/login', search: { reason: 'expired' } })
+      if (authErrorReason === 'revoked') throw redirect({ to: '/login', search: { reason: 'revoked' } })
+      throw redirect({ to: '/login', search: { reason: undefined } })
+    }
   },
   component: TenantLayout,
 })

@@ -2,7 +2,7 @@
  * Minimal RBAC route guard tests.
  * Uses real route tree and auth store (setMockUser/clearAuth); no backend.
  */
-import React from 'react'
+import { jest } from '@jest/globals'
 import { act, render, screen, waitFor } from '@testing-library/react'
 import { createRouter, RouterProvider } from '@tanstack/react-router'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -46,6 +46,23 @@ describe('RBAC route guards', () => {
 
     await waitFor(() => {
       expect(screen.getByTestId('login-page')).toBeInTheDocument()
+    })
+  })
+
+  it('redirects expired session to /login?reason=expired and shows message', async () => {
+    useAuthStore.getState().expireSession()
+    const router = createTestRouter()
+    renderApp(router)
+
+    await act(async () => {
+      router.navigate({ to: '/dashboard' })
+    })
+
+    await waitFor(() => {
+      expect(screen.getByTestId('login-page')).toBeInTheDocument()
+      expect(screen.getByTestId('session-reason-message')).toHaveTextContent(
+        'Session expired, please sign in again.',
+      )
     })
   })
 
