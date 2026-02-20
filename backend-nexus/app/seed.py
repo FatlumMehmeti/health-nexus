@@ -35,11 +35,13 @@ SEED_USERS = [
 
 
 SEED_TENANTS = [
-    {"moto": "Iliria Hospital", "logo": "iliria.webp", "status": TenantStatus.approved},
-    {"moto": "Dardania Clinic", "logo": "dardania.webp", "status": TenantStatus.approved},
-    {"moto": "American Hospital", "logo": "american.webp", "status": TenantStatus.approved},
-    {"moto": "Polyclinic Diagnoze", "logo": "diagnoze.webp", "status": TenantStatus.approved},
+    {"name": "Iliria Hospital", "moto": "Iliria Hospital", "logo": "iliria.webp", "status": TenantStatus.approved},
+    {"name": "Dardania Clinic", "moto": "Dardania Clinic", "logo": "dardania.webp", "status": TenantStatus.approved},
+    {"name": "American Hospital", "moto": "American Hospital", "logo": "american.webp", "status": TenantStatus.approved},
+    {"name": "Polyclinic Diagnoze", "moto": "Polyclinic Diagnoze", "logo": "diagnoze.webp", "status": TenantStatus.approved},
 ]
+
+
 
 
 SEED_MEMBERSHIPS = [
@@ -69,13 +71,12 @@ def seed_roles(session):
 
 
 def seed_tenants(session):
-    existing = {tenant.moto: tenant for tenant in session.query(Tenant).all()}
+    existing = {tenant.name: tenant for tenant in session.query(Tenant).all()}
 
     for payload in SEED_TENANTS:
-        tenant = existing.get(payload["moto"])
+        tenant = existing.get(payload["name"])
         if tenant is None:
             session.add(Tenant(**payload))
-
 
 def seed_memberships(session):
     existing = {membership.name: membership for membership in session.query(Membership).all()}

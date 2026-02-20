@@ -7,7 +7,9 @@ from .base import Base, TimestampMixin
 class TenantStatus(enum.Enum):
     pending = "pending"
     approved = "approved"
+    suspended = "suspended"
     rejected = "rejected"
+    archived = "archived"
 
 
 class Tenant(Base, TimestampMixin):
@@ -15,6 +17,7 @@ class Tenant(Base, TimestampMixin):
 
     id: Mapped[int] = mapped_column(primary_key=True)
 
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
     logo: Mapped[str] = mapped_column(String(255), nullable=True)
     moto: Mapped[str] = mapped_column(String(255), nullable=True)
 

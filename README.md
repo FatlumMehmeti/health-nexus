@@ -67,7 +67,10 @@ If someone has old local Postgres volume data, run:
 
 ## For future schema changes
 
-1. Run `alembic revision --autogenerate -m "..."`
-2. Review migration output
-3. Run alembic upgrade head
-4. Commit new file in `backend-nexus/alembic/versions/`
+1.docker compose up -d db
+2.docker compose run --rm api python -m alembic upgrade head
+3.docker compose run --rm api python -m alembic revision --autogenerate -m "add tenant name and status values"
+4.Review migration output
+5.docker compose run --rm api python -m alembic upgrade head
+6.Commit new file in `backend-nexus/alembic/versions/`
+
