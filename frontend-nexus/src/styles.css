@@ -1,23 +1,23 @@
-@import 'tailwindcss';
+@import "tailwindcss";
 
 @plugin "tailwindcss-animate";
 
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   /* Light theme – pure white / gray (no blue tint) */
-  --background: oklch(0.99 0 0);          /* almost pure white */
-  --foreground: oklch(0.18 0 0);          /* dark gray text */
-  --primary: oklch(0.7 0 0);              /* medium gray */
-  --primary-foreground: oklch(0.99 0 0);  /* white on primary */
+  --background: oklch(0.99 0 0); /* almost pure white */
+  --foreground: oklch(0.18 0 0); /* dark gray text */
+  --primary: oklch(0.1 0 0); /* even darker gray */
+  --primary-foreground: oklch(0.99 0 0); /* white on primary */
   --secondary: oklch(0.96 0 0);
   --secondary-foreground: oklch(0.26 0 0);
   --muted: oklch(0.95 0 0);
   --muted-foreground: oklch(0.5 0 0);
   --accent: oklch(0.94 0 0);
   --accent-foreground: oklch(0.24 0 0);
-  --destructive: oklch(0.6 0.05 25);
+  --destructive: oklch(0.6 0.18 29);
   --destructive-foreground: oklch(0.99 0 0);
   --card: oklch(0.99 0 0);
   --card-foreground: oklch(0.18 0 0);
@@ -102,17 +102,17 @@
 
 .dark {
   /* Dark theme – neutral black/gray palette */
-  --background: oklch(0.14 0 0);          /* near-black */
-  --foreground: oklch(0.96 0 0);          /* light gray text */
-  --primary: oklch(0.6 0 0);              /* mid gray for primary */
-  --primary-foreground: oklch(0.12 0 0);  /* dark text on primary */
+  --background: oklch(0.14 0 0); /* near-black */
+  --foreground: oklch(0.96 0 0); /* light gray text */
+  --primary: oklch(0.9 0 0); /* much lighter, closer to white for primary */
+  --primary-foreground: oklch(0.12 0 0); /* dark text on primary */
   --secondary: oklch(0.22 0 0);
   --secondary-foreground: oklch(0.94 0 0);
   --muted: oklch(0.22 0 0);
   --muted-foreground: oklch(0.78 0 0);
   --accent: oklch(0.26 0 0);
   --accent-foreground: oklch(0.94 0 0);
-  --destructive: oklch(0.6 0.05 25);
+  --destructive: oklch(0.6 0.18 29); /* vivid red */
   --destructive-foreground: oklch(0.96 0 0);
   --card: oklch(0.18 0 0);
   --card-foreground: oklch(0.96 0 0);
@@ -126,7 +126,7 @@
   --popover: oklch(0.18 0 0);
   --popover-foreground: oklch(0.96 0 0);
   /* Sidebar in pure grays */
-  --sidebar: hsl(0 0% 7%);                     /* almost black */
+  --sidebar: hsl(0 0% 7%); /* almost black */
   --sidebar-foreground: hsl(0 0% 93%);
   --sidebar-primary: hsl(0 0% 100%);
   --sidebar-primary-foreground: hsl(0 0% 7%);

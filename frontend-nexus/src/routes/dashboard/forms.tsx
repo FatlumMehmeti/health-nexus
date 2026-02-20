@@ -1,5 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { toast } from 'sonner'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -32,9 +33,13 @@ function FormsExamplePage() {
 
   const mutation = useMutation({
     mutationFn: usersService.add,
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['users'] })
       form.reset()
+      toast.success('User added', { description: `Created with id: ${data?.id}` })
+    },
+    onError: (err) => {
+      toast.error('Failed to add user', { description: (err as Error).message })
     },
   })
 
@@ -108,14 +113,6 @@ function FormsExamplePage() {
               placeholder="25"
               {...register('age')}
             />
-            {mutation.isError && (
-              <p className="text-sm text-destructive">
-                {mutation.error?.message ?? 'Submission failed'}
-              </p>
-            )}
-            {mutation.isSuccess && (
-              <p className="text-sm text-success">User added successfully (id: {mutation.data?.id})</p>
-            )}
             <Button type="submit" disabled={mutation.isPending}>
               {mutation.isPending ? 'Submitting...' : 'Add user'}
             </Button>
