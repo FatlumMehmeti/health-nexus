@@ -19,7 +19,6 @@ class Tenant(Base, TimestampMixin):
 
     logo: Mapped[str] = mapped_column(String(255), nullable=True)
     moto: Mapped[str] = mapped_column(String(255), nullable=True)
-
     status: Mapped[TenantStatus] = mapped_column(
         Enum(TenantStatus), default=TenantStatus.pending
     )

@@ -1,4 +1,3 @@
-# This file holds all endpoints the super admin uses for tenant management
 from fastapi import APIRouter, HTTPException, Depends, status, Query
 from sqlalchemy.orm import Session
 from app.db import SessionLocal
@@ -17,6 +16,9 @@ def get_db():
         db.close()
 
 
+# Lists tenants for the Super Admin dashboard.
+# Supports optional filtering by status and search (moto).
+# Defaults to returning all tenants ordered by newest first.
 @router.get("", response_model=list[TenantRead])
 def list_tenants(
     status_filter: TenantStatus | None = Query(default=None, alias="status"),
