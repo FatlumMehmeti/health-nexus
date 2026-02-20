@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as DashboardRouteRouteImport } from './routes/dashboard/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as DashboardIndexRouteImport } from './routes/dashboard/index'
+import { Route as DashboardRolesRouteImport } from './routes/dashboard/roles'
 import { Route as DashboardGlobalStateRouteImport } from './routes/dashboard/global-state'
 import { Route as DashboardFormsRouteImport } from './routes/dashboard/forms'
 import { Route as DashboardDialogRouteImport } from './routes/dashboard/dialog'
@@ -33,6 +34,11 @@ const IndexRoute = IndexRouteImport.update({
 const DashboardIndexRoute = DashboardIndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => DashboardRouteRoute,
+} as any)
+const DashboardRolesRoute = DashboardRolesRouteImport.update({
+  id: '/roles',
+  path: '/roles',
   getParentRoute: () => DashboardRouteRoute,
 } as any)
 const DashboardGlobalStateRoute = DashboardGlobalStateRouteImport.update({
@@ -82,6 +88,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/dialog': typeof DashboardDialogRoute
   '/dashboard/forms': typeof DashboardFormsRoute
   '/dashboard/global-state': typeof DashboardGlobalStateRoute
+  '/dashboard/roles': typeof DashboardRolesRoute
   '/dashboard/': typeof DashboardIndexRoute
   '/dashboard/landing-pages/$pageId': typeof DashboardLandingPagesPageIdRoute
   '/dashboard/landing-pages/': typeof DashboardLandingPagesIndexRoute
@@ -92,6 +99,7 @@ export interface FileRoutesByTo {
   '/dashboard/dialog': typeof DashboardDialogRoute
   '/dashboard/forms': typeof DashboardFormsRoute
   '/dashboard/global-state': typeof DashboardGlobalStateRoute
+  '/dashboard/roles': typeof DashboardRolesRoute
   '/dashboard': typeof DashboardIndexRoute
   '/dashboard/landing-pages/$pageId': typeof DashboardLandingPagesPageIdRoute
   '/dashboard/landing-pages': typeof DashboardLandingPagesIndexRoute
@@ -105,6 +113,7 @@ export interface FileRoutesById {
   '/dashboard/dialog': typeof DashboardDialogRoute
   '/dashboard/forms': typeof DashboardFormsRoute
   '/dashboard/global-state': typeof DashboardGlobalStateRoute
+  '/dashboard/roles': typeof DashboardRolesRoute
   '/dashboard/': typeof DashboardIndexRoute
   '/dashboard/landing-pages/$pageId': typeof DashboardLandingPagesPageIdRoute
   '/dashboard/landing-pages/': typeof DashboardLandingPagesIndexRoute
@@ -119,6 +128,7 @@ export interface FileRouteTypes {
     | '/dashboard/dialog'
     | '/dashboard/forms'
     | '/dashboard/global-state'
+    | '/dashboard/roles'
     | '/dashboard/'
     | '/dashboard/landing-pages/$pageId'
     | '/dashboard/landing-pages/'
@@ -129,6 +139,7 @@ export interface FileRouteTypes {
     | '/dashboard/dialog'
     | '/dashboard/forms'
     | '/dashboard/global-state'
+    | '/dashboard/roles'
     | '/dashboard'
     | '/dashboard/landing-pages/$pageId'
     | '/dashboard/landing-pages'
@@ -141,6 +152,7 @@ export interface FileRouteTypes {
     | '/dashboard/dialog'
     | '/dashboard/forms'
     | '/dashboard/global-state'
+    | '/dashboard/roles'
     | '/dashboard/'
     | '/dashboard/landing-pages/$pageId'
     | '/dashboard/landing-pages/'
@@ -172,6 +184,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/dashboard/'
       preLoaderRoute: typeof DashboardIndexRouteImport
+      parentRoute: typeof DashboardRouteRoute
+    }
+    '/dashboard/roles': {
+      id: '/dashboard/roles'
+      path: '/roles'
+      fullPath: '/dashboard/roles'
+      preLoaderRoute: typeof DashboardRolesRouteImport
       parentRoute: typeof DashboardRouteRoute
     }
     '/dashboard/global-state': {
@@ -248,6 +267,7 @@ interface DashboardRouteRouteChildren {
   DashboardDialogRoute: typeof DashboardDialogRoute
   DashboardFormsRoute: typeof DashboardFormsRoute
   DashboardGlobalStateRoute: typeof DashboardGlobalStateRoute
+  DashboardRolesRoute: typeof DashboardRolesRoute
   DashboardIndexRoute: typeof DashboardIndexRoute
 }
 
@@ -257,6 +277,7 @@ const DashboardRouteRouteChildren: DashboardRouteRouteChildren = {
   DashboardDialogRoute: DashboardDialogRoute,
   DashboardFormsRoute: DashboardFormsRoute,
   DashboardGlobalStateRoute: DashboardGlobalStateRoute,
+  DashboardRolesRoute: DashboardRolesRoute,
   DashboardIndexRoute: DashboardIndexRoute,
 }
 

@@ -10,6 +10,7 @@ import {
   IconFolder,
   IconHelp,
   IconInnerShadowTop,
+  IconKey,
   IconMessage,
   IconReport,
   IconSearch,
@@ -67,6 +68,11 @@ const data = {
       title: "Data Fetching",
       url: "/dashboard/data",
       icon: IconDatabaseExport,
+    },
+    {
+      title: "Roles",
+      url: "/dashboard/roles",
+      icon: IconKey,
     },
   ],
   navClouds: [

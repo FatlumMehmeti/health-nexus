@@ -3,7 +3,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { addUser } from '@/server/users'
+import { usersService } from '@/services'
 import { Button } from '@/components/ui/button'
 import { FormField } from '@/components/atoms/form-field'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -31,7 +31,7 @@ function FormsExamplePage() {
   const queryClient = useQueryClient()
 
   const mutation = useMutation({
-    mutationFn: addUser,
+    mutationFn: usersService.add,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] })
       form.reset()
