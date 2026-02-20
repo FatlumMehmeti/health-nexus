@@ -8,34 +8,28 @@ from passlib.context import CryptContext
 
 security = HTTPBearer()
 
-
 SECRET_KEY = "secret"
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
-
+# Create pwd_context using CryptContext for bcrypt hashing
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
 
 class TokenError(Exception):
     """Raised when a JWT token is invalid or expired."""
 
-
 def hash_password(password: str) -> str:
     """
     Hash a plaintext password using bcrypt via passlib.
-
     The hash includes a salt and is safe to store in the database.
     """
     return pwd_context.hash(password)
-
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """
     Verify that a plaintext password matches the stored bcrypt hash.
     """
     return pwd_context.verify(plain_password, hashed_password)
-
 
 def create_access_token(
     data: Dict[str, Any],
@@ -48,7 +42,6 @@ def create_access_token(
     - An expiration claim (`exp`) is always included.
     """
     to_encode = data.copy()
-
     expire = datetime.now(timezone.utc) + (
         expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     )
@@ -56,7 +49,6 @@ def create_access_token(
 
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
-
 
 def verify_token(token: str) -> Dict[str, Any]:
     """
@@ -77,7 +69,6 @@ def verify_token(token: str) -> Dict[str, Any]:
     except JWTError as exc:
         # Includes expired tokens (`ExpiredSignatureError`) and other JWT issues.
         raise TokenError("Invalid or expired token") from exc
-
 
 def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
     # Retrieve the JWT token from the incoming request's Authorization header

@@ -3,9 +3,8 @@ from fastapi import HTTPException
 from app.auth.auth_schema import TokenResponse
 from app.auth.auth_utils import create_access_token, hash_password, verify_password
 
-# Simulated user (hardcoded for now)
-_HARDCODED_EMAIL = "admin@test.com"
-_HARDCODED_PASSWORD_HASH = hash_password("123456")
+HARDCODED_EMAIL = "admin@test.com"
+HARDCODED_PASSWORD_HASH = "$2b$12$Y1Ktc9FoLKoFuVpi3LpShOAEFA1ZuaIPlsQ24quj4AqbBRD7yjzRe"
 
 
 def login_user(email: str, password: str) -> TokenResponse:
@@ -15,7 +14,9 @@ def login_user(email: str, password: str) -> TokenResponse:
     Returns a JWT access token on success. Raises HTTPException 401 if
     credentials are invalid.
     """
-    if email != _HARDCODED_EMAIL or not verify_password(password, _HARDCODED_PASSWORD_HASH):
+    if email != HARDCODED_EMAIL:
+        raise HTTPException(status_code=401, detail="Invalid email or password")
+    if not verify_password(password, HARDCODED_PASSWORD_HASH):
         raise HTTPException(status_code=401, detail="Invalid email or password")
 
     token = create_access_token(data={"email": email})
