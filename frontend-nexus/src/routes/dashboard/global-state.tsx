@@ -1,11 +1,17 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, redirect } from '@tanstack/react-router'
 import { useAppStore } from '@/stores/use-app-store'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { canAccess } from '@/lib/rbacMatrix'
+import { useAuthStore } from '@/stores/auth.store'
 
 export const Route = createFileRoute('/dashboard/global-state')({
+  beforeLoad: () => {
+    const { role } = useAuthStore.getState()
+    if (!canAccess(role ?? undefined, 'DASHBOARD_GLOBAL_STATE')) throw redirect({ to: '/unauthorized' })
+  },
   component: ZustandExamplePage,
 })
 
