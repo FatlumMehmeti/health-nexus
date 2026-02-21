@@ -12,4 +12,3 @@ class Membership(Base, TimestampMixin):
     duration: Mapped[int] = mapped_column(Integer)  # days
 
     subscriptions = relationship("TenantSubscription", back_populates="membership")
-    requested_by_tenants = relationship("Tenant", back_populates="requested_membership")

@@ -5,6 +5,8 @@ from .tenant import Tenant, TenantStatus
 from .tenant_details import TenantDetails, FontKey
 from .membership import Membership
 from .tenant_subscription import TenantSubscription
+from .tenant_subscription import TenantSubscription
+from .consultation_request import ConsultationRequest, ConsultationStatus
 
 __all__ = [
     "Base",
@@ -16,4 +18,6 @@ __all__ = [
     "FontKey",
     "Membership",
     "TenantSubscription",
+    "ConsultationRequest",
+    "ConsultationStatus",
 ]

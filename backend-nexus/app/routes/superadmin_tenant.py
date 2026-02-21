@@ -1,7 +1,13 @@
+# Thus file holds endpoints related to tenant management for the Super Admin dashboard 
+# (e.g: list tenants, view tenant details, approve/reject/suspend tenants etc).
+
 from fastapi import APIRouter, HTTPException, Depends, status, Query
 from sqlalchemy.orm import Session
+from datetime import datetime, timedelta
 from app.db import SessionLocal
 from app.models.tenant import Tenant, TenantStatus
+from app.models.membership import Membership
+from app.models.tenant_subscription import TenantSubscription
 from app.schemas.tenant import TenantRead, TenantStatusUpdate
 
 router = APIRouter(prefix="/tenants", tags=["Super Admin - Tenant Management"])
@@ -16,8 +22,8 @@ def get_db():
         db.close()
 
 
-# Lists tenants for the Super Admin dashboard.
-# Supports optional filtering by status and search (moto).
+# Endpoint to list tenants for the Super Admin dashboard.
+# Supports optional filtering by status and search (name).
 # Defaults to returning all tenants ordered by newest first.
 @router.get("", response_model=list[TenantRead])
 def list_tenants(
@@ -37,7 +43,7 @@ def list_tenants(
 
     return query.all()
 
-
+# Gets tenant details for the Super Admin dashboard tenant details page.
 @router.get("/{tenant_id}", response_model=TenantRead)
 def get_tenant(tenant_id: int, db: Session = Depends(get_db)):
     tenant = db.query(Tenant).filter(Tenant.id == tenant_id).first()
@@ -50,7 +56,8 @@ def get_tenant(tenant_id: int, db: Session = Depends(get_db)):
 
     return tenant
 
-
+# Endpoint to update tenant status (approve/reject/suspend/activate) from the Super Admin dashboard tenant details/modal page.
+# It is through this endpoint that the Tenant lifecycle will be managed (e.g: pending -> approved, approved -> suspended etc).
 @router.patch("/{tenant_id}/status", response_model=TenantRead)
 def update_tenant_status(
     tenant_id: int,
@@ -67,7 +74,8 @@ def update_tenant_status(
 
     current_status = tenant.status
     new_status = status_update.status
-
+    
+    
     allowed_transitions = {
         TenantStatus.pending: [TenantStatus.approved, TenantStatus.rejected],
         TenantStatus.approved: [TenantStatus.suspended, TenantStatus.archived],
@@ -76,19 +84,52 @@ def update_tenant_status(
         TenantStatus.archived: [],
     }
 
+    # If same status is sent (e.g: update tenant status from approved to approved), we can short-circuit and return a 400
     if current_status == new_status:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Tenant is already in '{new_status.value}' status",
         )
 
+    # If mistakenly an invalid transition (pending -> suspended) is attempted, return a 400 with allowed transitions info
     if new_status not in allowed_transitions.get(current_status, []):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Invalid status transition: '{current_status.value}' → '{new_status.value}'",
         )
 
-    # TODO: Insert tenant_audit_logs entry here later
+    # If approving a tenant for the first time (pending -> approved), create a FREE subscription
+    if current_status == TenantStatus.pending and new_status == TenantStatus.approved:
+        # Find the FREE membership plan
+        free_plan = db.query(Membership).filter(Membership.name == "FREE").first()
+        
+        if not free_plan:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="FREE plan not found in database",
+            )
+        
+        # Check if tenant already has a subscription
+        existing_subscription = db.query(TenantSubscription).filter(
+            TenantSubscription.tenant_id == tenant_id,
+            TenantSubscription.is_active == True
+        ).first()
+        
+        # If there is no subscription yet, create a new subscription with the FREE plan
+        if not existing_subscription:
+            activated_at = datetime.now(datetime.timezone.utc)
+            expires_at = activated_at + timedelta(days=free_plan.duration)
+            
+            new_subscription = TenantSubscription(
+                tenant_id=tenant_id,
+                membership_id=free_plan.id,
+                activated_at=activated_at,
+                expires_at=expires_at,
+                is_active=True,
+            )
+            db.add(new_subscription)
+
+    # TODO: Insert tenant_audit_logs entry here later (Use status_update.reason for logs too)
 
     tenant.status = new_status
     db.commit()
