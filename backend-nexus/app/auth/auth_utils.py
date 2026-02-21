@@ -15,8 +15,10 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 30
 # Create pwd_context using CryptContext for bcrypt hashing
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
+
 class TokenError(Exception):
     """Raised when a JWT token is invalid or expired."""
+
 
 def hash_password(password: str) -> str:
     """
@@ -25,11 +27,13 @@ def hash_password(password: str) -> str:
     """
     return pwd_context.hash(password)
 
+
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """
     Verify that a plaintext password matches the stored bcrypt hash.
     """
     return pwd_context.verify(plain_password, hashed_password)
+
 
 def create_access_token(
     data: Dict[str, Any],
@@ -47,8 +51,8 @@ def create_access_token(
     )
     to_encode["exp"] = expire
 
-    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
-    return encoded_jwt
+    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+
 
 def verify_token(token: str) -> Dict[str, Any]:
     """
@@ -60,24 +64,34 @@ def verify_token(token: str) -> Dict[str, Any]:
     - the token has expired
     """
     try:
-        payload: Dict[str, Any] = jwt.decode(
-            token,
-            SECRET_KEY,
-            algorithms=[ALGORITHM],
-        )
+        payload: Dict[str, Any] = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         return payload
     except JWTError as exc:
-        # Includes expired tokens (`ExpiredSignatureError`) and other JWT issues.
         raise TokenError("Invalid or expired token") from exc
 
-def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
+
+def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)) -> Dict[str, Any]:
     # Retrieve the JWT token from the incoming request's Authorization header
     token = credentials.credentials
 
     try:
         # Verify token integrity and decode its payload (e.g. user identity, expiration)
-        payload = verify_token(token)
-        return payload
+        return verify_token(token)
     except TokenError:
         # If verification fails, deny access with an Unauthorized response
         raise HTTPException(status_code=401, detail="Invalid or expired token")
+
+
+def require_role(role: str):
+    """
+    RBAC dependency factory.
+    Usage: Depends(require_role("admin"))
+    Assumes JWT payload includes a "role" field.
+    """
+    def dependency(user: Dict[str, Any] = Depends(get_current_user)) -> Dict[str, Any]:
+        user_role = user.get("role")
+        if user_role != role:
+            raise HTTPException(status_code=403, detail="Insufficient permissions")
+        return user
+
+    return dependency
