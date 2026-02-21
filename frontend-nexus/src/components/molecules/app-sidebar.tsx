@@ -10,6 +10,7 @@ import {
   IconFolder,
   IconHelp,
   IconInnerShadowTop,
+  IconMessage,
   IconReport,
   IconSearch,
   IconSettings,
@@ -46,6 +47,11 @@ const data = {
       title: "Forms",
       url: "/dashboard/forms",
       icon: IconFileDescription,
+    },
+    {
+      title: "Dialog",
+      url: "/dashboard/dialog",
+      icon: IconMessage,
     },
     {
       title: "Global State",

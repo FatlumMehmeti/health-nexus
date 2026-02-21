@@ -3,31 +3,28 @@ node_modules
 .vite
 .DS_Store
 .cursor
+
+# Env
+.env
+
 # Python
 __pycache__/
+**/__pycache__/
 *.pyc
 *.pyo
 
 # Virtual env
 venv/
-.env
-
-# OS
-.DS_Store
 
 # Logs
 *.log
-# Python cache (recursive)
-**/__pycache__/
 
-# SQLite (nëse përdor DB file)
+# SQLite
 *.db
+*.sqlite3
 
 # Pytest
 .pytest_cache/
 
 # Coverage
 .coverage
-
-# Migrations cache
-*.sqlite3

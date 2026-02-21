@@ -4,20 +4,15 @@ import os
 sys.path.append(os.getcwd())
 
 
-from logging.config import fileConfig
-
 from sqlalchemy import engine_from_config, pool
 from alembic import context
 
-from app.db import Base
 from app.config import DATABASE_URL
+from app.models import Base
 
 config = context.config
 
 config.set_main_option("sqlalchemy.url", DATABASE_URL)
-
-if config.config_file_name is not None:
-    fileConfig(config.config_file_name)
 
 target_metadata = Base.metadata
 
