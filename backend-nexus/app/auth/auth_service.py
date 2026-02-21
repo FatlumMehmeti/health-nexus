@@ -1,10 +1,12 @@
+from sqlalchemy import select
+from sqlalchemy.orm import joinedload
+
 from fastapi import HTTPException
 
 from app.auth.auth_schema import TokenResponse
-from app.auth.auth_utils import create_access_token, hash_password, verify_password
-
-HARDCODED_EMAIL = "admin@test.com"
-HARDCODED_PASSWORD_HASH = "$2b$12$Y1Ktc9FoLKoFuVpi3LpShOAEFA1ZuaIPlsQ24quj4AqbBRD7yjzRe"
+from app.auth.auth_utils import create_access_token, verify_password
+from app.db import SessionLocal
+from app.models import User
 
 
 def login_user(email: str, password: str) -> TokenResponse:
@@ -14,10 +16,21 @@ def login_user(email: str, password: str) -> TokenResponse:
     Returns a JWT access token on success. Raises HTTPException 401 if
     credentials are invalid.
     """
-    if email != HARDCODED_EMAIL:
-        raise HTTPException(status_code=401, detail="Invalid email or password")
-    if not verify_password(password, HARDCODED_PASSWORD_HASH):
-        raise HTTPException(status_code=401, detail="Invalid email or password")
-
-    token = create_access_token(data={"email": email})
-    return TokenResponse(access_token=token, token_type="bearer")
+    session = SessionLocal()
+    try:
+        # Load user by email with role eagerly to avoid extra query
+        stmt = select(User).where(User.email == email).options(joinedload(User.role))
+        user = session.execute(stmt).scalar_one_or_none()
+        if user is None:
+            raise HTTPException(status_code=401, detail="Invalid email or password")
+        if not verify_password(password, user.password):
+            raise HTTPException(status_code=401, detail="Invalid email or password")
+        payload = {
+            "user_id": user.id,
+            "email": user.email,
+            "role": user.role.name,
+        }
+        token = create_access_token(data=payload)
+        return TokenResponse(access_token=token, token_type="bearer")
+    finally:
+        session.close()
