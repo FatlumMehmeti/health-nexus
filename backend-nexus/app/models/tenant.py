@@ -24,9 +24,7 @@ class Tenant(Base, TimestampMixin):
     status: Mapped[TenantStatus] = mapped_column(
         Enum(TenantStatus), default=TenantStatus.pending, nullable=False
     )
-    # Requested plan/membership (by the tenant) at application/register time
-    requested_membership_id: Mapped[int] = mapped_column(ForeignKey("memberships.id"), nullable=True)
 
+    # Relationships
     subscriptions = relationship("TenantSubscription", back_populates="tenant")
-    requested_membership = relationship("Membership", back_populates="requested_by_tenants")
     details = relationship("TenantDetails", back_populates="tenant", uselist=False)

@@ -1,11 +1,12 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr
 from datetime import datetime
 from app.models.tenant import TenantStatus
 
 
 class TenantBase(BaseModel):
-    logo: str | None = None
-    moto: str | None = None
+    name: str
+    email: EmailStr
+    licence_number: str
 
 
 class TenantCreate(TenantBase):
@@ -13,8 +14,9 @@ class TenantCreate(TenantBase):
 
 
 class TenantUpdate(BaseModel):
-    logo: str | None = None
-    moto: str | None = None
+    name: str | None = None
+    email: EmailStr | None = None
+    licence_number: str | None = None
 
 
 class TenantRead(TenantBase):
@@ -32,9 +34,16 @@ class TenantStatusUpdate(BaseModel):
     reason: str | None = None
 
 
-# For future pagination support
 class TenantListResponse(BaseModel):
     items: list[TenantRead]
     total: int
     page: int
     page_size: int
+
+
+# # For future pagination support
+# class TenantListResponse(BaseModel):
+#     items: list[TenantRead]
+#     total: int
+#     page: int
+#     page_size: int
