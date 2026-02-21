@@ -31,7 +31,7 @@ def list_tenants(
         query = query.filter(Tenant.status == status_filter)
 
     if search:
-        query = query.filter(Tenant.moto.ilike(f"%{search}%"))
+        query = query.filter(Tenant.name.ilike(f"%{search}%"))
 
     query = query.order_by(Tenant.id.desc())
 
