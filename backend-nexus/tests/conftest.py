@@ -4,6 +4,9 @@ from pathlib import Path
 import pytest
 from dotenv import load_dotenv
 
+from app.models.base import Base
+from app.db import engine, SessionLocal
+
 # backend-nexus root (parent of tests/)
 _root = Path(__file__).resolve().parents[1]
 _env_local = _root / ".env.local"
@@ -15,6 +18,37 @@ if _env_local.exists():
 else:
     load_dotenv(_env_default, override=True)
     _env_loaded = ".env"
+
+
+# Import so all models register their tables with Base.metadata before drop/create.
+import app.models  # noqa: F401
+
+
+@pytest.fixture(scope="function", autouse=True)
+def reset_database():
+    """
+    Run before each test: drop all tables then create all tables for a clean DB.
+    After the test: dispose engine connections so no sessions stay open.
+    """
+    Base.metadata.drop_all(bind=engine)
+    Base.metadata.create_all(bind=engine)
+    try:
+        yield
+    finally:
+        engine.dispose()
+
+
+@pytest.fixture(scope="function")
+def db_session():
+    """
+    Provide a DB session for the test; session is closed after the test.
+    Use this fixture when a test needs database access.
+    """
+    session = SessionLocal()
+    try:
+        yield session
+    finally:
+        session.close()
 
 
 @pytest.fixture(scope="session")
