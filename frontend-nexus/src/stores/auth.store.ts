@@ -1,11 +1,19 @@
+/**
+ * Central auth store (Zustand): login, logout, session state, and route-guard helpers.
+ *
+ * - Tokens live in the API client (memory + localStorage). This store holds user, role, status, and authErrorReason.
+ * - ensureAuth(): if we have a token but no user, calls /auth/me to hydrate; on 403 falls back to decoding the JWT payload.
+ * - A global 401 handler (registered below) calls expireSession() so guards redirect to /login?reason=expired.
+ * - Role is mapped from backend strings to frontend Role (rbacMatrix) for use in route beforeLoad and UI.
+ */
 import { create } from 'zustand'
 import type { Role } from '@/lib/rbacMatrix'
+import { ApiError, clearTokens, getAccessToken, getRefreshToken, setTokens, setUnauthorizedHandler } from '@/lib/api/client'
+import * as authApi from '@/lib/api/auth'
 
-// Centralized client-side authentication store.
 export type AuthStatus = 'loading' | 'authenticated' | 'unauthenticated'
 
-// Auth error reasons used to drive UX (eg. redirect messaging) without backend coupling.
-// Session-expiration handling sets this so guards can redirect with a `?reason=` query.
+/** Set by expireSession() or revokeSession(); used by route guards to redirect with /login?reason=expired|revoked. */
 export type AuthErrorReason = 'expired' | 'revoked' | null
 
 export interface AuthUser {
@@ -14,28 +22,23 @@ export interface AuthUser {
   fullName?: string
 }
 
-// Minimal shape required by guards and authenticated UI.
 interface AuthState {
   status: AuthStatus
   user?: AuthUser
   role?: Role
   tenantId?: string
   isAuthenticated: boolean
-  // When present, guards can redirect to `/login?reason=...` for user-facing messaging.
   authErrorReason: AuthErrorReason
-  setMockUser: (role: Role, tenantId?: string) => void
   clearAuth: () => void
   expireSession: () => void
   revokeSession: () => void
-  login: () => never
-  logout: () => never
-  // Attempts to refresh an expired access token/session.
-  // Returns true when refresh succeeds and callers may retry requests.
+  ensureAuth: () => Promise<boolean>
+  login: (credentials: authApi.LoginCredentials) => Promise<void>
+  logout: () => Promise<void>
   refresh: () => Promise<boolean>
-  loadProfile: () => never
+  loadProfile: () => Promise<void>
 }
 
-// Default unauthenticated state used by clearAuth and initialization.
 const initialState: Pick<
   AuthState,
   'status' | 'user' | 'role' | 'tenantId' | 'isAuthenticated' | 'authErrorReason'
@@ -48,49 +51,200 @@ const initialState: Pick<
   authErrorReason: null,
 }
 
-// Shared auth store instance to be used across the application.
-export const useAuthStore = create<AuthState>((set) => ({
+/** Map backend /auth/me or JWT role string (e.g. "admin", "doctor") to frontend Role for rbacMatrix. */
+function mapBackendRole(role: unknown): Role | undefined {
+  if (typeof role !== 'string') return undefined
+  const normalized = role.trim()
+  if (!normalized) return undefined
+
+  const lower = normalized.toLowerCase()
+  const upper = normalized.toUpperCase()
+
+  if (upper === 'SUPER_ADMIN' || lower === 'super_admin' || lower === 'admin') return 'SUPER_ADMIN'
+  if (upper === 'TENANT_MANAGER' || lower === 'tenant_manager' || lower === 'tenant-manager')
+    return 'TENANT_MANAGER'
+  if (upper === 'DOCTOR' || lower === 'doctor') return 'DOCTOR'
+  if (upper === 'SALES' || lower === 'sales') return 'SALES'
+  if (upper === 'CLIENT' || lower === 'client') return 'CLIENT'
+
+  return undefined
+}
+
+/** Single in-flight promise for ensureAuth so concurrent guards share one /auth/me call. */
+let ensureAuthPromise: Promise<boolean> | null = null
+
+/** Decode base64url (JWT payload segment). Works in browser (atob) and Node (Buffer). */
+function base64UrlDecode(input: string): string {
+  const base64 = input.replace(/-/g, '+').replace(/_/g, '/')
+  const padLength = (4 - (base64.length % 4)) % 4
+  const padded = base64 + '='.repeat(padLength)
+
+  if (typeof globalThis.atob === 'function') return globalThis.atob(padded)
+  // eslint-disable-next-line no-undef
+  return Buffer.from(padded, 'base64').toString('binary')
+}
+
+/** Decode JWT payload without verifying (used only when /auth/me returns 403 but token is present). */
+function decodeJwtPayload(token: string): Record<string, unknown> | null {
+  const parts = token.split('.')
+  if (parts.length < 2) return null
+  try {
+    const json = base64UrlDecode(parts[1]!)
+    return JSON.parse(json) as Record<string, unknown>
+  } catch {
+    return null
+  }
+}
+
+export const useAuthStore = create<AuthState>((set, get) => ({
   ...initialState,
-  // DEV-only helper that simulates a successful login for demos and tests.
-  setMockUser: (role, tenantId) =>
-    set({
-      status: 'authenticated',
-      user: {
-        id: 'mock-user-id',
-        email: 'mock.user@example.com',
-        fullName: 'Mock User',
-      },
-      role,
-      tenantId,
-      isAuthenticated: true,
-      authErrorReason: null,
-    }),
-  // Clears auth and any session-expiration reason (fresh unauthenticated state).
-  clearAuth: () => set(initialState),
-  // Marks the current session as expired and clears auth data (no backend required).
-  expireSession: () =>
+  clearAuth: () => {
+    clearTokens()
+    ensureAuthPromise = null
+    set(initialState)
+  },
+  /** Call when access token is invalid/expired (e.g. after 401). Sets authErrorReason so guard redirects to /login?reason=expired. */
+  expireSession: () => {
+    clearTokens()
+    ensureAuthPromise = null
     set({
       ...initialState,
       authErrorReason: 'expired',
-    }),
-  // Marks the current session as revoked and clears auth data (no backend required).
-  revokeSession: () =>
+    })
+  },
+  /** Call when session was explicitly revoked (e.g. after refresh returns 401). Redirects get /login?reason=revoked. */
+  revokeSession: () => {
+    clearTokens()
+    ensureAuthPromise = null
     set({
       ...initialState,
       authErrorReason: 'revoked',
-    }),
-  // Placeholders for future real auth flows.
-  // These are intentionally strict so accidental usage is visible during DEV.
-  login: () => {
-    throw new Error('Not implemented: login')
+    })
   },
-  logout: () => {
-    throw new Error('Not implemented: logout')
+  /**
+   * Resolve to true if the user is authenticated (either already in store or after loading from /auth/me).
+   * If we have a token but /auth/me fails with 403, we decode the JWT payload and set user/role from it.
+   * Used by dashboard beforeLoad and after login to hydrate profile.
+   */
+  ensureAuth: async () => {
+    const { isAuthenticated, status } = get()
+    if (isAuthenticated) return true
+
+    const token = getAccessToken()
+    if (!token) {
+      if (status !== 'unauthenticated') set({ ...initialState })
+      return false
+    }
+
+    if (ensureAuthPromise) return ensureAuthPromise
+
+    ensureAuthPromise = (async () => {
+      set({ status: 'loading' })
+      try {
+        const res = await authApi.me()
+        const role = mapBackendRole(res.user?.role)
+        const tenantIdRaw = res.user?.tenant_id
+        set({
+          status: 'authenticated',
+          user: {
+            id: String(res.user.user_id),
+            email: String(res.user.email),
+          },
+          role,
+          tenantId: tenantIdRaw !== undefined && tenantIdRaw !== null ? String(tenantIdRaw) : undefined,
+          isAuthenticated: true,
+          authErrorReason: null,
+        })
+        return true
+      } catch (err) {
+        /** Backend may return 403 for /auth/me for some roles; token is still valid so we derive user/role from JWT. */
+        if (err instanceof ApiError && err.status === 403) {
+          const payload = decodeJwtPayload(token)
+          if (payload && typeof payload.email === 'string') {
+            const role = mapBackendRole(payload.role)
+            const tenantIdRaw = payload.tenant_id
+            set({
+              status: 'authenticated',
+              user: {
+                id: payload.user_id !== undefined ? String(payload.user_id) : 'unknown',
+                email: payload.email,
+              },
+              role,
+              tenantId:
+                tenantIdRaw !== undefined && tenantIdRaw !== null ? String(tenantIdRaw) : undefined,
+              isAuthenticated: true,
+              authErrorReason: null,
+            })
+            return true
+          }
+        }
+
+        /** On 401, the client's onUnauthorized already ran (expireSession); don't overwrite state again. */
+        if (!(err instanceof ApiError && err.status === 401)) {
+          set({ ...initialState })
+        }
+        return false
+      } finally {
+        ensureAuthPromise = null
+      }
+    })()
+
+    return ensureAuthPromise
   },
-  // Token refresh flow placeholder (no backend yet).
-  refresh: async () => false,
-  loadProfile: () => {
-    throw new Error('Not implemented: loadProfile')
+  /** POST /auth/login, persist tokens, then ensureAuth(). Throws if profile cannot be loaded. */
+  login: async (credentials) => {
+    set({ status: 'loading', authErrorReason: null })
+    const tokenRes = await authApi.login(credentials)
+    setTokens({ accessToken: tokenRes.access_token, refreshToken: tokenRes.refresh_token })
+    await get().ensureAuth()
+    if (!get().isAuthenticated) {
+      clearTokens()
+      set({ ...initialState })
+      throw new Error('Failed to load profile')
+    }
+  },
+  /** POST /auth/logout (best-effort), then clearAuth so UI and guards see unauthenticated state. */
+  logout: async () => {
+    const rt = getRefreshToken()
+    try {
+      if (rt) await authApi.logout(rt)
+    } catch {
+      // ignore backend logout failures (we still clear local session)
+    } finally {
+      get().clearAuth()
+    }
+  },
+  /** Try to get a new access token; on 401 revoke session and return false. Used by other API layers for retries. */
+  refresh: async () => {
+    const rt = getRefreshToken()
+    if (!rt) return false
+
+    try {
+      const res = await authApi.refresh(rt)
+      setTokens({ accessToken: res.access_token })
+      return true
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 401) {
+        clearTokens()
+        ensureAuthPromise = null
+        get().revokeSession()
+        return false
+      }
+      return false
+    }
+  },
+  loadProfile: async () => {
+    await get().ensureAuth()
   },
 }))
+
+/** Any 401 from the API client triggers this: expire session so route guards redirect to /login?reason=expired. */
+setUnauthorizedHandler(() => {
+  const hasToken = Boolean(getAccessToken())
+  const { isAuthenticated } = useAuthStore.getState()
+  if (!hasToken && !isAuthenticated) return
+  clearTokens()
+  ensureAuthPromise = null
+  useAuthStore.getState().expireSession()
+})
 
