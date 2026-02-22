@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime, timezone
 
 from sqlalchemy import select
@@ -16,6 +17,8 @@ from app.auth.auth_utils import (
 from app.db import SessionLocal
 from app.models import Session, User
 
+logger = logging.getLogger(__name__)
+
 
 def login_user(email: str, password: str) -> TokenResponse:
     """
@@ -30,8 +33,10 @@ def login_user(email: str, password: str) -> TokenResponse:
         stmt = select(User).where(User.email == email).options(joinedload(User.role))
         user = session.execute(stmt).scalar_one_or_none()
         if user is None:
+            logger.warning("auth.login_failed user_not_found email=%s", email)
             raise HTTPException(status_code=401, detail="Invalid email or password")
         if not verify_password(password, user.password):
+            logger.warning("auth.login_failed bad_password email=%s", email)
             raise HTTPException(status_code=401, detail="Invalid email or password")
         tenant_id = getattr(user, "tenant_id", None)
         payload = {
@@ -63,6 +68,7 @@ def login_user(email: str, password: str) -> TokenResponse:
         )
         session.add(db_session)
         session.commit()
+        logger.info("auth.login_success user_id=%s email=%s role=%s", user.id, user.email, user.role.name)
         return TokenResponse(access_token=token, refresh_token=refresh_token, token_type="bearer")
     except HTTPException:
         raise
@@ -80,6 +86,7 @@ def refresh_access_token(refresh_token: str) -> TokenResponse:
     try:
         payload = verify_refresh_token(refresh_token)
     except TokenError:
+        logger.warning("auth.refresh_denied invalid_token")
         raise HTTPException(status_code=401, detail="Invalid or expired refresh token")
     user_id = payload.get("user_id")
     jti = payload.get("jti")
@@ -90,13 +97,16 @@ def refresh_access_token(refresh_token: str) -> TokenResponse:
         stmt = select(Session).where(Session.refresh_jti == jti)
         db_session = session.execute(stmt).scalar_one_or_none()
         if db_session is None:
+            logger.warning("auth.refresh_denied session_not_found jti=%s user_id=%s", jti, user_id)
             raise HTTPException(status_code=401, detail="Invalid refresh token")
         if db_session.state != "active":
+            logger.warning("auth.refresh_denied session_state=%s jti=%s user_id=%s", db_session.state, jti, user_id)
             raise HTTPException(status_code=401, detail="Invalid refresh token")
         now = datetime.now(timezone.utc)
         if db_session.expires_at < now:
             db_session.state = "expired"
             session.commit()
+            logger.warning("auth.refresh_denied session_state=%s jti=%s user_id=%s", db_session.state, jti, user_id)
             raise HTTPException(status_code=401, detail="Refresh token expired")
         user_stmt = select(User).where(User.id == user_id).options(joinedload(User.role))
         user = session.execute(user_stmt).scalar_one_or_none()
@@ -107,6 +117,7 @@ def refresh_access_token(refresh_token: str) -> TokenResponse:
         if tenant_id is not None:
             new_payload["tenant_id"] = tenant_id
         new_access = create_access_token(new_payload)
+        logger.info("auth.refresh_success user_id=%s email=%s", user.id, user.email)
         return TokenResponse(access_token=new_access, token_type="bearer")
     except HTTPException:
         session.rollback()
@@ -123,21 +134,26 @@ def logout_user(refresh_token: str) -> None:
     try:
         payload = verify_refresh_token(refresh_token)
     except TokenError:
+        logger.warning("auth.logout_denied reason=%s jti=%s", "invalid_token", None)
         raise HTTPException(status_code=401, detail="Invalid refresh token")
     jti = payload.get("jti")
     if jti is None:
+        logger.warning("auth.logout_denied reason=%s jti=%s", "missing_jti", jti)
         raise HTTPException(status_code=401, detail="Invalid refresh token")
     session = SessionLocal()
     try:
         stmt = select(Session).where(Session.refresh_jti == jti)
         db_session = session.execute(stmt).scalar_one_or_none()
         if db_session is None:
+            logger.warning("auth.logout_denied reason=%s jti=%s", "session_not_found", jti)
             raise HTTPException(status_code=401, detail="Invalid refresh token")
         if db_session.state != "active":
+            logger.warning("auth.logout_denied reason=%s jti=%s", "session_not_active", jti)
             return
         db_session.state = "revoked"
         db_session.revoked_at = datetime.now(timezone.utc)
         session.commit()
+        logger.info("auth.logout_success jti=%s user_id=%s", jti, db_session.user_id)
     except HTTPException:
         session.rollback()
         raise

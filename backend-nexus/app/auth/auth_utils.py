@@ -1,6 +1,9 @@
+import logging
 import secrets
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Optional
+
+logger = logging.getLogger(__name__)
 
 from fastapi import Depends, HTTPException, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -176,8 +179,16 @@ def require_permission(route_id: str, method: Optional[str] = None):
         effective_method = (method or request.method).upper()
         allowed_roles = PERMISSIONS_MATRIX.get((effective_method, route_id))
         if allowed_roles is None:
+            logger.warning(
+                "auth.rbac_denied missing_matrix method=%s route_id=%s user_id=%s role=%s",
+                effective_method, route_id, user.get("user_id"), user.get("role"),
+            )
             raise HTTPException(status_code=403, detail="Insufficient permissions")
         if normalize_role(user.get("role")) not in allowed_roles:
+            logger.warning(
+                "auth.rbac_denied role_not_allowed method=%s route_id=%s user_id=%s role=%s",
+                effective_method, route_id, user.get("user_id"), user.get("role"),
+            )
             raise HTTPException(status_code=403, detail="Insufficient permissions")
         return user
 
