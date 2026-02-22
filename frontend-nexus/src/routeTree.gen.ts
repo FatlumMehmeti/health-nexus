@@ -23,6 +23,7 @@ import { Route as DashboardDialogRouteImport } from './routes/dashboard/dialog'
 import { Route as DashboardDataRouteImport } from './routes/dashboard/data'
 import { Route as DashboardLandingPagesRouteRouteImport } from './routes/dashboard/landing-pages/route'
 import { Route as DashboardLandingPagesIndexRouteImport } from './routes/dashboard/landing-pages/index'
+import { Route as DashboardAuditLogsIndexRouteImport } from './routes/dashboard/audit-logs/index'
 import { Route as DashboardLandingPagesPageIdRouteImport } from './routes/dashboard/landing-pages/$pageId'
 
 const UnauthorizedRoute = UnauthorizedRouteImport.update({
@@ -97,6 +98,11 @@ const DashboardLandingPagesIndexRoute =
     path: '/',
     getParentRoute: () => DashboardLandingPagesRouteRoute,
   } as any)
+const DashboardAuditLogsIndexRoute = DashboardAuditLogsIndexRouteImport.update({
+  id: '/audit-logs/',
+  path: '/audit-logs/',
+  getParentRoute: () => DashboardRouteRoute,
+} as any)
 const DashboardLandingPagesPageIdRoute =
   DashboardLandingPagesPageIdRouteImport.update({
     id: '/$pageId',
@@ -119,6 +125,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/tenants': typeof DashboardTenantsRoute
   '/dashboard/': typeof DashboardIndexRoute
   '/dashboard/landing-pages/$pageId': typeof DashboardLandingPagesPageIdRoute
+  '/dashboard/audit-logs/': typeof DashboardAuditLogsIndexRoute
   '/dashboard/landing-pages/': typeof DashboardLandingPagesIndexRoute
 }
 export interface FileRoutesByTo {
@@ -134,6 +141,7 @@ export interface FileRoutesByTo {
   '/dashboard/tenants': typeof DashboardTenantsRoute
   '/dashboard': typeof DashboardIndexRoute
   '/dashboard/landing-pages/$pageId': typeof DashboardLandingPagesPageIdRoute
+  '/dashboard/audit-logs': typeof DashboardAuditLogsIndexRoute
   '/dashboard/landing-pages': typeof DashboardLandingPagesIndexRoute
 }
 export interface FileRoutesById {
@@ -152,6 +160,7 @@ export interface FileRoutesById {
   '/dashboard/tenants': typeof DashboardTenantsRoute
   '/dashboard/': typeof DashboardIndexRoute
   '/dashboard/landing-pages/$pageId': typeof DashboardLandingPagesPageIdRoute
+  '/dashboard/audit-logs/': typeof DashboardAuditLogsIndexRoute
   '/dashboard/landing-pages/': typeof DashboardLandingPagesIndexRoute
 }
 export interface FileRouteTypes {
@@ -171,6 +180,7 @@ export interface FileRouteTypes {
     | '/dashboard/tenants'
     | '/dashboard/'
     | '/dashboard/landing-pages/$pageId'
+    | '/dashboard/audit-logs/'
     | '/dashboard/landing-pages/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -186,6 +196,7 @@ export interface FileRouteTypes {
     | '/dashboard/tenants'
     | '/dashboard'
     | '/dashboard/landing-pages/$pageId'
+    | '/dashboard/audit-logs'
     | '/dashboard/landing-pages'
   id:
     | '__root__'
@@ -203,6 +214,7 @@ export interface FileRouteTypes {
     | '/dashboard/tenants'
     | '/dashboard/'
     | '/dashboard/landing-pages/$pageId'
+    | '/dashboard/audit-logs/'
     | '/dashboard/landing-pages/'
   fileRoutesById: FileRoutesById
 }
@@ -314,6 +326,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardLandingPagesIndexRouteImport
       parentRoute: typeof DashboardLandingPagesRouteRoute
     }
+    '/dashboard/audit-logs/': {
+      id: '/dashboard/audit-logs/'
+      path: '/audit-logs'
+      fullPath: '/dashboard/audit-logs/'
+      preLoaderRoute: typeof DashboardAuditLogsIndexRouteImport
+      parentRoute: typeof DashboardRouteRoute
+    }
     '/dashboard/landing-pages/$pageId': {
       id: '/dashboard/landing-pages/$pageId'
       path: '/$pageId'
@@ -349,6 +368,7 @@ interface DashboardRouteRouteChildren {
   DashboardRolesRoute: typeof DashboardRolesRoute
   DashboardTenantsRoute: typeof DashboardTenantsRoute
   DashboardIndexRoute: typeof DashboardIndexRoute
+  DashboardAuditLogsIndexRoute: typeof DashboardAuditLogsIndexRoute
 }
 
 const DashboardRouteRouteChildren: DashboardRouteRouteChildren = {
@@ -360,6 +380,7 @@ const DashboardRouteRouteChildren: DashboardRouteRouteChildren = {
   DashboardRolesRoute: DashboardRolesRoute,
   DashboardTenantsRoute: DashboardTenantsRoute,
   DashboardIndexRoute: DashboardIndexRoute,
+  DashboardAuditLogsIndexRoute: DashboardAuditLogsIndexRoute,
 }
 
 const DashboardRouteRouteWithChildren = DashboardRouteRoute._addFileChildren(

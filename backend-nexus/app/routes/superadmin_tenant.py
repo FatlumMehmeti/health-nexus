@@ -9,6 +9,8 @@ from app.models.tenant import Tenant, TenantStatus
 from app.models.membership import Membership
 from app.models.tenant_subscription import TenantSubscription
 from app.schemas.tenant import TenantRead, TenantStatusUpdate
+from app.services.audit_service import create_audit_log
+from app.models.tenant_audit_log import TenantAuditEventType
 
 router = APIRouter(prefix="/tenants", tags=["Super Admin - Tenant Management"])
 
@@ -129,10 +131,22 @@ def update_tenant_status(
                 is_active=True,
             )
             db.add(new_subscription)
-
-    # TODO: Insert tenant_audit_logs entry here later (Use status_update.reason for logs too)
-
+            
     tenant.status = new_status
+
+    # AUDIT LOG ENTRY
+    create_audit_log(
+        db=db,
+        tenant_id=tenant.id,
+        event_type=TenantAuditEventType.STATUS_CHANGE,
+        entity_name="tenant",
+        entity_id=tenant.id,
+        old_value={"status": current_status.value},
+        new_value={"status": new_status.value},
+        performed_by_user_id=None, # change later when auth implemented
+        performed_by_role="SUPER_ADMIN",
+        reason=status_update.reason,
+    )
     db.commit()
     db.refresh(tenant)
 

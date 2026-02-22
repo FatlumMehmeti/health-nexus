@@ -54,6 +54,11 @@ const data = {
       icon: IconReport,
     },
     {
+      title: "Tenant Audit Logs",
+      url: "/dashboard/audit-logs",
+      icon: IconReport,
+    },
+    {
       title: "Global State",
       url: "/dashboard/global-state",
       icon: IconDatabase,
