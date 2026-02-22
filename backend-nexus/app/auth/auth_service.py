@@ -104,3 +104,36 @@ def refresh_access_token(refresh_token: str) -> TokenResponse:
         raise
     finally:
         session.close()
+
+
+def logout_user(refresh_token: str) -> None:
+    """
+    Revoke the refresh session identified by the given refresh token.
+    Idempotent: if the session is already revoked/expired, returns silently.
+    """
+    try:
+        payload = verify_refresh_token(refresh_token)
+    except TokenError:
+        raise HTTPException(status_code=401, detail="Invalid refresh token")
+    jti = payload.get("jti")
+    if jti is None:
+        raise HTTPException(status_code=401, detail="Invalid refresh token")
+    session = SessionLocal()
+    try:
+        stmt = select(Session).where(Session.refresh_jti == jti)
+        db_session = session.execute(stmt).scalar_one_or_none()
+        if db_session is None:
+            raise HTTPException(status_code=401, detail="Invalid refresh token")
+        if db_session.state != "active":
+            return
+        db_session.state = "revoked"
+        db_session.revoked_at = datetime.now(timezone.utc)
+        session.commit()
+    except HTTPException:
+        session.rollback()
+        raise
+    except Exception:
+        session.rollback()
+        raise
+    finally:
+        session.close()

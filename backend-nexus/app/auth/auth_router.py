@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends
 
 from app.auth.auth_schema import LoginRequest, RefreshRequest, TokenResponse
-from app.auth.auth_service import login_user, refresh_access_token
+from app.auth.auth_service import login_user, logout_user, refresh_access_token
 from app.auth.auth_utils import get_current_user, require_permission
 
 # Router for authentication endpoints
@@ -16,6 +16,12 @@ def login(body: LoginRequest) -> TokenResponse:
 @router.post("/refresh", response_model=TokenResponse)
 def refresh(body: RefreshRequest) -> TokenResponse:
     return refresh_access_token(body.refresh_token)
+
+
+@router.post("/logout")
+def logout(body: RefreshRequest) -> dict:
+    logout_user(body.refresh_token)
+    return {"message": "Logged out successfully"}
 
 
 @router.get("/me")
