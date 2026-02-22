@@ -11,7 +11,6 @@ import {
   IconHelp,
   IconInnerShadowTop,
   IconKey,
-  IconMessage,
   IconReport,
   IconSearch,
   IconSettings,

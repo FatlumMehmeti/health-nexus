@@ -1,17 +1,29 @@
 import sys
 import os
 
+from dotenv import load_dotenv
+
 sys.path.append(os.getcwd())
 
+# Load env: prefer .env.local, else .env (backend-nexus)
+_backend_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+_env_local = os.path.join(_backend_root, ".env.local")
+_env_file = os.path.join(_backend_root, ".env")
+if os.path.isfile(_env_local):
+    load_dotenv(_env_local)
+else:
+    load_dotenv(_env_file)
+
+DATABASE_URL = os.getenv("DATABASE_URL")
+if not DATABASE_URL:
+    raise RuntimeError("DATABASE_URL is not set")
 
 from sqlalchemy import engine_from_config, pool
 from alembic import context
 
-from app.config import DATABASE_URL
 from app.models import Base
 
 config = context.config
-
 config.set_main_option("sqlalchemy.url", DATABASE_URL)
 
 target_metadata = Base.metadata
