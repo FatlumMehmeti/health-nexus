@@ -34,10 +34,10 @@ SEED_USERS = [
 
 
 SEED_TENANTS = [
-    {"name": "Bluestone Clinic", "email": "contact@bluestone.local", "licence_number": "BLU-001", "status": TenantStatus.approved},
-    {"name": "Riverside Health Partners", "email": "contact@riverside.local", "licence_number": "RIV-002", "status": TenantStatus.approved},
-    {"name": "Apex Medical Group", "email": "contact@apex.local", "licence_number": "APX-003", "status": TenantStatus.approved},
-    {"name": "Northgate Wellness", "email": "contact@northgate.local", "licence_number": "NGT-004", "status": TenantStatus.approved},
+    {"name": "Bluestone Clinic", "email": "contact@bluestone.com", "licence_number": "BLU-001", "status": TenantStatus.approved},
+    {"name": "Riverside Health Partners", "email": "contact@riverside.com", "licence_number": "RIV-002", "status": TenantStatus.approved},
+    {"name": "Apex Medical Group", "email": "contact@apex.com", "licence_number": "APX-003", "status": TenantStatus.approved},
+    {"name": "Northgate Wellness", "email": "contact@northgate.com", "licence_number": "NGT-004", "status": TenantStatus.approved},
 ]
 
 SEED_TENANT_DETAILS = [

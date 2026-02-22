@@ -3,7 +3,7 @@
 
 from fastapi import APIRouter, HTTPException, Depends, status, Query
 from sqlalchemy.orm import Session
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from app.db import SessionLocal
 from app.models.tenant import Tenant, TenantStatus
 from app.models.membership import Membership
@@ -99,6 +99,7 @@ def update_tenant_status(
         )
 
     # If approving a tenant for the first time (pending -> approved), create a FREE subscription
+    # When the superadmin approves a tenant for the first time, we want to automatically create a FREE subscription..
     if current_status == TenantStatus.pending and new_status == TenantStatus.approved:
         # Find the FREE membership plan
         free_plan = db.query(Membership).filter(Membership.name == "FREE").first()
@@ -117,7 +118,7 @@ def update_tenant_status(
         
         # If there is no subscription yet, create a new subscription with the FREE plan
         if not existing_subscription:
-            activated_at = datetime.now(datetime.timezone.utc)
+            activated_at = datetime.now(timezone.utc)
             expires_at = activated_at + timedelta(days=free_plan.duration)
             
             new_subscription = TenantSubscription(
