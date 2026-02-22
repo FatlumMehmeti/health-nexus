@@ -1,6 +1,8 @@
+
 import { Outlet, createRootRoute, useNavigate, useRouterState} from '@tanstack/react-router'
 import { useEffect } from 'react'
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
+import { GlobalDialog } from '@/components/global-dialog'
 import { useAuthStore } from '@/stores/auth.store'
 
 
