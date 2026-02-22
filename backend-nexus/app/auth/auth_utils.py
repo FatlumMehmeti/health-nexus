@@ -1,3 +1,4 @@
+import secrets
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Optional
 
@@ -11,6 +12,7 @@ security = HTTPBearer()
 SECRET_KEY = "secret"
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
+REFRESH_TOKEN_EXPIRE_DAYS = 7
 
 # Centralized RBAC: (method, route_id) -> allowed roles (lowercase)
 PERMISSIONS_MATRIX: Dict[tuple[str, str], set[str]] = {
@@ -46,6 +48,11 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     return pwd_context.verify(plain_password, hashed_password)
 
 
+def generate_jti() -> str:
+    """Generate a unique JWT ID for refresh tokens."""
+    return secrets.token_urlsafe(32)
+
+
 def create_access_token(
     data: Dict[str, Any],
     expires_delta: Optional[timedelta] = None,
@@ -65,6 +72,25 @@ def create_access_token(
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
 
+def create_refresh_token(
+    data: Dict[str, Any],
+    expires_delta: Optional[timedelta] = None,
+) -> str:
+    """
+    Create a signed JWT refresh token.
+
+    - `data` is copied so the input is not mutated.
+    - Adds token_type "refresh", jti, and exp.
+    """
+    to_encode = data.copy()
+    to_encode["token_type"] = "refresh"
+    to_encode["jti"] = generate_jti()
+    to_encode["exp"] = datetime.now(timezone.utc) + (
+        expires_delta or timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
+    )
+    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+
+
 def verify_token(token: str) -> Dict[str, Any]:
     """
     Decode and validate a JWT access token.
@@ -76,6 +102,26 @@ def verify_token(token: str) -> Dict[str, Any]:
     """
     try:
         payload: Dict[str, Any] = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        return payload
+    except JWTError as exc:
+        raise TokenError("Invalid or expired token") from exc
+
+
+def verify_refresh_token(token: str) -> Dict[str, Any]:
+    """
+    Decode and validate a JWT refresh token.
+
+    Returns the payload if valid. Raises `TokenError` if:
+    - the token is malformed, invalid, or expired
+    - token_type is not "refresh"
+    - jti is missing
+    """
+    try:
+        payload: Dict[str, Any] = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        if payload.get("token_type") != "refresh":
+            raise TokenError("Invalid token type")
+        if "jti" not in payload:
+            raise TokenError("Missing jti")
         return payload
     except JWTError as exc:
         raise TokenError("Invalid or expired token") from exc
