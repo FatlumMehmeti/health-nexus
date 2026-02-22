@@ -8,3 +8,4 @@ node_modules
 backend-nexus/.venv/
 backend-nexus/__pycache__/
 *.pyc
+backend-nexus/.env.example

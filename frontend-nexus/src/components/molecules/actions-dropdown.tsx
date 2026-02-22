@@ -63,7 +63,7 @@ export function ActionsDropdown({
       <DropdownMenuContent align={align}>
         {actions.map((action, index) => (
           <React.Fragment key={index}>
-            {action.separatorBefore && <DropdownMenuSeparator />}
+            {action.separatorBefore && index > 0 && <DropdownMenuSeparator />}
             <DropdownMenuItem
               variant={action.variant}
               onClick={action.onClick}

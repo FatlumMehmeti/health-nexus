@@ -14,7 +14,7 @@ This is the initial commit, used as a base for the project setup.
 
 ## Backend bootstrap
 
-1. Ensure `.env` has `DATABASE_URL` and Postgres credentials.
+1. Copy `.env.example` to `.env` and ensure `DATABASE_URL` uses `postgresql+psycopg://` (required for Python 3.13 support).
 2. Start services:
    `docker compose up --build`
 
@@ -64,6 +64,22 @@ If someone has old local Postgres volume data, run:
 
 `docker compose down -v`
 `docker compose up --build`
+
+## Run migrations and seed separately
+
+For manual control (e.g. after schema changes):
+
+```bash
+make db-up      # Start db only
+make migrate-up # Run alembic upgrade head
+make seed       # Seed baseline data
+```
+
+Full clean reset (wipe DB, migrate, seed):
+
+```bash
+make reset
+```
 
 ## For future schema changes
 

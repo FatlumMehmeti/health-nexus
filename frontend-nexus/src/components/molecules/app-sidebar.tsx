@@ -43,7 +43,7 @@ const data = {
       url: "/dashboard",
       icon: IconDashboard,
     },
-    
+
     {
       title: "Forms",
       url: "/dashboard/forms",
