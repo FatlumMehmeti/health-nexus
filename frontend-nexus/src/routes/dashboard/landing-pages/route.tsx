@@ -1,12 +1,8 @@
-import { createFileRoute, Outlet, redirect } from '@tanstack/react-router'
-import { canAccess } from '@/lib/rbacMatrix'
-import { useAuthStore } from '@/stores/auth.store'
+import { createFileRoute, Outlet } from '@tanstack/react-router'
+import { requireAuth } from '@/lib/guards/requireAuth'
 
 export const Route = createFileRoute('/dashboard/landing-pages')({
-  beforeLoad: () => {
-    const { role } = useAuthStore.getState()
-    if (!canAccess(role ?? undefined, 'DASHBOARD_LANDING_PAGES')) throw redirect({ to: '/unauthorized' })
-  },
+  beforeLoad: requireAuth({ routeKey: 'DASHBOARD_LANDING_PAGES' }),
   component: LandingPagesLayout,
 })
 

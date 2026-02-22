@@ -1,4 +1,4 @@
-import { createFileRoute, redirect } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { fetchUsers } from "@/server/users";
 import {
@@ -11,14 +11,10 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { canAccess } from "@/lib/rbacMatrix";
-import { useAuthStore } from "@/stores/auth.store";
+import { requireAuth } from "@/lib/guards/requireAuth";
 
 export const Route = createFileRoute("/dashboard/data")({
-  beforeLoad: () => {
-    const { role } = useAuthStore.getState();
-    if (!canAccess(role ?? undefined, "DASHBOARD_DATA")) throw redirect({ to: "/unauthorized" });
-  },
+  beforeLoad: requireAuth({ routeKey: "DASHBOARD_DATA" }),
   component: DataFetchingPage,
 });
 

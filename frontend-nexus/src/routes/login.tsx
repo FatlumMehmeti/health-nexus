@@ -18,12 +18,20 @@ export const Route = createFileRoute('/login')({
   beforeLoad: async () => {
     const { ensureAuth, isAuthenticated } = useAuthStore.getState()
     if (!isAuthenticated) await ensureAuth()
-    if (useAuthStore.getState().isAuthenticated) throw redirect({ to: '/dashboard' })
+    const state = useAuthStore.getState()
+    if (state.isAuthenticated) {
+      throw redirect({ to: '/dashboard' })
+    }
   },
-  /** Parses ?reason=expired|revoked so we can show a specific message (e.g. after 401 session expiry). */
-  validateSearch: (search: Record<string, unknown>) => ({
-    reason: typeof search.reason === 'string' ? search.reason : undefined,
-  }),
+  /** Parses ?reason=expired|revoked and ?redirect= for post-login redirect. */
+  validateSearch: (search: Record<string, unknown>) => {
+    const reason = typeof search.reason === 'string' ? search.reason : undefined
+    const redirect =
+      typeof search.redirect === 'string' && search.redirect.startsWith('/') && !search.redirect.startsWith('//')
+        ? search.redirect
+        : undefined
+    return { reason, redirect }
+  },
   component: LoginPage,
 })
 
@@ -39,7 +47,7 @@ function LoginPage() {
   const login = useAuthStore((s) => s.login)
   const status = useAuthStore((s) => s.status)
   const storeError = useAuthStore((s) => s.error)
-  const { reason } = Route.useSearch()
+  const { reason, redirect: redirectTo } = Route.useSearch()
   const [submitError, setSubmitError] = useState<string | null>(null)
   const loginError = storeError ?? submitError
   /** Shown when user was redirected with ?reason=expired or ?reason=revoked (e.g. after global 401 handler). */
@@ -59,7 +67,8 @@ function LoginPage() {
     setSubmitError(null)
     try {
       await login(values)
-      await navigate({ to: '/dashboard', replace: true })
+      const target = redirectTo && redirectTo.startsWith('/') && !redirectTo.startsWith('//') ? redirectTo : '/dashboard'
+      await navigate({ to: target, replace: true })
     } catch (err) {
       if (err instanceof ApiError) setSubmitError(err.message)
       else setSubmitError('Sign in failed')
