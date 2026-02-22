@@ -1,12 +1,14 @@
 /**
  * Central auth store (Zustand): login, logout, session state, and route-guard helpers.
  *
- * - Tokens live in the API client (memory + localStorage). This store holds user, role, status, and authErrorReason.
+ * - Tokens are persisted in the API client (localStorage keys: health-nexus.accessToken, health-nexus.refreshToken).
+ *   This store mirrors the access token in state for convenience and holds user, role, loading, error.
+ * - On app bootstrap, rehydration is done in __root (load token from storage → ensureAuth() → me() to hydrate user).
  * - ensureAuth(): if we have a token but no user, calls /auth/me to hydrate; on 403 falls back to decoding the JWT payload.
- * - A global 401 handler (registered below) calls expireSession() so guards redirect to /login?reason=expired.
- * - Role is mapped from backend strings to frontend Role (rbacMatrix) for use in route beforeLoad and UI.
+ * - On any API 401, the global handler clears token/user, sets authErrorReason, shows a toast, and guards redirect to /login.
  */
 import { create } from 'zustand'
+import { toast } from 'sonner'
 import type { Role } from '@/lib/rbacMatrix'
 import { ApiError, clearTokens, getAccessToken, getRefreshToken, setTokens, setUnauthorizedHandler } from '@/lib/api/client'
 import * as authApi from '@/lib/api/auth'
@@ -24,10 +26,14 @@ export interface AuthUser {
 
 interface AuthState {
   status: AuthStatus
-  user?: AuthUser
-  role?: Role
-  tenantId?: string
+  user: AuthUser | undefined
+  /** Access token (mirrors client; set on login/hydrate, cleared on logout). Backend returns it from /auth/login. */
+  token: string | null
   isAuthenticated: boolean
+  /** Last auth error message (e.g. login failure); cleared on successful login, logout, or ensureAuth. */
+  error: string | null
+  role: Role | undefined
+  tenantId: string | undefined
   authErrorReason: AuthErrorReason
   clearAuth: () => void
   expireSession: () => void
@@ -41,13 +47,15 @@ interface AuthState {
 
 const initialState: Pick<
   AuthState,
-  'status' | 'user' | 'role' | 'tenantId' | 'isAuthenticated' | 'authErrorReason'
+  'status' | 'user' | 'token' | 'isAuthenticated' | 'error' | 'role' | 'tenantId' | 'authErrorReason'
 > = {
   status: 'unauthenticated',
   user: undefined,
+  token: null,
+  isAuthenticated: false,
+  error: null,
   role: undefined,
   tenantId: undefined,
-  isAuthenticated: false,
   authErrorReason: null,
 }
 
@@ -98,12 +106,13 @@ function decodeJwtPayload(token: string): Record<string, unknown> | null {
 
 export const useAuthStore = create<AuthState>((set, get) => ({
   ...initialState,
+  /** Clears token (and persistence), user, and all auth state. No redirect; call from logout or reset. */
   clearAuth: () => {
     clearTokens()
     ensureAuthPromise = null
     set(initialState)
   },
-  /** Call when access token is invalid/expired (e.g. after 401). Sets authErrorReason so guard redirects to /login?reason=expired. */
+  /** Call when access token is invalid/expired (e.g. after 401). Clears token/user, sets authErrorReason; guard redirects to /login?reason=expired. */
   expireSession: () => {
     clearTokens()
     ensureAuthPromise = null
@@ -123,8 +132,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
   /**
    * Resolve to true if the user is authenticated (either already in store or after loading from /auth/me).
-   * If we have a token but /auth/me fails with 403, we decode the JWT payload and set user/role from it.
-   * Used by dashboard beforeLoad and after login to hydrate profile.
+   * Reads token from storage; if present, calls /auth/me to hydrate user/role (or decodes JWT on 403).
+   * Used on bootstrap and by dashboard beforeLoad.
    */
   ensureAuth: async () => {
     const { isAuthenticated, status } = get()
@@ -139,7 +148,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     if (ensureAuthPromise) return ensureAuthPromise
 
     ensureAuthPromise = (async () => {
-      set({ status: 'loading' })
+      set({ status: 'loading', error: null })
       try {
         const res = await authApi.me()
         const role = mapBackendRole(res.user?.role)
@@ -150,9 +159,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
             id: String(res.user.user_id),
             email: String(res.user.email),
           },
+          token,
           role,
           tenantId: tenantIdRaw !== undefined && tenantIdRaw !== null ? String(tenantIdRaw) : undefined,
           isAuthenticated: true,
+          error: null,
           authErrorReason: null,
         })
         return true
@@ -169,19 +180,21 @@ export const useAuthStore = create<AuthState>((set, get) => ({
                 id: payload.user_id !== undefined ? String(payload.user_id) : 'unknown',
                 email: payload.email,
               },
+              token,
               role,
               tenantId:
                 tenantIdRaw !== undefined && tenantIdRaw !== null ? String(tenantIdRaw) : undefined,
               isAuthenticated: true,
+              error: null,
               authErrorReason: null,
             })
             return true
           }
         }
 
-        /** On 401, the client's onUnauthorized already ran (expireSession); don't overwrite state again. */
+        /** On 401, the client's onUnauthorized already ran (expireSession + toast); don't overwrite state again. */
         if (!(err instanceof ApiError && err.status === 401)) {
-          set({ ...initialState })
+          set({ ...initialState, error: err instanceof Error ? err.message : 'Failed to load session' })
         }
         return false
       } finally {
@@ -191,19 +204,25 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
     return ensureAuthPromise
   },
-  /** POST /auth/login, persist tokens, then ensureAuth(). Throws if profile cannot be loaded. */
+  /** POST /auth/login, persist tokens, then ensureAuth(). Sets error and rethrows if profile cannot be loaded. */
   login: async (credentials) => {
-    set({ status: 'loading', authErrorReason: null })
-    const tokenRes = await authApi.login(credentials)
-    setTokens({ accessToken: tokenRes.access_token, refreshToken: tokenRes.refresh_token })
-    await get().ensureAuth()
-    if (!get().isAuthenticated) {
-      clearTokens()
-      set({ ...initialState })
-      throw new Error('Failed to load profile')
+    set({ status: 'loading', error: null, authErrorReason: null })
+    try {
+      const tokenRes = await authApi.login(credentials)
+      setTokens({ accessToken: tokenRes.access_token, refreshToken: tokenRes.refresh_token })
+      await get().ensureAuth()
+      if (!get().isAuthenticated) {
+        clearTokens()
+        set({ ...initialState, error: 'Failed to load profile' })
+        throw new Error('Failed to load profile')
+      }
+    } catch (err) {
+      const message = err instanceof ApiError ? err.message : err instanceof Error ? err.message : 'Sign in failed'
+      set({ ...initialState, error: message })
+      throw err
     }
   },
-  /** POST /auth/logout (best-effort), then clearAuth so UI and guards see unauthenticated state. */
+  /** POST /auth/logout (best-effort), then clear token/user and reset state. */
   logout: async () => {
     const rt = getRefreshToken()
     try {
@@ -238,7 +257,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 }))
 
-/** Any 401 from the API client triggers this: expire session so route guards redirect to /login?reason=expired. */
+/** On any API 401: clear token/user, set authErrorReason (so guards redirect to /login?reason=expired), and show toast. */
 setUnauthorizedHandler(() => {
   const hasToken = Boolean(getAccessToken())
   const { isAuthenticated } = useAuthStore.getState()
@@ -246,5 +265,6 @@ setUnauthorizedHandler(() => {
   clearTokens()
   ensureAuthPromise = null
   useAuthStore.getState().expireSession()
+  toast.error('Session expired. Please sign in again.')
 })
 

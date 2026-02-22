@@ -28,6 +28,7 @@ export class ApiError extends Error implements ApiErrorShape {
   }
 }
 
+/** localStorage keys for auth token persistence (used on bootstrap to rehydrate via /auth/me). */
 const ACCESS_TOKEN_KEY = 'health-nexus.accessToken'
 const REFRESH_TOKEN_KEY = 'health-nexus.refreshToken'
 

@@ -38,8 +38,10 @@ function LoginPage() {
   const navigate = useNavigate()
   const login = useAuthStore((s) => s.login)
   const status = useAuthStore((s) => s.status)
+  const storeError = useAuthStore((s) => s.error)
   const { reason } = Route.useSearch()
   const [submitError, setSubmitError] = useState<string | null>(null)
+  const loginError = storeError ?? submitError
   /** Shown when user was redirected with ?reason=expired or ?reason=revoked (e.g. after global 401 handler). */
   const reasonMessage =
     reason === 'expired'
@@ -107,7 +109,7 @@ function LoginPage() {
               ) : null}
             </div>
 
-            {submitError ? <p className="text-sm text-destructive">{submitError}</p> : null}
+            {loginError ? <p className="text-sm text-destructive">{loginError}</p> : null}
 
             <Button type="submit" className="w-full" disabled={isSubmitting}>
               {isSubmitting ? 'Signing in…' : 'Sign in'}
