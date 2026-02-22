@@ -33,13 +33,19 @@ def login_user(email: str, password: str) -> TokenResponse:
             raise HTTPException(status_code=401, detail="Invalid email or password")
         if not verify_password(password, user.password):
             raise HTTPException(status_code=401, detail="Invalid email or password")
+        tenant_id = getattr(user, "tenant_id", None)
         payload = {
             "user_id": user.id,
             "email": user.email,
             "role": user.role.name,
         }
+        if tenant_id is not None:
+            payload["tenant_id"] = tenant_id
         token = create_access_token(data=payload)
-        refresh_token = create_refresh_token(data={"user_id": user.id, "email": user.email})
+        refresh_data = {"user_id": user.id, "email": user.email}
+        if tenant_id is not None:
+            refresh_data["tenant_id"] = tenant_id
+        refresh_token = create_refresh_token(data=refresh_data)
         try:
             refresh_payload = verify_refresh_token(refresh_token)
         except TokenError:
@@ -97,6 +103,9 @@ def refresh_access_token(refresh_token: str) -> TokenResponse:
         if user is None:
             raise HTTPException(status_code=401, detail="Invalid refresh token")
         new_payload = {"user_id": user.id, "email": user.email, "role": user.role.name}
+        tenant_id = getattr(user, "tenant_id", None)
+        if tenant_id is not None:
+            new_payload["tenant_id"] = tenant_id
         new_access = create_access_token(new_payload)
         return TokenResponse(access_token=new_access, token_type="bearer")
     except HTTPException:

@@ -182,3 +182,68 @@ def require_permission(route_id: str, method: Optional[str] = None):
         return user
 
     return dependency
+
+
+def get_tenant_id_from_request(request: Request, header_name: str = "X-Tenant-Id") -> int:
+    """
+    Extract tenant_id from the request header as an integer.
+
+    Raises HTTPException 400 if the header is missing or the value is not a valid integer.
+    """
+    value = request.headers.get(header_name)
+    if value is None or (isinstance(value, str) and value.strip() == ""):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Missing or empty {header_name} header",
+        )
+    try:
+        return int(value.strip() if isinstance(value, str) else value)
+    except (ValueError, TypeError):
+        raise HTTPException(
+            status_code=400,
+            detail=f"{header_name} must be a valid integer",
+        )
+
+
+def require_tenant_access(tenant_id: int | None = None, header_name: str = "X-Tenant-Id"):
+    """
+    Tenant-safe authorization dependency factory.
+    Ensures the current user's tenant_id matches the request's tenant (from argument or header).
+
+    - If ``tenant_id`` is provided, it is used as the required tenant.
+    - Otherwise, the tenant is read from the request header (default: ``X-Tenant-Id``).
+    - User payload must contain ``tenant_id`` (int or str); otherwise 403.
+    - If tenant does not match, raises 403 "Tenant access denied".
+
+    Usage::
+
+        # Require tenant from header X-Tenant-Id
+        Depends(require_tenant_access())
+
+        # Require tenant 123 (e.g. from path)
+        Depends(require_tenant_access(tenant_id=123))
+    """
+    def dependency(
+        request: Request,
+        user: Dict[str, Any] = Depends(get_current_user),
+    ) -> Dict[str, Any]:
+        if tenant_id is not None:
+            effective_tenant_id = tenant_id
+        else:
+            effective_tenant_id = get_tenant_id_from_request(request, header_name)
+
+        user_tenant_raw = user.get("tenant_id")
+        if user_tenant_raw is None:
+            raise HTTPException(status_code=403, detail="Tenant access denied")
+        try:
+            user_tenant_id = (
+                int(user_tenant_raw) if not isinstance(user_tenant_raw, int) else user_tenant_raw
+            )
+        except (ValueError, TypeError):
+            raise HTTPException(status_code=403, detail="Tenant access denied")
+
+        if user_tenant_id != effective_tenant_id:
+            raise HTTPException(status_code=403, detail="Tenant access denied")
+        return user
+
+    return dependency
