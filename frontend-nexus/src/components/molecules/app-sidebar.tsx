@@ -50,9 +50,9 @@ const data = {
       icon: IconFileDescription,
     },
     {
-      title: "Dialog",
-      url: "/dashboard/dialog",
-      icon: IconMessage,
+      title: "Tenants",
+      url: "/dashboard/tenants",
+      icon: IconReport,
     },
     {
       title: "Global State",
