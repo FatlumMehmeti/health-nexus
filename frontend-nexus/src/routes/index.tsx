@@ -1,9 +1,9 @@
-import { createFileRoute, Link } from '@tanstack/react-router'
-import { Button } from '@/components/ui/button'
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { Button } from "@/components/ui/button";
 
-export const Route = createFileRoute('/')({
+export const Route = createFileRoute("/")({
   component: LandingPage,
-})
+});
 
 function LandingPage() {
   return (
@@ -16,13 +16,18 @@ function LandingPage() {
 
       <header className="sticky top-0 z-50 border-b border-border/40 bg-background/80 backdrop-blur-xl">
         <div className="container flex h-16 items-center justify-between px-6 mx-auto">
-          <Link to="/" className="flex items-center gap-2 transition-opacity hover:opacity-90">
+          <Link
+            to="/"
+            className="flex items-center gap-2 transition-opacity hover:opacity-90"
+          >
             <img
               src="/images/logo.webp"
               alt="Health Nexus"
               className="h-9 w-9 rounded-lg object-contain"
             />
-            <span className="text-xl font-semibold tracking-tight">Health Nexus</span>
+            <span className="text-xl font-semibold tracking-tight">
+              Health Nexus
+            </span>
           </Link>
           <nav className="flex items-center gap-2">
             <Link to="/dashboard">
@@ -30,9 +35,9 @@ function LandingPage() {
                 Dashboard
               </Button>
             </Link>
-            <Link to="/dashboard">
+            <Link to="/register">
               <Button size="sm" className="font-medium shadow-sm">
-                Join Dashboard
+                Join Platform
               </Button>
             </Link>
           </nav>
@@ -51,17 +56,21 @@ function LandingPage() {
             </span>
           </h1>
           <p className="mx-auto max-w-lg text-lg leading-relaxed text-muted-foreground">
-            A unified platform for healthcare teams to coordinate care, share insights, and deliver better outcomes.
+            A unified platform for healthcare teams to coordinate care, share
+            insights, and deliver better outcomes.
           </p>
           <div className="flex flex-wrap justify-center gap-3 pt-2">
-            <Link to="/dashboard">
-              <Button size="lg" className="min-w-[180px] shadow-md transition-all hover:shadow-lg">
-                Join the Dashboard
+            <Link to="/register">
+              <Button
+                size="lg"
+                className="min-w-[180px] shadow-md transition-all hover:shadow-lg"
+              >
+                Join the Platform
               </Button>
             </Link>
           </div>
         </section>
       </main>
     </div>
-  )
+  );
 }

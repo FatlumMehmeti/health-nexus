@@ -4,9 +4,19 @@ from app.routes import role_router, superadmin_tenant_router, public_tenant_rout
 
 app = FastAPI(title="Healthcare SaaS API", version="0.1.0")
 
+# CORS configuration for development - allows frontend on various ports
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=[
+        "http://localhost:3000",
+        "http://localhost:3001",
+        "http://localhost:3002",
+        "http://localhost:3003",
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:3001",
+        "http://127.0.0.1:3002",
+        "http://127.0.0.1:3003",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
