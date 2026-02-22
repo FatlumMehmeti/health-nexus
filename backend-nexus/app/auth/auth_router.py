@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends
 
 from app.auth.auth_schema import LoginRequest, RefreshRequest, TokenResponse
 from app.auth.auth_service import login_user, logout_user, refresh_access_token
-from app.auth.auth_utils import get_current_user, require_permission
+from app.auth.auth_utils import require_permission
 
 # Router for authentication endpoints
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -25,7 +25,7 @@ def logout(body: RefreshRequest) -> dict:
 
 
 @router.get("/me")
-def get_me(user=Depends(get_current_user)):
+def get_me(user=Depends(require_permission("auth:me"))):
     return {"message": "You are authenticated", "user": user}
 
 # Protected admin route using RBAC

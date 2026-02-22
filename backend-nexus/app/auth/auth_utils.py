@@ -14,10 +14,17 @@ ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 REFRESH_TOKEN_EXPIRE_DAYS = 7
 
+# Role -> list of permission identifiers (for documentation / tooling)
+ROLE_PERMISSIONS: Dict[str, list[str]] = {
+    "admin": ["auth:me"],
+    "doctor": ["auth:me"],
+    "sales": [],
+}
+
 # Centralized RBAC: (method, route_id) -> allowed roles (lowercase)
 PERMISSIONS_MATRIX: Dict[tuple[str, str], set[str]] = {
     ("GET", "auth:admin"): {"admin", "super_admin"},
-    ("GET", "auth:me"): {"admin", "super_admin", "doctor", "hospital_manager", "sales"},
+    ("GET", "auth:me"): {"admin", "doctor"},
 }
 
 # Create pwd_context using CryptContext for bcrypt hashing
@@ -64,6 +71,7 @@ def create_access_token(
     - An expiration claim (`exp`) is always included.
     """
     to_encode = data.copy()
+    to_encode["token_type"] = "access"
     expire = datetime.now(timezone.utc) + (
         expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     )
@@ -102,6 +110,8 @@ def verify_token(token: str) -> Dict[str, Any]:
     """
     try:
         payload: Dict[str, Any] = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        if payload.get("token_type") == "refresh":
+            raise TokenError("Invalid token type")
         return payload
     except JWTError as exc:
         raise TokenError("Invalid or expired token") from exc
