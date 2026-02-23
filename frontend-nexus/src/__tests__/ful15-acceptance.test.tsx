@@ -16,7 +16,7 @@ import { createRouter, RouterProvider } from '@tanstack/react-router'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { routeTree } from '../routeTree.gen'
 import { useAuthStore } from '@/stores/auth.store'
-import { clearTokens, setTokens } from '@/lib/api/client'
+import { clearTokens, setTokens } from '@/lib/api-client'
 import { canAccess, type Role, type RouteKey } from '@/lib/rbacMatrix'
 
 jest.mock('@/lib/dashboard-data.json', () => ({ __esModule: true, default: [] }), { virtual: true })

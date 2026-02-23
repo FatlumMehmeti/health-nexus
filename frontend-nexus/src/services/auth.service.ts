@@ -1,8 +1,8 @@
 /**
  * Auth service: login, current user, refresh, logout.
- * Uses shared client (Bearer token, 401 handler) from lib/api.
+ * Uses shared client (Bearer token, 401 handler) from lib/api-client.
  */
-import { request } from '@/lib/api/client'
+import { request } from '@/lib/api-client'
 
 const BASE = '/api/auth'
 
@@ -39,22 +39,13 @@ export type RefreshResponse = {
 
 export const authService = {
   login: (credentials: LoginCredentials) =>
-    request<TokenResponse>(`${BASE}/login`, {
-      method: 'POST',
-      body: JSON.stringify(credentials),
-    }),
+    request<TokenResponse>(`${BASE}/login`, { method: 'POST', body: credentials }),
 
   me: () => request<MeResponse>(`${BASE}/me`, { method: 'GET' }),
 
   refresh: (refresh_token: string) =>
-    request<RefreshResponse>(`${BASE}/refresh`, {
-      method: 'POST',
-      body: JSON.stringify({ refresh_token }),
-    }),
+    request<RefreshResponse>(`${BASE}/refresh`, { method: 'POST', body: { refresh_token } }),
 
   logout: (refresh_token: string) =>
-    request<{ message: string }>(`${BASE}/logout`, {
-      method: 'POST',
-      body: JSON.stringify({ refresh_token }),
-    }),
+    request<{ message: string }>(`${BASE}/logout`, { method: 'POST', body: { refresh_token } }),
 }

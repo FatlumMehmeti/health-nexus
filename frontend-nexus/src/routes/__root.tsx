@@ -6,7 +6,7 @@ import { Outlet, createRootRoute, useNavigate, useRouterState } from '@tanstack/
 import { useEffect } from 'react'
 import { GlobalDialog } from '@/components/global-dialog'
 import { useAuthStore } from '@/stores/auth.store'
-import { getAccessToken } from '@/lib/api/client'
+import { getAccessToken } from '@/lib/api-client'
 
 export const Route = createRootRoute({
   component: RootLayout,

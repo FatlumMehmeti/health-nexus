@@ -10,7 +10,7 @@
 import { create } from 'zustand'
 import { toast } from 'sonner'
 import type { Role } from '@/lib/rbacMatrix'
-import { ApiError, clearTokens, getAccessToken, getRefreshToken, setTokens, setUnauthorizedHandler } from '@/lib/api/client'
+import { ApiError, clearTokens, getAccessToken, getRefreshToken, setTokens, setUnauthorizedHandler } from '@/lib/api-client'
 import { authService, type LoginCredentials } from '@/services/auth.service'
 
 export type AuthStatus = 'loading' | 'authenticated' | 'unauthenticated'
