@@ -157,10 +157,21 @@ def require_role(role: str):
     RBAC dependency factory.
     Usage: Depends(require_role("admin"))
     Assumes JWT payload includes a "role" field.
+    Role comparison is case-insensitive (normalized with strip + upper).
     """
+    required_role = role.strip().upper()
+
     def dependency(user: Dict[str, Any] = Depends(get_current_user)) -> Dict[str, Any]:
-        user_role = user.get("role")
-        if user_role != role:
+        user_role_raw = user.get("role")
+        user_role_str = (
+            getattr(user_role_raw, "name", user_role_raw)
+            if user_role_raw is not None
+            else ""
+        )
+        if not isinstance(user_role_str, str):
+            user_role_str = ""
+        user_role_normalized = user_role_str.strip().upper()
+        if user_role_normalized != required_role:
             raise HTTPException(status_code=403, detail="Insufficient permissions")
         return user
 

@@ -6,18 +6,22 @@ from sqlalchemy.orm import joinedload
 
 from fastapi import HTTPException
 
-from app.auth.auth_schema import TokenResponse
+from app.auth.auth_schema import SignupRequest, SignupResponse, TokenResponse
 from app.auth.auth_utils import (
     create_access_token,
     create_refresh_token,
+    hash_password,
     TokenError,
     verify_password,
     verify_refresh_token,
 )
 from app.db import SessionLocal
-from app.models import Session, User
+from app.models import Role, Session, Tenant, User, UserTenantMembership
 
 logger = logging.getLogger(__name__)
+
+# Backward-compatible role name aliases (input after .upper() -> DB role name)
+ROLE_NAME_ALIASES = {"ADMIN": "SUPER_ADMIN"}
 
 
 def login_user(email: str, password: str) -> TokenResponse:
@@ -154,6 +158,108 @@ def logout_user(refresh_token: str) -> None:
         db_session.revoked_at = datetime.now(timezone.utc)
         session.commit()
         logger.info("auth.logout_success jti=%s user_id=%s", jti, db_session.user_id)
+    except HTTPException:
+        session.rollback()
+        raise
+    except Exception:
+        session.rollback()
+        raise
+    finally:
+        session.close()
+
+
+def signup_user(body: SignupRequest) -> SignupResponse:
+    """
+    Create a user account and tenant membership. If the user already exists
+    (same email), only create the membership for the given tenant if not already present.
+    Raises 404 if tenant or role not found, 409 if membership already exists for (email, tenant).
+    """
+    session = SessionLocal()
+    try:
+        # Tenant must exist
+        tenant = session.execute(select(Tenant).where(Tenant.id == body.tenant_id)).scalar_one_or_none()
+        if tenant is None:
+            logger.warning("auth.signup_tenant_not_found tenant_id=%s", body.tenant_id)
+            raise HTTPException(status_code=404, detail="Tenant not found")
+
+        # Resolve role by name (normalized uppercase to match Roles table)
+        role_name = (body.role or "client").strip().upper()
+        role_name = ROLE_NAME_ALIASES.get(role_name, role_name)
+        role = session.execute(select(Role).where(Role.name == role_name)).scalar_one_or_none()
+        if role is None:
+            logger.warning("auth.signup_role_not_found role=%s", role_name)
+            raise HTTPException(status_code=404, detail="Role not found")
+
+        # Find existing user by email (with role for response)
+        user = session.execute(
+            select(User).where(User.email == body.email).options(joinedload(User.role))
+        ).scalar_one_or_none()
+
+        if user is not None:
+            # User exists: check if membership for this tenant already exists
+            existing = session.execute(
+                select(UserTenantMembership).where(
+                    UserTenantMembership.user_id == user.id,
+                    UserTenantMembership.tenant_id == body.tenant_id,
+                )
+            ).scalar_one_or_none()
+            if existing is not None:
+                logger.warning(
+                    "auth.signup_duplicate email=%s tenant_id=%s",
+                    body.email,
+                    body.tenant_id,
+                )
+                raise HTTPException(
+                    status_code=409,
+                    detail="User already has a membership for this tenant",
+                )
+            # Create membership only
+            membership = UserTenantMembership(user_id=user.id, tenant_id=body.tenant_id)
+            session.add(membership)
+            session.commit()
+            session.refresh(membership)
+            logger.info(
+                "auth.signup_membership_created user_id=%s tenant_id=%s",
+                user.id,
+                body.tenant_id,
+            )
+            return SignupResponse(
+                user_id=user.id,
+                email=user.email,
+                role=user.role.name,
+                tenant_id=body.tenant_id,
+            )
+        else:
+            # Create user and membership
+            hashed = hash_password(body.password)
+            new_user = User(
+                email=body.email,
+                password=hashed,
+                first_name=body.first_name,
+                last_name=body.last_name,
+                role_id=role.id,
+            )
+            session.add(new_user)
+            session.flush()
+            membership = UserTenantMembership(
+                user_id=new_user.id,
+                tenant_id=body.tenant_id,
+            )
+            session.add(membership)
+            session.commit()
+            session.refresh(new_user)
+            logger.info(
+                "auth.signup_success user_id=%s email=%s tenant_id=%s",
+                new_user.id,
+                new_user.email,
+                body.tenant_id,
+            )
+            return SignupResponse(
+                user_id=new_user.id,
+                email=new_user.email,
+                role=role.name,
+                tenant_id=body.tenant_id,
+            )
     except HTTPException:
         session.rollback()
         raise
