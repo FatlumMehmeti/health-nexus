@@ -1,21 +1,50 @@
 /**
- * Minimal RBAC route guard tests.
- * Uses real route tree and auth store (setMockUser/clearAuth); no backend.
+ * Acceptance tests for auth guarding and RBAC route matrix.
+ *
+ * - Uses the real TanStack route tree and auth store (no mocked router).
+ * - Mocks global fetch: /auth/me returns user by role; other URLs return safe defaults.
+ * - Verifies: unauthenticated → /login; 401 on /auth/me → /login?reason=expired; and that
+ *   each role can or cannot access each dashboard route per src/lib/rbacMatrix.ts.
  */
 import { jest } from '@jest/globals'
 import { act, render, screen, waitFor } from '@testing-library/react'
 import { createRouter, RouterProvider } from '@tanstack/react-router'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { routeTree } from '../routeTree.gen'
-import { fetchUsers } from '@/server/users'
 import { useAuthStore } from '@/stores/auth.store'
+import { clearTokens, setTokens } from '@/lib/api/client'
+import { canAccess, type Role, type RouteKey } from '@/lib/rbacMatrix'
 
-// Dashboard index parses this; avoid loading the real file in Jest.
+// Dashboard index imports this JSON; stub it in Jest to avoid file-loader issues.
 jest.mock('@/lib/dashboard-data.json', () => ({ __esModule: true, default: [] }), { virtual: true })
 
-const queryClient = new QueryClient({
-  defaultOptions: { queries: { retry: false } },
-})
+/** Backend /auth/me returns role as lowercase string; we mirror that in the mock. */
+type BackendRole = 'admin' | 'doctor' | 'sales' | 'tenant_manager' | 'client' | 'super_admin'
+
+/** Map frontend Role (UPPER_SNAKE) to the string the backend sends in /auth/me user.role. */
+function backendRoleForFrontend(role: Role): BackendRole {
+  switch (role) {
+    case 'SUPER_ADMIN':
+      return 'admin'
+    case 'TENANT_MANAGER':
+      return 'tenant_manager'
+    case 'DOCTOR':
+      return 'doctor'
+    case 'SALES':
+      return 'sales'
+    case 'CLIENT':
+      return 'client'
+  }
+}
+
+/** Dashboard routes under test: path, route key for canAccess(), and how we assert allowed access. */
+const ROUTES: Array<{ key: RouteKey; path: string; expectHeading?: RegExp; expectText?: RegExp }> = [
+  { key: 'DASHBOARD_HOME', path: '/dashboard', expectText: /Health Nexus/i },
+  { key: 'DASHBOARD_DATA', path: '/dashboard/data', expectHeading: /Data Fetching/i },
+  { key: 'DASHBOARD_FORMS', path: '/dashboard/forms', expectHeading: /Form \+ Mutation/i },
+  { key: 'DASHBOARD_GLOBAL_STATE', path: '/dashboard/global-state', expectHeading: /Zustand/i },
+  { key: 'DASHBOARD_LANDING_PAGES', path: '/dashboard/landing-pages', expectHeading: /Landing Pages/i },
+]
 
 function createTestRouter() {
   return createRouter({
@@ -25,6 +54,9 @@ function createTestRouter() {
 }
 
 function renderApp(router: ReturnType<typeof createTestRouter>) {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  })
   return render(
     <QueryClientProvider client={queryClient}>
       <RouterProvider router={router} />
@@ -32,12 +64,59 @@ function renderApp(router: ReturnType<typeof createTestRouter>) {
   )
 }
 
+/** Controls mock /auth/me: 200 with meRole, or 401 for session-expired tests. */
+let meStatus: number = 200
+let meRole: BackendRole = 'admin'
+
+/** Set up “authenticated” state: store has tokens, next /auth/me will return 200 with given role. */
+function setAuthenticatedMe(role: BackendRole) {
+  meStatus = 200
+  meRole = role
+  setTokens({ accessToken: 'test-access-token', refreshToken: 'test-refresh-token' })
+}
+
+/** Set up “session expired”: store has a token but /auth/me will return 401. */
+function setMeUnauthorized() {
+  meStatus = 401
+  setTokens({ accessToken: 'expired-access-token', refreshToken: 'test-refresh-token' })
+}
+
 beforeEach(() => {
   useAuthStore.getState().clearAuth()
+  clearTokens()
+  meStatus = 200
+  meRole = 'admin'
+
+  // Single fetch mock for all tests: /auth/me drives auth; dummyjson and others get safe stubs.
+  globalThis.fetch = jest.fn(async (input: RequestInfo | URL) => {
+    const url = typeof input === 'string' ? input : input.toString()
+
+    if (url.includes('/auth/me')) {
+      if (meStatus === 401) return new Response(null, { status: 401 })
+      return new Response(
+        JSON.stringify({
+          message: 'You are authenticated',
+          user: { user_id: '1', email: 'test@example.com', role: meRole },
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } },
+      )
+    }
+
+    // Dashboard data/forms pages may call this; stub so tests don't hit the network.
+    if (url.startsWith('https://dummyjson.com/users')) {
+      return new Response(
+        JSON.stringify({ users: [], total: 0, skip: 0, limit: 30 }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } },
+      )
+    }
+
+    return new Response(JSON.stringify({}), { status: 200, headers: { 'Content-Type': 'application/json' } })
+  }) as unknown as typeof fetch
 })
 
-describe('RBAC route guards', () => {
+describe('Auth guarding + RBAC route matrix', () => {
   it('redirects unauthenticated user to /login when visiting protected dashboard', async () => {
+    // No token, no setAuthenticatedMe → ensureAuth() fails → beforeLoad redirects to /login.
     const router = createTestRouter()
     renderApp(router)
 
@@ -50,89 +129,54 @@ describe('RBAC route guards', () => {
     })
   })
 
-  it('redirects expired session to /login?reason=expired and shows message', async () => {
-    // D) Session Expiration Handling test (no backend):
-    // 1) Authenticate via store helper
-    useAuthStore.getState().setMockUser('SUPER_ADMIN')
-    // 2) Expire session (clears auth + sets reason)
-    useAuthStore.getState().expireSession()
+  it('redirects to /login?reason=expired when /auth/me returns 401', async () => {
+    // Token present but /auth/me returns 401 → unauthorized handler calls expireSession() → reason=expired.
+    setMeUnauthorized()
     const router = createTestRouter()
     renderApp(router)
 
-    // 3) Attempt to access a protected route
     await act(async () => {
       router.navigate({ to: '/dashboard' })
     })
 
-    // 4) Assert redirect + message
     await waitFor(() => {
       expect(screen.getByTestId('login-page')).toBeInTheDocument()
       expect(screen.getByTestId('session-reason-message')).toHaveTextContent(/Session expired/i)
     })
   })
 
-  it('expires session on 401 when refresh fails, then redirects with message', async () => {
-    const originalFetch = globalThis.fetch
-    const originalRefresh = useAuthStore.getState().refresh
+  it('enforces the role/route matrix across dashboard routes', async () => {
+    // For each role and each route: navigate, then assert allowed → page content, denied → /unauthorized.
+    const roles: Role[] = ['SUPER_ADMIN', 'TENANT_MANAGER', 'DOCTOR', 'SALES', 'CLIENT']
 
-    const refreshSpy = jest.fn(async () => false)
-    // Override refresh for this test only.
-    useAuthStore.setState({ refresh: refreshSpy } as never)
+    for (const role of roles) {
+      for (const route of ROUTES) {
+        const router = createTestRouter()
+        useAuthStore.getState().clearAuth()
+        setAuthenticatedMe(backendRoleForFrontend(role))
+        const { unmount } = renderApp(router)
 
-    // Simulate an authenticated user hitting a protected API request.
-    useAuthStore.getState().setMockUser('SUPER_ADMIN')
+        await act(async () => {
+          router.navigate({ to: route.path })
+        })
 
-    globalThis.fetch = jest.fn(async () => new Response(null, { status: 401 })) as unknown as typeof fetch
+        const shouldAllow = canAccess(role, route.key)
 
-    try {
-      await expect(fetchUsers()).rejects.toThrow()
-      expect(refreshSpy).toHaveBeenCalled()
-      expect(useAuthStore.getState().authErrorReason).toBe('expired')
-      expect(useAuthStore.getState().isAuthenticated).toBe(false)
+        if (shouldAllow) {
+          await waitFor(() => {
+            expect(screen.queryByTestId('unauthorized-page')).not.toBeInTheDocument()
+            if (route.expectHeading)
+              expect(screen.getByRole('heading', { name: route.expectHeading })).toBeInTheDocument()
+            if (route.expectText) expect(screen.getAllByText(route.expectText).length).toBeGreaterThan(0)
+          })
+        } else {
+          await waitFor(() => {
+            expect(screen.getByTestId('unauthorized-page')).toBeInTheDocument()
+          })
+        }
 
-      const router = createTestRouter()
-      renderApp(router)
-
-      await act(async () => {
-        router.navigate({ to: '/dashboard' })
-      })
-
-      await waitFor(() => {
-        expect(screen.getByTestId('login-page')).toBeInTheDocument()
-        expect(screen.getByTestId('session-reason-message')).toHaveTextContent(/Session expired/i)
-      })
-    } finally {
-      globalThis.fetch = originalFetch
-      useAuthStore.setState({ refresh: originalRefresh } as never)
+        unmount()
+      }
     }
-  })
-
-  it('redirects authenticated user with disallowed role to /unauthorized', async () => {
-    useAuthStore.getState().setMockUser('CLIENT')
-    const router = createTestRouter()
-    renderApp(router)
-
-    await act(async () => {
-      router.navigate({ to: '/dashboard' })
-    })
-
-    await waitFor(() => {
-      expect(screen.getByTestId('unauthorized-page')).toBeInTheDocument()
-    })
-  })
-
-  it('renders dashboard when authenticated with allowed role', async () => {
-    useAuthStore.getState().setMockUser('SUPER_ADMIN')
-    const router = createTestRouter()
-    renderApp(router)
-
-    await act(async () => {
-      router.navigate({ to: '/dashboard' })
-    })
-
-    // Dashboard layout (sidebar) renders; main content may have chart/layout quirks in jsdom.
-    await waitFor(() => {
-      expect(screen.getByText('Health Nexus')).toBeInTheDocument()
-    })
   })
 })

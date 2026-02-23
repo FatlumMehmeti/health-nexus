@@ -20,5 +20,6 @@ class User(Base, TimestampMixin):
     role_id: Mapped[int] = mapped_column(ForeignKey("roles.id"))
 
     role = relationship("Role", back_populates="users")
-
-
+    tenant_memberships = relationship(
+        "UserTenantMembership", back_populates="user", cascade="all, delete-orphan"
+    )

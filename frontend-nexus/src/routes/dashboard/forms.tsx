@@ -1,4 +1,4 @@
-import { createFileRoute, redirect} from '@tanstack/react-router'
+import { createFileRoute } from '@tanstack/react-router'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { useForm } from 'react-hook-form'
@@ -8,14 +8,10 @@ import { usersService } from '@/services'
 import { Button } from '@/components/ui/button'
 import { FormField } from '@/components/atoms/form-field'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { canAccess } from '@/lib/rbacMatrix'
-import { useAuthStore } from '@/stores/auth.store'
+import { requireAuth } from '@/lib/guards/requireAuth'
 
 export const Route = createFileRoute('/dashboard/forms')({
-  beforeLoad: () => {
-    const { role } = useAuthStore.getState()
-    if (!canAccess(role ?? undefined, 'DASHBOARD_FORMS')) throw redirect({ to: '/unauthorized' })
-  },
+  beforeLoad: requireAuth({ routeKey: 'DASHBOARD_FORMS' }),
   component: FormsExamplePage,
 })
 

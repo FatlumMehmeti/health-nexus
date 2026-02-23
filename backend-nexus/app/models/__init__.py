@@ -7,6 +7,7 @@ from .tenant_details import TenantDetails, FontKey
 from .membership import Membership
 from .tenant_subscription import TenantSubscription
 from .consultation_request import ConsultationRequest, ConsultationStatus
+from .user_tenant_membership import UserTenantMembership
 from .session import Session
 
 __all__ = [

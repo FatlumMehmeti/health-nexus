@@ -1,36 +1,31 @@
-import { Outlet, createFileRoute, redirect } from '@tanstack/react-router'
+/**
+ * Dashboard layout: beforeLoad requireAuth() guards /dashboard/*; child routes use requireAuth({ routeKey }) for RBAC.
+ * ProtectedRoute wraps content (shared getProtectedRedirect), so you get both route-level and component-level guard.
+ */
+import { Outlet, createFileRoute } from '@tanstack/react-router'
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
 import { AppSidebar } from '@/components/molecules/app-sidebar'
 import { SiteHeader } from '@/components/molecules/site-header'
-import { useAuthStore } from '@/stores/auth.store'
+import { ProtectedRoute } from '@/components/ProtectedRoute'
+import { requireAuth } from '@/lib/guards/requireAuth'
 
-// Protects the whole dashboard: unauthenticated users are sent to login.
-// Session-expiration handling optionally adds a `?reason=` query so the login page can explain why.
 export const Route = createFileRoute('/dashboard')({
-  beforeLoad: () => {
-    const { isAuthenticated, authErrorReason } = useAuthStore.getState()
-    if (!isAuthenticated) {
-      // Guard behavior:
-      // - expired/revoked → /login?reason=...
-      // - otherwise → /login
-      if (authErrorReason === 'expired') throw redirect({ to: '/login', search: { reason: 'expired' } })
-      if (authErrorReason === 'revoked') throw redirect({ to: '/login', search: { reason: 'revoked' } })
-      throw redirect({ to: '/login', search: { reason: undefined } })
-    }
-  },
+  beforeLoad: requireAuth(),
   component: TenantLayout,
 })
 
 function TenantLayout() {
   return (
-    <SidebarProvider>
-      <AppSidebar />
-      <SidebarInset>
-        <SiteHeader />
-        <main className="flex flex-1 flex-col gap-4 pb-4 @container/main">
-          <Outlet />
-        </main>
-      </SidebarInset>
-    </SidebarProvider>
+    <ProtectedRoute fallback={<div className="flex min-h-screen items-center justify-center">Loading…</div>}>
+      <SidebarProvider>
+        <AppSidebar />
+        <SidebarInset>
+          <SiteHeader />
+          <main className="flex flex-1 flex-col gap-4 pb-4 @container/main">
+            <Outlet />
+          </main>
+        </SidebarInset>
+      </SidebarProvider>
+    </ProtectedRoute>
   )
 }

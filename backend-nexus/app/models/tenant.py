@@ -28,3 +28,6 @@ class Tenant(Base, TimestampMixin):
     # Relationships
     subscriptions = relationship("TenantSubscription", back_populates="tenant")
     details = relationship("TenantDetails", back_populates="tenant", uselist=False)
+    user_memberships = relationship(
+        "UserTenantMembership", back_populates="tenant", cascade="all, delete-orphan"
+    )
