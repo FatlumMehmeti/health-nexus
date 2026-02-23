@@ -1,6 +1,7 @@
+import re
 from typing import Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr, field_validator
 
 
 class LoginRequest(BaseModel):
@@ -16,3 +17,42 @@ class TokenResponse(BaseModel):
 
 class RefreshRequest(BaseModel):
     refresh_token: str
+
+
+# --- Signup ---
+
+# Password rules: min length 8, at least one letter and one number
+_PASSWORD_MIN_LEN = 8
+_PASSWORD_LETTER_PATTERN = re.compile(r"[a-zA-Z]")
+_PASSWORD_DIGIT_PATTERN = re.compile(r"\d")
+
+
+def _validate_password_strength(value: str) -> str:
+    if len(value) < _PASSWORD_MIN_LEN:
+        raise ValueError(f"Password must be at least {_PASSWORD_MIN_LEN} characters")
+    if not _PASSWORD_LETTER_PATTERN.search(value):
+        raise ValueError("Password must contain at least one letter")
+    if not _PASSWORD_DIGIT_PATTERN.search(value):
+        raise ValueError("Password must contain at least one number")
+    return value
+
+
+class SignupRequest(BaseModel):
+    email: EmailStr
+    password: str
+    first_name: str
+    last_name: str
+    tenant_id: int
+    role: str = "client"
+
+    @field_validator("password")
+    @classmethod
+    def password_strength(cls, v: str) -> str:
+        return _validate_password_strength(v)
+
+
+class SignupResponse(BaseModel):
+    user_id: int
+    email: str
+    role: str
+    tenant_id: int
