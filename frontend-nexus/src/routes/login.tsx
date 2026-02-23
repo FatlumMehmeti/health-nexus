@@ -3,15 +3,15 @@
  * beforeLoad: if user is already authenticated, redirect to /dashboard so /login is not shown when logged in.
  */
 import { createFileRoute, Link, redirect, useNavigate } from '@tanstack/react-router'
-import { Button } from '@/components/ui/button'
-import { useAuthStore } from '@/stores/auth.store'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { FormField } from '@/components/atoms/form-field'
+import { PasswordField } from '@/components/atoms/password-field'
+import { useAuthStore } from '@/stores/auth.store'
 import { ApiError } from '@/lib/api-client'
 
 export const Route = createFileRoute('/login')({
@@ -91,37 +91,30 @@ function LoginPage() {
             </div>
           ) : null}
 
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                autoComplete="email"
-                {...form.register('email')}
-              />
-              {form.formState.errors.email?.message ? (
-                <p className="text-sm text-destructive">{form.formState.errors.email.message}</p>
-              ) : null}
-            </div>
+          <form noValidate onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <FormField
+              id="email"
+              label="Email"
+              type="email"
+              autoComplete="email"
+              error={form.formState.errors.email?.message}
+              required
+              {...form.register('email')}
+            />
 
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                autoComplete="current-password"
-                {...form.register('password')}
-              />
-              {form.formState.errors.password?.message ? (
-                <p className="text-sm text-destructive">{form.formState.errors.password.message}</p>
-              ) : null}
-            </div>
+            <PasswordField
+              id="password"
+              label="Password"
+              autoComplete="current-password"
+              error={form.formState.errors.password?.message}
+              required
+              {...form.register('password')}
+            />
 
             {loginError ? <p className="text-sm text-destructive">{loginError}</p> : null}
 
-            <Button type="submit" className="w-full" disabled={isSubmitting}>
-              {isSubmitting ? 'Signing in…' : 'Sign in'}
+            <Button type="submit" className="w-full" disabled={isSubmitting} loading={isSubmitting}>
+              Sign in
             </Button>
           </form>
 
