@@ -26,11 +26,11 @@ class SeedUser:
 
 
 SEED_USERS = [
-    SeedUser("Super", "Admin", "super.admin@seed.local", "seed-change-me", "SUPER_ADMIN"),
-    SeedUser("Tenant", "Manager", "tenant.manager@seed.local", "seed-change-me", "TENANT_MANAGER"),
-    SeedUser("Doctor", "One", "doctor.one@seed.local", "seed-change-me", "DOCTOR"),
-    SeedUser("Sales", "Agent", "sales.agent@seed.local", "seed-change-me", "SALES"),
-    SeedUser("Client", "User", "client.user@seed.local", "seed-change-me", "CLIENT"),
+    SeedUser("Super", "Admin", "super.admin@seed.local", "Team2026@", "SUPER_ADMIN"),
+    SeedUser("Tenant", "Manager", "tenant.manager@seed.local", "Team2026@", "TENANT_MANAGER"),
+    SeedUser("Doctor", "One", "doctor.one@seed.local", "Team2026@", "DOCTOR"),
+    SeedUser("Sales", "Agent", "sales.agent@seed.local", "Team2026@", "SALES"),
+    SeedUser("Client", "User", "client.user@seed.local", "Team2026@", "CLIENT"),
 ]
 
 
