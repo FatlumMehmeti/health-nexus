@@ -4,3 +4,5 @@ from .user import User
 from .tenant import Tenant
 from .membership import Membership
 from .tenant_subscription import TenantSubscription
+from .user_tenant_membership import UserTenantMembership
+from .session import Session

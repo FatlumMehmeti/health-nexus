@@ -4,8 +4,10 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { requireAuth } from '@/lib/guards/requireAuth'
 
 export const Route = createFileRoute('/dashboard/global-state')({
+  beforeLoad: requireAuth({ routeKey: 'DASHBOARD_GLOBAL_STATE' }),
   component: ZustandExamplePage,
 })
 

@@ -7,8 +7,10 @@ import { addUser } from '@/server/users'
 import { Button } from '@/components/ui/button'
 import { FormField } from '@/components/atoms/form-field'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { requireAuth } from '@/lib/guards/requireAuth'
 
 export const Route = createFileRoute('/dashboard/forms')({
+  beforeLoad: requireAuth({ routeKey: 'DASHBOARD_FORMS' }),
   component: FormsExamplePage,
 })
 

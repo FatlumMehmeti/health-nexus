@@ -3,4 +3,29 @@ node_modules
 .vite
 .DS_Store
 .cursor
+
+# Env
 .env
+.env.local
+
+# Python
+__pycache__/
+**/__pycache__/
+*.pyc
+*.pyo
+
+# Virtual env
+venv/
+
+# Logs
+*.log
+
+# SQLite
+*.db
+*.sqlite3
+
+# Pytest
+.pytest_cache/
+
+# Coverage
+.coverage

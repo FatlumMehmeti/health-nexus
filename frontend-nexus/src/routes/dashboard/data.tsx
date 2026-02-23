@@ -11,8 +11,10 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { requireAuth } from "@/lib/guards/requireAuth";
 
 export const Route = createFileRoute("/dashboard/data")({
+  beforeLoad: requireAuth({ routeKey: "DASHBOARD_DATA" }),
   component: DataFetchingPage,
 });
 

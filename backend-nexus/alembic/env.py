@@ -1,25 +1,40 @@
 import sys
 import os
+from pathlib import Path
 
-sys.path.append(os.getcwd())
+from dotenv import load_dotenv
 
+# Load env: .env.local first, then .env (override=False so existing vars are not overwritten)
+_backend_root = Path(__file__).resolve().parent.parent
+_env_local = _backend_root / ".env.local"
+_env_file = _backend_root / ".env"
+if _env_local.is_file():
+    load_dotenv(_env_local, override=False)
+if _env_file.is_file():
+    load_dotenv(_env_file, override=False)
+
+sys.path.insert(0, str(_backend_root))
+
+# Prefer DATABASE_URL from env; fallback to alembic config
+database_url = os.getenv("DATABASE_URL")
 
 from sqlalchemy import engine_from_config, pool
 from alembic import context
 
-from app.config import DATABASE_URL
 from app.models import Base
 
 config = context.config
-
-config.set_main_option("sqlalchemy.url", DATABASE_URL)
+if database_url:
+    config.set_main_option("sqlalchemy.url", database_url)
+else:
+    database_url = config.get_main_option("sqlalchemy.url")
 
 target_metadata = Base.metadata
 
 
 def run_migrations_offline():
     context.configure(
-        url=DATABASE_URL,
+        url=database_url,
         target_metadata=target_metadata,
         literal_binds=True,
         compare_type=True,
