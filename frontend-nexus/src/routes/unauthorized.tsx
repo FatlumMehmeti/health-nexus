@@ -29,7 +29,7 @@ function UnauthorizedPage() {
           <Link to="/dashboard">
             <Button variant="outline">Dashboard</Button>
           </Link>
-          <Link to="/login">
+          <Link to="/login" search={{ reason: undefined, redirect: undefined }}>
             <Button>Go to login</Button>
           </Link>
         </CardContent>

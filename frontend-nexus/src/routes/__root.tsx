@@ -30,7 +30,7 @@ function RootLayout() {
   useEffect(() => {
     if (pathname === '/login') return
     if (!isAuthenticated && (authErrorReason === 'expired' || authErrorReason === 'revoked')) {
-      navigate({ to: '/login', search: { reason: authErrorReason }, replace: true })
+      navigate({ to: '/login', search: { reason: authErrorReason, redirect: undefined }, replace: true })
     }
   }, [authErrorReason, isAuthenticated, navigate, pathname])
 

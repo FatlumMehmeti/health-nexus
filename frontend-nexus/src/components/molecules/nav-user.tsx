@@ -46,7 +46,7 @@ export function NavUser({
 
   const handleLogout = async () => {
     await logout()
-    navigate({ to: "/login" })
+    navigate({ to: "/login", search: { reason: undefined, redirect: undefined } })
   }
 
   const display = user

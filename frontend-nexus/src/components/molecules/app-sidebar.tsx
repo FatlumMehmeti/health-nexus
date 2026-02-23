@@ -14,6 +14,7 @@ import {
   IconReport,
   IconSearch,
   IconSettings,
+  type Icon,
 } from "@tabler/icons-react";
 
 import { NavDocuments } from "./nav-documents";
@@ -37,7 +38,7 @@ import type { RouteKey } from "@/lib/rbacMatrix";
 const navMainAll: Array<{
   title: string;
   url: string;
-  icon: React.ComponentType<{ className?: string }>;
+  icon: Icon;
   routeKey?: RouteKey;
 }> = [
   { title: "Dashboard", url: "/dashboard", icon: IconDashboard, routeKey: "DASHBOARD_HOME" },
