@@ -10,8 +10,11 @@ import {
   IconFolder,
   IconHelp,
   IconInnerShadowTop,
+  IconKey,
   IconMessage,
   IconReport,
+  IconBuildingStore,
+  IconHistory,
   IconSearch,
   IconSettings,
   type Icon,
@@ -41,95 +44,77 @@ const navMainAll: Array<{
   icon: Icon;
   routeKey?: RouteKey;
 }> = [
-  { title: "Dashboard", url: "/dashboard", icon: IconDashboard, routeKey: "DASHBOARD_HOME" },
-  { title: "Forms", url: "/dashboard/forms", icon: IconFileDescription, routeKey: "DASHBOARD_FORMS" },
-  { title: "Dialog", url: "/dashboard/dialog", icon: IconMessage },
-  { title: "Global State", url: "/dashboard/global-state", icon: IconDatabase, routeKey: "DASHBOARD_GLOBAL_STATE" },
-  { title: "Landing Pages", url: "/dashboard/landing-pages", icon: IconFolder, routeKey: "DASHBOARD_LANDING_PAGES" },
-  { title: "Data Fetching", url: "/dashboard/data", icon: IconDatabaseExport, routeKey: "DASHBOARD_DATA" },
+  {
+    title: "Dashboard",
+    url: "/dashboard",
+    icon: IconDashboard,
+    routeKey: "DASHBOARD_HOME",
+  },
+  {
+    title: "Tenants",
+    url: "/dashboard/tenants",
+    icon: IconBuildingStore,
+    routeKey: "DASHBOARD_TENANTS",
+  },
+  {
+    title: "Audit Logs",
+    url: "/dashboard/audit-logs",
+    icon: IconHistory,
+    routeKey: "DASHBOARD_AUDIT_LOGS",
+  },
+  
 ];
 
 const data = {
-  navClouds: [
+  user: {
+    name: "User",
+    email: "user@healthnexus.com",
+    avatar: "/images/logo.webp",
+  },
+  navMain: [
     {
-      title: "Capture",
-      icon: IconCamera,
-      isActive: true,
-      url: "#",
-      items: [
-        {
-          title: "Active Proposals",
-          url: "#",
-        },
-        {
-          title: "Archived",
-          url: "#",
-        },
-      ],
+      title: "Dashboard",
+      url: "/dashboard",
+      icon: IconDashboard,
     },
+
     {
-      title: "Proposal",
-      icon: IconFileDescription,
-      url: "#",
-      items: [
-        {
-          title: "Active Proposals",
-          url: "#",
-        },
-        {
-          title: "Archived",
-          url: "#",
-        },
-      ],
-    },
-    {
-      title: "Prompts",
-      icon: IconFileAi,
-      url: "#",
-      items: [
-        {
-          title: "Active Proposals",
-          url: "#",
-        },
-        {
-          title: "Archived",
-          url: "#",
-        },
-      ],
-    },
-  ],
-  navSecondary: [
-    {
-      title: "Settings",
-      url: "#",
-      icon: IconSettings,
-    },
-    {
-      title: "Get Help",
-      url: "#",
-      icon: IconHelp,
-    },
-    {
-      title: "Search",
-      url: "#",
-      icon: IconSearch,
-    },
-  ],
-  documents: [
-    {
-      name: "Data Library",
-      url: "#",
-      icon: IconDatabase,
-    },
-    {
-      name: "Reports",
-      url: "#",
+      title: "Tenants",
+      url: "/dashboard/tenants",
       icon: IconReport,
     },
     {
-      name: "Word Assistant",
-      url: "#",
-      icon: IconFileWord,
+      title: "Tenant Audit Logs",
+      url: "/dashboard/audit-logs",
+      icon: IconReport,
+    },
+  ],
+
+  component_examples: [
+    {
+      name: "Forms",
+      url: "/dashboard/forms",
+      icon: IconFileDescription,
+    },
+    {
+      name: "Global State",
+      url: "/dashboard/global-state",
+      icon: IconDatabase,
+    },
+    {
+      name: "Landing Pages",
+      url: "/dashboard/landing-pages",
+      icon: IconFolder,
+    },
+    {
+      name: "Data Fetching",
+      url: "/dashboard/data",
+      icon: IconDatabaseExport,
+    },
+    {
+      name: "Roles",
+      url: "/dashboard/roles",
+      icon: IconKey,
     },
   ],
 };
@@ -140,9 +125,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const navMain = React.useMemo(
     () =>
       navMainAll.filter(
-        (item) => !item.routeKey || can(userWithRole, item.routeKey)
+        (item) => !item.routeKey || can(userWithRole, item.routeKey),
       ),
-    [role]
+    [role],
   );
   const sidebarUser = React.useMemo(() => {
     if (!user) return null;
@@ -172,8 +157,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarHeader>
       <SidebarContent>
         <NavMain items={navMain} />
-        <NavDocuments items={data.documents} />
-        <NavSecondary items={data.navSecondary} className="mt-auto" />
+        <NavDocuments items={data.component_examples} />
       </SidebarContent>
       <SidebarFooter>
         <NavUser user={sidebarUser} />

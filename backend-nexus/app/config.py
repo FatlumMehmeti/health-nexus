@@ -11,5 +11,6 @@ dotenv_path = _env_local if os.path.isfile(_env_local) else _env
 load_dotenv(dotenv_path=dotenv_path)
 
 DATABASE_URL = os.getenv("DATABASE_URL")
+
 if not DATABASE_URL:
-    raise RuntimeError("DATABASE_URL environment variable is not set")
+    raise RuntimeError("DATABASE_URL is required (e.g. postgresql+psycopg://user:pass@db:5432/name)")

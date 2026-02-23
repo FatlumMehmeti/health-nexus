@@ -2,6 +2,7 @@ from sqlalchemy import String, Integer, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from .base import Base, TimestampMixin
 
+
 class User(Base, TimestampMixin):
     __tablename__ = "users"
 

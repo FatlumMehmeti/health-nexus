@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { fetchUsers } from "@/server/users";
+import { usersService } from '@/services'
 import {
   Card,
   CardContent,
@@ -21,7 +21,7 @@ export const Route = createFileRoute("/dashboard/data")({
 function DataFetchingPage() {
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ["users"],
-    queryFn: fetchUsers,
+    queryFn: () => usersService.list(),
   });
   const queryClient = useQueryClient();
   if (isLoading) {
@@ -70,7 +70,7 @@ function DataFetchingPage() {
       <div>
         <h1 className="text-3xl font-bold">Data Fetching</h1>
         <p className="mt-2 text-muted-foreground">
-          {data?.total} users from DummyJSON API via React Query
+          {data?.total} users from API via React Query
         </p>
       </div>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

@@ -16,6 +16,7 @@ __pycache__/
 
 # Virtual env
 venv/
+backend-nexus/.venv/
 
 # Logs
 *.log
@@ -29,3 +30,6 @@ venv/
 
 # Coverage
 .coverage
+
+# Backend specifics
+backend-nexus/.env.example

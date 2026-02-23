@@ -13,12 +13,16 @@ export default defineConfig({
   server: {
     port: 3000,
     proxy: {
-      // Avoid CORS during local dev by proxying API calls through Vite.
-      '/auth': {
+      // Proxy API calls to backend (port 8000)
+      '/api': {
         target: 'http://localhost:8000',
         changeOrigin: true,
       },
       '/roles': {
+        target: 'http://localhost:8000',
+        changeOrigin: true,
+      },
+      '/audit-logs': {
         target: 'http://localhost:8000',
         changeOrigin: true,
       },

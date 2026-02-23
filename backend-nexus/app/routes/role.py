@@ -1,4 +1,5 @@
 from fastapi import APIRouter, HTTPException, Depends, status
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from app.db import SessionLocal
 from app.models import Role
@@ -18,8 +19,12 @@ def get_db():
 @router.post("", response_model=RoleRead, status_code=status.HTTP_201_CREATED)
 def create_role(role: RoleCreate, db: Session = Depends(get_db)):
     db_role = Role(**role.model_dump())
-    db.add(db_role)
-    db.commit()
+    try:
+        db.add(db_role)
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=409, detail="Role name already exists")
     db.refresh(db_role)
     return db_role
 
@@ -43,11 +48,11 @@ def update_role(role_id: int, role: RoleUpdate, db: Session = Depends(get_db)):
     db_role = db.query(Role).filter(Role.id == role_id).first()
     if not db_role:
         raise HTTPException(status_code=404, detail="Role not found")
-    
+
     update_data = role.model_dump(exclude_unset=True)
     for key, value in update_data.items():
         setattr(db_role, key, value)
-    
+
     db.commit()
     db.refresh(db_role)
     return db_role
@@ -58,7 +63,7 @@ def delete_role(role_id: int, db: Session = Depends(get_db)):
     db_role = db.query(Role).filter(Role.id == role_id).first()
     if not db_role:
         raise HTTPException(status_code=404, detail="Role not found")
-    
+
     db.delete(db_role)
     db.commit()
     return None
