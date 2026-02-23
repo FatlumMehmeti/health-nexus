@@ -11,7 +11,7 @@ import { create } from 'zustand'
 import { toast } from 'sonner'
 import type { Role } from '@/lib/rbacMatrix'
 import { ApiError, clearTokens, getAccessToken, getRefreshToken, setTokens, setUnauthorizedHandler } from '@/lib/api/client'
-import * as authApi from '@/lib/api/auth'
+import { authService, type LoginCredentials } from '@/services/auth.service'
 
 export type AuthStatus = 'loading' | 'authenticated' | 'unauthenticated'
 
@@ -39,7 +39,7 @@ interface AuthState {
   expireSession: () => void
   revokeSession: () => void
   ensureAuth: () => Promise<boolean>
-  login: (credentials: authApi.LoginCredentials) => Promise<void>
+  login: (credentials: LoginCredentials) => Promise<void>
   logout: () => Promise<void>
   refresh: () => Promise<boolean>
   loadProfile: () => Promise<void>
@@ -150,7 +150,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     ensureAuthPromise = (async () => {
       set({ status: 'loading', error: null })
       try {
-        const res = await authApi.me()
+        const res = await authService.me()
         const role = mapBackendRole(res.user?.role)
         const tenantIdRaw = res.user?.tenant_id
         set({
@@ -208,7 +208,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   login: async (credentials) => {
     set({ status: 'loading', error: null, authErrorReason: null })
     try {
-      const tokenRes = await authApi.login(credentials)
+      const tokenRes = await authService.login(credentials)
       setTokens({ accessToken: tokenRes.access_token, refreshToken: tokenRes.refresh_token })
       await get().ensureAuth()
       if (!get().isAuthenticated) {
@@ -226,7 +226,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   logout: async () => {
     const rt = getRefreshToken()
     try {
-      if (rt) await authApi.logout(rt)
+      if (rt) await authService.logout(rt)
     } catch {
       // ignore backend logout failures (we still clear local session)
     } finally {
@@ -239,7 +239,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     if (!rt) return false
 
     try {
-      const res = await authApi.refresh(rt)
+      const res = await authService.refresh(rt)
       setTokens({ accessToken: res.access_token })
       return true
     } catch (err) {

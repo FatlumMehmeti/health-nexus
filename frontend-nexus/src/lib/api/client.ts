@@ -1,13 +1,13 @@
 /**
  * Shared API client for backend (FastAPI) requests.
  *
- * - Base URL: in dev uses "" so Vite proxy can forward /auth, /roles, etc.; otherwise VITE_API_BASE_URL or :8000.
+ * - Base URL: VITE_API_BASE_URL or http://localhost:8000 (backend).
  * - Automatically adds Authorization: Bearer <token> when a token is in memory/storage.
  * - Normalizes errors into ApiError (status, message, optional data). For 4xx/5xx, message prefers body.detail or body text.
  * - On 401, invokes the handler registered via setUnauthorizedHandler (used by auth store to expire session and redirect).
  */
 export const API_BASE_URL =
-  import.meta.env?.VITE_API_BASE_URL ?? (import.meta.env?.DEV ? '' : 'http://localhost:8000')
+  import.meta.env?.VITE_API_BASE_URL ?? 'http://localhost:8000'
 
 export type ApiErrorShape = {
   status: number

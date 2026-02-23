@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { requireAuth } from "@/lib/guards/requireAuth";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { useState } from "react";
 import { tenantsService } from "@/services/tenants.service";
@@ -38,6 +39,7 @@ import { useDialogStore } from "@/stores/use-dialog-store";
 import { isApiError } from "@/lib/api-client";
 
 export const Route = createFileRoute("/dashboard/tenants")({
+  beforeLoad: requireAuth({ routeKey: "DASHBOARD_TENANTS" }),
   component: TenantsPage,
 });
 

@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import RedirectResponse
 from app.auth.auth_router import router as auth_router
 from app.routes import role_router, superadmin_tenant_router, public_tenant_router, tenant_audit_log
 
@@ -22,8 +23,8 @@ app.include_router(auth_router, prefix="/api")
 app.include_router(tenant_audit_log)
 
 @app.get("/")
-def health_check():
-    return {"status": "ok", "message": "Healthcare SaaS API is running"}
+def root():
+    return RedirectResponse(url="/docs")
 
 
 @app.get("/health")

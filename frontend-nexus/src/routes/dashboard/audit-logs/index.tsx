@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { requireAuth } from "@/lib/guards/requireAuth";
 import { useQuery } from "@tanstack/react-query";
 import { auditLogsService } from "@/services/audit-logs.service";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,6 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export const Route = createFileRoute("/dashboard/audit-logs/")({
+  beforeLoad: requireAuth({ routeKey: "DASHBOARD_AUDIT_LOGS" }),
   component: AuditLogsPage,
 });
 

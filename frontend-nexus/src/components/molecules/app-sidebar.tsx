@@ -13,6 +13,8 @@ import {
   IconKey,
   IconMessage,
   IconReport,
+  IconBuildingStore,
+  IconHistory,
   IconSearch,
   IconSettings,
   type Icon,
@@ -42,14 +44,26 @@ const navMainAll: Array<{
   icon: Icon;
   routeKey?: RouteKey;
 }> = [
-  { title: "Dashboard", url: "/dashboard", icon: IconDashboard, routeKey: "DASHBOARD_HOME" },
-  { title: "Forms", url: "/dashboard/forms", icon: IconFileDescription, routeKey: "DASHBOARD_FORMS" },
-  { title: "Dialog", url: "/dashboard/dialog", icon: IconMessage },
-  { title: "Global State", url: "/dashboard/global-state", icon: IconDatabase, routeKey: "DASHBOARD_GLOBAL_STATE" },
-  { title: "Landing Pages", url: "/dashboard/landing-pages", icon: IconFolder, routeKey: "DASHBOARD_LANDING_PAGES" },
-  { title: "Data Fetching", url: "/dashboard/data", icon: IconDatabaseExport, routeKey: "DASHBOARD_DATA" },
+  {
+    title: "Dashboard",
+    url: "/dashboard",
+    icon: IconDashboard,
+    routeKey: "DASHBOARD_HOME",
+  },
+  {
+    title: "Tenants",
+    url: "/dashboard/tenants",
+    icon: IconBuildingStore,
+    routeKey: "DASHBOARD_TENANTS",
+  },
+  {
+    title: "Audit Logs",
+    url: "/dashboard/audit-logs",
+    icon: IconHistory,
+    routeKey: "DASHBOARD_AUDIT_LOGS",
+  },
+  
 ];
-
 
 const data = {
   user: {
@@ -65,11 +79,6 @@ const data = {
     },
 
     {
-      title: "Forms",
-      url: "/dashboard/forms",
-      icon: IconFileDescription,
-    },
-    {
       title: "Tenants",
       url: "/dashboard/tenants",
       icon: IconReport,
@@ -79,107 +88,33 @@ const data = {
       url: "/dashboard/audit-logs",
       icon: IconReport,
     },
+  ],
+
+  component_examples: [
     {
-      title: "Global State",
+      name: "Forms",
+      url: "/dashboard/forms",
+      icon: IconFileDescription,
+    },
+    {
+      name: "Global State",
       url: "/dashboard/global-state",
       icon: IconDatabase,
     },
     {
-      title: "Landing Pages",
+      name: "Landing Pages",
       url: "/dashboard/landing-pages",
       icon: IconFolder,
     },
     {
-      title: "Data Fetching",
+      name: "Data Fetching",
       url: "/dashboard/data",
       icon: IconDatabaseExport,
     },
     {
-      title: "Roles",
+      name: "Roles",
       url: "/dashboard/roles",
       icon: IconKey,
-    },
-  ],
-  navClouds: [
-    {
-      title: "Capture",
-      icon: IconCamera,
-      isActive: true,
-      url: "#",
-      items: [
-        {
-          title: "Active Proposals",
-          url: "#",
-        },
-        {
-          title: "Archived",
-          url: "#",
-        },
-      ],
-    },
-    {
-      title: "Proposal",
-      icon: IconFileDescription,
-      url: "#",
-      items: [
-        {
-          title: "Active Proposals",
-          url: "#",
-        },
-        {
-          title: "Archived",
-          url: "#",
-        },
-      ],
-    },
-    {
-      title: "Prompts",
-      icon: IconFileAi,
-      url: "#",
-      items: [
-        {
-          title: "Active Proposals",
-          url: "#",
-        },
-        {
-          title: "Archived",
-          url: "#",
-        },
-      ],
-    },
-  ],
-  navSecondary: [
-    {
-      title: "Settings",
-      url: "#",
-      icon: IconSettings,
-    },
-    {
-      title: "Get Help",
-      url: "#",
-      icon: IconHelp,
-    },
-    {
-      title: "Search",
-      url: "#",
-      icon: IconSearch,
-    },
-  ],
-  documents: [
-    {
-      name: "Data Library",
-      url: "#",
-      icon: IconDatabase,
-    },
-    {
-      name: "Reports",
-      url: "#",
-      icon: IconReport,
-    },
-    {
-      name: "Word Assistant",
-      url: "#",
-      icon: IconFileWord,
     },
   ],
 };
@@ -190,9 +125,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const navMain = React.useMemo(
     () =>
       navMainAll.filter(
-        (item) => !item.routeKey || can(userWithRole, item.routeKey)
+        (item) => !item.routeKey || can(userWithRole, item.routeKey),
       ),
-    [role]
+    [role],
   );
   const sidebarUser = React.useMemo(() => {
     if (!user) return null;
@@ -222,8 +157,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarHeader>
       <SidebarContent>
         <NavMain items={navMain} />
-        <NavDocuments items={data.documents} />
-        <NavSecondary items={data.navSecondary} className="mt-auto" />
+        <NavDocuments items={data.component_examples} />
       </SidebarContent>
       <SidebarFooter>
         <NavUser user={sidebarUser} />

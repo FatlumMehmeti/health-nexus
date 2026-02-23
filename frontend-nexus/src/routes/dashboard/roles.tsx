@@ -1,4 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
+import { requireAuth } from '@/lib/guards/requireAuth'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -21,6 +22,7 @@ import { FormField } from '@/components/atoms/form-field'
 import { Skeleton } from '@/components/ui/skeleton'
 
 export const Route = createFileRoute('/dashboard/roles')({
+  beforeLoad: requireAuth({ routeKey: 'DASHBOARD_ROLES' }),
   component: RolesPage,
 })
 
