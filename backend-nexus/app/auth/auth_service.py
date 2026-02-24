@@ -20,8 +20,30 @@ from app.models import Role, Session, Tenant, User, UserTenantMembership
 
 logger = logging.getLogger(__name__)
 
-# Backward-compatible role name aliases (input after .upper() -> DB role name)
-ROLE_NAME_ALIASES = {"ADMIN": "SUPER_ADMIN"}
+# Canonical role names stored in DB (uppercase)
+# Map: normalized input (lowercase, stripped) -> canonical DB role name
+_ROLE_ALIAS_TO_CANONICAL = {
+    "client": "PATIENT",
+    "patient": "PATIENT",
+    "sales": "SALES_AGENT",
+    "sales_agent": "SALES_AGENT",
+    "tenant_manager": "TENANT_MANAGER",
+    "manager": "TENANT_MANAGER",
+    "super_admin": "SUPER_ADMIN",
+    "admin": "SUPER_ADMIN",
+    "doctor": "DOCTOR",
+}
+
+
+def resolve_role_name(input_role: str) -> str:
+    """
+    Resolve API input to canonical role name for DB lookup.
+    Case-insensitive, trims whitespace. Unknown roles are returned as stripped uppercase.
+    """
+    if not input_role:
+        return "PATIENT"
+    key = input_role.strip().lower()
+    return _ROLE_ALIAS_TO_CANONICAL.get(key, input_role.strip().upper())
 
 
 def login_user(email: str, password: str) -> TokenResponse:
@@ -182,12 +204,12 @@ def signup_user(body: SignupRequest) -> SignupResponse:
             logger.warning("auth.signup_tenant_not_found tenant_id=%s", body.tenant_id)
             raise HTTPException(status_code=404, detail="Tenant not found")
 
-        # Resolve role by name (normalized uppercase to match Roles table)
-        role_name = (body.role or "client").strip().upper()
-        role_name = ROLE_NAME_ALIASES.get(role_name, role_name)
+        # Resolve role by name (canonical alias mapping for DB lookup)
+        input_role = (body.role or "client").strip()
+        role_name = resolve_role_name(body.role or "client")
         role = session.execute(select(Role).where(Role.name == role_name)).scalar_one_or_none()
         if role is None:
-            logger.warning("auth.signup_role_not_found role=%s", role_name)
+            logger.warning("auth.signup_role_not_found input_role=%s resolved_role=%s", input_role, role_name)
             raise HTTPException(status_code=404, detail="Role not found")
 
         # Find existing user by email (with role for response)

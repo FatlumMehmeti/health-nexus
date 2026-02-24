@@ -14,7 +14,7 @@ from app.auth.auth_utils import hash_password, verify_password
 @pytest.fixture
 def client(db_session):
     """TestClient with DB seeded with role and tenant for signup."""
-    role = Role(name="client")
+    role = Role(name="PATIENT")
     db_session.add(role)
     db_session.flush()
     tenant = Tenant()
@@ -26,7 +26,7 @@ def client(db_session):
 @pytest.fixture
 def client_with_doctor_role(db_session):
     """Client with doctor role and two tenants for multi-tenant signup tests."""
-    role = Role(name="doctor")
+    role = Role(name="DOCTOR")
     db_session.add(role)
     db_session.flush()
     t1 = Tenant()
@@ -52,7 +52,7 @@ def test_signup_success_creates_user_and_membership(client):
     assert response.status_code == 201
     data = response.json()
     assert data["email"] == "new@example.com"
-    assert data["role"] == "client"
+    assert data["role"] == "PATIENT"
     assert data["tenant_id"] == 1
     assert "user_id" in data
     assert "password" not in data

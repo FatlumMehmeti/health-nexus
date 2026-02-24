@@ -152,26 +152,37 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(securit
         raise HTTPException(status_code=401, detail="Invalid or expired token")
 
 
+def _user_role_normalized(user: Dict[str, Any]) -> str:
+    """Extract role from user payload (JWT or object) and return normalized (strip + lower) for consistent RBAC checks."""
+    user_role_raw = user.get("role")
+    user_role_str = (
+        getattr(user_role_raw, "name", user_role_raw)
+        if user_role_raw is not None
+        else ""
+    )
+    if not isinstance(user_role_str, str):
+        user_role_str = ""
+    return user_role_str.strip().lower()
+
+
 def require_role(role: str):
     """
     RBAC dependency factory.
     Usage: Depends(require_role("admin"))
     Assumes JWT payload includes a "role" field.
-    Role comparison is case-insensitive (normalized with strip + upper).
+    Role comparison is case-insensitive. Treats "admin" as alias for "super_admin".
     """
-    required_role = role.strip().upper()
+    required_normalized = normalize_role(role)
+    # Roles that satisfy SUPER_ADMIN requirement (admin is alias for super_admin)
+    super_admin_aliases = {"super_admin", "admin"}
 
     def dependency(user: Dict[str, Any] = Depends(get_current_user)) -> Dict[str, Any]:
-        user_role_raw = user.get("role")
-        user_role_str = (
-            getattr(user_role_raw, "name", user_role_raw)
-            if user_role_raw is not None
-            else ""
-        )
-        if not isinstance(user_role_str, str):
-            user_role_str = ""
-        user_role_normalized = user_role_str.strip().upper()
-        if user_role_normalized != required_role:
+        user_role_normalized = _user_role_normalized(user)
+        if required_normalized == "super_admin":
+            allowed = super_admin_aliases
+        else:
+            allowed = {required_normalized}
+        if user_role_normalized not in allowed:
             raise HTTPException(status_code=403, detail="Insufficient permissions")
         return user
 
@@ -195,7 +206,7 @@ def require_permission(route_id: str, method: Optional[str] = None):
                 effective_method, route_id, user.get("user_id"), user.get("role"),
             )
             raise HTTPException(status_code=403, detail="Insufficient permissions")
-        if normalize_role(user.get("role")) not in allowed_roles:
+        if _user_role_normalized(user) not in allowed_roles:
             logger.warning(
                 "auth.rbac_denied role_not_allowed method=%s route_id=%s user_id=%s role=%s",
                 effective_method, route_id, user.get("user_id"), user.get("role"),
