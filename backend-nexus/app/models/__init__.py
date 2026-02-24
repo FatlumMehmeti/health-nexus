@@ -23,6 +23,7 @@ from .appointment_status_history import AppointmentStatusHistory
 from .report import Report
 from .recommendation import Recommendation
 from .product import Product
+from .cart import Cart
 
 __all__ = [
     "Base",
@@ -37,6 +38,7 @@ __all__ = [
     "Doctor",
     "Patient",
     "Product",
+    "Cart",
     "TenantManager",
     "Lead",
     "LeadStatusHistory",

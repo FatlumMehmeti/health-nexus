@@ -63,3 +63,9 @@ class Tenant(Base, TimestampMixin):
         back_populates="tenant",
         cascade="all, delete-orphan"
     )
+
+    carts = relationship(
+        "Cart",
+        back_populates="tenant",
+        cascade="all, delete-orphan"
+    )

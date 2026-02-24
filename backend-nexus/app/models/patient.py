@@ -38,3 +38,9 @@ class Patient(Base, TimestampMixin):
         "Appointment",
         back_populates="patient"
     )
+
+    carts = relationship(
+        "Cart",
+        back_populates="patient",
+        cascade="all, delete-orphan"
+    )
