@@ -18,6 +18,7 @@ from .tenant_manager import TenantManager
 from .lead import Lead
 from .lead_status_history import LeadStatusHistory
 from .consultation_booking import ConsultationBooking, ConsultationStatus
+from .appointment import Appointment
 
 __all__ = [
     "Base",
@@ -35,6 +36,7 @@ __all__ = [
     "Lead",
     "LeadStatusHistory",
     "ConsultationBooking",
+    "Appointment",
     "FontKey",
     "Membership",
     "TenantSubscription",

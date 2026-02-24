@@ -33,3 +33,8 @@ class Patient(Base, TimestampMixin):
         back_populates="patient_profile",
         uselist=False
     )
+
+    appointments = relationship(
+        "Appointment",
+        back_populates="patient"
+    )
