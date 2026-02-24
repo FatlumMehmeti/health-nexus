@@ -19,6 +19,7 @@ class TenantDetails(Base, TimestampMixin):
 
     # Branding fields
     logo: Mapped[str] = mapped_column(String(255), nullable=True)
+    image: Mapped[str] = mapped_column(String(255), nullable=True)  # hero/cover image for public listing
     moto: Mapped[str] = mapped_column(String(255), nullable=True)
     brand_color_primary: Mapped[str] = mapped_column(String(7), nullable=True)  # Hex color
     brand_color_secondary: Mapped[str] = mapped_column(String(7), nullable=True)  # Hex color
