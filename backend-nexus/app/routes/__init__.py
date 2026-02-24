@@ -18,8 +18,9 @@ from .product import router as product_router
 from .cart import router as cart_router
 from .cart_item import router as cart_item_router
 from .order import router as order_router
+from .order_item import router as order_item_router
 
 __all__ = ["role_router", "superadmin_tenant_router", "public_tenant_router", 'tenant_audit_log', 'department_router', 'tenant_department_router', 'service_router',
            'doctor_router', 'patient_router', 'tenant_manager_router', 'lead_router', 'consultation_booking_router', 'appointment_router', 'user_router',
            'report_router', 'recommendation_router', 'product_router', 'cart_router',
-           'cart_item_router', 'order_router']
+           'cart_item_router', 'order_router', 'order_item_router']

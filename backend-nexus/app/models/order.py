@@ -42,3 +42,9 @@ class Order(Base, TimestampMixin):
     # Relationships
     patient = relationship("Patient", back_populates="orders")
     tenant = relationship("Tenant", back_populates="orders")
+
+    items = relationship(
+        "OrderItem",
+        back_populates="order",
+        cascade="all, delete-orphan"
+    )
