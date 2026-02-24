@@ -15,3 +15,9 @@ class Department(Base, TimestampMixin):
         nullable=False,
         index=True
     )
+
+    tenant_departments = relationship(
+        "TenantDepartment",
+        back_populates="department",
+        cascade="all, delete-orphan"
+    )

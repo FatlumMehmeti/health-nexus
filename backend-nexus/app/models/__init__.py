@@ -9,6 +9,8 @@ from .tenant_subscription import TenantSubscription
 from .consultation_request import ConsultationRequest, ConsultationStatus
 from .user_tenant_membership import UserTenantMembership
 from .session import Session
+from .department import Department
+from .tenant_department import TenantDepartment
 
 __all__ = [
     "Base",
@@ -17,6 +19,8 @@ __all__ = [
     "Tenant",
     "TenantStatus",
     "TenantDetails",
+    "Department",
+    "TenantDepartment",
     "FontKey",
     "Membership",
     "TenantSubscription",

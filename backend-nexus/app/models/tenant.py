@@ -31,3 +31,9 @@ class Tenant(Base, TimestampMixin):
     user_memberships = relationship(
         "UserTenantMembership", back_populates="tenant", cascade="all, delete-orphan"
     )
+
+    tenant_departments = relationship(
+        "TenantDepartment",
+        back_populates="tenant",
+        cascade="all, delete-orphan"
+    )
