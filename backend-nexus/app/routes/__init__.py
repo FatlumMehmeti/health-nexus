@@ -24,10 +24,11 @@ from .enrollment import router as enrollment_router
 from .user_tenant_plan import router as user_tenant_plan_router
 from .tenant_subscription import router as tenant_subscription_router
 from .enrollment_status_history import router as enrollment_status_history_router
+from .audit_event import router as audit_event_router
 
 __all__ = ["role_router", "superadmin_tenant_router", "public_tenant_router", 'tenant_audit_log', 'department_router', 'tenant_department_router', 'service_router',
            'doctor_router', 'patient_router', 'tenant_manager_router', 'lead_router', 'consultation_booking_router', 'appointment_router', 'user_router',
            'report_router', 'recommendation_router', 'product_router', 'cart_router',
            'cart_item_router', 'order_router', 'order_item_router', 'payment_router',
            'enrollment_router', 'user_tenant_plan_router', 'tenant_subscription_router',
-           'enrollment_status_history_router']
+           'enrollment_status_history_router', 'audit_event_router']
