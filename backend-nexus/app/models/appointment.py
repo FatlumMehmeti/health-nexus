@@ -46,3 +46,8 @@ class Appointment(Base, TimestampMixin):
     doctor = relationship("Doctor", back_populates="appointments")
     patient = relationship("Patient", back_populates="appointments")
     tenant = relationship("Tenant")
+    status_history = relationship(
+        "AppointmentStatusHistory",
+        back_populates="appointment",
+        cascade="all, delete-orphan"
+    )

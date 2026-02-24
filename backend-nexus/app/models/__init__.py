@@ -19,6 +19,7 @@ from .lead import Lead
 from .lead_status_history import LeadStatusHistory
 from .consultation_booking import ConsultationBooking, ConsultationStatus
 from .appointment import Appointment
+from .appointment_status_history import AppointmentStatusHistory
 
 __all__ = [
     "Base",
@@ -37,6 +38,7 @@ __all__ = [
     "LeadStatusHistory",
     "ConsultationBooking",
     "Appointment",
+    "AppointmentStatusHistory",
     "FontKey",
     "Membership",
     "TenantSubscription",
