@@ -41,3 +41,9 @@ class Lead(Base, TimestampMixin):
     notes: Mapped[str | None] = mapped_column(Text)
 
     tenant = relationship("Tenant", back_populates="leads")
+
+    status_history = relationship(
+        "LeadStatusHistory",
+        back_populates="lead",
+        cascade="all, delete-orphan"
+    )

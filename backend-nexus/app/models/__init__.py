@@ -16,6 +16,7 @@ from .doctor import Doctor
 from .patient import Patient
 from .tenant_manager import TenantManager
 from .lead import Lead
+from .lead_status_history import LeadStatusHistory
 
 __all__ = [
     "Base",
@@ -31,6 +32,7 @@ __all__ = [
     "Patient",
     "TenantManager",
     "Lead",
+    "LeadStatusHistory",
     "FontKey",
     "Membership",
     "TenantSubscription",
