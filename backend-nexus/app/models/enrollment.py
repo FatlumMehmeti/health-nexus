@@ -1,6 +1,7 @@
 import enum
+from datetime import datetime
 
-from sqlalchemy import ForeignKey, UniqueConstraint, Enum
+from sqlalchemy import ForeignKey, UniqueConstraint, Enum, DateTime
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .base import Base, TimestampMixin
@@ -41,7 +42,6 @@ class Enrollment(Base, TimestampMixin):
         nullable=False
     )
 
-
     created_by: Mapped[int] = mapped_column(
         ForeignKey("users.id"),
         nullable=False
@@ -53,15 +53,32 @@ class Enrollment(Base, TimestampMixin):
         nullable=False
     )
 
-    activated_at: Mapped[str | None] = mapped_column(nullable=True)
-    cancelled_at: Mapped[str | None] = mapped_column(nullable=True)
-    expires_at: Mapped[str | None] = mapped_column(nullable=True)
+    activated_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True
+    )
+
+    cancelled_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True
+    )
+
+    expires_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True
+    )
 
     # Relationships
-    tenant = relationship("Tenant", back_populates="enrollments")
+    tenant = relationship(
+        "Tenant",
+        back_populates="enrollments"
+    )
+
     patient = relationship("Patient")
+
     user_tenant_plan = relationship(
         "UserTenantPlan",
         back_populates="enrollments"
     )
+
     creator = relationship("User")

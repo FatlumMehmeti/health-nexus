@@ -4,6 +4,7 @@ from typing import List
 
 from app.db import SessionLocal
 from app.models.enrollment import Enrollment, EnrollmentStatus
+from app.models.enrollment_status_history import EnrollmentStatusHistory
 from app.schemas.enrollment import EnrollmentCreate, EnrollmentRead
 
 router = APIRouter(
@@ -27,7 +28,6 @@ def create_enrollment(
     db: Session = Depends(get_db)
 ):
 
-    # Prevent duplicate enrollment (extra safety)
     existing = db.query(Enrollment).filter(
         Enrollment.tenant_id == enrollment.tenant_id,
         Enrollment.patient_user_id == enrollment.patient_user_id
@@ -71,11 +71,12 @@ def get_enrollment(
     return enrollment
 
 
-# Update Enrollment Status
+# ⭐ Update Enrollment Status + History Tracking
 @router.patch("/{enrollment_id}", response_model=EnrollmentRead)
 def update_enrollment_status(
     enrollment_id: int,
     status: EnrollmentStatus,
+    reason: str | None = None,
     db: Session = Depends(get_db)
 ):
 
@@ -86,7 +87,30 @@ def update_enrollment_status(
     if not enrollment:
         raise HTTPException(404, "Enrollment not found")
 
+    old_status = enrollment.status
+
+    # Prevent useless updates
+    if old_status == status:
+        raise HTTPException(
+            400,
+            f"Enrollment already in '{status.value}' status"
+        )
+
+    # Update enrollment status
     enrollment.status = status
+
+    history = EnrollmentStatusHistory(
+        enrollment_id=enrollment.id,
+        tenant_id=enrollment.tenant_id,
+        old_status=old_status,
+        new_status=status,
+        changed_by=None,  # TODO: replace with auth user id
+        changed_by_role="SYSTEM",
+        reason=reason
+    )
+
+    db.add(history)
+
     db.commit()
     db.refresh(enrollment)
 

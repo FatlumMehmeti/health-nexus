@@ -35,7 +35,12 @@ def create_plan(
     # Convert duration from timedelta to integer days if present
     if plan_data.get("duration") is not None:
         plan_data["duration"] = plan_data["duration"].days
-    db_plan = UserTenantPlan(**plan_data)
+    from datetime import datetime, timezone
+    # Ensure updated_at is set for NOT NULL constraint
+    db_plan = UserTenantPlan(
+        **plan_data,
+        updated_at=datetime.now(timezone.utc)
+    )
 
     db.add(db_plan)
     db.commit()

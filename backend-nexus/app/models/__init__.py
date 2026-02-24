@@ -29,6 +29,7 @@ from .cart_item import CartItem
 from .order import Order
 from .order_item import OrderItem
 from .payment import Payment
+from .enrollment_status_history import EnrollmentStatusHistory
 
 __all__ = [
     "Base",
@@ -57,6 +58,7 @@ __all__ = [
     "Report",
     "Recommendation",
     "Enrollment",
+    "EnrollmentStatus",
     "UserTenantPlan",
     "FontKey",
     "SubscriptionPlan",
