@@ -21,6 +21,12 @@ export type RouteKey =
   | 'DASHBOARD_TENANTS'
   | 'DASHBOARD_AUDIT_LOGS'
   | 'DASHBOARD_ROLES'
+  | 'APP_TENANT_SELECTOR'
+
+/** Roles that can access the app tenant selector (/tenants). Add PATIENT here if the project has that role. */
+function appTenantSelectorRoles(): Role[] {
+  return ['CLIENT', 'DOCTOR', 'SALES', 'TENANT_MANAGER']
+}
 
 // Internal mapping of route keys to roles that can access them.
 const rbacMatrix: Record<RouteKey, Role[]> = {
@@ -32,6 +38,7 @@ const rbacMatrix: Record<RouteKey, Role[]> = {
   DASHBOARD_TENANTS: ['SUPER_ADMIN'],
   DASHBOARD_AUDIT_LOGS: ['SUPER_ADMIN'],
   DASHBOARD_ROLES: ['SUPER_ADMIN'],
+  APP_TENANT_SELECTOR: appTenantSelectorRoles(),
 }
 
 export function canAccess(role: Role | null | undefined, routeKey: RouteKey): boolean {

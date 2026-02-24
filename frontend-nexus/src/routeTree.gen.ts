@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as UnauthorizedRouteImport } from './routes/unauthorized'
+import { Route as TenantsRouteImport } from './routes/tenants'
 import { Route as RegisterRouteImport } from './routes/register'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as LandingRouteRouteImport } from './routes/landing/route'
@@ -31,6 +32,11 @@ import { Route as DashboardLandingPagesPageIdRouteImport } from './routes/dashbo
 const UnauthorizedRoute = UnauthorizedRouteImport.update({
   id: '/unauthorized',
   path: '/unauthorized',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TenantsRoute = TenantsRouteImport.update({
+  id: '/tenants',
+  path: '/tenants',
   getParentRoute: () => rootRouteImport,
 } as any)
 const RegisterRoute = RegisterRouteImport.update({
@@ -128,6 +134,7 @@ export interface FileRoutesByFullPath {
   '/landing': typeof LandingRouteRouteWithChildren
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
+  '/tenants': typeof TenantsRoute
   '/unauthorized': typeof UnauthorizedRoute
   '/dashboard/landing-pages': typeof DashboardLandingPagesRouteRouteWithChildren
   '/dashboard/data': typeof DashboardDataRoute
@@ -147,6 +154,7 @@ export interface FileRoutesByTo {
   '/landing': typeof LandingRouteRouteWithChildren
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
+  '/tenants': typeof TenantsRoute
   '/unauthorized': typeof UnauthorizedRoute
   '/dashboard/data': typeof DashboardDataRoute
   '/dashboard/dialog': typeof DashboardDialogRoute
@@ -167,6 +175,7 @@ export interface FileRoutesById {
   '/landing': typeof LandingRouteRouteWithChildren
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
+  '/tenants': typeof TenantsRoute
   '/unauthorized': typeof UnauthorizedRoute
   '/dashboard/landing-pages': typeof DashboardLandingPagesRouteRouteWithChildren
   '/dashboard/data': typeof DashboardDataRoute
@@ -189,6 +198,7 @@ export interface FileRouteTypes {
     | '/landing'
     | '/login'
     | '/register'
+    | '/tenants'
     | '/unauthorized'
     | '/dashboard/landing-pages'
     | '/dashboard/data'
@@ -208,6 +218,7 @@ export interface FileRouteTypes {
     | '/landing'
     | '/login'
     | '/register'
+    | '/tenants'
     | '/unauthorized'
     | '/dashboard/data'
     | '/dashboard/dialog'
@@ -227,6 +238,7 @@ export interface FileRouteTypes {
     | '/landing'
     | '/login'
     | '/register'
+    | '/tenants'
     | '/unauthorized'
     | '/dashboard/landing-pages'
     | '/dashboard/data'
@@ -248,6 +260,7 @@ export interface RootRouteChildren {
   LandingRouteRoute: typeof LandingRouteRouteWithChildren
   LoginRoute: typeof LoginRoute
   RegisterRoute: typeof RegisterRoute
+  TenantsRoute: typeof TenantsRoute
   UnauthorizedRoute: typeof UnauthorizedRoute
 }
 
@@ -258,6 +271,13 @@ declare module '@tanstack/react-router' {
       path: '/unauthorized'
       fullPath: '/unauthorized'
       preLoaderRoute: typeof UnauthorizedRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/tenants': {
+      id: '/tenants'
+      path: '/tenants'
+      fullPath: '/tenants'
+      preLoaderRoute: typeof TenantsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/register': {
@@ -444,6 +464,7 @@ const rootRouteChildren: RootRouteChildren = {
   LandingRouteRoute: LandingRouteRouteWithChildren,
   LoginRoute: LoginRoute,
   RegisterRoute: RegisterRoute,
+  TenantsRoute: TenantsRoute,
   UnauthorizedRoute: UnauthorizedRoute,
 }
 export const routeTree = rootRouteImport
