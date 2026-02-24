@@ -22,6 +22,7 @@ from .appointment import Appointment
 from .appointment_status_history import AppointmentStatusHistory
 from .report import Report
 from .recommendation import Recommendation
+from .product import Product
 
 __all__ = [
     "Base",
@@ -35,6 +36,7 @@ __all__ = [
     "Service",
     "Doctor",
     "Patient",
+    "Product",
     "TenantManager",
     "Lead",
     "LeadStatusHistory",
