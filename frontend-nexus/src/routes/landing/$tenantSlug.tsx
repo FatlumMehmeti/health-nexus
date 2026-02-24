@@ -3,22 +3,25 @@
  * No requireAuth – accessible to everyone.
  */
 import { createFileRoute, Link } from '@tanstack/react-router'
-import { TenantLanding } from '@/components/tenant-landing'
+import { TenantLanding, type TenantLandingConfig } from '../../components/tenant-landing'
 
-/** Mock config keyed by tenant slug – placeholder title/subtitle/logo for PRD-03. */
-export const tenantLandingConfig: Record<
-  string,
-  { title: string; subtitle: string; logo?: string }
-> = {
+/** Mock config keyed by tenant slug – placeholder content for PRD-03. */
+export const tenantLandingConfig: TenantLandingConfig = {
   'spitali-amerikan': {
     title: 'American Hospital',
     subtitle: 'Quality care, close to you.',
     logo: '/images/logo.webp',
+    moto: 'Excellence in healthcare',
+    about:
+      'American Hospital Kosovo provides comprehensive healthcare services with a focus on patient safety, modern technology, and compassionate teams.',
   },
   'spital-iliria': {
     title: 'Iliria Hospital',
     subtitle: 'Your health, our priority.',
     logo: '/images/logo.webp',
+    moto: 'Care that feels personal',
+    about:
+      'Iliria Hospital combines experienced specialists with friendly staff to deliver a warm, patient‑centric experience for families and individuals.',
   },
 }
 
