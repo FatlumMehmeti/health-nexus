@@ -8,7 +8,6 @@ from .tenant_audit_log import TenantAuditLog
 from .tenant_details import TenantDetails, FontKey
 from .subscription_plan import SubscriptionPlan
 from .tenant_subscription import TenantSubscription
-from .consultation_request import ConsultationRequest, ConsultationStatus
 from .session import Session
 from .department import Department
 from .tenant_department import TenantDepartment
@@ -67,7 +66,6 @@ __all__ = [
     "FontKey",
     "SubscriptionPlan",
     "TenantSubscription",
-    "ConsultationRequest",
     "ConsultationStatus",
     "Session",
     "TenantAuditLog"

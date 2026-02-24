@@ -59,12 +59,6 @@ class Tenant(Base, TimestampMixin):
         cascade="all, delete-orphan"
     )
 
-    leads = relationship(
-        "Lead",
-        back_populates="tenant",
-        cascade="all, delete-orphan"
-    )
-
     products = relationship(
         "Product",
         back_populates="tenant",

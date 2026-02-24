@@ -1,8 +1,6 @@
 import enum
-
-from sqlalchemy import String, Text, ForeignKey, Enum
+from sqlalchemy import String, Enum, ForeignKey, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-
 from .base import Base, TimestampMixin
 
 
@@ -22,10 +20,11 @@ class Lead(Base, TimestampMixin):
 
     id: Mapped[int] = mapped_column(primary_key=True)
 
-    company_name: Mapped[str] = mapped_column(String(255))
+    organization_name: Mapped[str | None] = mapped_column(String(255))
     contact_name: Mapped[str | None] = mapped_column(String(255))
-    email: Mapped[str | None] = mapped_column(String(255))
-    phone: Mapped[str | None] = mapped_column(String(50))
+    contact_email: Mapped[str | None] = mapped_column(String(255))
+    contact_phone: Mapped[str | None] = mapped_column(String(50))
+    source: Mapped[str | None] = mapped_column(String(100))
 
     status: Mapped[LeadStatus] = mapped_column(
         Enum(LeadStatus, name="lead_status"),
@@ -33,21 +32,19 @@ class Lead(Base, TimestampMixin):
         nullable=False
     )
 
-    tenant_id: Mapped[int] = mapped_column(
-        ForeignKey("tenants.id"),
-        nullable=False
+    assigned_sales_user_id: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id"),
+        nullable=True
     )
 
     notes: Mapped[str | None] = mapped_column(Text)
-
-    tenant = relationship("Tenant", back_populates="leads")
 
     status_history = relationship(
         "LeadStatusHistory",
         back_populates="lead",
         cascade="all, delete-orphan"
     )
-    
+
     consultation_bookings = relationship(
         "ConsultationBooking",
         back_populates="lead",
