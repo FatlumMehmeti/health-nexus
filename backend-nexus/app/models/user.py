@@ -39,3 +39,9 @@ class User(Base):
         back_populates="user",
         uselist=False
     )
+
+    managed_tenants = relationship(
+        "TenantManager",
+        back_populates="user",
+        cascade="all, delete-orphan"
+    )

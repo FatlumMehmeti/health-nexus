@@ -14,6 +14,7 @@ from .tenant_department import TenantDepartment
 from .service import Service
 from .doctor import Doctor
 from .patient import Patient
+from .tenant_manager import TenantManager
 
 __all__ = [
     "Base",
@@ -27,6 +28,7 @@ __all__ = [
     "Service",
     "Doctor",
     "Patient",
+    "TenantManager",
     "FontKey",
     "Membership",
     "TenantSubscription",

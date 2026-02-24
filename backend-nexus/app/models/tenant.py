@@ -45,3 +45,9 @@ class Tenant(Base, TimestampMixin):
         back_populates="tenant",
         cascade="all, delete-orphan"
     )
+
+    managers = relationship(
+        "TenantManager",
+        back_populates="tenant",
+        cascade="all, delete-orphan"
+    )
