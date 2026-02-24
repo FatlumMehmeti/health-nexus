@@ -14,5 +14,5 @@ class UserTenantMembership(Base, TimestampMixin):
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
     tenant_id: Mapped[int] = mapped_column(ForeignKey("tenants.id"), nullable=False)
 
-    user = relationship("User", back_populates="tenant_memberships")
+    user = relationship("User")
     tenant = relationship("Tenant", back_populates="user_memberships")

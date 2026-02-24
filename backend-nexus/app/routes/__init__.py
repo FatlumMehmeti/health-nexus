@@ -2,5 +2,6 @@ from .role import router as role_router
 from .superadmin_tenant import router as superadmin_tenant_router
 from .public_tenant import router as public_tenant_router
 from .tenant_audit_log import router as tenant_audit_log
+from .user import router as user_router
 
-__all__ = ["role_router", "superadmin_tenant_router", "public_tenant_router", 'tenant_audit_log']
+__all__ = ["role_router", "superadmin_tenant_router", "public_tenant_router", 'tenant_audit_log', 'user_router']

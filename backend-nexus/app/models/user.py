@@ -1,25 +1,29 @@
-from sqlalchemy import String, Integer, ForeignKey
-from sqlalchemy.orm import Mapped, mapped_column, relationship
-from .base import Base, TimestampMixin
+from sqlalchemy import Column, Integer, String, ForeignKey, Text, TIMESTAMP
+from sqlalchemy.sql import func
+from sqlalchemy.orm import relationship
+
+from .base import Base
 
 
-class User(Base, TimestampMixin):
+class User(Base):
     __tablename__ = "users"
 
-    id: Mapped[int] = mapped_column(primary_key=True)
+    id = Column(Integer, primary_key=True, index=True)
 
-    first_name: Mapped[str] = mapped_column(String(100))
-    last_name: Mapped[str] = mapped_column(String(100))
+    first_name = Column(String(100))
+    last_name = Column(String(100))
 
-    email: Mapped[str] = mapped_column(String(255), unique=True, index=True)
-    password: Mapped[str] = mapped_column(String(255))
+    email = Column(String(255), unique=True, nullable=False, index=True)
+    password = Column(Text, nullable=False)
 
-    contact: Mapped[str] = mapped_column(String(50), nullable=True)
-    address: Mapped[str] = mapped_column(String(255), nullable=True)
+    role_id = Column(Integer, ForeignKey("roles.id"))
 
-    role_id: Mapped[int] = mapped_column(ForeignKey("roles.id"))
+    contact = Column(String(50))
+    address = Column(Text)
+
+    created_at = Column(
+        TIMESTAMP(timezone=True),
+        server_default=func.now()
+    )
 
     role = relationship("Role", back_populates="users")
-    tenant_memberships = relationship(
-        "UserTenantMembership", back_populates="user", cascade="all, delete-orphan"
-    )
