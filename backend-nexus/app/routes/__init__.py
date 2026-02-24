@@ -12,6 +12,8 @@ from .lead import router as lead_router
 from .consultation_booking import router as consultation_booking_router
 from .appointment import router as appointment_router
 from .user import router as user_router
+from .report import router as report_router
 
 __all__ = ["role_router", "superadmin_tenant_router", "public_tenant_router", 'tenant_audit_log', 'department_router', 'tenant_department_router', 'service_router',
-           'doctor_router', 'patient_router', 'tenant_manager_router', 'lead_router', 'consultation_booking_router', 'appointment_router', 'user_router']
+           'doctor_router', 'patient_router', 'tenant_manager_router', 'lead_router', 'consultation_booking_router', 'appointment_router', 'user_router',
+           'report_router']
