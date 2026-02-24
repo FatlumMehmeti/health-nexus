@@ -1,13 +1,14 @@
 from .base import Base
 from .role import Role
 from .user import User
+from .enrollment import Enrollment
+from .user_tenant_plan import UserTenantPlan
 from .tenant import Tenant, TenantStatus
 from .tenant_audit_log import TenantAuditLog
 from .tenant_details import TenantDetails, FontKey
-from .membership import Membership
+from .subscription_plan import SubscriptionPlan
 from .tenant_subscription import TenantSubscription
 from .consultation_request import ConsultationRequest, ConsultationStatus
-from .user_tenant_membership import UserTenantMembership
 from .session import Session
 from .department import Department
 from .tenant_department import TenantDepartment
@@ -55,8 +56,10 @@ __all__ = [
     "AppointmentStatusHistory",
     "Report",
     "Recommendation",
+    "Enrollment",
+    "UserTenantPlan",
     "FontKey",
-    "Membership",
+    "SubscriptionPlan",
     "TenantSubscription",
     "ConsultationRequest",
     "ConsultationStatus",

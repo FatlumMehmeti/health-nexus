@@ -4,7 +4,7 @@ from dataclasses import dataclass
 
 from app.auth.auth_utils import hash_password
 from app.db import SessionLocal
-from app.models import Membership, Role, Tenant, TenantStatus, User
+from app.models import SubscriptionPlan, Role, Tenant, TenantStatus, User
 
 
 ROLE_NAMES = [
@@ -77,7 +77,7 @@ SEED_TENANT_DETAILS = [
     {"tenant_id": 16, "logo": "pacific.webp", "moto": "Pioneering better health", "title": "Pioneer Medical Group"},
 ]
 
-SEED_MEMBERSHIPS = [
+SEED_SUBSCRIPTION_PLANS = [
     {"name": "FREE", "price": 0.00, "duration": 30},  # default starter plan
     {"name": "Small Clinic", "price": 1500.00, "duration": 30},
     {"name": "Medium Clinic", "price": 5000.00, "duration": 30},
@@ -114,13 +114,13 @@ def seed_tenant_details(session):
         if payload["tenant_id"] not in existing:
             session.add(TenantDetails(**payload))
 
-def seed_memberships(session):
-    existing = {membership.name: membership for membership in session.query(Membership).all()}
+def seed_subscription_plans(session):
+    existing = {subscription_plan.name: subscription_plan for subscription_plan in session.query(SubscriptionPlan).all()}
 
-    for payload in SEED_MEMBERSHIPS:
-        membership = existing.get(payload["name"])
-        if membership is None:
-            session.add(Membership(**payload))
+    for payload in SEED_SUBSCRIPTION_PLANS:
+        plan = existing.get(payload["name"])
+        if plan is None:
+            session.add(SubscriptionPlan(**payload))
 
 
 def seed_users(session, roles_by_name):
@@ -146,9 +146,9 @@ def run_seed() -> None:
     try:
         roles_by_name = seed_roles(session)
         seed_tenants(session)
-        session.flush()
+        session.commit()  # Ensure tenants are saved and IDs exist
         seed_tenant_details(session)
-        seed_memberships(session)
+        seed_subscription_plans(session)
         seed_users(session, roles_by_name)
         session.commit()
         print("Seed completed.")

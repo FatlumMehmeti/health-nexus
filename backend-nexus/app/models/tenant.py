@@ -28,8 +28,15 @@ class Tenant(Base, TimestampMixin):
     # Relationships
     subscriptions = relationship("TenantSubscription", back_populates="tenant")
     details = relationship("TenantDetails", back_populates="tenant", uselist=False)
-    user_memberships = relationship(
-        "UserTenantMembership", back_populates="tenant", cascade="all, delete-orphan"
+    enrollments = relationship(
+        "Enrollment",
+        back_populates="tenant",
+        cascade="all, delete-orphan"
+    )
+    user_tenant_plans = relationship(
+        "UserTenantPlan",
+        back_populates="tenant",
+        cascade="all, delete-orphan"
     )
 
     tenant_departments = relationship(

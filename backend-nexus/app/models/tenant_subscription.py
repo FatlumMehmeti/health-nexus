@@ -10,7 +10,7 @@ class TenantSubscription(Base, TimestampMixin):
     id: Mapped[int] = mapped_column(primary_key=True)
 
     tenant_id: Mapped[int] = mapped_column(ForeignKey("tenants.id"))
-    membership_id: Mapped[int] = mapped_column(ForeignKey("memberships.id"))
+    subscription_plan_id: Mapped[int] = mapped_column(ForeignKey("subscription_plans.id"))
 
     activated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
@@ -18,4 +18,7 @@ class TenantSubscription(Base, TimestampMixin):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
 
     tenant = relationship("Tenant", back_populates="subscriptions")
-    membership = relationship("Membership", back_populates="subscriptions")
+    subscription_plan = relationship(
+        "SubscriptionPlan",
+        back_populates="subscriptions"
+    )
