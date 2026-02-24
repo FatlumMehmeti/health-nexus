@@ -33,3 +33,9 @@ class User(Base):
         back_populates="user",
         uselist=False
     )
+
+    patient_profile = relationship(
+        "Patient",
+        back_populates="user",
+        uselist=False
+    )
