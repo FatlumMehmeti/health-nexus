@@ -75,3 +75,9 @@ class Tenant(Base, TimestampMixin):
         back_populates="tenant",
         cascade="all, delete-orphan"
     )
+
+    payments = relationship(
+        "Payment",
+        back_populates="tenant",
+        cascade="all, delete-orphan"
+    )
