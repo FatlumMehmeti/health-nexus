@@ -12,6 +12,7 @@ from .session import Session
 from .department import Department
 from .tenant_department import TenantDepartment
 from .service import Service
+from .doctor import Doctor
 
 __all__ = [
     "Base",
@@ -23,6 +24,7 @@ __all__ = [
     "Department",
     "TenantDepartment",
     "Service",
+    "Doctor",
     "FontKey",
     "Membership",
     "TenantSubscription",

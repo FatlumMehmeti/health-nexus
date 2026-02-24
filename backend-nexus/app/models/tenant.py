@@ -39,3 +39,9 @@ class Tenant(Base, TimestampMixin):
     )
 
     services = relationship("Service", back_populates="tenant")
+
+    doctors = relationship(
+        "Doctor",
+        back_populates="tenant",
+        cascade="all, delete-orphan"
+    )

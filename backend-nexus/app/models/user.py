@@ -27,3 +27,9 @@ class User(Base):
     )
 
     role = relationship("Role", back_populates="users")
+
+    doctor_profile = relationship(
+        "Doctor",
+        back_populates="user",
+        uselist=False
+    )
