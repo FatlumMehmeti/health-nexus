@@ -47,3 +47,9 @@ class Lead(Base, TimestampMixin):
         back_populates="lead",
         cascade="all, delete-orphan"
     )
+    
+    consultation_bookings = relationship(
+        "ConsultationBooking",
+        back_populates="lead",
+        cascade="all, delete-orphan"
+    )

@@ -9,5 +9,6 @@ from .doctor import router as doctor_router
 from .patient import router as patient_router
 from .tenant_manager import router as tenant_manager_router
 from .lead import router as lead_router
+from .consultation_booking import router as consultation_booking_router
 
-__all__ = ["role_router", "superadmin_tenant_router", "public_tenant_router", 'tenant_audit_log', 'department_router', 'tenant_department_router', 'service_router', 'doctor_router', 'patient_router', 'tenant_manager_router', 'lead_router']
+__all__ = ["role_router", "superadmin_tenant_router", "public_tenant_router", 'tenant_audit_log', 'department_router', 'tenant_department_router', 'service_router', 'doctor_router', 'patient_router', 'tenant_manager_router', 'lead_router', 'consultation_booking_router']
