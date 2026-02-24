@@ -6,15 +6,17 @@
 
 * `main`: production-ready code only. No direct pushes allowed.
 * `dev`: integration branch for completed features before release.
+* `dev-team`: team-level integration branch for collaborative development and review before merging into `dev`.
 
 ### Development flow
 
 ```
-feature/* → dev → main
+feature/* → dev-team → dev → main
 ```
 
-* Developers branch from `dev`
-* Open PR into `dev`
+* Developers branch from `dev-team`
+* Open PR into `dev-team` for team review
+* After team approval, `dev-team` is merged into `dev`
 * After testing & stabilization, `dev` is merged into `main` for release
 
 ---
@@ -39,7 +41,7 @@ Use the following patterns:
 
 * Use lowercase kebab-case for descriptions
 * One branch per issue
-* Branch from `dev`, not `main`
+* Branch from `dev-team`, not `dev` or `main`
 
 ---
 
@@ -49,7 +51,8 @@ All changes must be merged via Pull Request.
 
 ### Target branches
 
-* Feature branches → `dev`
+* Feature branches → `dev-team`
+* Integration PRs → `dev` (from `dev-team` only)
 * Release PRs → `main` (from `dev` only)
 
 ### PR must include
@@ -70,7 +73,8 @@ All changes must be merged via Pull Request.
 
 ## 4) Merge Strategy
 
-* Use **Squash and Merge** for feature PRs into `dev`
+* Use **Squash and Merge** for feature PRs into `dev-team`
+* Use **Merge commit** when promoting `dev-team` → `dev` (to preserve team history)
 * Use **Merge commit** when promoting `dev` → `main` (to preserve release history)
 * Delete branch after merge
 
@@ -127,3 +131,9 @@ For `dev`:
 
 * Require CI checks before merge
 * Allow merges only via PR
+
+For `dev-team`:
+
+* Require CI checks before merge
+* Allow merges only via PR
+* At least 1 approval from a team member
