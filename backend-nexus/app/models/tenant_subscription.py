@@ -1,7 +1,16 @@
-from sqlalchemy import ForeignKey, DateTime, Boolean
+import enum
+from sqlalchemy import ForeignKey, DateTime, Text, Enum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from datetime import datetime
+
 from .base import Base, TimestampMixin
+
+
+class SubscriptionStatus(str, enum.Enum):
+    DRAFT = "DRAFT"
+    ACTIVE = "ACTIVE"
+    EXPIRED = "EXPIRED"
+    TERMINATED = "TERMINATED"
 
 
 class TenantSubscription(Base, TimestampMixin):
@@ -9,13 +18,46 @@ class TenantSubscription(Base, TimestampMixin):
 
     id: Mapped[int] = mapped_column(primary_key=True)
 
-    tenant_id: Mapped[int] = mapped_column(ForeignKey("tenants.id"))
-    membership_id: Mapped[int] = mapped_column(ForeignKey("memberships.id"))
+    tenant_id: Mapped[int] = mapped_column(
+        ForeignKey("tenants.id"),
+        nullable=False
+    )
 
-    activated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
-    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    subscription_plan_id: Mapped[int] = mapped_column(
+        ForeignKey("subscription_plans.id"),
+        nullable=False
+    )
 
-    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    status: Mapped[SubscriptionStatus] = mapped_column(
+        Enum(SubscriptionStatus, name="subscription_status"),
+        default=SubscriptionStatus.DRAFT,
+        nullable=False
+    )
+
+    activated_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True
+    )
+
+    expires_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True
+    )
+
+    approved_by: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id"),
+        nullable=True
+    )
+
+    approved_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True
+    )
+
+    terminated_reason: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True
+    )
 
     tenant = relationship("Tenant", back_populates="subscriptions")
-    membership = relationship("Membership", back_populates="subscriptions")
+    subscription_plan = relationship("SubscriptionPlan")

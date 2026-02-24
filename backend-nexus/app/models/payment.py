@@ -1,0 +1,56 @@
+import enum
+
+from sqlalchemy import ForeignKey, Enum, DECIMAL, Integer, Text
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from .base import Base, TimestampMixin
+
+
+class PaymentStatus(str, enum.Enum):
+    INITIATED = "INITIATED"
+    AUTHORIZED = "AUTHORIZED"
+    CAPTURED = "CAPTURED"
+    FAILED = "FAILED"
+    REFUNDED = "REFUNDED"
+
+
+class PaymentType(str, enum.Enum):
+    TENANT_SUBSCRIPTION = "TENANT_SUBSCRIPTION"
+    ENROLLMENT = "ENROLLMENT"
+    ORDER = "ORDER"
+    CONSULTATION = "CONSULTATION"
+
+
+class Payment(Base, TimestampMixin):
+    __tablename__ = "payments"
+
+    payment_id: Mapped[int] = mapped_column(primary_key=True)
+
+    payment_type: Mapped[PaymentType] = mapped_column(
+        Enum(PaymentType, name="payment_type"),
+        nullable=False
+    )
+
+    price: Mapped[float] = mapped_column(
+        DECIMAL,
+        nullable=False
+    )
+
+    tenant_id: Mapped[int] = mapped_column(
+        ForeignKey("tenants.id"),
+        nullable=False
+    )
+
+    stripe_payment_intent_id: Mapped[str | None] = mapped_column(Text)
+
+    status: Mapped[PaymentStatus] = mapped_column(
+        Enum(PaymentStatus, name="payment_status"),
+        default=PaymentStatus.INITIATED,
+        nullable=False
+    )
+
+    reference_id: Mapped[int | None] = mapped_column(Integer)
+    reference_type: Mapped[str | None] = mapped_column(Text)
+
+    # Relationships
+    tenant = relationship("Tenant", back_populates="payments")

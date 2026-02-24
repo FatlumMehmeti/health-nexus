@@ -28,6 +28,57 @@ class Tenant(Base, TimestampMixin):
     # Relationships
     subscriptions = relationship("TenantSubscription", back_populates="tenant")
     details = relationship("TenantDetails", back_populates="tenant", uselist=False)
-    user_memberships = relationship(
-        "UserTenantMembership", back_populates="tenant", cascade="all, delete-orphan"
+    enrollments = relationship(
+        "Enrollment",
+        back_populates="tenant",
+        cascade="all, delete-orphan"
+    )
+    user_tenant_plans = relationship(
+        "UserTenantPlan",
+        back_populates="tenant",
+        cascade="all, delete-orphan"
+    )
+
+    tenant_departments = relationship(
+        "TenantDepartment",
+        back_populates="tenant",
+        cascade="all, delete-orphan"
+    )
+
+    services = relationship("Service", back_populates="tenant")
+
+    doctors = relationship(
+        "Doctor",
+        back_populates="tenant",
+        cascade="all, delete-orphan"
+    )
+
+    managers = relationship(
+        "TenantManager",
+        back_populates="tenant",
+        cascade="all, delete-orphan"
+    )
+
+    products = relationship(
+        "Product",
+        back_populates="tenant",
+        cascade="all, delete-orphan"
+    )
+
+    carts = relationship(
+        "Cart",
+        back_populates="tenant",
+        cascade="all, delete-orphan"
+    )
+
+    orders = relationship(
+        "Order",
+        back_populates="tenant",
+        cascade="all, delete-orphan"
+    )
+
+    payments = relationship(
+        "Payment",
+        back_populates="tenant",
+        cascade="all, delete-orphan"
     )
