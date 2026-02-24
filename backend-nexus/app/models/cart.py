@@ -36,3 +36,5 @@ class Cart(Base, TimestampMixin):
     # Relationships
     tenant = relationship("Tenant", back_populates="carts")
     patient = relationship("Patient", back_populates="carts")
+
+    items = relationship("CartItem", back_populates="cart", cascade="all, delete-orphan")

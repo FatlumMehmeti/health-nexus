@@ -24,6 +24,7 @@ from .report import Report
 from .recommendation import Recommendation
 from .product import Product
 from .cart import Cart
+from .cart_item import CartItem
 
 __all__ = [
     "Base",
@@ -39,6 +40,7 @@ __all__ = [
     "Patient",
     "Product",
     "Cart",
+    "CartItem",
     "TenantManager",
     "Lead",
     "LeadStatusHistory",
