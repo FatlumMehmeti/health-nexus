@@ -30,9 +30,9 @@ function LandingPage() {
             </span>
           </Link>
           <nav className="flex items-center gap-2">
-            <Link to="/dashboard">
+            <Link to="/login" search={{ reason: undefined, redirect: undefined }}>
               <Button size="sm" variant="ghost" className="font-medium">
-                Dashboard
+                Sign in
               </Button>
             </Link>
             <Link to="/register">

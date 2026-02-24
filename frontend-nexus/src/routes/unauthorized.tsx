@@ -7,6 +7,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { useAuthStore } from "@/stores/auth.store";
 
 /** Dedicated 403 screen for users without required permissions. Styled consistently with login (Card, typography). */
 export const Route = createFileRoute("/unauthorized")({
@@ -14,6 +15,8 @@ export const Route = createFileRoute("/unauthorized")({
 });
 
 function UnauthorizedPage() {
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+
   return (
     <div
       className="flex min-h-screen flex-col items-center justify-center px-4"
@@ -37,12 +40,11 @@ function UnauthorizedPage() {
           <Button variant="outline" onClick={() => window.history.back()}>
             Go back
           </Button>
-          <Link to="/dashboard">
-            <Button variant="outline">Dashboard</Button>
-          </Link>
-          <Link to="/login" search={{ reason: undefined, redirect: undefined }}>
-            <Button>Go to login</Button>
-          </Link>
+          {!isAuthenticated && (
+            <Link to="/login" search={{ reason: undefined, redirect: undefined }}>
+              <Button>Go to login</Button>
+            </Link>
+          )}
         </CardContent>
       </Card>
     </div>
