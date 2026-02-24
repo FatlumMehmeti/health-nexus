@@ -44,3 +44,9 @@ class Patient(Base, TimestampMixin):
         back_populates="patient",
         cascade="all, delete-orphan"
     )
+
+    orders = relationship(
+        "Order",
+        back_populates="patient",
+        cascade="all, delete-orphan"
+    )
