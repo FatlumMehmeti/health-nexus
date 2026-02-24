@@ -21,6 +21,7 @@ from .consultation_booking import ConsultationBooking, ConsultationStatus
 from .appointment import Appointment
 from .appointment_status_history import AppointmentStatusHistory
 from .report import Report
+from .recommendation import Recommendation
 
 __all__ = [
     "Base",
@@ -41,6 +42,7 @@ __all__ = [
     "Appointment",
     "AppointmentStatusHistory",
     "Report",
+    "Recommendation",
     "FontKey",
     "Membership",
     "TenantSubscription",
