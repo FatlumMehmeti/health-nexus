@@ -11,6 +11,7 @@ from .user_tenant_membership import UserTenantMembership
 from .session import Session
 from .department import Department
 from .tenant_department import TenantDepartment
+from .service import Service
 
 __all__ = [
     "Base",
@@ -21,6 +22,7 @@ __all__ = [
     "TenantDetails",
     "Department",
     "TenantDepartment",
+    "Service",
     "FontKey",
     "Membership",
     "TenantSubscription",
