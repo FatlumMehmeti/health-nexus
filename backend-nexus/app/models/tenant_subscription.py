@@ -1,8 +1,16 @@
-from sqlalchemy import ForeignKey, DateTime, Text
+import enum
+from sqlalchemy import ForeignKey, DateTime, Text, Enum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from datetime import datetime
 
 from .base import Base, TimestampMixin
+
+
+class SubscriptionStatus(str, enum.Enum):
+    DRAFT = "DRAFT"
+    ACTIVE = "ACTIVE"
+    EXPIRED = "EXPIRED"
+    TERMINATED = "TERMINATED"
 
 
 class TenantSubscription(Base, TimestampMixin):
@@ -17,6 +25,12 @@ class TenantSubscription(Base, TimestampMixin):
 
     subscription_plan_id: Mapped[int] = mapped_column(
         ForeignKey("subscription_plans.id"),
+        nullable=False
+    )
+
+    status: Mapped[SubscriptionStatus] = mapped_column(
+        Enum(SubscriptionStatus, name="subscription_status"),
+        default=SubscriptionStatus.DRAFT,
         nullable=False
     )
 

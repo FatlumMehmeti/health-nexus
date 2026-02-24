@@ -7,7 +7,7 @@ from datetime import datetime, timedelta, timezone
 from app.db import SessionLocal
 from app.models.tenant import Tenant, TenantStatus
 from app.models.subscription_plan import SubscriptionPlan
-from app.models.tenant_subscription import TenantSubscription
+from app.models.tenant_subscription import TenantSubscription, SubscriptionStatus
 from app.schemas.tenant import TenantRead, TenantStatusUpdate
 from app.services.audit_service import create_audit_log
 from app.models.tenant_audit_log import TenantAuditEventType
@@ -116,7 +116,8 @@ def update_tenant_status(
         existing_subscription = db.query(TenantSubscription).filter(
             TenantSubscription.tenant_id == tenant_id,
             TenantSubscription.expires_at > datetime.now(timezone.utc),
-            TenantSubscription.activated_at.isnot(None)
+            TenantSubscription.activated_at.isnot(None),
+            TenantSubscription.status == SubscriptionStatus.ACTIVE
         ).first()
         
         # If there is no subscription yet, create a new subscription with the FREE plan
@@ -134,6 +135,7 @@ def update_tenant_status(
                 expires_at=expires_at,
                 approved_by=None,
                 approved_at=activated_at,
+                status=SubscriptionStatus.ACTIVE
             )
 
             db.add(new_subscription)
