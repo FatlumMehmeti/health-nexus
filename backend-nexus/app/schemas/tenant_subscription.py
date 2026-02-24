@@ -1,13 +1,11 @@
 from pydantic import BaseModel
 from datetime import datetime
+from typing import Optional
 
 
 class TenantSubscriptionBase(BaseModel):
     tenant_id: int
-    membership_id: int
-    activated_at: datetime
-    expires_at: datetime
-    is_active: bool = True
+    subscription_plan_id: int
 
 
 class TenantSubscriptionCreate(TenantSubscriptionBase):
@@ -16,8 +14,11 @@ class TenantSubscriptionCreate(TenantSubscriptionBase):
 
 class TenantSubscriptionRead(TenantSubscriptionBase):
     id: int
-    created_at: datetime
-    updated_at: datetime
+    activated_at: Optional[datetime]
+    expires_at: Optional[datetime]
+    approved_by: Optional[int]
+    approved_at: Optional[datetime]
+    terminated_reason: Optional[str]
 
     class Config:
         from_attributes = True

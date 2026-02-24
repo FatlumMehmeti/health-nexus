@@ -115,21 +115,27 @@ def update_tenant_status(
         # Check if tenant already has a subscription
         existing_subscription = db.query(TenantSubscription).filter(
             TenantSubscription.tenant_id == tenant_id,
-            TenantSubscription.is_active == True
+            TenantSubscription.expires_at > datetime.now(timezone.utc),
+            TenantSubscription.activated_at.isnot(None)
         ).first()
         
         # If there is no subscription yet, create a new subscription with the FREE plan
         if not existing_subscription:
             activated_at = datetime.now(timezone.utc)
-            expires_at = activated_at + timedelta(days=free_plan.duration)
-            
+
+            expires_at = activated_at + timedelta(
+                days=free_plan.duration
+            )
+
             new_subscription = TenantSubscription(
                 tenant_id=tenant_id,
                 subscription_plan_id=free_plan.id,
                 activated_at=activated_at,
                 expires_at=expires_at,
-                is_active=True,
+                approved_by=None,
+                approved_at=activated_at,
             )
+
             db.add(new_subscription)
             
     tenant.status = new_status
