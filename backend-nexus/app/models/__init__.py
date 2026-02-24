@@ -31,6 +31,7 @@ from .order_item import OrderItem
 from .payment import Payment
 from .enrollment_status_history import EnrollmentStatusHistory
 from .audit_event import AuditEvent
+from .offer_delivery import OfferDelivery
 
 __all__ = [
     "Base",
@@ -62,6 +63,7 @@ __all__ = [
     "EnrollmentStatusHistory",
     "AuditEvent",
     "UserTenantPlan",
+    "OfferDelivery",
     "FontKey",
     "SubscriptionPlan",
     "TenantSubscription",

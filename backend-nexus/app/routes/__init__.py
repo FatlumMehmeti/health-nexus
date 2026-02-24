@@ -2,33 +2,5 @@ from .role import router as role_router
 from .superadmin_tenant import router as superadmin_tenant_router
 from .public_tenant import router as public_tenant_router
 from .tenant_audit_log import router as tenant_audit_log
-from .department import router as department_router
-from .tenant_department import router as tenant_department_router
-from .service import router as service_router
-from .doctor import router as doctor_router
-from .patient import router as patient_router
-from .tenant_manager import router as tenant_manager_router
-from .lead import router as lead_router
-from .consultation_booking import router as consultation_booking_router
-from .appointment import router as appointment_router
-from .user import router as user_router
-from .report import router as report_router
-from .recommendation import router as recommendation_router
-from .product import router as product_router
-from .cart import router as cart_router
-from .cart_item import router as cart_item_router
-from .order import router as order_router
-from .order_item import router as order_item_router
-from .payment import router as payment_router
-from .enrollment import router as enrollment_router
-from .user_tenant_plan import router as user_tenant_plan_router
-from .tenant_subscription import router as tenant_subscription_router
-from .enrollment_status_history import router as enrollment_status_history_router
-from .audit_event import router as audit_event_router
 
-__all__ = ["role_router", "superadmin_tenant_router", "public_tenant_router", 'tenant_audit_log', 'department_router', 'tenant_department_router', 'service_router',
-           'doctor_router', 'patient_router', 'tenant_manager_router', 'lead_router', 'consultation_booking_router', 'appointment_router', 'user_router',
-           'report_router', 'recommendation_router', 'product_router', 'cart_router',
-           'cart_item_router', 'order_router', 'order_item_router', 'payment_router',
-           'enrollment_router', 'user_tenant_plan_router', 'tenant_subscription_router',
-           'enrollment_status_history_router', 'audit_event_router']
+__all__ = ["role_router", "superadmin_tenant_router", "public_tenant_router", 'tenant_audit_log']
