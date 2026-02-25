@@ -1,6 +1,3 @@
-# Thus file holds endpoints related to tenant management for the Super Admin dashboard
-# (e.g: list tenants, view tenant details, approve/reject/suspend tenants etc).
-
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta, timezone
@@ -14,6 +11,9 @@ from app.models.tenant_subscription import TenantSubscription, SubscriptionStatu
 from app.schemas.tenant import TenantRead, TenantStatusUpdate
 from app.services.audit_service import create_audit_log
 from app.models.tenant_audit_log import TenantAuditEventType
+
+# This file holds endpoints related to tenant management for the Super Admin dashboard 
+# (e.g: list tenants, view tenant details, approve/reject/suspend tenants etc).
 
 router = APIRouter(prefix="/tenants", tags=["Super Admin - Tenants"])
 
@@ -58,7 +58,7 @@ def update_tenant_status(
     tenant_id: int,
     status_update: TenantStatusUpdate,
     db: Session = Depends(get_db),
-    _: dict = Depends(require_role("SUPER_ADMIN")),
+    user: dict = Depends(require_role("SUPER_ADMIN")),
 ):
     tenant = db.query(Tenant).filter(Tenant.id == tenant_id).first()
     if not tenant:
@@ -133,7 +133,7 @@ def update_tenant_status(
         entity_id=tenant.id,
         old_value={"status": current_status.value},
         new_value={"status": new_status.value},
-        performed_by_user_id=None,  # change later when auth implemented
+        performed_by_user_id=user["user_id"],
         performed_by_role="SUPER_ADMIN",
         reason=status_update.reason,
     )
