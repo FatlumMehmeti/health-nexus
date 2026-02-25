@@ -26,13 +26,18 @@ function RootLayout() {
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps -- run once on mount
 
-  // Session expiration: redirect to /login with reason so the page can show "Session expired" / "Session revoked".
+  // Session expiration: redirect to /login with reason – skip on public pages so /landing/:slug stays public with stale token.
+  const isPublicPage =
+    pathname === '/' ||
+    pathname === '/login' ||
+    pathname === '/register' ||
+    pathname.startsWith('/landing/')
   useEffect(() => {
-    if (pathname === '/login') return
+    if (isPublicPage) return
     if (!isAuthenticated && (authErrorReason === 'expired' || authErrorReason === 'revoked')) {
       navigate({ to: '/login', search: { reason: authErrorReason, redirect: undefined }, replace: true })
     }
-  }, [authErrorReason, isAuthenticated, navigate, pathname])
+  }, [authErrorReason, isAuthenticated, isPublicPage, navigate, pathname])
 
   return (
     <>
