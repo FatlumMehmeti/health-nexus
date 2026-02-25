@@ -1,5 +1,5 @@
 import { api } from "@/lib/api-client";
-import type { TenantCreate, TenantRead, TenantStatus } from "@/interfaces";
+import type { TenantCreate, TenantRead, TenantStatus, FontRead } from "@/interfaces";
 
 /**
  * Tenant service for public and superadmin tenant operations
@@ -11,7 +11,7 @@ export const tenantsService = {
    * @returns Promise with created tenant (status: pending)
    */
   createApplication: (data: TenantCreate) =>
-    api.post<TenantRead>("/api/public/tenants", data),
+    api.post<TenantRead>("/api/tenants", data),
 
   /**
    * List tenants for superadmin dashboard with optional status filter
@@ -46,4 +46,7 @@ export const tenantsService = {
       reason,
     });
   },
+
+  /** List fonts for tenant branding dropdown (no auth). */
+  listFonts: () => api.get<FontRead[]>("/api/fonts"),
 };

@@ -5,6 +5,8 @@ from .enrollment import Enrollment
 from .user_tenant_plan import UserTenantPlan
 from .tenant import Tenant, TenantStatus
 from .tenant_audit_log import TenantAuditLog
+from .font import Font
+from .brand_palette import BrandPalette
 from .tenant_details import TenantDetails, FontKey
 from .subscription_plan import SubscriptionPlan
 from .tenant_subscription import TenantSubscription
@@ -34,6 +36,8 @@ from .offer_delivery import OfferDelivery
 
 __all__ = [
     "Base",
+    "Font",
+    "BrandPalette",
     "Role",
     "User",
     "Tenant",
