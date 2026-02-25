@@ -1,16 +1,17 @@
 /**
  * Public tenant landing with simple tabs:
  * HOME (hero/about) + DEPARTMENTS (table) implemented,
- * PRODUCTS placeholder; PLANS uses mock data per tenant and allows
- * a visitor to choose one of the offered plans locally.
+ * PRODUCTS placeholder; PLANS uses per‑tenant plans and allows
+ * a visitor to choose one of the offered plans.
  *
- * When a TENANT_MANAGER is logged in, a mock "Manage plans" panel
- * is shown to add/hide plans client-side only (no backend yet).
+ * When a TENANT_MANAGER is logged in, a simple "Manage plans" panel
+ * is shown to create and edit tenant plans via the backend.
  *
  * Used by /landing/$tenantSlug (PRD-03).
  */
 import type { ReactNode } from 'react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { IconEdit } from '@tabler/icons-react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
@@ -26,6 +27,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useAuthStore } from '@/stores/auth.store'
+import { tenantPlansService, type TenantPlanApi } from '@/services/tenant-plans.service'
 
 export type TenantLandingConfig = Record<
   string,
@@ -74,8 +76,9 @@ export function TenantLanding({
   config,
   backToHome,
 }: TenantLandingProps) {
-  const { role } = useAuthStore()
+  const { role, tenantId } = useAuthStore()
   const isTenantManager = role === 'TENANT_MANAGER'
+  const tenantNumericId = isTenantManager && tenantId ? Number(tenantId) : null
 
   const tenant = config[tenantSlug]
   const title = tenant?.title ?? `Tenant: ${tenantSlug}`
@@ -86,15 +89,11 @@ export function TenantLanding({
     tenant?.about ??
     'This is a sample description for the tenant landing page. Real content will come from the backend.'
   const fontClass = tenant?.primaryFontClass ?? 'font-sans'
+  // Local state for plans; initially populated from backend (for managers) or static config.
+  const [plans, setPlans] = useState<TenantPlan[]>([])
+  const [selectedPlanId, setSelectedPlanId] = useState<string | undefined>(undefined)
 
-  // Local mock state for plans so tenant managers can experiment
-  // with adding/hiding plans without backend persistence.
-  const [plans, setPlans] = useState<TenantPlan[]>(() => tenant?.plans ?? [])
-  const [selectedPlanId, setSelectedPlanId] = useState<string | undefined>(() => {
-    const firstActive = plans.find((plan) => plan.isActive !== false)
-    return firstActive?.id ?? plans[0]?.id
-  })
-
+  // Simple inline form state for creating/updating a single plan.
   const [newPlanName, setNewPlanName] = useState('')
   const [newPlanPrice, setNewPlanPrice] = useState('0')
   const [editingPlanId, setEditingPlanId] = useState<string | null>(null)
@@ -113,6 +112,104 @@ export function TenantLanding({
     if (value === null || value === undefined) return `Unlimited ${label ?? ''}`.trim()
     return `${value} ${label ?? ''}`.trim()
   }
+
+  // Create a plan for the current tenant manager and merge it into local state.
+  const createPlanMutation = useMutation({
+    mutationFn: async ({ name, price }: { name: string; price: number }) => {
+      if (!tenantNumericId) {
+        throw new Error('Missing tenant id for plan creation')
+      }
+      const created = await tenantPlansService.create({
+        tenant_id: tenantNumericId,
+        name,
+        price,
+        is_active: true,
+      })
+      return created
+    },
+    onSuccess: (apiPlan) => {
+      const mapped = mapApiPlanToTenantPlan(apiPlan)
+      setPlans((prev) => [...prev, mapped])
+      setSelectedPlanId(mapped.id ?? mapped.name)
+    },
+  })
+
+  // Update a single plan (name/price/visibility) and keep local state in sync.
+  const updatePlanMutation = useMutation({
+    mutationFn: async ({
+      id,
+      data,
+    }: {
+      id: number
+      data: Partial<Pick<TenantPlanApi, 'name' | 'price' | 'is_active'>>
+    }) => {
+      const updated = await tenantPlansService.update(id, data)
+      return updated
+    },
+    onSuccess: (apiPlan) => {
+      const mapped = mapApiPlanToTenantPlan(apiPlan)
+      setPlans((prev) => prev.map((p) => (p.id === String(apiPlan.id) ? mapped : p)))
+    },
+    onError: (_err, variables) => {
+      // Revert optimistic toggle if backend update fails
+      if (variables.data?.is_active !== undefined) {
+        setPlans((prev) =>
+          prev.map((p) =>
+            p.id === String(variables.id)
+              ? { ...p, isActive: !variables.data!.is_active }
+              : p,
+          ),
+        )
+      }
+    },
+  })
+
+  // Normalize backend plan into the shape used by the landing UI.
+  const mapApiPlanToTenantPlan = (apiPlan: TenantPlanApi): TenantPlan => ({
+    id: String(apiPlan.id),
+    name: apiPlan.name,
+    description: apiPlan.description ?? undefined,
+    price: apiPlan.price,
+    currency: 'EUR',
+    durationDays: apiPlan.duration ?? null,
+    maxAppointments: apiPlan.max_appointments ?? null,
+    maxConsultations: apiPlan.max_consultations ?? null,
+    isActive: apiPlan.is_active !== false,
+  })
+
+  // When logged in as a tenant manager, hydrate plans from backend for the current tenant.
+  const { data: backendPlans } = useQuery({
+    queryKey: ['tenant-plans', tenantNumericId],
+    enabled: Boolean(tenantNumericId),
+    queryFn: () => tenantPlansService.listByTenant(tenantNumericId!),
+  })
+
+  useEffect(() => {
+    // For tenant managers, prefer backend plans when available
+    if (tenantNumericId && backendPlans) {
+      const mapped = backendPlans.map(mapApiPlanToTenantPlan)
+      setPlans(mapped)
+      if (mapped.length > 0) {
+        const firstActive = mapped.find((p) => p.isActive !== false) ?? mapped[0]
+        setSelectedPlanId(firstActive.id ?? firstActive.name)
+      } else {
+        setSelectedPlanId(undefined)
+      }
+      return
+    }
+
+    // For public users or when backend is not available yet, fall back to config
+    if (!tenantNumericId) {
+      const basePlans = tenant?.plans ?? []
+      setPlans(basePlans)
+      if (basePlans.length > 0) {
+        const firstActive = basePlans.find((p) => p.isActive !== false) ?? basePlans[0]
+        setSelectedPlanId(firstActive.id ?? firstActive.name)
+      } else {
+        setSelectedPlanId(undefined)
+      }
+    }
+  }, [tenantNumericId, backendPlans, tenant])
 
   return (
     <div className="relative flex min-h-screen flex-col overflow-hidden">
@@ -299,41 +396,24 @@ export function TenantLanding({
                       type="button"
                       size="sm"
                       className="mt-2 sm:mt-0"
-                      onClick={() => {
+                      onClick={async () => {
                         const trimmedName = newPlanName.trim()
                         if (!trimmedName) return
                         const priceNumber = Number(newPlanPrice)
 
                         if (editingPlanId) {
-                          setPlans((prev) =>
-                            prev.map((p) =>
-                              (p.id ?? p.name) === editingPlanId
-                                ? {
-                                    ...p,
-                                    name: trimmedName,
-                                    price: Number.isFinite(priceNumber) ? priceNumber : p.price,
-                                  }
-                                : p,
-                            ),
-                          )
+                          const numericId = Number(editingPlanId)
+                          await updatePlanMutation.mutateAsync({
+                            id: numericId,
+                            data: {
+                              name: trimmedName,
+                              price: Number.isFinite(priceNumber) ? priceNumber : undefined,
+                            },
+                          })
                           setEditingPlanId(null)
                         } else {
-                          const id = `mock-${Date.now()}`
-                          const nextPlans: TenantPlan[] = [
-                            ...plans,
-                            {
-                              id,
-                              name: trimmedName,
-                              price: Number.isFinite(priceNumber) ? priceNumber : 0,
-                              currency: 'EUR',
-                              durationDays: null,
-                              maxAppointments: null,
-                              maxConsultations: null,
-                              isActive: true,
-                            },
-                          ]
-                          setPlans(nextPlans)
-                          setSelectedPlanId(id)
+                          const price = Number.isFinite(priceNumber) ? priceNumber : 0
+                          await createPlanMutation.mutateAsync({ name: trimmedName, price })
                         }
 
                         setNewPlanName('')
@@ -400,11 +480,19 @@ export function TenantLanding({
                                 size="icon"
                                 className="h-6 w-6 text-[0.65rem]"
                                 onClick={() => {
+                                  if (!plan.id) return
+                                  const numericId = Number(plan.id)
+                                  const nextActive = !plan.isActive
+                                  // Optimistic update so Hide/Show reflects immediately
                                   setPlans((prev) =>
                                     prev.map((p) =>
-                                      p === plan ? { ...p, isActive: p.isActive === false } : p,
+                                      p.id === plan.id ? { ...p, isActive: nextActive } : p,
                                     ),
                                   )
+                                  updatePlanMutation.mutate({
+                                    id: numericId,
+                                    data: { is_active: nextActive },
+                                  })
                                 }}
                               >
                                 {plan.isActive === false ? 'Show' : 'Hide'}
@@ -441,7 +529,8 @@ export function TenantLanding({
                 </section>
               )}
 
-              {plans.length > 0 && selectedPlanId && (
+              {/* Only show selected-plan summary for non–tenant-managers (they manage plans, not choose one). */}
+              {!isTenantManager && plans.length > 0 && selectedPlanId && (
                 <div className="mx-auto max-w-md rounded-xl border bg-card/60 px-4 py-3 text-xs text-muted-foreground sm:text-sm">
                   <span className="font-medium text-foreground">Selected plan:</span>{' '}
                   <span>
@@ -457,7 +546,7 @@ export function TenantLanding({
               ) : (
                 <div className="grid gap-4 md:grid-cols-3">
                   {plans.map((plan) => {
-                    const isSelected = selectedPlanId === plan.id
+                    const isSelected = !isTenantManager && selectedPlanId === plan.id
                     return (
                       <div
                         key={plan.id ?? plan.name}
@@ -512,20 +601,23 @@ export function TenantLanding({
                           currently offered plans.
                         </div>
 
-                        <div className="mt-4 flex justify-end">
-                          <button
-                            type="button"
-                            className="inline-flex items-center rounded-full bg-primary px-3 py-1 text-xs font-medium text-primary-foreground transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground"
-                            onClick={() => setSelectedPlanId(plan.id ?? plan.name)}
-                            disabled={plan.isActive === false}
-                          >
-                            {plan.isActive === false
-                              ? 'Unavailable'
-                              : selectedPlanId === (plan.id ?? plan.name)
-                                ? 'Selected'
-                                : 'Choose this plan'}
-                          </button>
-                        </div>
+                        {/* Only show "Choose this plan" for non–tenant-managers. */}
+                        {!isTenantManager && (
+                          <div className="mt-4 flex justify-end">
+                            <button
+                              type="button"
+                              className="inline-flex items-center rounded-full bg-primary px-3 py-1 text-xs font-medium text-primary-foreground transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground"
+                              onClick={() => setSelectedPlanId(plan.id ?? plan.name)}
+                              disabled={plan.isActive === false}
+                            >
+                              {plan.isActive === false
+                                ? 'Unavailable'
+                                : selectedPlanId === (plan.id ?? plan.name)
+                                  ? 'Selected'
+                                  : 'Choose this plan'}
+                            </button>
+                          </div>
+                        )}
                       </div>
                     )
                   })}
