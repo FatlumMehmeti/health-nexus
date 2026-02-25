@@ -6,6 +6,10 @@ from decimal import Decimal
 from app.auth.auth_utils import hash_password
 from app.db import SessionLocal
 from app.models import (
+    Font,
+    BrandTheme,
+    ProductTemplate,
+    Product,
     SubscriptionPlan,
     Role,
     Tenant,
@@ -43,6 +47,8 @@ SEED_USERS = [
     SeedUser("Doctor", "Two", "doctor.two@seed.com", "Team2026@", "DOCTOR"),
     SeedUser("Doctor", "Three", "doctor.three@seed.com", "Team2026@", "DOCTOR"),
     SeedUser("Doctor", "Four", "doctor.four@seed.com", "Team2026@", "DOCTOR"),
+    SeedUser("Doctor", "Five", "doctor.five@seed.com", "Team2026@", "DOCTOR"),
+    SeedUser("Doctor", "Six", "doctor.six@seed.com", "Team2026@", "DOCTOR"),
     SeedUser("Sales", "Agent", "sales.agent@seed.com", "Team2026@", "SALES"),
     SeedUser("Client", "User", "client.user@seed.com", "Team2026@", "CLIENT"),
 ]
@@ -72,36 +78,69 @@ SEED_TENANTS = [
     {"name": "Pioneer Medical Group", "slug": "pioneer-medical-group", "email": "contact@pioneermed.com", "licence_number": "PMG-016", "status": TenantStatus.archived},
 ]
 
-# tenant_name used to resolve tenant_id at seed time
+# id, name, primary, secondary, background, foreground, muted, sort_order
+SEED_BRAND_THEMES = [
+    (1, "Ocean Blue", "#2563eb", "#0ea5e9", "#f0f9ff", "#1e293b", "#94a3b8", 0),
+    (2, "Forest Green", "#059669", "#10b981", "#ecfdf5", "#134e4a", "#6b7280", 1),
+    (3, "Royal Purple", "#7c3aed", "#a78bfa", "#f5f3ff", "#4c1d95", "#9ca3af", 2),
+    (4, "Sunset Orange", "#ea580c", "#fb923c", "#fff7ed", "#9a3412", "#6b7280", 3),
+    (5, "Teal Wave", "#0891b2", "#22d3ee", "#ecfeff", "#155e75", "#94a3b8", 4),
+    (6, "Crimson Red", "#dc2626", "#f87171", "#fef2f2", "#991b1b", "#94a3b8", 5),
+    (7, "Midnight Indigo", "#4f46e5", "#818cf8", "#eef2ff", "#312e81", "#9ca3af", 6),
+    (8, "Mint Fresh", "#10b981", "#34d399", "#d1fae5", "#064e3b", "#6b7280", 7),
+    (9, "Amber Gold", "#d97706", "#fbbf24", "#fffbeb", "#78350f", "#94a3b8", 8),
+    (10, "Rose Pink", "#e11d48", "#fb7185", "#fff1f2", "#881337", "#94a3b8", 9),
+]
+
+# id, name, header_font_family, body_font_family, sort_order
+SEED_FONTS = [
+    (1, "Inter", "Inter", "Inter", 0),
+    (2, "Poppins + Open Sans", "Poppins", "Open Sans", 1),
+    (3, "Roboto Slab + Roboto", "Roboto Slab", "Roboto", 2),
+    (4, "Montserrat + Lato", "Montserrat", "Lato", 3),
+    (5, "Playfair + Source Sans", "Playfair Display", "Source Sans 3", 4),
+]
+
+# tenant_name used to resolve tenant_id at seed time. 5 brand colors: primary, secondary, background, foreground, muted
 SEED_TENANT_DETAILS = [
-    {"tenant_name": "Bluestone Clinic", "logo": "sunrise.webp", "image": "clinic-bluestone.webp", "moto": "Your health, our priority", "title": "Bluestone Clinic",
+    {"tenant_name": "Bluestone Clinic", "logo": "https://marketplace.canva.com/EAGeAJxtMvc/1/0/1600w/canva-blue-and-white-simple-medical-health-logo-arM9aB02SLw.jpg", "image": "https://images.unsplash.com/photo-1551076805-e1869033e561?w=1200&q=80", "moto": "Your health, our priority", "title": "Bluestone Clinic",
      "slogan": "Quality care, every visit", "about_text": "Bluestone Clinic has served the community for over 20 years.",
-     "brand_color_primary": "#2563eb", "brand_color_secondary": "#0ea5e9", "font_key": "f1"},
-    {"tenant_name": "Riverside Health Partners", "logo": "valley.webp", "image": "clinic-riverside.webp", "moto": "Care close to home", "title": "Riverside Health Partners",
+     "brand_color_primary": "#2563eb", "brand_color_secondary": "#0ea5e9", "brand_color_background": "#f0f9ff", "brand_color_foreground": "#1e293b", "brand_color_muted": "#94a3b8",
+     "font_id": 1},
+    {"tenant_name": "Riverside Health Partners", "logo": "https://media.istockphoto.com/id/1624291952/vector/medical-health-logo-design-illustration.jpg?s=612x612&w=0&k=20&c=RdOq1SRcWwS_12_c5Zg2_QOUz1GD-YwGvfRodtOPN5w=", "image": "https://images.unsplash.com/photo-1551076805-e1869033e561?w=1200&q=80", "moto": "Care close to home", "title": "Riverside Health Partners",
      "slogan": "Partner in your wellness", "about_text": "Riverside Health Partners offers comprehensive care.",
-     "brand_color_primary": "#059669", "brand_color_secondary": "#10b981", "font_key": "f2"},
-    {"tenant_name": "Apex Medical Group", "logo": "metro.webp", "image": "clinic-apex.webp", "moto": "Excellence in urban healthcare", "title": "Apex Medical Group",
-     "slogan": "Urban healthcare at its best", "about_text": "Apex Medical Group serves downtown with modern facilities.",
-     "brand_color_primary": "#7c3aed", "brand_color_secondary": "#a78bfa", "font_key": "f3"},
-    {"tenant_name": "Northgate Wellness", "logo": "pacific.webp", "image": "clinic-northgate.webp", "moto": "Holistic care for better living", "title": "Northgate Wellness",
+     "brand_color_primary": "#059669", "brand_color_secondary": "#10b981", "brand_color_background": "#ecfdf5", "brand_color_foreground": "#134e4a", "brand_color_muted": "#6b7280",
+     "font_id": 2},
+    {"tenant_name": "Apex Medical Group",
+     "logo": "https://img.freepik.com/free-vector/hospital-logo-design-vector-medical-cross_53876-136743.jpg?semt=ais_hybrid&w=740&q=80",
+     "image": "https://images.unsplash.com/photo-1551076805-e1869033e561?w=1200&q=80",
+     "moto": "Excellence in urban healthcare",
+     "title": "Apex Medical Group",
+     "about_text": "Apex Medical Group has been the premier healthcare provider in the downtown metro area for over 25 years. Our state-of-the-art facility combines cutting-edge medical technology with a compassionate, patient-centered approach. We offer a full spectrum of services across six specialized departments—General Practice, Cardiology, Dermatology, Neurology, Orthopedics, and Pediatrics—staffed by board-certified physicians and dedicated support teams. From routine check-ups to advanced diagnostics and specialized treatments, Apex is your trusted partner for lasting health.",
+     "brand_color_primary": "#7c3aed", "brand_color_secondary": "#a78bfa", "brand_color_background": "#f5f3ff", "brand_color_foreground": "#4c1d95", "brand_color_muted": "#9ca3af",
+     "font_id": 3},
+    {"tenant_name": "Northgate Wellness", "logo": "https://marketplace.canva.com/EAGeAJxtMvc/1/0/1600w/canva-blue-and-white-simple-medical-health-logo-arM9aB02SLw.jpg", "image": "https://images.unsplash.com/photo-1551076805-e1869033e561?w=1200&q=80", "moto": "Holistic care for better living", "title": "Northgate Wellness",
      "slogan": "Mind, body, spirit", "about_text": "Northgate Wellness focuses on holistic approaches.",
-     "brand_color_primary": "#dc2626", "brand_color_secondary": "#f87171", "font_key": "f4"},
-    {"tenant_name": "Sunrise Family Practice", "logo": "sunrise.webp", "image": "clinic-sunrise.webp", "moto": "Family care you can trust", "title": "Sunrise Family Practice",
+     "brand_color_primary": "#dc2626", "brand_color_secondary": "#f87171", "brand_color_background": "#fef2f2", "brand_color_foreground": "#991b1b", "brand_color_muted": "#94a3b8",
+     "font_id": 4},
+    {"tenant_name": "Sunrise Family Practice", "logo": "https://media.istockphoto.com/id/1624291952/vector/medical-health-logo-design-illustration.jpg?s=612x612&w=0&k=20&c=RdOq1SRcWwS_12_c5Zg2_QOUz1GD-YwGvfRodtOPN5w=", "image": "https://images.unsplash.com/photo-1551076805-e1869033e561?w=1200&q=80", "moto": "Family care you can trust", "title": "Sunrise Family Practice",
      "slogan": "Your family's health partner", "about_text": "Sunrise Family Practice provides family-focused care.",
-     "brand_color_primary": "#ea580c", "brand_color_secondary": "#fb923c", "font_key": "f5"},
-    {"tenant_name": "MetroCare Associates", "logo": "metro.webp", "image": "clinic-metrocare.webp", "moto": "Urban healthcare excellence", "title": "MetroCare Associates",
+     "brand_color_primary": "#ea580c", "brand_color_secondary": "#fb923c", "brand_color_background": "#fff7ed", "brand_color_foreground": "#9a3412", "brand_color_muted": "#6b7280",
+     "font_id": 5},
+    {"tenant_name": "MetroCare Associates", "logo": "https://img.freepik.com/free-vector/hospital-logo-design-vector-medical-cross_53876-136743.jpg?semt=ais_hybrid&w=740&q=80", "image": "https://images.unsplash.com/photo-1551076805-e1869033e561?w=1200&q=80", "moto": "Urban healthcare excellence", "title": "MetroCare Associates",
      "slogan": "Care in the heart of the city", "about_text": "MetroCare Associates offers metro-area healthcare.",
-     "brand_color_primary": "#0891b2", "brand_color_secondary": "#22d3ee", "font_key": "f1"},
-    {"tenant_name": "Valley View Medical", "logo": "valley.webp", "image": "clinic-valley.webp", "moto": "Your valley healthcare partner", "title": "Valley View Medical"},
-    {"tenant_name": "Greenfield Clinic", "logo": "sunrise.webp", "image": "clinic-greenfield.webp", "moto": "Growing with your community", "title": "Greenfield Clinic"},
-    {"tenant_name": "Coastal Health Group", "logo": "pacific.webp", "image": "clinic-coastal.webp", "moto": "Coastal care at its best", "title": "Coastal Health Group"},
-    {"tenant_name": "Downtown Wellness Hub", "logo": "metro.webp", "image": "clinic-downtown.webp", "moto": "Downtown wellness solutions", "title": "Downtown Wellness Hub"},
-    {"tenant_name": "Peak Performance Health", "logo": "valley.webp", "image": "clinic-peak.webp", "moto": "Reach your health peak", "title": "Peak Performance Health"},
-    {"tenant_name": "Urban Care Clinic", "logo": "metro.webp", "image": "clinic-urban.webp", "moto": "Urban healthcare access", "title": "Urban Care Clinic"},
-    {"tenant_name": "Harbor Medical Center", "logo": "pacific.webp", "image": "clinic-harbor.webp", "moto": "Your harbor for health", "title": "Harbor Medical Center"},
-    {"tenant_name": "Summit Health Partners", "logo": "valley.webp", "image": "clinic-summit.webp", "moto": "Partners in summit health", "title": "Summit Health Partners"},
-    {"tenant_name": "Legacy Care Network", "logo": "sunrise.webp", "image": "clinic-legacy.webp", "moto": "Legacy of care", "title": "Legacy Care Network"},
-    {"tenant_name": "Pioneer Medical Group", "logo": "pacific.webp", "image": "clinic-pioneer.webp", "moto": "Pioneering better health", "title": "Pioneer Medical Group"},
+     "brand_color_primary": "#0891b2", "brand_color_secondary": "#22d3ee", "brand_color_background": "#ecfeff", "brand_color_foreground": "#155e75", "brand_color_muted": "#94a3b8",
+     "font_id": 1},
+    {"tenant_name": "Valley View Medical", "logo": "https://marketplace.canva.com/EAGeAJxtMvc/1/0/1600w/canva-blue-and-white-simple-medical-health-logo-arM9aB02SLw.jpg", "image": "https://images.unsplash.com/photo-1551076805-e1869033e561?w=1200&q=80", "moto": "Your valley healthcare partner", "title": "Valley View Medical", "font_id": 1},
+    {"tenant_name": "Greenfield Clinic", "logo": "https://media.istockphoto.com/id/1624291952/vector/medical-health-logo-design-illustration.jpg?s=612x612&w=0&k=20&c=RdOq1SRcWwS_12_c5Zg2_QOUz1GD-YwGvfRodtOPN5w=", "image": "https://images.unsplash.com/photo-1551076805-e1869033e561?w=1200&q=80", "moto": "Growing with your community", "title": "Greenfield Clinic", "font_id": 1},
+    {"tenant_name": "Coastal Health Group", "logo": "https://img.freepik.com/free-vector/hospital-logo-design-vector-medical-cross_53876-136743.jpg?semt=ais_hybrid&w=740&q=80", "image": "https://images.unsplash.com/photo-1551076805-e1869033e561?w=1200&q=80", "moto": "Coastal care at its best", "title": "Coastal Health Group", "font_id": 1},
+    {"tenant_name": "Downtown Wellness Hub", "logo": "https://marketplace.canva.com/EAGeAJxtMvc/1/0/1600w/canva-blue-and-white-simple-medical-health-logo-arM9aB02SLw.jpg", "image": "https://images.unsplash.com/photo-1551076805-e1869033e561?w=1200&q=80", "moto": "Downtown wellness solutions", "title": "Downtown Wellness Hub", "font_id": 1},
+    {"tenant_name": "Peak Performance Health", "logo": "https://media.istockphoto.com/id/1624291952/vector/medical-health-logo-design-illustration.jpg?s=612x612&w=0&k=20&c=RdOq1SRcWwS_12_c5Zg2_QOUz1GD-YwGvfRodtOPN5w=", "image": "https://images.unsplash.com/photo-1551076805-e1869033e561?w=1200&q=80", "moto": "Reach your health peak", "title": "Peak Performance Health", "font_id": 1},
+    {"tenant_name": "Urban Care Clinic", "logo": "https://img.freepik.com/free-vector/hospital-logo-design-vector-medical-cross_53876-136743.jpg?semt=ais_hybrid&w=740&q=80", "image": "https://images.unsplash.com/photo-1551076805-e1869033e561?w=1200&q=80", "moto": "Urban healthcare access", "title": "Urban Care Clinic", "font_id": 1},
+    {"tenant_name": "Harbor Medical Center", "logo": "https://marketplace.canva.com/EAGeAJxtMvc/1/0/1600w/canva-blue-and-white-simple-medical-health-logo-arM9aB02SLw.jpg", "image": "https://images.unsplash.com/photo-1551076805-e1869033e561?w=1200&q=80", "moto": "Your harbor for health", "title": "Harbor Medical Center", "font_id": 1},
+    {"tenant_name": "Summit Health Partners", "logo": "https://media.istockphoto.com/id/1624291952/vector/medical-health-logo-design-illustration.jpg?s=612x612&w=0&k=20&c=RdOq1SRcWwS_12_c5Zg2_QOUz1GD-YwGvfRodtOPN5w=", "image": "https://images.unsplash.com/photo-1551076805-e1869033e561?w=1200&q=80", "moto": "Partners in summit health", "title": "Summit Health Partners", "font_id": 1},
+    {"tenant_name": "Legacy Care Network", "logo": "https://img.freepik.com/free-vector/hospital-logo-design-vector-medical-cross_53876-136743.jpg?semt=ais_hybrid&w=740&q=80", "image": "https://images.unsplash.com/photo-1551076805-e1869033e561?w=1200&q=80", "moto": "Legacy of care", "title": "Legacy Care Network", "font_id": 1},
+    {"tenant_name": "Pioneer Medical Group", "logo": "https://marketplace.canva.com/EAGeAJxtMvc/1/0/1600w/canva-blue-and-white-simple-medical-health-logo-arM9aB02SLw.jpg", "image": "https://images.unsplash.com/photo-1551076805-e1869033e561?w=1200&q=80", "moto": "Pioneering better health", "title": "Pioneer Medical Group", "font_id": 1},
 ]
 
 SEED_SUBSCRIPTION_PLANS = [
@@ -109,6 +148,20 @@ SEED_SUBSCRIPTION_PLANS = [
     {"name": "Small Clinic", "price": 1500.00, "duration": 30},
     {"name": "Medium Clinic", "price": 5000.00, "duration": 30},
     {"name": "Hospital", "price": 10000.00, "duration": 30},
+]
+
+# id, name, description, default_price, sort_order
+SEED_PRODUCT_TEMPLATES = [
+    (1, "Vitamin D Supplement", "Daily vitamin D supplement", 25.00, 0),
+    (2, "Multivitamin Pack", "30-day multivitamin pack", 35.00, 1),
+    (3, "Blood Pressure Monitor", "Home blood pressure monitor", 45.00, 2),
+    (4, "Thermometer", "Digital thermometer", 15.00, 3),
+    (5, "First Aid Kit", "Basic first aid kit", 30.00, 4),
+    (6, "Face Masks (50-pack)", "Disposable face masks", 20.00, 5),
+    (7, "Hand Sanitizer (500ml)", "Alcohol-based hand sanitizer", 12.00, 6),
+    (8, "Blood Glucose Meter", "Diabetes monitoring device", 55.00, 7),
+    (9, "Pulse Oximeter", "Finger pulse oximeter", 40.00, 8),
+    (10, "Heating Pad", "Electric heating pad", 28.00, 9),
 ]
 
 SEED_DEPARTMENTS = [
@@ -126,37 +179,127 @@ SEED_TENANT_DEPARTMENTS = [
     {"tenant_name": "Bluestone Clinic", "department_name": "Cardiology", "phone_number": "+1-555-1002", "email": "cardio@bluestone.com", "location": "Building A, Floor 2"},
     {"tenant_name": "Riverside Health Partners", "department_name": "General Practice", "phone_number": "+1-555-2001", "email": "info@riverside.com", "location": "Main Street 100"},
     {"tenant_name": "Riverside Health Partners", "department_name": "Pediatrics", "phone_number": "+1-555-2002", "email": "pediatrics@riverside.com", "location": "Main Street 100, Wing B"},
-    {"tenant_name": "Apex Medical Group", "department_name": "General Practice", "phone_number": "+1-555-3001", "email": "contact@apex.com", "location": "Downtown Plaza"},
-    {"tenant_name": "Apex Medical Group", "department_name": "Dermatology", "phone_number": "+1-555-3002", "email": "derma@apex.com", "location": "Downtown Plaza, Suite 3"},
+    {"tenant_name": "Apex Medical Group", "department_name": "General Practice", "phone_number": "+1-555-3001", "email": "gp@apex.com", "location": "Downtown Plaza, Level 1"},
+    {"tenant_name": "Apex Medical Group", "department_name": "Cardiology", "phone_number": "+1-555-3002", "email": "cardio@apex.com", "location": "Downtown Plaza, Level 2"},
+    {"tenant_name": "Apex Medical Group", "department_name": "Dermatology", "phone_number": "+1-555-3003", "email": "derma@apex.com", "location": "Downtown Plaza, Suite 301"},
+    {"tenant_name": "Apex Medical Group", "department_name": "Neurology", "phone_number": "+1-555-3004", "email": "neuro@apex.com", "location": "Downtown Plaza, Level 3"},
+    {"tenant_name": "Apex Medical Group", "department_name": "Orthopedics", "phone_number": "+1-555-3005", "email": "ortho@apex.com", "location": "Downtown Plaza, Suite 401"},
+    {"tenant_name": "Apex Medical Group", "department_name": "Pediatrics", "phone_number": "+1-555-3006", "email": "pediatrics@apex.com", "location": "Downtown Plaza, Level 1, Wing B"},
     {"tenant_name": "Northgate Wellness", "department_name": "General Practice", "phone_number": "+1-555-4001", "email": "wellness@northgate.com", "location": "Northgate Center"},
     {"tenant_name": "Sunrise Family Practice", "department_name": "General Practice", "phone_number": "+1-555-5001", "email": "family@sunrisefp.com", "location": "Sunrise Mall"},
     {"tenant_name": "MetroCare Associates", "department_name": "General Practice", "phone_number": "+1-555-6001", "email": "metro@metrocare.com", "location": "Metro Tower"},
     {"tenant_name": "MetroCare Associates", "department_name": "Orthopedics", "phone_number": "+1-555-6002", "email": "ortho@metrocare.com", "location": "Metro Tower, Level 2"},
 ]
 
-# user_email, tenant_name, specialization, licence_number
+# user_email, tenant_name, specialization, licence_number, education, working_hours (optional)
 SEED_DOCTORS = [
     {"user_email": "doctor.one@seed.com", "tenant_name": "Bluestone Clinic", "specialization": "General Practice", "licence_number": "MD-BLU-001"},
     {"user_email": "doctor.two@seed.com", "tenant_name": "Bluestone Clinic", "specialization": "Cardiology", "licence_number": "MD-BLU-002"},
     {"user_email": "doctor.three@seed.com", "tenant_name": "Riverside Health Partners", "specialization": "General Practice", "licence_number": "MD-RIV-001"},
     {"user_email": "doctor.four@seed.com", "tenant_name": "Riverside Health Partners", "specialization": "Pediatrics", "licence_number": "MD-RIV-002"},
+    # Apex Medical Group - full example
+    {"user_email": "doctor.five@seed.com", "tenant_name": "Apex Medical Group", "specialization": "General Practice", "licence_number": "MD-APX-001",
+     "education": "MD, Harvard Medical School; Residency at Johns Hopkins", "working_hours": {"mon": {"start": "08:00", "end": "17:00"}, "tue": {"start": "08:00", "end": "17:00"}, "wed": {"start": "08:00", "end": "17:00"}, "thu": {"start": "08:00", "end": "17:00"}, "fri": {"start": "08:00", "end": "15:00"}}},
+    {"user_email": "doctor.six@seed.com", "tenant_name": "Apex Medical Group", "specialization": "Dermatology", "licence_number": "MD-APX-002",
+     "education": "MD, Stanford; Dermatology fellowship at Mayo Clinic", "working_hours": {"mon": {"start": "09:00", "end": "16:00"}, "wed": {"start": "09:00", "end": "16:00"}, "fri": {"start": "09:00", "end": "14:00"}}},
 ]
 
 # tenant_name, department_name, name, price, description
 SEED_SERVICES = [
+    # Bluestone Clinic
     {"tenant_name": "Bluestone Clinic", "department_name": "General Practice", "name": "Initial Consultation", "price": 120.00, "description": "First visit assessment"},
     {"tenant_name": "Bluestone Clinic", "department_name": "General Practice", "name": "Follow-up Visit", "price": 80.00, "description": "Routine follow-up"},
+    {"tenant_name": "Bluestone Clinic", "department_name": "General Practice", "name": "Blood Test", "price": 45.00, "description": "Basic blood panel"},
     {"tenant_name": "Bluestone Clinic", "department_name": "Cardiology", "name": "ECG", "price": 150.00, "description": "Electrocardiogram"},
     {"tenant_name": "Bluestone Clinic", "department_name": "Cardiology", "name": "Stress Test", "price": 250.00, "description": "Cardiac stress test"},
+    {"tenant_name": "Bluestone Clinic", "department_name": "Cardiology", "name": "Echocardiogram", "price": 320.00, "description": "Heart ultrasound"},
+    # Riverside Health Partners
     {"tenant_name": "Riverside Health Partners", "department_name": "General Practice", "name": "General Check-up", "price": 100.00, "description": "Annual health check"},
+    {"tenant_name": "Riverside Health Partners", "department_name": "General Practice", "name": "Vaccination", "price": 65.00, "description": "Routine vaccination"},
     {"tenant_name": "Riverside Health Partners", "department_name": "Pediatrics", "name": "Child Wellness Visit", "price": 90.00, "description": "Pediatric wellness exam"},
-    {"tenant_name": "Apex Medical Group", "department_name": "General Practice", "name": "Consultation", "price": 110.00, "description": "General consultation"},
-    {"tenant_name": "Apex Medical Group", "department_name": "Dermatology", "name": "Skin Screening", "price": 130.00, "description": "Full body skin screening"},
+    {"tenant_name": "Riverside Health Partners", "department_name": "Pediatrics", "name": "Newborn Check", "price": 85.00, "description": "Newborn examination"},
+    # Apex Medical Group - fullest example
+    {"tenant_name": "Apex Medical Group", "department_name": "General Practice", "name": "Initial Consultation", "price": 125.00, "description": "Comprehensive first-visit assessment"},
+    {"tenant_name": "Apex Medical Group", "department_name": "General Practice", "name": "Follow-up Visit", "price": 85.00, "description": "Routine follow-up consultation"},
+    {"tenant_name": "Apex Medical Group", "department_name": "General Practice", "name": "Annual Physical", "price": 150.00, "description": "Complete annual health examination"},
+    {"tenant_name": "Apex Medical Group", "department_name": "General Practice", "name": "Blood Panel", "price": 55.00, "description": "Comprehensive blood work"},
+    {"tenant_name": "Apex Medical Group", "department_name": "Cardiology", "name": "ECG", "price": 160.00, "description": "Electrocardiogram"},
+    {"tenant_name": "Apex Medical Group", "department_name": "Cardiology", "name": "Stress Test", "price": 275.00, "description": "Exercise stress test"},
+    {"tenant_name": "Apex Medical Group", "department_name": "Cardiology", "name": "Echocardiogram", "price": 350.00, "description": "Heart ultrasound"},
+    {"tenant_name": "Apex Medical Group", "department_name": "Dermatology", "name": "Skin Screening", "price": 135.00, "description": "Full body skin cancer screening"},
+    {"tenant_name": "Apex Medical Group", "department_name": "Dermatology", "name": "Mole Removal", "price": 225.00, "description": "Minor surgical removal"},
+    {"tenant_name": "Apex Medical Group", "department_name": "Dermatology", "name": "Acne Treatment", "price": 95.00, "description": "Acne consultation and treatment plan"},
+    {"tenant_name": "Apex Medical Group", "department_name": "Neurology", "name": "Neurological Exam", "price": 185.00, "description": "Comprehensive neurological assessment"},
+    {"tenant_name": "Apex Medical Group", "department_name": "Neurology", "name": "EEG", "price": 290.00, "description": "Electroencephalogram"},
+    {"tenant_name": "Apex Medical Group", "department_name": "Neurology", "name": "Headache Consultation", "price": 120.00, "description": "Specialized headache evaluation"},
+    {"tenant_name": "Apex Medical Group", "department_name": "Orthopedics", "name": "Joint Assessment", "price": 195.00, "description": "Orthopedic joint evaluation"},
+    {"tenant_name": "Apex Medical Group", "department_name": "Orthopedics", "name": "X-Ray", "price": 95.00, "description": "Diagnostic imaging"},
+    {"tenant_name": "Apex Medical Group", "department_name": "Orthopedics", "name": "Physical Therapy Referral", "price": 75.00, "description": "PT evaluation and referral"},
+    {"tenant_name": "Apex Medical Group", "department_name": "Pediatrics", "name": "Well Child Visit", "price": 115.00, "description": "Pediatric wellness exam"},
+    {"tenant_name": "Apex Medical Group", "department_name": "Pediatrics", "name": "Vaccination", "price": 70.00, "description": "Immunization administration"},
+    # Northgate Wellness
     {"tenant_name": "Northgate Wellness", "department_name": "General Practice", "name": "Wellness Visit", "price": 95.00, "description": "Holistic wellness assessment"},
+    {"tenant_name": "Northgate Wellness", "department_name": "General Practice", "name": "Nutrition Consultation", "price": 75.00, "description": "Diet and nutrition advice"},
+    # Sunrise Family Practice
     {"tenant_name": "Sunrise Family Practice", "department_name": "General Practice", "name": "Family Consultation", "price": 105.00, "description": "Family medicine consult"},
+    {"tenant_name": "Sunrise Family Practice", "department_name": "General Practice", "name": "School Physical", "price": 55.00, "description": "School sports physical"},
+    # MetroCare Associates
     {"tenant_name": "MetroCare Associates", "department_name": "General Practice", "name": "Office Visit", "price": 115.00, "description": "Standard office visit"},
     {"tenant_name": "MetroCare Associates", "department_name": "Orthopedics", "name": "Joint Assessment", "price": 180.00, "description": "Orthopedic joint evaluation"},
+    {"tenant_name": "MetroCare Associates", "department_name": "Orthopedics", "name": "X-Ray", "price": 95.00, "description": "Diagnostic imaging"},
 ]
+
+# tenant_name, list of product_template_ids to enable
+SEED_TENANT_PRODUCTS = [
+    {"tenant_name": "Apex Medical Group", "product_template_ids": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]},
+]
+
+
+def seed_product_templates(session):
+    existing = {pt.id: pt for pt in session.query(ProductTemplate).all()}
+    for row in SEED_PRODUCT_TEMPLATES:
+        pid, name, desc, price, sort_order = row
+        if pid not in existing:
+            session.add(
+                ProductTemplate(
+                    id=pid,
+                    name=name,
+                    description=desc,
+                    default_price=Decimal(str(price)),
+                    sort_order=sort_order,
+                )
+            )
+    session.flush()
+
+
+def seed_brand_themes(session):
+    existing = {b.id: b for b in session.query(BrandTheme).all()}
+    for row in SEED_BRAND_THEMES:
+        bid, name, p, s, bg, fg, m, sort_order = row
+        if bid not in existing:
+            session.add(
+                BrandTheme(
+                    id=bid,
+                    name=name,
+                    brand_color_primary=p,
+                    brand_color_secondary=s,
+                    brand_color_background=bg,
+                    brand_color_foreground=fg,
+                    brand_color_muted=m,
+                    sort_order=sort_order,
+                )
+            )
+    session.flush()
+
+
+def seed_fonts(session):
+    existing = {f.id: f for f in session.query(Font).all()}
+    for row in SEED_FONTS:
+        fid, name, header, body, sort_order = row
+        if fid not in existing:
+            session.add(Font(id=fid, name=name, header_font_family=header, body_font_family=body, sort_order=sort_order))
+    session.flush()
+    return {f.id: f for f in session.query(Font).all()}
 
 
 def seed_roles(session):
@@ -184,7 +327,6 @@ def seed_tenants(session):
 
 def seed_tenant_details(session, tenants_by_name):
     from app.models import TenantDetails
-    from app.models.tenant_details import FontKey
     existing = {detail.tenant_id: detail for detail in session.query(TenantDetails).all()}
 
     for payload in SEED_TENANT_DETAILS:
@@ -195,11 +337,11 @@ def seed_tenant_details(session, tenants_by_name):
         if detail is None:
             p = {k: v for k, v in payload.items() if k != "tenant_name"}
             p["tenant_id"] = tenant.id
-            if p.get("font_key") and isinstance(p["font_key"], str):
-                p["font_key"] = FontKey(p["font_key"])
             session.add(TenantDetails(**p))
-        elif "image" in payload and payload["image"] and not detail.image:
-            detail.image = payload["image"]
+        else:
+            for key in ("image", "brand_color_background", "brand_color_foreground", "brand_color_muted", "font_id"):
+                if key in payload and getattr(detail, key, None) is None:
+                    setattr(detail, key, payload[key])
 
 def seed_subscription_plans(session):
     existing = {subscription_plan.name: subscription_plan for subscription_plan in session.query(SubscriptionPlan).all()}
@@ -295,6 +437,8 @@ def seed_doctors(session, users_by_email, tenants_by_name):
                 tenant_id=tenant.id,
                 specialization=payload.get("specialization"),
                 licence_number=payload.get("licence_number"),
+                education=payload.get("education"),
+                working_hours=payload.get("working_hours"),
                 is_active=True,
             )
         )
@@ -327,9 +471,43 @@ def seed_services(session, tenants_by_name, departments_by_name):
         existing.add((td.id, payload["name"]))
 
 
+def seed_tenant_products(session, tenants_by_name):
+    product_templates_by_id = {pt.id: pt for pt in session.query(ProductTemplate).all()}
+    for payload in SEED_TENANT_PRODUCTS:
+        tenant = tenants_by_name.get(payload["tenant_name"])
+        if not tenant:
+            continue
+        for tid in payload["product_template_ids"]:
+            pt = product_templates_by_id.get(tid)
+            if not pt:
+                continue
+            existing = session.query(Product).filter(
+                Product.tenant_id == tenant.id,
+                Product.product_template_id == tid,
+            ).first()
+            if existing:
+                existing.is_available = True
+                continue
+            session.add(
+                Product(
+                    tenant_id=tenant.id,
+                    product_template_id=tid,
+                    name=pt.name,
+                    description=pt.description,
+                    price=pt.default_price,
+                    stock_quantity=0,
+                    is_available=True,
+                )
+            )
+    session.flush()
+
+
 def run_seed() -> None:
     session = SessionLocal()
     try:
+        seed_product_templates(session)
+        seed_brand_themes(session)
+        seed_fonts(session)
         roles_by_name = seed_roles(session)
         seed_tenants(session)
         session.commit()  # Ensure tenants are saved and IDs exist
@@ -342,6 +520,7 @@ def run_seed() -> None:
         seed_tenant_departments(session, tenants_by_name, departments_by_name)
         seed_doctors(session, users_by_email, tenants_by_name)
         seed_services(session, tenants_by_name, departments_by_name)
+        seed_tenant_products(session, tenants_by_name)
         session.commit()
         print("Seed completed.")
     except Exception:
