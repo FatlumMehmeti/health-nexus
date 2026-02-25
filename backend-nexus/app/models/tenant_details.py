@@ -22,11 +22,7 @@ class TenantDetails(Base, TimestampMixin):
     logo: Mapped[str] = mapped_column(String(255), nullable=True)
     image: Mapped[str] = mapped_column(String(255), nullable=True)  # hero/cover image for public listing
     moto: Mapped[str] = mapped_column(String(255), nullable=True)
-    brand_color_primary: Mapped[str] = mapped_column(String(7), nullable=True)  # Hex
-    brand_color_secondary: Mapped[str] = mapped_column(String(7), nullable=True)  # Hex
-    brand_color_background: Mapped[str] = mapped_column(String(7), nullable=True)  # Hex
-    brand_color_foreground: Mapped[str] = mapped_column(String(7), nullable=True)  # Hex (text)
-    brand_color_muted: Mapped[str] = mapped_column(String(7), nullable=True)  # Hex (borders, subtle)
+    brand_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("brand_themes.id"), nullable=True)
 
     # Content fields
     title: Mapped[str] = mapped_column(String(255), nullable=True)
@@ -38,4 +34,5 @@ class TenantDetails(Base, TimestampMixin):
     font_key: Mapped[FontKey | None] = mapped_column(Enum(FontKey), nullable=True)
 
     tenant = relationship("Tenant", back_populates="details")
+    brand = relationship("BrandTheme", foreign_keys=[brand_id])
     font = relationship("Font")

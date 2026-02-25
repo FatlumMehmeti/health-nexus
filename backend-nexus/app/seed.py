@@ -101,46 +101,41 @@ SEED_FONTS = [
     (5, "Playfair + Source Sans", "Playfair Display", "Source Sans 3", 4),
 ]
 
-# tenant_name used to resolve tenant_id at seed time. 5 brand colors: primary, secondary, background, foreground, muted
+# tenant_name -> tenant_id at seed time. brand_id -> brand_themes. font_id -> fonts.
+# SEED_BRAND_THEMES: 1 Ocean Blue, 2 Forest Green, 3 Royal Purple, 4 Sunset Orange, 5 Teal Wave, 6 Crimson Red, ...
 SEED_TENANT_DETAILS = [
     {"tenant_name": "Bluestone Clinic", "logo": "https://marketplace.canva.com/EAGeAJxtMvc/1/0/1600w/canva-blue-and-white-simple-medical-health-logo-arM9aB02SLw.jpg", "image": "https://images.unsplash.com/photo-1551076805-e1869033e561?w=1200&q=80", "moto": "Your health, our priority", "title": "Bluestone Clinic",
      "slogan": "Quality care, every visit", "about_text": "Bluestone Clinic has served the community for over 20 years.",
-     "brand_color_primary": "#2563eb", "brand_color_secondary": "#0ea5e9", "brand_color_background": "#f0f9ff", "brand_color_foreground": "#1e293b", "brand_color_muted": "#94a3b8",
-     "font_id": 1},
+     "brand_id": 1, "font_id": 1},
     {"tenant_name": "Riverside Health Partners", "logo": "https://media.istockphoto.com/id/1624291952/vector/medical-health-logo-design-illustration.jpg?s=612x612&w=0&k=20&c=RdOq1SRcWwS_12_c5Zg2_QOUz1GD-YwGvfRodtOPN5w=", "image": "https://images.unsplash.com/photo-1551076805-e1869033e561?w=1200&q=80", "moto": "Care close to home", "title": "Riverside Health Partners",
      "slogan": "Partner in your wellness", "about_text": "Riverside Health Partners offers comprehensive care.",
-     "brand_color_primary": "#059669", "brand_color_secondary": "#10b981", "brand_color_background": "#ecfdf5", "brand_color_foreground": "#134e4a", "brand_color_muted": "#6b7280",
-     "font_id": 2},
+     "brand_id": 2, "font_id": 2},
     {"tenant_name": "Apex Medical Group",
      "logo": "https://img.freepik.com/free-vector/hospital-logo-design-vector-medical-cross_53876-136743.jpg?semt=ais_hybrid&w=740&q=80",
      "image": "https://images.unsplash.com/photo-1551076805-e1869033e561?w=1200&q=80",
      "moto": "Excellence in urban healthcare",
      "title": "Apex Medical Group",
      "about_text": "Apex Medical Group has been the premier healthcare provider in the downtown metro area for over 25 years. Our state-of-the-art facility combines cutting-edge medical technology with a compassionate, patient-centered approach. We offer a full spectrum of services across six specialized departments—General Practice, Cardiology, Dermatology, Neurology, Orthopedics, and Pediatrics—staffed by board-certified physicians and dedicated support teams. From routine check-ups to advanced diagnostics and specialized treatments, Apex is your trusted partner for lasting health.",
-     "brand_color_primary": "#7c3aed", "brand_color_secondary": "#a78bfa", "brand_color_background": "#f5f3ff", "brand_color_foreground": "#4c1d95", "brand_color_muted": "#9ca3af",
-     "font_id": 3},
+     "brand_id": 3, "font_id": 3},
     {"tenant_name": "Northgate Wellness", "logo": "https://marketplace.canva.com/EAGeAJxtMvc/1/0/1600w/canva-blue-and-white-simple-medical-health-logo-arM9aB02SLw.jpg", "image": "https://images.unsplash.com/photo-1551076805-e1869033e561?w=1200&q=80", "moto": "Holistic care for better living", "title": "Northgate Wellness",
      "slogan": "Mind, body, spirit", "about_text": "Northgate Wellness focuses on holistic approaches.",
-     "brand_color_primary": "#dc2626", "brand_color_secondary": "#f87171", "brand_color_background": "#fef2f2", "brand_color_foreground": "#991b1b", "brand_color_muted": "#94a3b8",
-     "font_id": 4},
+     "brand_id": 6, "font_id": 4},
     {"tenant_name": "Sunrise Family Practice", "logo": "https://media.istockphoto.com/id/1624291952/vector/medical-health-logo-design-illustration.jpg?s=612x612&w=0&k=20&c=RdOq1SRcWwS_12_c5Zg2_QOUz1GD-YwGvfRodtOPN5w=", "image": "https://images.unsplash.com/photo-1551076805-e1869033e561?w=1200&q=80", "moto": "Family care you can trust", "title": "Sunrise Family Practice",
      "slogan": "Your family's health partner", "about_text": "Sunrise Family Practice provides family-focused care.",
-     "brand_color_primary": "#ea580c", "brand_color_secondary": "#fb923c", "brand_color_background": "#fff7ed", "brand_color_foreground": "#9a3412", "brand_color_muted": "#6b7280",
-     "font_id": 5},
+     "brand_id": 4, "font_id": 5},
     {"tenant_name": "MetroCare Associates", "logo": "https://img.freepik.com/free-vector/hospital-logo-design-vector-medical-cross_53876-136743.jpg?semt=ais_hybrid&w=740&q=80", "image": "https://images.unsplash.com/photo-1551076805-e1869033e561?w=1200&q=80", "moto": "Urban healthcare excellence", "title": "MetroCare Associates",
      "slogan": "Care in the heart of the city", "about_text": "MetroCare Associates offers metro-area healthcare.",
-     "brand_color_primary": "#0891b2", "brand_color_secondary": "#22d3ee", "brand_color_background": "#ecfeff", "brand_color_foreground": "#155e75", "brand_color_muted": "#94a3b8",
-     "font_id": 1},
-    {"tenant_name": "Valley View Medical", "logo": "https://marketplace.canva.com/EAGeAJxtMvc/1/0/1600w/canva-blue-and-white-simple-medical-health-logo-arM9aB02SLw.jpg", "image": "https://images.unsplash.com/photo-1551076805-e1869033e561?w=1200&q=80", "moto": "Your valley healthcare partner", "title": "Valley View Medical", "font_id": 1},
-    {"tenant_name": "Greenfield Clinic", "logo": "https://media.istockphoto.com/id/1624291952/vector/medical-health-logo-design-illustration.jpg?s=612x612&w=0&k=20&c=RdOq1SRcWwS_12_c5Zg2_QOUz1GD-YwGvfRodtOPN5w=", "image": "https://images.unsplash.com/photo-1551076805-e1869033e561?w=1200&q=80", "moto": "Growing with your community", "title": "Greenfield Clinic", "font_id": 1},
-    {"tenant_name": "Coastal Health Group", "logo": "https://img.freepik.com/free-vector/hospital-logo-design-vector-medical-cross_53876-136743.jpg?semt=ais_hybrid&w=740&q=80", "image": "https://images.unsplash.com/photo-1551076805-e1869033e561?w=1200&q=80", "moto": "Coastal care at its best", "title": "Coastal Health Group", "font_id": 1},
-    {"tenant_name": "Downtown Wellness Hub", "logo": "https://marketplace.canva.com/EAGeAJxtMvc/1/0/1600w/canva-blue-and-white-simple-medical-health-logo-arM9aB02SLw.jpg", "image": "https://images.unsplash.com/photo-1551076805-e1869033e561?w=1200&q=80", "moto": "Downtown wellness solutions", "title": "Downtown Wellness Hub", "font_id": 1},
-    {"tenant_name": "Peak Performance Health", "logo": "https://media.istockphoto.com/id/1624291952/vector/medical-health-logo-design-illustration.jpg?s=612x612&w=0&k=20&c=RdOq1SRcWwS_12_c5Zg2_QOUz1GD-YwGvfRodtOPN5w=", "image": "https://images.unsplash.com/photo-1551076805-e1869033e561?w=1200&q=80", "moto": "Reach your health peak", "title": "Peak Performance Health", "font_id": 1},
-    {"tenant_name": "Urban Care Clinic", "logo": "https://img.freepik.com/free-vector/hospital-logo-design-vector-medical-cross_53876-136743.jpg?semt=ais_hybrid&w=740&q=80", "image": "https://images.unsplash.com/photo-1551076805-e1869033e561?w=1200&q=80", "moto": "Urban healthcare access", "title": "Urban Care Clinic", "font_id": 1},
-    {"tenant_name": "Harbor Medical Center", "logo": "https://marketplace.canva.com/EAGeAJxtMvc/1/0/1600w/canva-blue-and-white-simple-medical-health-logo-arM9aB02SLw.jpg", "image": "https://images.unsplash.com/photo-1551076805-e1869033e561?w=1200&q=80", "moto": "Your harbor for health", "title": "Harbor Medical Center", "font_id": 1},
-    {"tenant_name": "Summit Health Partners", "logo": "https://media.istockphoto.com/id/1624291952/vector/medical-health-logo-design-illustration.jpg?s=612x612&w=0&k=20&c=RdOq1SRcWwS_12_c5Zg2_QOUz1GD-YwGvfRodtOPN5w=", "image": "https://images.unsplash.com/photo-1551076805-e1869033e561?w=1200&q=80", "moto": "Partners in summit health", "title": "Summit Health Partners", "font_id": 1},
-    {"tenant_name": "Legacy Care Network", "logo": "https://img.freepik.com/free-vector/hospital-logo-design-vector-medical-cross_53876-136743.jpg?semt=ais_hybrid&w=740&q=80", "image": "https://images.unsplash.com/photo-1551076805-e1869033e561?w=1200&q=80", "moto": "Legacy of care", "title": "Legacy Care Network", "font_id": 1},
-    {"tenant_name": "Pioneer Medical Group", "logo": "https://marketplace.canva.com/EAGeAJxtMvc/1/0/1600w/canva-blue-and-white-simple-medical-health-logo-arM9aB02SLw.jpg", "image": "https://images.unsplash.com/photo-1551076805-e1869033e561?w=1200&q=80", "moto": "Pioneering better health", "title": "Pioneer Medical Group", "font_id": 1},
+     "brand_id": 5, "font_id": 1},
+    {"tenant_name": "Valley View Medical", "logo": "https://marketplace.canva.com/EAGeAJxtMvc/1/0/1600w/canva-blue-and-white-simple-medical-health-logo-arM9aB02SLw.jpg", "image": "https://images.unsplash.com/photo-1551076805-e1869033e561?w=1200&q=80", "moto": "Your valley healthcare partner", "title": "Valley View Medical", "brand_id": 1, "font_id": 1},
+    {"tenant_name": "Greenfield Clinic", "logo": "https://media.istockphoto.com/id/1624291952/vector/medical-health-logo-design-illustration.jpg?s=612x612&w=0&k=20&c=RdOq1SRcWwS_12_c5Zg2_QOUz1GD-YwGvfRodtOPN5w=", "image": "https://images.unsplash.com/photo-1551076805-e1869033e561?w=1200&q=80", "moto": "Growing with your community", "title": "Greenfield Clinic", "brand_id": 1, "font_id": 1},
+    {"tenant_name": "Coastal Health Group", "logo": "https://img.freepik.com/free-vector/hospital-logo-design-vector-medical-cross_53876-136743.jpg?semt=ais_hybrid&w=740&q=80", "image": "https://images.unsplash.com/photo-1551076805-e1869033e561?w=1200&q=80", "moto": "Coastal care at its best", "title": "Coastal Health Group", "brand_id": 1, "font_id": 1},
+    {"tenant_name": "Downtown Wellness Hub", "logo": "https://marketplace.canva.com/EAGeAJxtMvc/1/0/1600w/canva-blue-and-white-simple-medical-health-logo-arM9aB02SLw.jpg", "image": "https://images.unsplash.com/photo-1551076805-e1869033e561?w=1200&q=80", "moto": "Downtown wellness solutions", "title": "Downtown Wellness Hub", "brand_id": 1, "font_id": 1},
+    {"tenant_name": "Peak Performance Health", "logo": "https://media.istockphoto.com/id/1624291952/vector/medical-health-logo-design-illustration.jpg?s=612x612&w=0&k=20&c=RdOq1SRcWwS_12_c5Zg2_QOUz1GD-YwGvfRodtOPN5w=", "image": "https://images.unsplash.com/photo-1551076805-e1869033e561?w=1200&q=80", "moto": "Reach your health peak", "title": "Peak Performance Health", "brand_id": 1, "font_id": 1},
+    {"tenant_name": "Urban Care Clinic", "logo": "https://img.freepik.com/free-vector/hospital-logo-design-vector-medical-cross_53876-136743.jpg?semt=ais_hybrid&w=740&q=80", "image": "https://images.unsplash.com/photo-1551076805-e1869033e561?w=1200&q=80", "moto": "Urban healthcare access", "title": "Urban Care Clinic", "brand_id": 1, "font_id": 1},
+    {"tenant_name": "Harbor Medical Center", "logo": "https://marketplace.canva.com/EAGeAJxtMvc/1/0/1600w/canva-blue-and-white-simple-medical-health-logo-arM9aB02SLw.jpg", "image": "https://images.unsplash.com/photo-1551076805-e1869033e561?w=1200&q=80", "moto": "Your harbor for health", "title": "Harbor Medical Center", "brand_id": 1, "font_id": 1},
+    {"tenant_name": "Summit Health Partners", "logo": "https://media.istockphoto.com/id/1624291952/vector/medical-health-logo-design-illustration.jpg?s=612x612&w=0&k=20&c=RdOq1SRcWwS_12_c5Zg2_QOUz1GD-YwGvfRodtOPN5w=", "image": "https://images.unsplash.com/photo-1551076805-e1869033e561?w=1200&q=80", "moto": "Partners in summit health", "title": "Summit Health Partners", "brand_id": 1, "font_id": 1},
+    {"tenant_name": "Legacy Care Network", "logo": "https://img.freepik.com/free-vector/hospital-logo-design-vector-medical-cross_53876-136743.jpg?semt=ais_hybrid&w=740&q=80", "image": "https://images.unsplash.com/photo-1551076805-e1869033e561?w=1200&q=80", "moto": "Legacy of care", "title": "Legacy Care Network", "brand_id": 1, "font_id": 1},
+    {"tenant_name": "Pioneer Medical Group", "logo": "https://marketplace.canva.com/EAGeAJxtMvc/1/0/1600w/canva-blue-and-white-simple-medical-health-logo-arM9aB02SLw.jpg", "image": "https://images.unsplash.com/photo-1551076805-e1869033e561?w=1200&q=80", "moto": "Pioneering better health", "title": "Pioneer Medical Group", "brand_id": 1, "font_id": 1},
 ]
 
 SEED_SUBSCRIPTION_PLANS = [
@@ -339,7 +334,7 @@ def seed_tenant_details(session, tenants_by_name):
             p["tenant_id"] = tenant.id
             session.add(TenantDetails(**p))
         else:
-            for key in ("image", "brand_color_background", "brand_color_foreground", "brand_color_muted", "font_id"):
+            for key in ("image", "brand_id", "font_id"):
                 if key in payload and getattr(detail, key, None) is None:
                     setattr(detail, key, payload[key])
 

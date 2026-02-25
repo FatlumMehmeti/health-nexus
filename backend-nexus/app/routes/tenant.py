@@ -119,16 +119,17 @@ def get_tenant_landing_by_slug(slug: str, db: Session = Depends(get_db)):
     details_read = None
     if details:
         font = db.query(Font).filter(Font.id == details.font_id).first() if details.font_id else None
+        brand = details.brand if details.brand_id else None
         details_read = TenantDetailsLandingRead(
             tenant_id=details.tenant_id,
             logo=details.logo,
             image=details.image,
             moto=details.moto,
-            brand_color_primary=details.brand_color_primary,
-            brand_color_secondary=details.brand_color_secondary,
-            brand_color_background=details.brand_color_background,
-            brand_color_foreground=details.brand_color_foreground,
-            brand_color_muted=details.brand_color_muted,
+            brand_color_primary=brand.brand_color_primary if brand else None,
+            brand_color_secondary=brand.brand_color_secondary if brand else None,
+            brand_color_background=brand.brand_color_background if brand else None,
+            brand_color_foreground=brand.brand_color_foreground if brand else None,
+            brand_color_muted=brand.brand_color_muted if brand else None,
             title=details.title,
             slogan=details.slogan,
             about_text=details.about_text,
