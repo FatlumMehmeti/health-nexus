@@ -7,8 +7,7 @@ from app.auth.auth_utils import hash_password
 from app.db import SessionLocal
 from app.models import (
     Font,
-    BrandTheme,
-    ProductTemplate,
+    BrandPalette,
     Product,
     SubscriptionPlan,
     Role,
@@ -79,7 +78,7 @@ SEED_TENANTS = [
 ]
 
 # id, name, primary, secondary, background, foreground, muted, sort_order
-SEED_BRAND_THEMES = [
+SEED_BRAND_PALETTES = [
     (1, "Ocean Blue", "#2563eb", "#0ea5e9", "#f0f9ff", "#1e293b", "#94a3b8", 0),
     (2, "Forest Green", "#059669", "#10b981", "#ecfdf5", "#134e4a", "#6b7280", 1),
     (3, "Royal Purple", "#7c3aed", "#a78bfa", "#f5f3ff", "#4c1d95", "#9ca3af", 2),
@@ -101,7 +100,7 @@ SEED_FONTS = [
     (5, "Playfair + Source Sans", "Playfair Display", "Source Sans 3", 4),
 ]
 
-# tenant_name -> tenant_id at seed time. brand_id -> brand_themes. font_id -> fonts.
+# tenant_name -> tenant_id at seed time. brand_id -> brand_palettes. font_id -> fonts.
 # SEED_BRAND_THEMES: 1 Ocean Blue, 2 Forest Green, 3 Royal Purple, 4 Sunset Orange, 5 Teal Wave, 6 Crimson Red, ...
 SEED_TENANT_DETAILS = [
     {"tenant_name": "Bluestone Clinic", "logo": "https://marketplace.canva.com/EAGeAJxtMvc/1/0/1600w/canva-blue-and-white-simple-medical-health-logo-arM9aB02SLw.jpg", "image": "https://images.unsplash.com/photo-1551076805-e1869033e561?w=1200&q=80", "moto": "Your health, our priority", "title": "Bluestone Clinic",
@@ -145,18 +144,18 @@ SEED_SUBSCRIPTION_PLANS = [
     {"name": "Hospital", "price": 10000.00, "duration": 30},
 ]
 
-# id, name, description, default_price, sort_order
-SEED_PRODUCT_TEMPLATES = [
-    (1, "Vitamin D Supplement", "Daily vitamin D supplement", 25.00, 0),
-    (2, "Multivitamin Pack", "30-day multivitamin pack", 35.00, 1),
-    (3, "Blood Pressure Monitor", "Home blood pressure monitor", 45.00, 2),
-    (4, "Thermometer", "Digital thermometer", 15.00, 3),
-    (5, "First Aid Kit", "Basic first aid kit", 30.00, 4),
-    (6, "Face Masks (50-pack)", "Disposable face masks", 20.00, 5),
-    (7, "Hand Sanitizer (500ml)", "Alcohol-based hand sanitizer", 12.00, 6),
-    (8, "Blood Glucose Meter", "Diabetes monitoring device", 55.00, 7),
-    (9, "Pulse Oximeter", "Finger pulse oximeter", 40.00, 8),
-    (10, "Heating Pad", "Electric heating pad", 28.00, 9),
+# tenant_name, name, price, description
+SEED_PRODUCTS = [
+    {"tenant_name": "Apex Medical Group", "name": "Vitamin D Supplement", "price": 25.00, "description": "Daily vitamin D supplement"},
+    {"tenant_name": "Apex Medical Group", "name": "Multivitamin Pack", "price": 35.00, "description": "30-day multivitamin pack"},
+    {"tenant_name": "Apex Medical Group", "name": "Blood Pressure Monitor", "price": 45.00, "description": "Home blood pressure monitor"},
+    {"tenant_name": "Apex Medical Group", "name": "Thermometer", "price": 15.00, "description": "Digital thermometer"},
+    {"tenant_name": "Apex Medical Group", "name": "First Aid Kit", "price": 30.00, "description": "Basic first aid kit"},
+    {"tenant_name": "Apex Medical Group", "name": "Face Masks (50-pack)", "price": 20.00, "description": "Disposable face masks"},
+    {"tenant_name": "Apex Medical Group", "name": "Hand Sanitizer (500ml)", "price": 12.00, "description": "Alcohol-based hand sanitizer"},
+    {"tenant_name": "Apex Medical Group", "name": "Blood Glucose Meter", "price": 55.00, "description": "Diabetes monitoring device"},
+    {"tenant_name": "Apex Medical Group", "name": "Pulse Oximeter", "price": 40.00, "description": "Finger pulse oximeter"},
+    {"tenant_name": "Apex Medical Group", "name": "Heating Pad", "price": 28.00, "description": "Electric heating pad"},
 ]
 
 SEED_DEPARTMENTS = [
@@ -244,36 +243,13 @@ SEED_SERVICES = [
     {"tenant_name": "MetroCare Associates", "department_name": "Orthopedics", "name": "X-Ray", "price": 95.00, "description": "Diagnostic imaging"},
 ]
 
-# tenant_name, list of product_template_ids to enable
-SEED_TENANT_PRODUCTS = [
-    {"tenant_name": "Apex Medical Group", "product_template_ids": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]},
-]
-
-
-def seed_product_templates(session):
-    existing = {pt.id: pt for pt in session.query(ProductTemplate).all()}
-    for row in SEED_PRODUCT_TEMPLATES:
-        pid, name, desc, price, sort_order = row
-        if pid not in existing:
-            session.add(
-                ProductTemplate(
-                    id=pid,
-                    name=name,
-                    description=desc,
-                    default_price=Decimal(str(price)),
-                    sort_order=sort_order,
-                )
-            )
-    session.flush()
-
-
-def seed_brand_themes(session):
-    existing = {b.id: b for b in session.query(BrandTheme).all()}
-    for row in SEED_BRAND_THEMES:
+def seed_brand_palettes(session):
+    existing = {b.id: b for b in session.query(BrandPalette).all()}
+    for row in SEED_BRAND_PALETTES:
         bid, name, p, s, bg, fg, m, sort_order = row
         if bid not in existing:
             session.add(
-                BrandTheme(
+                BrandPalette(
                     id=bid,
                     name=name,
                     brand_color_primary=p,
@@ -466,42 +442,33 @@ def seed_services(session, tenants_by_name, departments_by_name):
         existing.add((td.id, payload["name"]))
 
 
-def seed_tenant_products(session, tenants_by_name):
-    product_templates_by_id = {pt.id: pt for pt in session.query(ProductTemplate).all()}
-    for payload in SEED_TENANT_PRODUCTS:
+def seed_products(session, tenants_by_name):
+    existing = set()
+    for payload in SEED_PRODUCTS:
         tenant = tenants_by_name.get(payload["tenant_name"])
         if not tenant:
             continue
-        for tid in payload["product_template_ids"]:
-            pt = product_templates_by_id.get(tid)
-            if not pt:
-                continue
-            existing = session.query(Product).filter(
-                Product.tenant_id == tenant.id,
-                Product.product_template_id == tid,
-            ).first()
-            if existing:
-                existing.is_available = True
-                continue
-            session.add(
-                Product(
-                    tenant_id=tenant.id,
-                    product_template_id=tid,
-                    name=pt.name,
-                    description=pt.description,
-                    price=pt.default_price,
-                    stock_quantity=0,
-                    is_available=True,
-                )
+        key = (tenant.id, payload["name"])
+        if key in existing:
+            continue
+        existing.add(key)
+        session.add(
+            Product(
+                tenant_id=tenant.id,
+                name=payload["name"],
+                description=payload.get("description"),
+                price=Decimal(str(payload["price"])),
+                stock_quantity=0,
+                is_available=True,
             )
+        )
     session.flush()
 
 
 def run_seed() -> None:
     session = SessionLocal()
     try:
-        seed_product_templates(session)
-        seed_brand_themes(session)
+        seed_brand_palettes(session)
         seed_fonts(session)
         roles_by_name = seed_roles(session)
         seed_tenants(session)
@@ -515,7 +482,7 @@ def run_seed() -> None:
         seed_tenant_departments(session, tenants_by_name, departments_by_name)
         seed_doctors(session, users_by_email, tenants_by_name)
         seed_services(session, tenants_by_name, departments_by_name)
-        seed_tenant_products(session, tenants_by_name)
+        seed_products(session, tenants_by_name)
         session.commit()
         print("Seed completed.")
     except Exception:

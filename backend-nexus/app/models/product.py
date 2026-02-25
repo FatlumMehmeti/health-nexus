@@ -18,10 +18,5 @@ class Product(Base):
         ForeignKey("tenants.id"),
         nullable=False
     )
-    product_template_id: Mapped[int | None] = mapped_column(
-        ForeignKey("product_templates.id"),
-        nullable=True,
-        index=True,
-    )
 
     tenant = relationship("Tenant", back_populates="products")

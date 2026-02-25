@@ -11,7 +11,6 @@ from app.routes import (
     font_router,
     brand_router,
     service_router,
-    product_template_router,
     tenant_audit_log,
 )
 
@@ -35,7 +34,6 @@ app.include_router(user_router, prefix="/api")
 app.include_router(font_router, prefix="/api")
 app.include_router(brand_router, prefix="/api")
 app.include_router(service_router, prefix="/api")
-app.include_router(product_template_router, prefix="/api")
 app.include_router(auth_router, prefix="/api")
 app.include_router(tenant_audit_log)
 

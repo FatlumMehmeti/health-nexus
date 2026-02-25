@@ -6,7 +6,6 @@ from .user import router as user_router
 from .font import router as font_router
 from .brand import router as brand_router
 from .service import router as service_router
-from .product_template import router as product_template_router
 from .tenant_audit_log import router as tenant_audit_log
 
 __all__ = [
@@ -18,6 +17,5 @@ __all__ = [
     "font_router",
     "brand_router",
     "service_router",
-    "product_template_router",
     "tenant_audit_log",
 ]

@@ -13,7 +13,6 @@ from app.models.department import Department
 from app.models.tenant_department import TenantDepartment
 from app.models.service import Service
 from app.models.product import Product
-from app.models.product_template import ProductTemplate
 from app.models.font import Font
 from app.models.doctor import Doctor
 from app.models.user import User
@@ -28,8 +27,7 @@ from app.schemas.tenant_department import (
     BulkDepartmentsRequest,
 )
 from app.schemas.lead import PublicLeadCreate
-from app.schemas.product import ProductRead
-from app.schemas.product_template import BulkProductsRequest
+from app.schemas.product import ProductRead, ProductCreateForTenant
 from app.schemas.landing import (
     TenantLandingPageResponse,
     TenantLandingRead,
@@ -335,66 +333,27 @@ def list_tenant_products(
     ).all()
 
 
-@router.post("/{tenant_id}/products", response_model=list[ProductRead])
-def bulk_set_tenant_products(
+@router.post("/{tenant_id}/products", response_model=ProductRead)
+def create_tenant_product(
     tenant_id: int,
-    payload: BulkProductsRequest,
+    payload: ProductCreateForTenant,
     db: Session = Depends(get_db),
     _: dict = Depends(require_role("SUPER_ADMIN")),
 ):
-    """Bulk set products for a tenant from product templates. Enables templates in list, disables others."""
+    """Create a product for a tenant."""
     _assert_tenant_exists(db, tenant_id)
-    template_ids = set(payload.product_template_ids)
-    for tid in template_ids:
-        t = db.query(ProductTemplate).filter(ProductTemplate.id == tid).first()
-        if not t:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Product template {tid} not found",
-            )
-
-    # Products for this tenant that came from templates
-    tenant_products = db.query(Product).filter(
-        Product.tenant_id == tenant_id,
-        Product.product_template_id.isnot(None),
-    ).all()
-
-    # Disable products whose template is not in list
-    for p in tenant_products:
-        if p.product_template_id not in template_ids:
-            p.is_available = False
-
-    # For each template in list: create Product if not exists, enable it
-    for tid in template_ids:
-        existing = db.query(Product).filter(
-            Product.tenant_id == tenant_id,
-            Product.product_template_id == tid,
-        ).first()
-        t = db.query(ProductTemplate).filter(ProductTemplate.id == tid).first()
-        if existing:
-            existing.is_available = True
-            existing.name = t.name
-            existing.description = t.description
-            existing.price = t.default_price
-        else:
-            db.add(
-                Product(
-                    tenant_id=tenant_id,
-                    product_template_id=tid,
-                    name=t.name,
-                    description=t.description,
-                    price=t.default_price,
-                    stock_quantity=0,
-                    is_available=True,
-                )
-            )
+    product = Product(
+        tenant_id=tenant_id,
+        name=payload.name,
+        description=payload.description,
+        price=payload.price,
+        stock_quantity=payload.stock_quantity,
+        is_available=payload.is_available,
+    )
+    db.add(product)
     db.commit()
-    products = db.query(Product).filter(
-        Product.tenant_id == tenant_id,
-        Product.product_template_id.in_(template_ids),
-        Product.is_available == True,
-    ).all()
-    return [ProductRead.model_validate(p) for p in products]
+    db.refresh(product)
+    return ProductRead.model_validate(product)
 
 
 @router.get("/{tenant_id}/departments", response_model=list[TenantDepartmentWithServicesRead])

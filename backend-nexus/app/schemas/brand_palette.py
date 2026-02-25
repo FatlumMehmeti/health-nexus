@@ -2,7 +2,7 @@ from pydantic import BaseModel
 from datetime import datetime
 
 
-class BrandThemeRead(BaseModel):
+class BrandPaletteRead(BaseModel):
     id: int
     name: str
     brand_color_primary: str

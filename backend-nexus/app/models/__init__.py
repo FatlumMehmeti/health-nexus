@@ -6,7 +6,7 @@ from .user_tenant_plan import UserTenantPlan
 from .tenant import Tenant, TenantStatus
 from .tenant_audit_log import TenantAuditLog
 from .font import Font
-from .brand_theme import BrandTheme
+from .brand_palette import BrandPalette
 from .tenant_details import TenantDetails, FontKey
 from .subscription_plan import SubscriptionPlan
 from .tenant_subscription import TenantSubscription
@@ -25,7 +25,6 @@ from .appointment_status_history import AppointmentStatusHistory
 from .report import Report
 from .recommendation import Recommendation
 from .product import Product
-from .product_template import ProductTemplate
 from .cart import Cart
 from .cart_item import CartItem
 from .order import Order
@@ -38,7 +37,7 @@ from .offer_delivery import OfferDelivery
 __all__ = [
     "Base",
     "Font",
-    "BrandTheme",
+    "BrandPalette",
     "Role",
     "User",
     "Tenant",
@@ -50,7 +49,6 @@ __all__ = [
     "Doctor",
     "Patient",
     "Product",
-    "ProductTemplate",
     "Cart",
     "CartItem",
     "Order",
