@@ -4,7 +4,7 @@ from dataclasses import dataclass
 
 from app.auth.auth_utils import hash_password
 from app.db import SessionLocal
-from app.models import SubscriptionPlan, Role, Tenant, TenantStatus, User
+from app.models import SubscriptionPlan, Role, Tenant, TenantStatus, User, TenantManager
 
 
 ROLE_NAMES = [
@@ -141,6 +141,33 @@ def seed_users(session, roles_by_name):
         )
 
 
+def seed_tenant_managers(session):
+    existing = {
+        (tm.user_id, tm.tenant_id): tm
+        for tm in session.query(TenantManager).all()
+    }
+
+    manager_user = session.query(User).filter_by(
+        email="tenant.manager@seed.com"
+    ).first()
+
+    tenant = session.query(Tenant).filter_by(
+        name="Bluestone Clinic"
+    ).first()
+
+    if not manager_user or not tenant:
+        return
+
+    key = (manager_user.id, tenant.id)
+
+    if key not in existing:
+        session.add(
+            TenantManager(
+                user_id=manager_user.id,
+                tenant_id=tenant.id,
+            )
+        )
+
 def run_seed() -> None:
     session = SessionLocal()
     try:
@@ -150,6 +177,8 @@ def run_seed() -> None:
         seed_tenant_details(session)
         seed_subscription_plans(session)
         seed_users(session, roles_by_name)
+        session.commit()
+        seed_tenant_managers(session)
         session.commit()
         print("Seed completed.")
     except Exception:

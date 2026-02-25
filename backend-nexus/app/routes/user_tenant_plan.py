@@ -22,9 +22,6 @@ router = APIRouter(
 )
 
 
-# ---------------------------------------------------
-# Helper: Check If Logged User Is Tenant Manager
-# ---------------------------------------------------
 def verify_tenant_manager(db: Session, user_id: int, tenant_id: int):
     manager = db.query(TenantManager).filter(
         TenantManager.user_id == user_id,
@@ -38,9 +35,6 @@ def verify_tenant_manager(db: Session, user_id: int, tenant_id: int):
         )
 
 
-# ===================================================
-# CREATE PLAN (Tenant Manager Only)
-# ===================================================
 @router.post("/", response_model=UserTenantPlanRead)
 def create_plan(
     plan: UserTenantPlanCreate,
@@ -54,7 +48,7 @@ def create_plan(
     plan_data = plan.model_dump()
 
     if plan_data.get("duration") is not None:
-        plan_data["duration"] = plan_data["duration"].days
+        plan_data["duration"] = int(plan_data["duration"])
 
     db_plan = UserTenantPlan(
         **plan_data,
@@ -68,9 +62,6 @@ def create_plan(
     return db_plan
 
 
-# ===================================================
-# UPDATE PLAN (Tenant Manager Only)
-# ===================================================
 @router.put("/{plan_id}", response_model=UserTenantPlanRead)
 def update_plan(
     plan_id: int,
@@ -85,17 +76,17 @@ def update_plan(
     ).first()
 
     if not db_plan:
-        raise HTTPException(status_code=404, detail="Plan not found")
+        raise HTTPException(404, "Plan not found")
 
     verify_tenant_manager(db, user_id, db_plan.tenant_id)
 
     update_data = plan_update.model_dump(exclude_unset=True)
 
     if "duration" in update_data and update_data["duration"] is not None:
-        update_data["duration"] = update_data["duration"].days
+        update_data["duration"] = int(update_data["duration"])
 
-    for key, value in update_data.items():
-        setattr(db_plan, key, value)
+    for k, v in update_data.items():
+        setattr(db_plan, k, v)
 
     db_plan.updated_at = datetime.now(timezone.utc)
 
@@ -104,10 +95,26 @@ def update_plan(
 
     return db_plan
 
+@router.get("/{plan_id}", response_model=UserTenantPlanRead)
+def get_plan(
+    plan_id: int,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    user_id = current_user.get("user_id")
 
-# ===================================================
-# GET PLANS BY TENANT
-# ===================================================
+    db_plan = db.query(UserTenantPlan).filter(
+        UserTenantPlan.id == plan_id
+    ).first()
+
+    if not db_plan:
+        raise HTTPException(status_code=404, detail="Plan not found")
+
+    verify_tenant_manager(db, user_id, db_plan.tenant_id)
+
+    return db_plan
+
+
 @router.get("/tenant/{tenant_id}", response_model=List[UserTenantPlanRead])
 def get_plans_by_tenant(
     tenant_id: int,
@@ -123,9 +130,6 @@ def get_plans_by_tenant(
     ).all()
 
 
-# ===================================================
-# GET ENROLLMENTS (See What Users Selected)
-# ===================================================
 @router.get("/tenant/{tenant_id}/enrollments", response_model=List[EnrollmentRead])
 def get_tenant_enrollments(
     tenant_id: int,
@@ -141,3 +145,31 @@ def get_tenant_enrollments(
     ).all()
 
     return enrollments
+
+
+@router.delete("/{plan_id}")
+def delete_plan(
+    plan_id: int,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    user_id = current_user.get("user_id")
+
+    db_plan = db.query(UserTenantPlan).filter(
+        UserTenantPlan.id == plan_id
+    ).first()
+
+    if not db_plan:
+        raise HTTPException(
+            status_code=404,
+            detail="Plan not found"
+        )
+
+    verify_tenant_manager(db, user_id, db_plan.tenant_id)
+
+    db.delete(db_plan)
+    db.commit()
+
+    return {
+        "message": "Plan deleted successfully"
+    }
