@@ -30,7 +30,7 @@ class UserTenantPlanRead(UserTenantPlanBase):
 class UserTenantPlanUpdate(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
-    price: Decimal = Field(..., gt=0)
+    price: Optional[Decimal] = Field(None, gt=0)
     duration: Optional[int] = None
     max_appointments: Optional[int] = None
     max_consultations: Optional[int] = None
