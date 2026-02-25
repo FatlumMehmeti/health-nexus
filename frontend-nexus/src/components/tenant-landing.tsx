@@ -1,11 +1,17 @@
 /**
  * Public tenant landing with simple tabs:
  * HOME (hero/about) + DEPARTMENTS (table) implemented,
- * PRODUCTS / PLANS are placeholders for now.
+ * PRODUCTS placeholder; PLANS uses mock data per tenant and allows
+ * a visitor to choose one of the offered plans locally.
+ *
+ * When a TENANT_MANAGER is logged in, a mock "Manage plans" panel
+ * is shown to add/hide plans client-side only (no backend yet).
  *
  * Used by /landing/$tenantSlug (PRD-03).
  */
 import type { ReactNode } from 'react'
+import { useState } from 'react'
+import { IconEdit } from '@tabler/icons-react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   Table,
@@ -16,6 +22,10 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { useAuthStore } from '@/stores/auth.store'
 
 export type TenantLandingConfig = Record<
   string,
@@ -26,6 +36,7 @@ export type TenantLandingConfig = Record<
     moto?: string
     about?: string
     primaryFontClass?: string
+    plans?: TenantPlan[]
   }
 >
 
@@ -40,6 +51,18 @@ type DepartmentRow = {
   services: string
 }
 
+export type TenantPlan = {
+  id?: string
+  name: string
+  description?: string
+  price: number
+  currency?: string
+  durationDays?: number | null
+  maxAppointments?: number | null
+  maxConsultations?: number | null
+  isActive?: boolean
+}
+
 const defaultDepartments: DepartmentRow[] = [
   { name: 'Cardiology', services: 'ECG, Echocardiography, Stress testing' },
   { name: 'Radiology', services: 'X-ray, CT, MRI, Ultrasound' },
@@ -51,6 +74,9 @@ export function TenantLanding({
   config,
   backToHome,
 }: TenantLandingProps) {
+  const { role } = useAuthStore()
+  const isTenantManager = role === 'TENANT_MANAGER'
+
   const tenant = config[tenantSlug]
   const title = tenant?.title ?? `Tenant: ${tenantSlug}`
   const subtitle = tenant?.subtitle ?? 'Welcome to our landing page.'
@@ -60,6 +86,33 @@ export function TenantLanding({
     tenant?.about ??
     'This is a sample description for the tenant landing page. Real content will come from the backend.'
   const fontClass = tenant?.primaryFontClass ?? 'font-sans'
+
+  // Local mock state for plans so tenant managers can experiment
+  // with adding/hiding plans without backend persistence.
+  const [plans, setPlans] = useState<TenantPlan[]>(() => tenant?.plans ?? [])
+  const [selectedPlanId, setSelectedPlanId] = useState<string | undefined>(() => {
+    const firstActive = plans.find((plan) => plan.isActive !== false)
+    return firstActive?.id ?? plans[0]?.id
+  })
+
+  const [newPlanName, setNewPlanName] = useState('')
+  const [newPlanPrice, setNewPlanPrice] = useState('0')
+  const [editingPlanId, setEditingPlanId] = useState<string | null>(null)
+  const formatPrice = (price: number, currency = 'EUR') =>
+    new Intl.NumberFormat(undefined, {
+      style: 'currency',
+      currency,
+      maximumFractionDigits: 2,
+    }).format(price)
+  const formatDuration = (value?: number | null) => {
+    if (!value) return 'Flexible'
+    if (value === 1) return '1 day'
+    return `${value} days`
+  }
+  const formatLimit = (value?: number | null, label?: string) => {
+    if (value === null || value === undefined) return `Unlimited ${label ?? ''}`.trim()
+    return `${value} ${label ?? ''}`.trim()
+  }
 
   return (
     <div className="relative flex min-h-screen flex-col overflow-hidden">
@@ -193,14 +246,291 @@ export function TenantLanding({
           </TabsContent>
 
           <TabsContent value="plans" className="mt-0 flex-1">
-            <section className="mx-auto max-w-3xl space-y-3 text-center">
-              <h2 className="text-xl font-semibold tracking-tight sm:text-2xl">
-                Plans – coming soon
-              </h2>
-              <p className="text-sm text-muted-foreground sm:text-base">
-                Future area for pricing plans, memberships, or insurance coverage details for this
-                tenant.
-              </p>
+            <section className="mx-auto max-w-5xl space-y-6">
+              <div className="space-y-2 text-center">
+                <h2 className="text-xl font-semibold tracking-tight sm:text-2xl">
+                  Plans & memberships
+                </h2>
+                <p className="text-sm text-muted-foreground sm:text-base">
+                  Explore tenant-specific pricing and coverage limits for care packages.
+                </p>
+              </div>
+
+              {isTenantManager && (
+                <section className="space-y-4 rounded-xl border bg-card/60 p-4 text-xs sm:text-sm">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <h3 className="text-sm font-semibold sm:text-base">Manage plans (mock)</h3>
+                      <p className="text-xs text-muted-foreground sm:text-[0.8rem]">
+                        This panel only updates plans in the browser. Backend persistence will be added
+                        later.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="grid gap-3 sm:grid-cols-[2fr,1fr,auto,auto] sm:items-end">
+                    <div className="space-y-1">
+                      <Label htmlFor="new-plan-name" className="text-xs">
+                        Plan name
+                      </Label>
+                      <Input
+                        id="new-plan-name"
+                        value={newPlanName}
+                        onChange={(e) => setNewPlanName(e.target.value)}
+                        placeholder="e.g. Family Plus"
+                        className="h-8 text-xs"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="new-plan-price" className="text-xs">
+                        Price (EUR)
+                      </Label>
+                      <Input
+                        id="new-plan-price"
+                        type="number"
+                        min={0}
+                        step={1}
+                        value={newPlanPrice}
+                        onChange={(e) => setNewPlanPrice(e.target.value)}
+                        className="h-8 text-xs"
+                      />
+                    </div>
+                    <Button
+                      type="button"
+                      size="sm"
+                      className="mt-2 sm:mt-0"
+                      onClick={() => {
+                        const trimmedName = newPlanName.trim()
+                        if (!trimmedName) return
+                        const priceNumber = Number(newPlanPrice)
+
+                        if (editingPlanId) {
+                          setPlans((prev) =>
+                            prev.map((p) =>
+                              (p.id ?? p.name) === editingPlanId
+                                ? {
+                                    ...p,
+                                    name: trimmedName,
+                                    price: Number.isFinite(priceNumber) ? priceNumber : p.price,
+                                  }
+                                : p,
+                            ),
+                          )
+                          setEditingPlanId(null)
+                        } else {
+                          const id = `mock-${Date.now()}`
+                          const nextPlans: TenantPlan[] = [
+                            ...plans,
+                            {
+                              id,
+                              name: trimmedName,
+                              price: Number.isFinite(priceNumber) ? priceNumber : 0,
+                              currency: 'EUR',
+                              durationDays: null,
+                              maxAppointments: null,
+                              maxConsultations: null,
+                              isActive: true,
+                            },
+                          ]
+                          setPlans(nextPlans)
+                          setSelectedPlanId(id)
+                        }
+
+                        setNewPlanName('')
+                        setNewPlanPrice('0')
+                      }}
+                    >
+                      {editingPlanId ? 'Save changes' : 'Add mock plan'}
+                    </Button>
+                    {editingPlanId && (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        className="mt-2 sm:mt-0"
+                        onClick={() => {
+                          setEditingPlanId(null)
+                          setNewPlanName('')
+                          setNewPlanPrice('0')
+                        }}
+                      >
+                        Cancel
+                      </Button>
+                    )}
+                  </div>
+
+                  {plans.length > 0 && (
+                    <div className="mt-3 space-y-1">
+                      <p className="text-[0.7rem] font-medium text-muted-foreground">
+                        Existing plans (edit, toggle visibility, or remove):
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        {plans.map((plan) => {
+                          const key = plan.id ?? plan.name
+                          const isEditing = editingPlanId === key
+                          return (
+                            <div
+                              key={key}
+                              className="inline-flex items-center gap-2 rounded-full border bg-background/60 px-2 py-1"
+                            >
+                              <span className="text-[0.7rem] font-medium">{plan.name}</span>
+                              <span className="text-[0.7rem] text-muted-foreground">
+                                {formatPrice(plan.price, plan.currency)}
+                              </span>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="icon"
+                                className="h-6 w-6 text-[0.65rem]"
+                                onClick={() => {
+                                  setEditingPlanId(key)
+                                  setNewPlanName(plan.name)
+                                  setNewPlanPrice(String(plan.price ?? 0))
+                                }}
+                              >
+                                <IconEdit
+                                  className={`h-3 w-3 ${
+                                    isEditing ? 'text-primary' : 'text-muted-foreground'
+                                  }`}
+                                />
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="icon"
+                                className="h-6 w-6 text-[0.65rem]"
+                                onClick={() => {
+                                  setPlans((prev) =>
+                                    prev.map((p) =>
+                                      p === plan ? { ...p, isActive: p.isActive === false } : p,
+                                    ),
+                                  )
+                                }}
+                              >
+                                {plan.isActive === false ? 'Show' : 'Hide'}
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6 text-[0.65rem] text-destructive"
+                                onClick={() => {
+                                  setPlans((prev) => {
+                                    const next = prev.filter((p) => p !== plan)
+                                    if (selectedPlanId && key === selectedPlanId) {
+                                      const firstActive = next.find((p) => p.isActive !== false)
+                                      setSelectedPlanId(firstActive?.id ?? next[0]?.id)
+                                    }
+                                    return next
+                                  })
+                                  if (editingPlanId === key) {
+                                    setEditingPlanId(null)
+                                    setNewPlanName('')
+                                    setNewPlanPrice('0')
+                                  }
+                                }}
+                              >
+                                ✕
+                              </Button>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </section>
+              )}
+
+              {plans.length > 0 && selectedPlanId && (
+                <div className="mx-auto max-w-md rounded-xl border bg-card/60 px-4 py-3 text-xs text-muted-foreground sm:text-sm">
+                  <span className="font-medium text-foreground">Selected plan:</span>{' '}
+                  <span>
+                    {plans.find((p) => p.id === selectedPlanId)?.name ?? 'None'}
+                  </span>
+                </div>
+              )}
+
+              {plans.length === 0 ? (
+                <div className="rounded-xl border border-dashed bg-muted/30 p-6 text-center text-sm text-muted-foreground">
+                  No plans are currently published for this tenant.
+                </div>
+              ) : (
+                <div className="grid gap-4 md:grid-cols-3">
+                  {plans.map((plan) => {
+                    const isSelected = selectedPlanId === plan.id
+                    return (
+                      <div
+                        key={plan.id ?? plan.name}
+                        className={`relative flex h-full flex-col rounded-2xl border p-5 shadow-sm ${
+                          isSelected ? 'border-primary/50 bg-primary/5' : 'bg-card/60'
+                        } ${plan.isActive === false ? 'opacity-70' : ''}`}
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <h3 className="text-base font-semibold">{plan.name}</h3>
+                            {plan.description ? (
+                              <p className="mt-1 text-xs text-muted-foreground">
+                                {plan.description}
+                              </p>
+                            ) : null}
+                          </div>
+                          {plan.isActive === false ? (
+                            <span className="rounded-full border border-dashed px-2 py-0.5 text-[0.65rem] text-muted-foreground">
+                              Hidden
+                            </span>
+                          ) : isSelected ? (
+                            <span className="rounded-full bg-primary/15 px-2 py-0.5 text-[0.65rem] font-semibold text-primary">
+                              Selected
+                            </span>
+                          ) : (
+                            <span className="rounded-full bg-muted px-2 py-0.5 text-[0.65rem] text-muted-foreground">
+                              Active
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="mt-4">
+                          <div className="text-3xl font-semibold">
+                            {formatPrice(plan.price, plan.currency)}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {formatDuration(plan.durationDays)}
+                          </div>
+                        </div>
+
+                        <div className="mt-4 grid gap-2 text-xs text-muted-foreground">
+                          <div className="rounded-lg bg-muted/60 px-3 py-2">
+                            {formatLimit(plan.maxAppointments, 'appointments')}
+                          </div>
+                          <div className="rounded-lg bg-muted/60 px-3 py-2">
+                            {formatLimit(plan.maxConsultations, 'consultations')}
+                          </div>
+                        </div>
+
+                        <div className="mt-5 text-xs text-muted-foreground">
+                          Plan availability is managed by the tenant manager. Users can choose from the
+                          currently offered plans.
+                        </div>
+
+                        <div className="mt-4 flex justify-end">
+                          <button
+                            type="button"
+                            className="inline-flex items-center rounded-full bg-primary px-3 py-1 text-xs font-medium text-primary-foreground transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground"
+                            onClick={() => setSelectedPlanId(plan.id ?? plan.name)}
+                            disabled={plan.isActive === false}
+                          >
+                            {plan.isActive === false
+                              ? 'Unavailable'
+                              : selectedPlanId === (plan.id ?? plan.name)
+                                ? 'Selected'
+                                : 'Choose this plan'}
+                          </button>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
             </section>
           </TabsContent>
         </Tabs>
