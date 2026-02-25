@@ -57,9 +57,21 @@ class DoctorLandingItem(BaseModel):
         from_attributes = True
 
 
+class ProductLandingItem(BaseModel):
+    product_id: int
+    name: str
+    description: Optional[str] = None
+    price: float
+    is_available: bool = True
+
+    class Config:
+        from_attributes = True
+
+
 class TenantLandingRead(BaseModel):
     id: int
     name: str
+    slug: Optional[str] = None
     email: str
     licence_number: str
 
@@ -70,13 +82,21 @@ class TenantLandingRead(BaseModel):
 class TenantDetailsLandingRead(BaseModel):
     tenant_id: int
     logo: Optional[str] = None
+    image: Optional[str] = None
     moto: Optional[str] = None
     brand_color_primary: Optional[str] = None
     brand_color_secondary: Optional[str] = None
+    brand_color_background: Optional[str] = None
+    brand_color_foreground: Optional[str] = None
+    brand_color_muted: Optional[str] = None
     title: Optional[str] = None
     slogan: Optional[str] = None
     about_text: Optional[str] = None
     font_key: Optional[str] = None
+    font_id: Optional[int] = None
+    font_name: Optional[str] = None
+    font_header_family: Optional[str] = None
+    font_body_family: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -87,3 +107,4 @@ class TenantLandingPageResponse(BaseModel):
     details: Optional[TenantDetailsLandingRead] = None
     departments: list[DepartmentLandingItem] = []
     doctors: list[DoctorLandingItem] = []
+    products: list[ProductLandingItem] = []

@@ -15,6 +15,10 @@ class DoctorCreate(DoctorBase):
     user_id: int
 
 
+class AssignDoctorRequest(BaseModel):
+    user_id: int
+
+
 class DoctorUpdate(BaseModel):
     specialization: Optional[str]
     education: Optional[str]
