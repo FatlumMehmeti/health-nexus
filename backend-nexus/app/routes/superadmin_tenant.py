@@ -1,4 +1,5 @@
-# Super Admin - Tenant subcategory. List, get, status only. Details/doctors/departments are in tenant router.
+# Thus file holds endpoints related to tenant management for the Super Admin dashboard
+# (e.g: list tenants, view tenant details, approve/reject/suspend tenants etc).
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
@@ -17,6 +18,9 @@ from app.models.tenant_audit_log import TenantAuditEventType
 router = APIRouter(prefix="/tenants", tags=["Super Admin - Tenants"])
 
 
+# Endpoint to list tenants for the Super Admin dashboard.
+# Supports optional filtering by status and search (name).
+# Defaults to returning all tenants ordered by newest first.
 @router.get("", response_model=list[TenantRead])
 def list_tenants(
     status_filter: TenantStatus | None = Query(default=None, alias="status"),
@@ -34,6 +38,7 @@ def list_tenants(
     return query.all()
 
 
+# Gets tenant details for the Super Admin dashboard tenant details page.
 @router.get("/{tenant_id}", response_model=TenantRead)
 def get_tenant(
     tenant_id: int,
@@ -46,6 +51,8 @@ def get_tenant(
     return tenant
 
 
+# Endpoint to update tenant status (approve/reject/suspend/activate) from the Super Admin dashboard tenant details/modal page.
+# It is through this endpoint that the Tenant lifecycle will be managed (e.g: pending -> approved, approved -> suspended etc).
 @router.patch("/{tenant_id}/status", response_model=TenantRead)
 def update_tenant_status(
     tenant_id: int,
@@ -67,30 +74,40 @@ def update_tenant_status(
         TenantStatus.archived: [],
     }
 
+    # If same status is sent (e.g: update tenant status from approved to approved), we can short-circuit and return a 400
     if current_status == new_status:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Tenant is already in '{new_status.value}' status",
         )
+
+    # If mistakenly an invalid transition (pending -> suspended) is attempted, return a 400 with allowed transitions info
     if new_status not in allowed_transitions.get(current_status, []):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Invalid status transition: '{current_status.value}' → '{new_status.value}'",
         )
 
+    # If approving a tenant for the first time (pending -> approved), create a FREE subscription
+    # When the superadmin approves a tenant for the first time, we want to automatically create a FREE subscription..
     if current_status == TenantStatus.pending and new_status == TenantStatus.approved:
+        # Find the FREE membership plan
         free_plan = db.query(SubscriptionPlan).filter(SubscriptionPlan.name == "FREE").first()
         if not free_plan:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="FREE plan not found in database",
             )
+
+        # Check if tenant already has a subscription
         existing_subscription = db.query(TenantSubscription).filter(
             TenantSubscription.tenant_id == tenant_id,
             TenantSubscription.expires_at > datetime.now(timezone.utc),
             TenantSubscription.activated_at.isnot(None),
             TenantSubscription.status == SubscriptionStatus.ACTIVE,
         ).first()
+
+        # If there is no subscription yet, create a new subscription with the FREE plan
         if not existing_subscription:
             activated_at = datetime.now(timezone.utc)
             expires_at = activated_at + timedelta(days=free_plan.duration)
@@ -106,6 +123,8 @@ def update_tenant_status(
             db.add(new_subscription)
 
     tenant.status = new_status
+
+    # AUDIT LOG ENTRY
     create_audit_log(
         db=db,
         tenant_id=tenant.id,
@@ -114,7 +133,7 @@ def update_tenant_status(
         entity_id=tenant.id,
         old_value={"status": current_status.value},
         new_value={"status": new_status.value},
-        performed_by_user_id=None,
+        performed_by_user_id=None,  # change later when auth implemented
         performed_by_role="SUPER_ADMIN",
         reason=status_update.reason,
     )

@@ -67,9 +67,11 @@ def list_active_tenants(db: Session = Depends(get_db)):
     return result
 
 
+# Endpoint for potential tenants to apply for a tenant account (Tenant Application).
 @router.post("", response_model=TenantRead, status_code=201)
 def create_tenant_application(payload: TenantCreate, db: Session = Depends(get_db)):
     """Apply for a tenant account."""
+    # If the email/licence_number already exists in the database, tenant creation is not allowed.
     existing = db.query(Tenant).filter(
         (Tenant.email == payload.email) | (Tenant.licence_number == payload.licence_number)
     ).first()
@@ -87,8 +89,13 @@ def create_tenant_application(payload: TenantCreate, db: Session = Depends(get_d
     return tenant
 
 
+# Endpoint for potential tenants to submit a consultation request
+# (e.g: to get more info about the product, ask for a demo etc) without applying for a tenant account.
 @router.post("/consultation", status_code=201)
-def create_consultation_lead(payload: PublicLeadCreate, db: Session = Depends(get_db)):
+def create_consultation_lead(
+    payload: PublicLeadCreate,  # you can rename schema later
+    db: Session = Depends(get_db),
+):
     """Submit a consultation / contact request."""
     lead = Lead(
         organization_name=payload.tenant_name,
@@ -101,6 +108,7 @@ def create_consultation_lead(payload: PublicLeadCreate, db: Session = Depends(ge
     db.commit()
     db.refresh(lead)
     return lead
+# Add an endpoint that gets plans. (IGNORE because it is a scrapped for now)
 
 
 @router.get("/by-slug/{slug}/landing", response_model=TenantLandingPageResponse)
