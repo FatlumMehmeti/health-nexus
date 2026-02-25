@@ -141,3 +141,37 @@ def get_tenant_enrollments(
     ).all()
 
     return enrollments
+
+
+# ===================================================
+# DELETE PLAN (Tenant Manager Only)
+# ===================================================
+@router.delete("/{plan_id}")
+def delete_plan(
+    plan_id: int,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    user_id = current_user.get("user_id")
+
+    # Find plan
+    db_plan = db.query(UserTenantPlan).filter(
+        UserTenantPlan.id == plan_id
+    ).first()
+
+    if not db_plan:
+        raise HTTPException(
+            status_code=404,
+            detail="Plan not found"
+        )
+
+    # Verify tenant manager permission
+    verify_tenant_manager(db, user_id, db_plan.tenant_id)
+
+    # Delete plan
+    db.delete(db_plan)
+    db.commit()
+
+    return {
+        "message": "Plan deleted successfully"
+    }
