@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
 from app.auth.auth_router import router as auth_router
-from app.routes import user_router, role_router, superadmin_tenant_router, public_tenant_router, tenant_audit_log, tenant_manager_router, patient_router, doctor_router
+from app.routes import role_router, superadmin_tenant_router, public_tenant_router, tenant_audit_log
 
 app = FastAPI(title="Healthcare SaaS API", version="0.1.0")
 
@@ -16,15 +16,11 @@ app.add_middleware(
 )
 
 # Include routers
-app.include_router(user_router)
 app.include_router(role_router)
 app.include_router(superadmin_tenant_router, prefix="/api/superadmin", tags=["Super Admin - Tenant Management"])
 app.include_router(public_tenant_router, prefix="/api/public", tags=["Public Tenant Requests"])
 app.include_router(auth_router, prefix="/api")
 app.include_router(tenant_audit_log)
-app.include_router(tenant_manager_router)
-app.include_router(patient_router)
-app.include_router(doctor_router)
 
 @app.get("/")
 def root():

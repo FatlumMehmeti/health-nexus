@@ -1,62 +1,34 @@
 from pydantic import BaseModel, EmailStr
 from typing import Optional
-from datetime import datetime, date
+from datetime import datetime
 
 
 class UserBase(BaseModel):
-    first_name: Optional[str] = None
-    last_name: Optional[str] = None
-    email: EmailStr
-    contact: Optional[str] = None
-    address: Optional[str] = None
-    role_id: Optional[int] = None
-
-
-class DoctorProfile(BaseModel):
-    specialization: Optional[str] = None
-    education: Optional[str] = None
-    licence_number: Optional[str] = None
-    tenant_id: Optional[int] = None
-    working_hours: Optional[dict] = None
-
-
-class PatientProfile(BaseModel):
-    birthdate: Optional[date] = None
-    gender: Optional[str] = None
-    blood_type: Optional[str] = None
-
-
-class TenantManagerProfile(BaseModel):
-    tenant_id: int
-
-
-class UserCreate(BaseModel):
     first_name: Optional[str]
     last_name: Optional[str]
     email: EmailStr
-    password: str
-    contact: Optional[str] = None
-    address: Optional[str] = None
-    role_id: int
+    contact: Optional[str]
+    address: Optional[str]
+    role_id: Optional[int]
 
-    # Nested profile objects (optional)
-    doctor: Optional[DoctorProfile] = None
-    patient: Optional[PatientProfile] = None
-    tenant_manager: Optional[TenantManagerProfile] = None
+
+class UserCreate(UserBase):
+    password: str
 
 
 class UserUpdate(BaseModel):
-    first_name: Optional[str] = None
-    last_name: Optional[str] = None
-    contact: Optional[str] = None
-    address: Optional[str] = None
-    role_id: Optional[int] = None
-    password: Optional[str] = None
+    first_name: Optional[str]
+    last_name: Optional[str]
+    contact: Optional[str]
+    address: Optional[str]
+    role_id: Optional[int]
+    password: Optional[str]
 
 
 class UserRead(UserBase):
     id: int
     created_at: datetime
+    email: EmailStr
 
     class Config:
         from_attributes = True

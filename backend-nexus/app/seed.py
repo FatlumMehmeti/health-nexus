@@ -12,7 +12,7 @@ ROLE_NAMES = [
     "TENANT_MANAGER",
     "DOCTOR",
     "SALES",
-    "PATIENT",
+    "CLIENT",
 ]
 
 
@@ -30,7 +30,7 @@ SEED_USERS = [
     SeedUser("Tenant", "Manager", "tenant.manager@seed.com", "Team2026@", "TENANT_MANAGER"),
     SeedUser("Doctor", "One", "doctor.one@seed.com", "Team2026@", "DOCTOR"),
     SeedUser("Sales", "Agent", "sales.agent@seed.com", "Team2026@", "SALES"),
-    SeedUser("Patient", "User", "patient.user@seed.com", "Team2026@", "PATIENT"),
+    SeedUser("Client", "User", "client.user@seed.com", "Team2026@", "CLIENT"),
 ]
 
 
