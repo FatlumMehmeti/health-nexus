@@ -24,6 +24,8 @@ class EnrollmentCreate(EnrollmentBase):
 class EnrollmentRead(EnrollmentBase):
     id: int
     status: EnrollmentStatus
+    patient_user_id: int
+    user_tenant_plan_id: int
 
     activated_at: Optional[str] = None
     cancelled_at: Optional[str] = None

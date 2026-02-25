@@ -23,3 +23,13 @@ class UserTenantPlanRead(UserTenantPlanBase):
 
     class Config:
         from_attributes = True
+
+
+class UserTenantPlanUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    price: Optional[float] = None
+    duration: Optional[timedelta] = None
+    max_appointments: Optional[int] = None
+    max_consultations: Optional[int] = None
+    is_active: Optional[bool] = None

@@ -12,9 +12,14 @@ class UserBase(BaseModel):
     role_id: Optional[int]
 
 
-class UserCreate(UserBase):
+class UserCreate(BaseModel):
+    email: EmailStr
     password: str
-
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    contact: Optional[str] = None
+    address: Optional[str] = None
+    role: str
 
 class UserUpdate(BaseModel):
     first_name: Optional[str]
