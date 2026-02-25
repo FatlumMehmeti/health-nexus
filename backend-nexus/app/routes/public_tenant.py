@@ -3,9 +3,9 @@ from fastapi import APIRouter, Depends, status, HTTPException
 from sqlalchemy.orm import Session
 from app.db import SessionLocal
 from app.models.tenant import Tenant, TenantStatus
-from app.models.consultation_request import ConsultationRequest
+from app.models.lead import Lead, LeadStatus
 from app.schemas.tenant import TenantCreate, TenantRead
-from app.schemas.consultation_request import ConsultationRequestCreate, ConsultationRequestRead
+from app.schemas.lead import LeadCreate
 
 
 router = APIRouter(prefix="/tenants", tags=["Public Tenant Requests"])
@@ -45,24 +45,24 @@ def create_tenant_application(payload: TenantCreate, db: Session = Depends(get_d
 # (e.g: to get more info about the product, ask for a demo etc) without applying for a tenant account.
 @router.post(
     "/consultation",
-    response_model=ConsultationRequestRead,
     status_code=status.HTTP_201_CREATED,
 )
-def create_consultation_request(
-    payload: ConsultationRequestCreate,
+def create_public_lead(
+    payload: LeadCreate,  # you can rename schema later
     db: Session = Depends(get_db),
 ):
-    consultation = ConsultationRequest(
-        tenant_name=payload.tenant_name,
+
+    lead = Lead(
+        organization_name=payload.tenant_name,
         contact_email=payload.contact_email,
-        description=payload.description,
-        preferred_date=payload.preferred_date
+        source="WEBSITE",
+        status=LeadStatus.NEW,
+        notes=payload.description,
     )
 
-    db.add(consultation)
+    db.add(lead)
     db.commit()
-    db.refresh(consultation)
+    db.refresh(lead)
 
-    return consultation
-
+    return lead
 # Add an endpoint that gets plans. (IGNORE because it is a scrapped for now)

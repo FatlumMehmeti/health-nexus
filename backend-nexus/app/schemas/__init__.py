@@ -1,7 +1,7 @@
 from .role import RoleCreate, RoleRead, RoleUpdate
 from .user import UserCreate, UserRead, UserUpdate
 from .tenant import TenantCreate, TenantRead, TenantUpdate, TenantStatusUpdate, TenantListResponse
-from .membership import MembershipCreate, MembershipRead, MembershipUpdate
+from .subscription_plan import SubscriptionPlanCreate, SubscriptionPlanRead, SubscriptionPlanUpdate
 from .tenant_subscription import TenantSubscriptionCreate, TenantSubscriptionRead
 
 __all__ = [
@@ -14,11 +14,11 @@ __all__ = [
     "TenantCreate",
     "TenantRead",
     "TenantUpdate",
+    "SubscriptionPlanCreate",
+    "SubscriptionPlanRead",
+    "SubscriptionPlanUpdate",
     "TenantStatusUpdate",
     "TenantListResponse",
-    "MembershipCreate",
-    "MembershipRead",
-    "MembershipUpdate",
     "TenantSubscriptionCreate",
     "TenantSubscriptionRead",
 ]
