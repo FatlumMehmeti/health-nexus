@@ -6,8 +6,8 @@ from sqlalchemy.orm import Session
 from datetime import datetime, timedelta, timezone
 from app.db import SessionLocal
 from app.models.tenant import Tenant, TenantStatus
-from app.models.membership import Membership
-from app.models.tenant_subscription import TenantSubscription
+from app.models.subscription_plan import SubscriptionPlan
+from app.models.tenant_subscription import TenantSubscription, SubscriptionStatus
 from app.schemas.tenant import TenantRead, TenantStatusUpdate
 from app.services.audit_service import create_audit_log
 from app.models.tenant_audit_log import TenantAuditEventType
@@ -104,7 +104,7 @@ def update_tenant_status(
     # When the superadmin approves a tenant for the first time, we want to automatically create a FREE subscription..
     if current_status == TenantStatus.pending and new_status == TenantStatus.approved:
         # Find the FREE membership plan
-        free_plan = db.query(Membership).filter(Membership.name == "FREE").first()
+        free_plan = db.query(SubscriptionPlan).filter(SubscriptionPlan.name == "FREE").first()
         
         if not free_plan:
             raise HTTPException(
@@ -115,21 +115,29 @@ def update_tenant_status(
         # Check if tenant already has a subscription
         existing_subscription = db.query(TenantSubscription).filter(
             TenantSubscription.tenant_id == tenant_id,
-            TenantSubscription.is_active == True
+            TenantSubscription.expires_at > datetime.now(timezone.utc),
+            TenantSubscription.activated_at.isnot(None),
+            TenantSubscription.status == SubscriptionStatus.ACTIVE
         ).first()
         
         # If there is no subscription yet, create a new subscription with the FREE plan
         if not existing_subscription:
             activated_at = datetime.now(timezone.utc)
-            expires_at = activated_at + timedelta(days=free_plan.duration)
-            
+
+            expires_at = activated_at + timedelta(
+                days=free_plan.duration
+            )
+
             new_subscription = TenantSubscription(
                 tenant_id=tenant_id,
-                membership_id=free_plan.id,
+                subscription_plan_id=free_plan.id,
                 activated_at=activated_at,
                 expires_at=expires_at,
-                is_active=True,
+                approved_by=None,
+                approved_at=activated_at,
+                status=SubscriptionStatus.ACTIVE
             )
+
             db.add(new_subscription)
             
     tenant.status = new_status
