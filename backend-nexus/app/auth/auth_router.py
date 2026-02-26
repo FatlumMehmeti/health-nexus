@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Body
+from fastapi import APIRouter, Depends
 
 from app.auth.auth_schema import (
     LoginRequest,
@@ -21,13 +21,7 @@ def signup(body: SignupRequest) -> SignupResponse:
 
 # Login endpoint - returns JWT token
 @router.post("/login", response_model=TokenResponse)
-def login(body: LoginRequest = Body( 
-        ...,
-        example={
-            "email": "super.admin@seed.com",
-            "password": "Team2026@"
-        },
-    ),) -> TokenResponse:
+def login(body: LoginRequest) -> TokenResponse:
     return login_user(body.email, body.password)
 
 

@@ -16,15 +16,6 @@ class ProductCreate(ProductBase):
     pass
 
 
-class ProductCreateForTenant(BaseModel):
-    """Create product for a tenant (tenant_id from URL)."""
-    name: str
-    description: Optional[str] = None
-    price: Decimal
-    stock_quantity: int = 0
-    is_available: bool = True
-
-
 class ProductUpdate(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None

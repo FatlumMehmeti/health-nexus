@@ -42,9 +42,4 @@ if [ "$VERIFY_SEED_ON_BOOT" = "true" ]; then
 fi
 
 echo "Starting FastAPI..."
-RELOAD="${RELOAD:-true}"
-if [ "$RELOAD" = "true" ]; then
-    uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
-else
-    uvicorn app.main:app --host 0.0.0.0 --port 8000
-fi
+uvicorn app.main:app --host 0.0.0.0 --port 8000

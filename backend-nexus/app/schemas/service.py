@@ -12,14 +12,6 @@ class ServiceBase(BaseModel):
     is_active: bool = True
 
 
-class ServiceCreateInput(BaseModel):
-    """Create service under a tenant department. tenant_id is inferred from tenant_department."""
-    tenant_department_id: int
-    name: str
-    price: float
-    description: Optional[str] = None
-
-
 class ServiceCreate(ServiceBase):
     pass
 

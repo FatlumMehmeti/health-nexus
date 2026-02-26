@@ -6,12 +6,12 @@ from .base import Base
 class Product(Base):
     __tablename__ = "products"
 
-    product_id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    product_id: Mapped[int] = mapped_column(primary_key=True)
 
     name: Mapped[str] = mapped_column(String(255), nullable=False)
-    description: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    description: Mapped[str | None]
     price: Mapped[float] = mapped_column(DECIMAL, nullable=False)
-    stock_quantity: Mapped[int] = mapped_column(Integer, default=0)
+    stock_quantity: Mapped[int] = mapped_column(default=0)
     is_available: Mapped[bool] = mapped_column(Boolean, default=True)
 
     tenant_id: Mapped[int] = mapped_column(
