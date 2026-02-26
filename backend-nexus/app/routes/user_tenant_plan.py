@@ -119,12 +119,7 @@ def get_plan(
 def get_plans_by_tenant(
     tenant_id: int,
     db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user),
 ):
-    user_id = current_user.get("user_id")
-
-    verify_tenant_manager(db, user_id, tenant_id)
-
     return db.query(UserTenantPlan).filter(
         UserTenantPlan.tenant_id == tenant_id
     ).all()
