@@ -6,13 +6,13 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.main import app
-from app.models import Tenant, TenantStatus, Membership
+from app.models import Tenant, TenantStatus, SubscriptionPlan
 
 
 @pytest.fixture
 def client(db_session):
-    """TestClient with FREE membership for approval flow."""
-    free_plan = Membership(name="FREE", price=0, duration=30)
+    """TestClient with FREE subscription plan for approval flow."""
+    free_plan = SubscriptionPlan(name="FREE", price=0, duration=30)
     db_session.add(free_plan)
     db_session.commit()
     yield TestClient(app)

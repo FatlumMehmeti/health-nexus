@@ -3,6 +3,7 @@ from pathlib import Path
 
 import pytest
 from dotenv import load_dotenv
+from sqlalchemy import text
 
 from app.models.base import Base
 from app.db import engine, SessionLocal
@@ -27,15 +28,20 @@ import app.models  # noqa: F401
 @pytest.fixture(scope="function", autouse=True)
 def reset_database():
     """
-    Run before each test: drop all tables then create all tables for a clean DB.
-    After the test: dispose engine connections so no sessions stay open.
+    Reset PostgreSQL database using CASCADE schema drop.
+    Guarantees test isolation.
     """
-    Base.metadata.drop_all(bind=engine)
+
+    with engine.begin() as conn:
+        conn.execute(text("DROP SCHEMA IF EXISTS public CASCADE"))
+        conn.execute(text("CREATE SCHEMA public"))
+
+    # Recreate tables
     Base.metadata.create_all(bind=engine)
-    try:
-        yield
-    finally:
-        engine.dispose()
+
+    yield
+
+    engine.dispose()
 
 
 @pytest.fixture(scope="function")
