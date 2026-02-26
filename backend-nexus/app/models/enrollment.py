@@ -1,7 +1,7 @@
 import enum
 from datetime import datetime
 
-from sqlalchemy import ForeignKey, UniqueConstraint, Enum, DateTime
+from sqlalchemy import ForeignKey, ForeignKeyConstraint, UniqueConstraint, Enum, DateTime
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .base import Base, TimestampMixin
@@ -23,6 +23,11 @@ class Enrollment(Base, TimestampMixin):
             "patient_user_id",
             name="uq_enrollment_patient_tenant"
         ),
+        ForeignKeyConstraint(
+            ["tenant_id", "patient_user_id"],
+            ["patients.tenant_id", "patients.user_id"],
+            name="fk_enrollments_patient_tenant_user",
+        ),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -33,7 +38,6 @@ class Enrollment(Base, TimestampMixin):
     )
 
     patient_user_id: Mapped[int] = mapped_column(
-        ForeignKey("patients.user_id"),
         nullable=False
     )
 

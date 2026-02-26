@@ -1,6 +1,6 @@
 import enum
 
-from sqlalchemy import ForeignKey, Enum, DECIMAL
+from sqlalchemy import ForeignKey, ForeignKeyConstraint, Enum, DECIMAL
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .base import Base, TimestampMixin
@@ -15,11 +15,17 @@ class OrderStatus(str, enum.Enum):
 
 class Order(Base, TimestampMixin):
     __tablename__ = "orders"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["tenant_id", "patient_user_id"],
+            ["patients.tenant_id", "patients.user_id"],
+            name="fk_orders_patient_tenant_user",
+        ),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
 
     patient_user_id: Mapped[int] = mapped_column(
-        ForeignKey("patients.user_id"),
         nullable=False
     )
 

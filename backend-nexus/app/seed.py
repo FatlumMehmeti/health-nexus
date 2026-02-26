@@ -32,6 +32,7 @@ SEED_USERS = [
     SeedUser("Doctor", "One", "doctor.one@seed.com", "Team2026@", "DOCTOR"),
     SeedUser("Sales", "Agent", "sales.agent@seed.com", "Team2026@", "SALES"),
     SeedUser("Client", "User", "client.user@seed.com", "Team2026@", "CLIENT"),
+    SeedUser("Client", "NoEnroll", "client.noenroll@seed.com", "Team2026@", "CLIENT"),
 ]
 
 
@@ -224,26 +225,29 @@ def seed_doctors(session):
 def seed_patients(session):
     from app.models import Patient
 
-    user = session.query(User).filter_by(
-        email="client.user@seed.com"
-    ).first()
+    patient_emails = [
+        "client.user@seed.com",
+        "client.noenroll@seed.com",
+    ]
 
-    if not user:
-        return
+    for email in patient_emails:
+        user = session.query(User).filter_by(email=email).first()
+        if not user:
+            continue
 
-    existing = session.query(Patient).filter_by(
-        user_id=user.id
-    ).first()
+        existing = session.query(Patient).filter_by(
+            user_id=user.id,
+            tenant_id=1,
+        ).first()
+        if existing:
+            continue
 
-    if existing:
-        return
-
-    patient = Patient(
-        user_id=user.id,
-        tenant_id=1
-    )
-
-    session.add(patient)
+        session.add(
+            Patient(
+                user_id=user.id,
+                tenant_id=1
+            )
+        )
     session.commit()
 
 
