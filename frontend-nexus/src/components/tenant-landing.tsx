@@ -38,6 +38,8 @@ export type TenantLandingConfig = Record<
     moto?: string
     about?: string
     primaryFontClass?: string
+    /** Backend tenant id; when set, client view fetches plans from API instead of mock. */
+    tenantId?: number
     plans?: TenantPlan[]
   }
 >
@@ -93,10 +95,13 @@ export function TenantLanding({
   const [plans, setPlans] = useState<TenantPlan[]>([])
   const [selectedPlanId, setSelectedPlanId] = useState<string | undefined>(undefined)
 
-  // Simple inline form state for creating/updating a single plan.
+  // Inline form state for adding or editing a plan.
   const [newPlanName, setNewPlanName] = useState('')
   const [newPlanPrice, setNewPlanPrice] = useState('0')
+  const [newPlanMaxAppointments, setNewPlanMaxAppointments] = useState('')
+  const [newPlanMaxConsultations, setNewPlanMaxConsultations] = useState('')
   const [editingPlanId, setEditingPlanId] = useState<string | null>(null)
+  const [planFormError, setPlanFormError] = useState<string | null>(null)
   const formatPrice = (price: number, currency = 'EUR') =>
     new Intl.NumberFormat(undefined, {
       style: 'currency',
@@ -113,17 +118,37 @@ export function TenantLanding({
     return `${value} ${label ?? ''}`.trim()
   }
 
+  // Parse optional number from form string (empty = null).
+  const parseOptionalInt = (s: string): number | null => {
+    const trimmed = s.trim()
+    if (trimmed === '') return null
+    const n = Number(trimmed)
+    return Number.isFinite(n) && n >= 0 ? n : null
+  }
+
   // Create a plan for the current tenant manager and merge it into local state.
   const createPlanMutation = useMutation({
-    mutationFn: async ({ name, price }: { name: string; price: number }) => {
+    mutationFn: async ({
+      name,
+      price,
+      max_appointments,
+      max_consultations,
+    }: {
+      name: string
+      price: number
+      max_appointments?: number | null
+      max_consultations?: number | null
+    }) => {
       if (!tenantNumericId) {
         throw new Error('Missing tenant id for plan creation')
       }
       const created = await tenantPlansService.create({
         tenant_id: tenantNumericId,
         name,
-        price,
+        price: Math.max(0.01, price),
         is_active: true,
+        max_appointments: max_appointments ?? undefined,
+        max_consultations: max_consultations ?? undefined,
       })
       return created
     },
@@ -134,14 +159,16 @@ export function TenantLanding({
     },
   })
 
-  // Update a single plan (name/price/visibility) and keep local state in sync.
+  // Update a single plan (name/price/visibility/limits) and keep local state in sync.
   const updatePlanMutation = useMutation({
     mutationFn: async ({
       id,
       data,
     }: {
       id: number
-      data: Partial<Pick<TenantPlanApi, 'name' | 'price' | 'is_active'>>
+      data: Partial<
+        Pick<TenantPlanApi, 'name' | 'price' | 'is_active' | 'max_appointments' | 'max_consultations'>
+      >
     }) => {
       const updated = await tenantPlansService.update(id, data)
       return updated
@@ -160,6 +187,26 @@ export function TenantLanding({
               : p,
           ),
         )
+      }
+    },
+  })
+
+  // Delete a plan on the backend and remove from local state.
+  const deletePlanMutation = useMutation({
+    mutationFn: (id: number) => tenantPlansService.delete(id),
+    onSuccess: (_data, id) => {
+      setPlans((prev) => prev.filter((p) => p.id !== String(id)))
+      if (editingPlanId === String(id)) {
+        setEditingPlanId(null)
+        setNewPlanName('')
+        setNewPlanPrice('0')
+        setNewPlanMaxAppointments('')
+        setNewPlanMaxConsultations('')
+      }
+      const remaining = plans.filter((p) => p.id !== String(id))
+      const firstActive = remaining.find((p) => p.isActive !== false)
+      if (selectedPlanId === String(id)) {
+        setSelectedPlanId(firstActive?.id ?? remaining[0]?.id)
       }
     },
   })
@@ -184,6 +231,14 @@ export function TenantLanding({
     queryFn: () => tenantPlansService.listByTenant(tenantNumericId!),
   })
 
+  // For clients: fetch plans from GET /user-tenant-plans/tenant/{tenantId} (active plans only).
+  const clientTenantId = !isTenantManager && tenant?.tenantId != null ? tenant.tenantId : null
+  const { data: clientPlans } = useQuery({
+    queryKey: ['tenant-plans', clientTenantId],
+    enabled: Boolean(clientTenantId),
+    queryFn: () => tenantPlansService.listByTenant(clientTenantId!),
+  })
+
   useEffect(() => {
     // For tenant managers, prefer backend plans when available
     if (tenantNumericId && backendPlans) {
@@ -198,18 +253,23 @@ export function TenantLanding({
       return
     }
 
-    // For public users or when backend is not available yet, fall back to config
+    // For clients: use only API plans from GET /user-tenant-plans/tenant/{id}; no mock fallback.
     if (!tenantNumericId) {
-      const basePlans = tenant?.plans ?? []
-      setPlans(basePlans)
-      if (basePlans.length > 0) {
-        const firstActive = basePlans.find((p) => p.isActive !== false) ?? basePlans[0]
-        setSelectedPlanId(firstActive.id ?? firstActive.name)
+      if (clientTenantId != null && clientPlans !== undefined) {
+        const mapped = clientPlans.map(mapApiPlanToTenantPlan)
+        setPlans(mapped)
+        if (mapped.length > 0) {
+          const firstActive = mapped.find((p) => p.isActive !== false) ?? mapped[0]
+          setSelectedPlanId(firstActive.id ?? firstActive.name)
+        } else {
+          setSelectedPlanId(undefined)
+        }
       } else {
+        setPlans([])
         setSelectedPlanId(undefined)
       }
     }
-  }, [tenantNumericId, backendPlans, tenant])
+  }, [tenantNumericId, backendPlans, clientTenantId, clientPlans, tenant])
 
   return (
     <div className="relative flex min-h-screen flex-col overflow-hidden">
@@ -357,15 +417,14 @@ export function TenantLanding({
                 <section className="space-y-4 rounded-xl border bg-card/60 p-4 text-xs sm:text-sm">
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                     <div>
-                      <h3 className="text-sm font-semibold sm:text-base">Manage plans (mock)</h3>
+                      <h3 className="text-sm font-semibold sm:text-base">Manage plans</h3>
                       <p className="text-xs text-muted-foreground sm:text-[0.8rem]">
-                        This panel only updates plans in the browser. Backend persistence will be added
-                        later.
+                        Add plans and toggle visibility. Changes are saved to the backend.
                       </p>
                     </div>
                   </div>
 
-                  <div className="grid gap-3 sm:grid-cols-[2fr,1fr,auto,auto] sm:items-end">
+                  <div className="grid gap-3 sm:grid-cols-[2fr,1fr,1fr,1fr,auto,auto] sm:items-end">
                     <div className="space-y-1">
                       <Label htmlFor="new-plan-name" className="text-xs">
                         Plan name
@@ -373,7 +432,10 @@ export function TenantLanding({
                       <Input
                         id="new-plan-name"
                         value={newPlanName}
-                        onChange={(e) => setNewPlanName(e.target.value)}
+                        onChange={(e) => {
+                          setNewPlanName(e.target.value)
+                          setPlanFormError(null)
+                        }}
                         placeholder="e.g. Family Plus"
                         className="h-8 text-xs"
                       />
@@ -388,18 +450,80 @@ export function TenantLanding({
                         min={0}
                         step={1}
                         value={newPlanPrice}
-                        onChange={(e) => setNewPlanPrice(e.target.value)}
+                        onChange={(e) => {
+                          setNewPlanPrice(e.target.value)
+                          setPlanFormError(null)
+                        }}
                         className="h-8 text-xs"
                       />
                     </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="new-plan-max-appointments" className="text-xs">
+                        Max appointments
+                      </Label>
+                      <Input
+                        id="new-plan-max-appointments"
+                        type="number"
+                        min={0}
+                        step={1}
+                        value={newPlanMaxAppointments}
+                        onChange={(e) => {
+                          setNewPlanMaxAppointments(e.target.value)
+                          setPlanFormError(null)
+                        }}
+                        placeholder="Unlimited"
+                        className="h-8 text-xs"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="new-plan-max-consultations" className="text-xs">
+                        Max consultations
+                      </Label>
+                      <Input
+                        id="new-plan-max-consultations"
+                        type="number"
+                        min={0}
+                        step={1}
+                        value={newPlanMaxConsultations}
+                        onChange={(e) => {
+                          setNewPlanMaxConsultations(e.target.value)
+                          setPlanFormError(null)
+                        }}
+                        placeholder="Unlimited"
+                        className="h-8 text-xs"
+                      />
+                    </div>
+                    {planFormError && (
+                      <p className="text-xs text-destructive sm:col-span-full">{planFormError}</p>
+                    )}
                     <Button
                       type="button"
                       size="sm"
                       className="mt-2 sm:mt-0"
                       onClick={async () => {
+                        setPlanFormError(null)
                         const trimmedName = newPlanName.trim()
-                        if (!trimmedName) return
+                        if (!trimmedName) {
+                          setPlanFormError('Plan name is required.')
+                          return
+                        }
                         const priceNumber = Number(newPlanPrice)
+                        const price = Number.isFinite(priceNumber) ? priceNumber : 0
+                        const maxAppt = parseOptionalInt(newPlanMaxAppointments)
+                        const maxCons = parseOptionalInt(newPlanMaxConsultations)
+
+                        if (price <= 0) {
+                          setPlanFormError('Price must be greater than 0.')
+                          return
+                        }
+                        if (maxAppt !== null && maxAppt <= 0) {
+                          setPlanFormError('Max appointments must be at least 1, or leave empty for unlimited.')
+                          return
+                        }
+                        if (maxCons !== null && maxCons <= 0) {
+                          setPlanFormError('Max consultations must be at least 1, or leave empty for unlimited.')
+                          return
+                        }
 
                         if (editingPlanId) {
                           const numericId = Number(editingPlanId)
@@ -407,20 +531,27 @@ export function TenantLanding({
                             id: numericId,
                             data: {
                               name: trimmedName,
-                              price: Number.isFinite(priceNumber) ? priceNumber : undefined,
+                              price,
+                              max_appointments: maxAppt ?? undefined,
+                              max_consultations: maxCons ?? undefined,
                             },
                           })
                           setEditingPlanId(null)
                         } else {
-                          const price = Number.isFinite(priceNumber) ? priceNumber : 0
-                          await createPlanMutation.mutateAsync({ name: trimmedName, price })
+                          await createPlanMutation.mutateAsync({
+                            name: trimmedName,
+                            price,
+                            max_appointments: maxAppt ?? undefined,
+                            max_consultations: maxCons ?? undefined,
+                          })
                         }
-
                         setNewPlanName('')
                         setNewPlanPrice('0')
+                        setNewPlanMaxAppointments('')
+                        setNewPlanMaxConsultations('')
                       }}
                     >
-                      {editingPlanId ? 'Save changes' : 'Add mock plan'}
+                      {editingPlanId ? 'Save changes' : 'Add plan'}
                     </Button>
                     {editingPlanId && (
                       <Button
@@ -432,6 +563,9 @@ export function TenantLanding({
                           setEditingPlanId(null)
                           setNewPlanName('')
                           setNewPlanPrice('0')
+                          setNewPlanMaxAppointments('')
+                          setNewPlanMaxConsultations('')
+                          setPlanFormError(null)
                         }}
                       >
                         Cancel
@@ -463,9 +597,18 @@ export function TenantLanding({
                                 size="icon"
                                 className="h-6 w-6 text-[0.65rem]"
                                 onClick={() => {
+                                  setPlanFormError(null)
                                   setEditingPlanId(key)
                                   setNewPlanName(plan.name)
                                   setNewPlanPrice(String(plan.price ?? 0))
+                                  setNewPlanMaxAppointments(
+                                    plan.maxAppointments != null ? String(plan.maxAppointments) : '',
+                                  )
+                                  setNewPlanMaxConsultations(
+                                    plan.maxConsultations != null
+                                      ? String(plan.maxConsultations)
+                                      : '',
+                                  )
                                 }}
                               >
                                 <IconEdit
@@ -483,7 +626,6 @@ export function TenantLanding({
                                   if (!plan.id) return
                                   const numericId = Number(plan.id)
                                   const nextActive = !plan.isActive
-                                  // Optimistic update so Hide/Show reflects immediately
                                   setPlans((prev) =>
                                     prev.map((p) =>
                                       p.id === plan.id ? { ...p, isActive: nextActive } : p,
@@ -502,19 +644,26 @@ export function TenantLanding({
                                 variant="ghost"
                                 size="icon"
                                 className="h-6 w-6 text-[0.65rem] text-destructive"
+                                disabled={deletePlanMutation.isPending}
                                 onClick={() => {
-                                  setPlans((prev) => {
-                                    const next = prev.filter((p) => p !== plan)
-                                    if (selectedPlanId && key === selectedPlanId) {
-                                      const firstActive = next.find((p) => p.isActive !== false)
-                                      setSelectedPlanId(firstActive?.id ?? next[0]?.id)
+                                  const numericId = plan.id != null ? Number(plan.id) : NaN
+                                  const isBackendPlan = Number.isFinite(numericId)
+                                  if (isBackendPlan) {
+                                    deletePlanMutation.mutate(numericId)
+                                  } else {
+                                    setPlans((prev) => {
+                                      const next = prev.filter((p) => p !== plan)
+                                      if (selectedPlanId && key === selectedPlanId) {
+                                        const firstActive = next.find((p) => p.isActive !== false)
+                                        setSelectedPlanId(firstActive?.id ?? next[0]?.id)
+                                      }
+                                      return next
+                                    })
+                                    if (editingPlanId === key) {
+                                      setEditingPlanId(null)
+                                      setNewPlanName('')
+                                      setNewPlanPrice('0')
                                     }
-                                    return next
-                                  })
-                                  if (editingPlanId === key) {
-                                    setEditingPlanId(null)
-                                    setNewPlanName('')
-                                    setNewPlanPrice('0')
                                   }
                                 }}
                               >

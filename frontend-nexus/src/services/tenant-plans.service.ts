@@ -46,5 +46,8 @@ export const tenantPlansService = {
 
   update: (id: number, data: TenantPlanUpdateApi) =>
     apiFetch<TenantPlanApi>(`${BASE}/${id}`, { method: 'PUT', body: data }),
+
+  delete: (id: number) =>
+    apiFetch<{ message: string }>(`${BASE}/${id}`, { method: 'DELETE' }),
 }
 
