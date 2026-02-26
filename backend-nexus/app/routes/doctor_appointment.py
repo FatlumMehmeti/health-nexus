@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from app.auth.auth_utils import get_current_user
 from app.db import get_db
 from app.models.appointment import Appointment, AppointmentStatus
-from app.routes.appointment import _record_status_change, _require_doctor
+from app.routes.appointment import _has_doctor_overlap, _record_status_change, _require_doctor
 
 
 router = APIRouter(prefix="/appointments", tags=["Doctor Appointments"])
@@ -53,6 +53,16 @@ def approve_appointment(
         return {"id": appointment.id, "status": appointment.status.value}
     if appointment.status in (AppointmentStatus.CANCELLED, AppointmentStatus.COMPLETED):
         raise HTTPException(400, "This appointment cannot be approved")
+
+    if _has_doctor_overlap(
+        db=db,
+        doctor_id=appointment.doctor_user_id,
+        start_dt=appointment.appointment_datetime,
+        duration_minutes=30,
+        exclude_appointment_id=appointment.id,
+        statuses=(AppointmentStatus.CONFIRMED,),
+    ):
+        raise HTTPException(400, "Doctor already has an appointment at this time")
 
     old_status = appointment.status
     appointment.status = AppointmentStatus.CONFIRMED

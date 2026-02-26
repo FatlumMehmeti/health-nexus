@@ -14,6 +14,43 @@ from app.models.patient import Patient
 
 router = APIRouter(prefix="/appointments", tags=["Appointments"])
 
+def _normalize_datetime(dt: datetime) -> datetime:
+    if dt.tzinfo is None:
+        normalized = dt.replace(tzinfo=timezone.utc)
+    else:
+        normalized = dt.astimezone(timezone.utc)
+    return normalized.replace(second=0, microsecond=0)
+
+
+def _has_doctor_overlap(
+    db: Session,
+    doctor_id: int,
+    start_dt: datetime,
+    duration_minutes: int = 30,
+    *,
+    exclude_appointment_id: int | None = None,
+    statuses: tuple[AppointmentStatus, ...] = (
+        AppointmentStatus.REQUESTED,
+        AppointmentStatus.CONFIRMED,
+    ),
+) -> bool:
+    start_dt = _normalize_datetime(start_dt)
+    end_dt = start_dt + timedelta(minutes=duration_minutes)
+
+    query = db.query(Appointment).filter(
+        Appointment.doctor_user_id == doctor_id,
+        Appointment.status.in_(statuses),
+    )
+    if exclude_appointment_id is not None:
+        query = query.filter(Appointment.id != exclude_appointment_id)
+
+    for existing in query.all():
+        existing_start = _normalize_datetime(existing.appointment_datetime)
+        existing_end = existing_start + timedelta(minutes=30)
+        if existing_start < end_dt and start_dt < existing_end:
+            return True
+    return False
+
 
 def _parse_work_block(block: object) -> tuple[str, str]:
     if isinstance(block, dict):
@@ -104,6 +141,7 @@ def _validate_slot_for_doctor(
     appointment_datetime: datetime,
     duration_minutes: int,
 ):
+    appointment_datetime = _normalize_datetime(appointment_datetime)
     weekday = appointment_datetime.strftime("%A").lower()
     working_hours = doctor.working_hours or {}
     if weekday not in working_hours:
@@ -142,12 +180,14 @@ def get_available_slots(db: Session, doctor_id: int, day_dt: datetime):
 
         current = start
         while current + timedelta(minutes=slot_duration) <= end:
-            conflict = db.query(Appointment).filter(
-                Appointment.doctor_user_id == doctor_id,
-                Appointment.status.in_([AppointmentStatus.REQUESTED, AppointmentStatus.CONFIRMED]),
-                Appointment.appointment_datetime == current,
-            ).first()
-            if not conflict:
+            current_norm = _normalize_datetime(current)
+            if not _has_doctor_overlap(
+                db=db,
+                doctor_id=doctor_id,
+                start_dt=current_norm,
+                duration_minutes=slot_duration,
+                statuses=(AppointmentStatus.REQUESTED, AppointmentStatus.CONFIRMED),
+            ):
                 slots.append(current)
             current += timedelta(minutes=slot_duration)
 
@@ -164,6 +204,7 @@ def book_appointment(
     duration_minutes: int = 30,
     description: str | None = None,
 ):
+    appointment_datetime = _normalize_datetime(appointment_datetime)
     user_id = current_user.get("user_id")
     if user_id is None:
         raise HTTPException(401, "Invalid token payload")
@@ -197,12 +238,13 @@ def book_appointment(
 
         _validate_slot_for_doctor(doctor, appointment_datetime, duration_minutes)
 
-        conflict = db.query(Appointment).filter(
-            Appointment.doctor_user_id == doctor_id,
-            Appointment.status.in_([AppointmentStatus.REQUESTED, AppointmentStatus.CONFIRMED]),
-            Appointment.appointment_datetime == appointment_datetime,
-        ).first()
-        if conflict:
+        if _has_doctor_overlap(
+            db=db,
+            doctor_id=doctor_id,
+            start_dt=appointment_datetime,
+            duration_minutes=duration_minutes,
+            statuses=(AppointmentStatus.REQUESTED, AppointmentStatus.CONFIRMED),
+        ):
             raise HTTPException(400, "Time slot already booked")
 
         appointment = Appointment(

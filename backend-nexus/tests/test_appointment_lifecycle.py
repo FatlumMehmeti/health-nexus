@@ -194,6 +194,7 @@ def test_booking_lifecycle_end_to_end(appointment_client):
 def test_availability_and_conflict_checks(appointment_client):
     client, ctx = appointment_client
     patient_token = _login(client, ctx["patient_email"], "Team2026@")
+    doctor_token = _login(client, ctx["doctor_email"], "Team2026@")
 
     first_booking = client.post(
         "/appointments/book",
@@ -208,8 +209,9 @@ def test_availability_and_conflict_checks(appointment_client):
         },
     )
     assert first_booking.status_code == 200
+    first_appointment_id = first_booking.json()["id"]
 
-    conflict = client.post(
+    second_booking_conflict = client.post(
         "/appointments/book",
         headers={"Authorization": f"Bearer {patient_token}"},
         json={
@@ -218,11 +220,33 @@ def test_availability_and_conflict_checks(appointment_client):
             "department_id": ctx["department_id"],
             "appointment_datetime": "2026-03-09T10:00:00Z",
             "duration_minutes": 30,
-            "description": "Slot conflict",
+            "description": "Slot overlap",
         },
     )
-    assert conflict.status_code == 400
-    assert conflict.json()["detail"] == "Time slot already booked"
+    assert second_booking_conflict.status_code == 400
+    assert second_booking_conflict.json()["detail"] == "Time slot already booked"
+
+    approve_first = client.patch(
+        f"/appointments/{first_appointment_id}/approve",
+        headers={"Authorization": f"Bearer {doctor_token}"},
+    )
+    assert approve_first.status_code == 200
+    assert approve_first.json()["status"] == "CONFIRMED"
+
+    conflict_after_confirm = client.post(
+        "/appointments/book",
+        headers={"Authorization": f"Bearer {patient_token}"},
+        json={
+            "tenant_id": ctx["tenant_id"],
+            "doctor_id": ctx["doctor_id"],
+            "department_id": ctx["department_id"],
+            "appointment_datetime": "2026-03-09T10:00:00Z",
+            "duration_minutes": 30,
+            "description": "Slot conflict after confirm",
+        },
+    )
+    assert conflict_after_confirm.status_code == 400
+    assert conflict_after_confirm.json()["detail"] == "Time slot already booked"
 
     availability = client.get(
         f"/appointments/doctor/{ctx['doctor_id']}/availability",

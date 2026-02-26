@@ -7,6 +7,8 @@ from app.models.appointment import Appointment, AppointmentStatus
 from app.models.doctor import Doctor
 from app.schemas.appointment import AppointmentCreate
 from app.routes.appointment import (
+    _has_doctor_overlap,
+    _normalize_datetime,
     _record_status_change,
     _require_patient,
     _validate_slot_for_doctor,
@@ -43,6 +45,7 @@ def reschedule_appointment(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
+    normalized_dt = _normalize_datetime(payload.appointment_datetime)
     user_id = _require_patient(current_user, db, payload.tenant_id)
     appointment = db.query(Appointment).filter(Appointment.id == appointment_id).first()
     if not appointment:
@@ -63,18 +66,19 @@ def reschedule_appointment(
     if not doctor:
         raise HTTPException(404, "Doctor not found in this department")
 
-    _validate_slot_for_doctor(doctor, payload.appointment_datetime, payload.duration_minutes)
+    _validate_slot_for_doctor(doctor, normalized_dt, payload.duration_minutes)
 
-    conflict = db.query(Appointment).filter(
-        Appointment.id != appointment.id,
-        Appointment.doctor_user_id == payload.doctor_id,
-        Appointment.status.in_([AppointmentStatus.REQUESTED, AppointmentStatus.CONFIRMED]),
-        Appointment.appointment_datetime == payload.appointment_datetime,
-    ).first()
-    if conflict:
+    if _has_doctor_overlap(
+        db=db,
+        doctor_id=payload.doctor_id,
+        start_dt=normalized_dt,
+        duration_minutes=payload.duration_minutes,
+        exclude_appointment_id=appointment.id,
+        statuses=(AppointmentStatus.REQUESTED, AppointmentStatus.CONFIRMED),
+    ):
         raise HTTPException(400, "Time slot already booked")
 
-    appointment.appointment_datetime = payload.appointment_datetime
+    appointment.appointment_datetime = normalized_dt
     appointment.description = payload.description
     appointment.doctor_user_id = payload.doctor_id
     if appointment.status != AppointmentStatus.REQUESTED:
