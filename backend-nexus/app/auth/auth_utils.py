@@ -14,7 +14,7 @@ security = HTTPBearer()
 
 SECRET_KEY = "secret"
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
+ACCESS_TOKEN_EXPIRE_MINUTES = 7 * 24 * 60  # 7 days
 REFRESH_TOKEN_EXPIRE_DAYS = 7
 
 # Role -> list of permission identifiers (for documentation / tooling)
@@ -269,3 +269,19 @@ def require_tenant_access(tenant_id: int | None = None, header_name: str = "X-Te
         return user
 
     return dependency
+
+
+def require_tenant_from_token(user: Dict[str, Any] = Depends(get_current_user)) -> tuple[Dict[str, Any], int]:
+    """
+    Requires tenant manager: user must have tenant_id in JWT.
+    Returns (user, tenant_id).
+    """
+    user_tenant_raw = user.get("tenant_id")
+    if user_tenant_raw is None:
+        raise HTTPException(status_code=403, detail="Tenant access denied: no tenant assigned")
+    try:
+        tenant_id = int(user_tenant_raw) if not isinstance(user_tenant_raw, int) else user_tenant_raw
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=403, detail="Tenant access denied")
+    return user, tenant_id
+

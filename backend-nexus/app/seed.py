@@ -16,6 +16,7 @@ from app.models import (
     User,
     Department,
     TenantDepartment,
+    TenantManager,
     Doctor,
     Service,
 )
@@ -146,6 +147,12 @@ SEED_SUBSCRIPTION_PLANS = [
 
 # tenant_name, name, price, description
 SEED_PRODUCTS = [
+    # Bluestone Clinic (tenant.manager@seed.com)
+    {"tenant_name": "Bluestone Clinic", "name": "Consultation Package", "price": 150.00, "description": "3-session consultation bundle"},
+    {"tenant_name": "Bluestone Clinic", "name": "Health Check-Up", "price": 99.00, "description": "Comprehensive annual health screening"},
+    {"tenant_name": "Bluestone Clinic", "name": "Blood Pressure Monitor", "price": 45.00, "description": "Home blood pressure monitor"},
+    {"tenant_name": "Bluestone Clinic", "name": "First Aid Kit", "price": 28.00, "description": "Basic first aid kit for home use"},
+    {"tenant_name": "Bluestone Clinic", "name": "Thermometer", "price": 18.00, "description": "Digital thermometer"},
     {"tenant_name": "Apex Medical Group", "name": "Vitamin D Supplement", "price": 25.00, "description": "Daily vitamin D supplement"},
     {"tenant_name": "Apex Medical Group", "name": "Multivitamin Pack", "price": 35.00, "description": "30-day multivitamin pack"},
     {"tenant_name": "Apex Medical Group", "name": "Blood Pressure Monitor", "price": 45.00, "description": "Home blood pressure monitor"},
@@ -442,6 +449,20 @@ def seed_services(session, tenants_by_name, departments_by_name):
         existing.add((td.id, payload["name"]))
 
 
+def seed_tenant_managers(session, users_by_email, tenants_by_name):
+    """Link tenant.manager@seed.com to Bluestone Clinic."""
+    tm_user = users_by_email.get("tenant.manager@seed.com")
+    bluestone = tenants_by_name.get("Bluestone Clinic")
+    if not tm_user or not bluestone:
+        return
+    existing = session.query(TenantManager).filter(
+        TenantManager.user_id == tm_user.id,
+        TenantManager.tenant_id == bluestone.id,
+    ).first()
+    if not existing:
+        session.add(TenantManager(user_id=tm_user.id, tenant_id=bluestone.id))
+
+
 def seed_products(session, tenants_by_name):
     existing = set()
     for payload in SEED_PRODUCTS:
@@ -477,6 +498,7 @@ def run_seed() -> None:
         seed_tenant_details(session, tenants_by_name)
         seed_subscription_plans(session)
         users_by_email = seed_users(session, roles_by_name)
+        seed_tenant_managers(session, users_by_email, tenants_by_name)
         session.commit()
         departments_by_name = seed_departments(session)
         seed_tenant_departments(session, tenants_by_name, departments_by_name)
