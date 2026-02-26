@@ -16,6 +16,11 @@ from app.auth.auth_utils import hash_password, verify_token, TokenError
 
 router = APIRouter(prefix="/tenants", tags=["Public Tenant Requests"])
 
+_TENANT_NOT_ACTIVE_DETAIL = {
+    "code": "TENANT_NOT_ACTIVE",
+    "message": "Tenant must be active to register clients",
+}
+
 def get_db():
     db = SessionLocal()
     try:
@@ -102,6 +107,8 @@ def register_client_in_tenant(
     tenant = db.query(Tenant).filter(Tenant.id == tenant_id).first()
     if not tenant:
         raise HTTPException(status_code=404, detail="Tenant not found")
+    if tenant.status != TenantStatus.approved:
+        raise HTTPException(status_code=403, detail=_TENANT_NOT_ACTIVE_DETAIL)
 
     authenticated_user = get_authenticated_user_if_present(request)
     if authenticated_user is not None:

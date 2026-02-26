@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import date
 
 from app.auth.auth_utils import hash_password
 from app.db import SessionLocal
-from app.models import SubscriptionPlan, Role, Tenant, TenantStatus, User
+from app.models import Patient, SubscriptionPlan, Role, Tenant, TenantStatus, User
 
 
 ROLE_NAMES = [
@@ -31,6 +32,34 @@ SEED_USERS = [
     SeedUser("Doctor", "One", "doctor.one@seed.com", "Team2026@", "DOCTOR"),
     SeedUser("Sales", "Agent", "sales.agent@seed.com", "Team2026@", "SALES"),
     SeedUser("Client", "User", "client.user@seed.com", "Team2026@", "CLIENT"),
+    SeedUser("Registered", "Client", "registered.client@seed.com", "Team2026@", "CLIENT"),
+    SeedUser("Global", "Only", "global.only@seed.com", "Team2026@", "CLIENT"),
+]
+
+SEED_PATIENTS = [
+    # Existing registration in tenant 1 -> POST /tenants/1/clients/register with this email returns 409.
+    {
+        "user_email": "registered.client@seed.com",
+        "tenant_name": "Bluestone Clinic",
+        "birthdate": date(1992, 1, 10),
+        "gender": "female",
+        "blood_type": "O+",
+    },
+    # Same global user in two tenants -> proves cross-tenant presence is valid.
+    {
+        "user_email": "client.user@seed.com",
+        "tenant_name": "Bluestone Clinic",
+        "birthdate": date(1991, 6, 15),
+        "gender": "male",
+        "blood_type": "A+",
+    },
+    {
+        "user_email": "client.user@seed.com",
+        "tenant_name": "Riverside Health Partners",
+        "birthdate": date(1991, 6, 15),
+        "gender": "male",
+        "blood_type": "A+",
+    },
 ]
 
 
@@ -105,14 +134,38 @@ def seed_tenants(session):
         tenant = existing.get(payload["name"])
         if tenant is None:
             session.add(Tenant(**payload))
+            continue
+
+        # Keep seeded tenants deterministic on reseed.
+        tenant.email = payload["email"]
+        tenant.licence_number = payload["licence_number"]
+        tenant.status = payload["status"]
 
 def seed_tenant_details(session):
     from app.models import TenantDetails
     existing = {detail.tenant_id: detail for detail in session.query(TenantDetails).all()}
+    tenants_by_name = {tenant.name: tenant for tenant in session.query(Tenant).all()}
 
     for payload in SEED_TENANT_DETAILS:
-        if payload["tenant_id"] not in existing:
-            session.add(TenantDetails(**payload))
+        tenant = tenants_by_name.get(payload["title"])
+        if tenant is None:
+            continue
+
+        detail = existing.get(tenant.id)
+        if detail is None:
+            session.add(
+                TenantDetails(
+                    tenant_id=tenant.id,
+                    logo=payload["logo"],
+                    moto=payload["moto"],
+                    title=payload["title"],
+                )
+            )
+            continue
+
+        detail.logo = payload["logo"]
+        detail.moto = payload["moto"]
+        detail.title = payload["title"]
 
 def seed_subscription_plans(session):
     existing = {subscription_plan.name: subscription_plan for subscription_plan in session.query(SubscriptionPlan).all()}
@@ -141,6 +194,39 @@ def seed_users(session, roles_by_name):
         )
 
 
+def seed_patients(session):
+    users_by_email = {user.email: user for user in session.query(User).all()}
+    tenants_by_name = {tenant.name: tenant for tenant in session.query(Tenant).all()}
+    existing = {
+        (patient.tenant_id, patient.user_id): patient
+        for patient in session.query(Patient).all()
+    }
+
+    for payload in SEED_PATIENTS:
+        user = users_by_email.get(payload["user_email"])
+        tenant = tenants_by_name.get(payload["tenant_name"])
+        if user is None or tenant is None:
+            continue
+
+        key = (tenant.id, user.id)
+        patient = existing.get(key)
+        if patient is None:
+            session.add(
+                Patient(
+                    tenant_id=tenant.id,
+                    user_id=user.id,
+                    birthdate=payload["birthdate"],
+                    gender=payload["gender"],
+                    blood_type=payload["blood_type"],
+                )
+            )
+            continue
+
+        patient.birthdate = payload["birthdate"]
+        patient.gender = payload["gender"]
+        patient.blood_type = payload["blood_type"]
+
+
 def run_seed() -> None:
     session = SessionLocal()
     try:
@@ -150,6 +236,7 @@ def run_seed() -> None:
         seed_tenant_details(session)
         seed_subscription_plans(session)
         seed_users(session, roles_by_name)
+        seed_patients(session)
         session.commit()
         print("Seed completed.")
     except Exception:
