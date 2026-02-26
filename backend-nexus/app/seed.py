@@ -1,10 +1,20 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime, timezone
 
 from app.auth.auth_utils import hash_password
 from app.db import SessionLocal
-from app.models import SubscriptionPlan, Role, Tenant, TenantStatus, User
+from app.models import (
+    Patient,
+    SubscriptionPlan,
+    Role,
+    Tenant,
+    TenantStatus,
+    User,
+    UserTenantPlan,
+    TenantManager,
+)
 
 
 ROLE_NAMES = [
@@ -139,6 +149,65 @@ def seed_users(session, roles_by_name):
                 role_id=roles_by_name[user.role_name].id,
             )
         )
+    session.flush()
+    return {u.email: u for u in session.query(User).all()}
+
+
+def seed_patients(session, users_by_email):
+    """Create Patient record for CLIENT user so they can be enrolled."""
+    client_email = "client.user@seed.com"
+    if client_email not in users_by_email:
+        return
+    user = users_by_email[client_email]
+    if session.query(Patient).filter(Patient.user_id == user.id).first() is not None:
+        return
+    session.add(Patient(user_id=user.id))
+
+
+def seed_user_tenant_plans(session):
+    """Create one UserTenantPlan per approved tenant (for enrollment testing)."""
+    from sqlalchemy import func
+    now = datetime.now(timezone.utc)
+    approved = session.query(Tenant).filter(Tenant.status == TenantStatus.approved).limit(6).all()
+    next_id = (session.query(func.coalesce(func.max(UserTenantPlan.id), 0)).scalar() or 0) + 1
+    for tenant in approved:
+        existing = (
+            session.query(UserTenantPlan)
+            .filter(UserTenantPlan.tenant_id == tenant.id, UserTenantPlan.name == "FREE")
+            .first()
+        )
+        if existing is not None:
+            continue
+        session.add(
+            UserTenantPlan(
+                id=next_id,
+                tenant_id=tenant.id,
+                name="FREE",
+                description="Starter plan",
+                price=0,
+                duration=30,
+                is_active=True,
+                created_at=now,
+                updated_at=now,
+            )
+        )
+        next_id += 1
+
+
+def seed_tenant_managers(session, users_by_email):
+    """Link Tenant Manager user to tenant 1 (Bluestone) so they can manage enrollments."""
+    tm_email = "tenant.manager@seed.com"
+    if tm_email not in users_by_email:
+        return
+    user = users_by_email[tm_email]
+    existing = (
+        session.query(TenantManager)
+        .filter(TenantManager.user_id == user.id, TenantManager.tenant_id == 1)
+        .first()
+    )
+    if existing is not None:
+        return
+    session.add(TenantManager(user_id=user.id, tenant_id=1))
 
 
 def run_seed() -> None:
@@ -149,7 +218,10 @@ def run_seed() -> None:
         session.commit()  # Ensure tenants are saved and IDs exist
         seed_tenant_details(session)
         seed_subscription_plans(session)
-        seed_users(session, roles_by_name)
+        users_by_email = seed_users(session, roles_by_name)
+        seed_patients(session, users_by_email)
+        seed_user_tenant_plans(session)
+        seed_tenant_managers(session, users_by_email)
         session.commit()
         print("Seed completed.")
     except Exception:
