@@ -59,12 +59,14 @@ def login_user(email: str, password: str) -> TokenResponse:
                 status_code=401, detail="Invalid email or password")
         if not verify_password(password, user.password):
             logger.warning("auth.login_failed bad_password email=%s", email)
-            raise HTTPException(
-                status_code=401, detail="Invalid email or password")
-
-        # Get tenant_id based on user role
-        tenant_id = get_tenant_id_for_user(session, user)
-
+            raise HTTPException(status_code=401, detail="Invalid email or password")
+        tenant_id = getattr(user, "tenant_id", None)
+        if tenant_id is None and user.role and user.role.name == "TENANT_MANAGER":
+            tm = session.execute(
+                select(TenantManager).where(TenantManager.user_id == user.id).limit(1)
+            ).scalar_one_or_none()
+            if tm:
+                tenant_id = tm.tenant_id
         payload = {
             "user_id": user.id,
             "email": user.email,
@@ -148,14 +150,15 @@ def refresh_access_token(refresh_token: str) -> TokenResponse:
             User.id == user_id).options(joinedload(User.role))
         user = session.execute(user_stmt).scalar_one_or_none()
         if user is None:
-            raise HTTPException(
-                status_code=401, detail="Invalid refresh token")
-
-        # Get tenant_id based on user role
-        tenant_id = get_tenant_id_for_user(session, user)
-
-        new_payload = {"user_id": user.id,
-                       "email": user.email, "role": user.role.name}
+            raise HTTPException(status_code=401, detail="Invalid refresh token")
+        tenant_id = getattr(user, "tenant_id", None)
+        if tenant_id is None and user.role and user.role.name == "TENANT_MANAGER":
+            tm = session.execute(
+                select(TenantManager).where(TenantManager.user_id == user.id).limit(1)
+            ).scalar_one_or_none()
+            if tm:
+                tenant_id = tm.tenant_id
+        new_payload = {"user_id": user.id, "email": user.email, "role": user.role.name}
         if tenant_id is not None:
             new_payload["tenant_id"] = tenant_id
         new_access = create_access_token(new_payload)
