@@ -17,7 +17,6 @@ class Tenant(Base, TimestampMixin):
 
     id: Mapped[int] = mapped_column(primary_key=True)
 
-    # Application/Identity fields
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     email: Mapped[str] = mapped_column(String(255), nullable=False, unique=True, index=True)
     licence_number: Mapped[str] = mapped_column(String(255), nullable=False, unique=True, index=True)
@@ -49,6 +48,12 @@ class Tenant(Base, TimestampMixin):
 
     doctors = relationship(
         "Doctor",
+        back_populates="tenant",
+        cascade="all, delete-orphan"
+    )
+
+    patients = relationship(
+        "Patient",
         back_populates="tenant",
         cascade="all, delete-orphan"
     )

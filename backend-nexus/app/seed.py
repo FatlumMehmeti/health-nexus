@@ -4,7 +4,8 @@ from dataclasses import dataclass
 
 from app.auth.auth_utils import hash_password
 from app.db import SessionLocal
-from app.models import SubscriptionPlan, Role, Tenant, TenantStatus, User
+from app.models import SubscriptionPlan, Role, Tenant, TenantStatus, User, Department, TenantDepartment, Doctor, Patient, Enrollment, EnrollmentStatus, Appointment, AppointmentStatus, UserTenantPlan
+from datetime import datetime, timezone
 
 
 ROLE_NAMES = [
@@ -122,6 +123,34 @@ def seed_subscription_plans(session):
         if plan is None:
             session.add(SubscriptionPlan(**payload))
 
+def seed_user_tenant_plans(session):
+    tenant = session.query(Tenant).filter_by(name="Bluestone Clinic").first()
+    if tenant is None:
+        return
+
+    existing = session.query(UserTenantPlan).filter_by(
+        tenant_id=tenant.id,
+        name="Starter Plan"
+    ).first()
+
+    if existing:
+        return
+
+    session.add(
+        UserTenantPlan(
+            tenant_id=tenant.id,
+            name="Starter Plan",
+            description="Baseline plan for seeded enrollment data",
+            price=0,
+            duration=30,
+            max_appointments=10,
+            max_consultations=5,
+            is_active=True,
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
+        )
+    )
+
 
 def seed_users(session, roles_by_name):
     existing = {user.email: user for user in session.query(User).all()}
@@ -141,6 +170,154 @@ def seed_users(session, roles_by_name):
         )
 
 
+def seed_departments(session):
+    cardiology = session.query(Department).filter_by(name="Cardiology").first()
+    if cardiology is None:
+        cardiology = Department(name="Cardiology")
+        session.add(cardiology)
+        session.flush()
+
+    tenant_department = session.query(TenantDepartment).filter_by(
+        tenant_id=1,
+        department_id=cardiology.id
+    ).first()
+
+    if tenant_department is None:
+        tenant_department = TenantDepartment(
+            tenant_id=1,
+            department_id=cardiology.id,
+            phone_number="123456"
+        )
+        session.add(tenant_department)
+    session.commit()
+
+
+def seed_doctors(session):
+    doctor_user = session.query(User).filter_by(
+        email="doctor.one@seed.com"
+    ).first()
+
+    td = session.query(TenantDepartment).first()
+
+    if not doctor_user or not td:
+        return
+
+    existing = session.query(Doctor).filter_by(user_id=doctor_user.id).first()
+    if existing:
+        return
+
+    doctor = Doctor(
+        user_id=doctor_user.id,
+        tenant_id=td.tenant_id,
+        tenant_department_id=td.id,
+        working_hours={
+            "monday": ["09:00", "17:00"],
+            "tuesday": ["09:00", "17:00"],
+            "wednesday": ["09:00", "17:00"]
+        }
+    )
+
+    session.add(doctor)
+    session.commit()
+
+
+def seed_patients(session):
+    from app.models import Patient
+
+    user = session.query(User).filter_by(
+        email="client.user@seed.com"
+    ).first()
+
+    if not user:
+        return
+
+    existing = session.query(Patient).filter_by(
+        user_id=user.id
+    ).first()
+
+    if existing:
+        return
+
+    patient = Patient(
+        user_id=user.id,
+        tenant_id=1
+    )
+
+    session.add(patient)
+    session.commit()
+
+
+def seed_enrollment(session):
+    patient_user = session.query(User).filter_by(
+        email="client.user@seed.com"
+    ).first()
+
+    if not patient_user:
+        return
+
+    tenant = session.query(Tenant).filter_by(name="Bluestone Clinic").first()
+    if tenant is None:
+        return
+
+    plan = session.query(UserTenantPlan).filter_by(
+        tenant_id=tenant.id,
+        name="Starter Plan"
+    ).first()
+    if plan is None:
+        return
+
+    existing = session.query(Enrollment).filter_by(
+        tenant_id=tenant.id,
+        patient_user_id=patient_user.id
+    ).first()
+    if existing:
+        return
+
+    enrollment = Enrollment(
+        tenant_id=tenant.id,
+        patient_user_id=patient_user.id,
+        user_tenant_plan_id=plan.id,
+        created_by=patient_user.id,
+        status=EnrollmentStatus.ACTIVE
+    )
+
+    session.add(enrollment)
+    session.commit()
+
+
+def seed_appointments(session):
+    from app.models import Appointment
+
+    doctor = session.query(Doctor).first()
+    patient = session.query(Patient).first()
+
+    if not doctor or not patient:
+        return
+
+    appointment_dt = datetime(2026, 3, 10, 10, 0, tzinfo=timezone.utc)
+
+    existing = session.query(Appointment).filter_by(
+        doctor_user_id=doctor.user_id,
+        patient_user_id=patient.user_id,
+        appointment_datetime=appointment_dt
+    ).first()
+
+    if existing:
+        return
+
+    appointment = Appointment(
+        tenant_id=doctor.tenant_id,
+        doctor_user_id=doctor.user_id,
+        patient_user_id=patient.user_id,
+        appointment_datetime=appointment_dt,
+        description="Initial consultation",
+        status=AppointmentStatus.CONFIRMED
+    )
+
+    session.add(appointment)
+    session.commit()
+
+
 def run_seed() -> None:
     session = SessionLocal()
     try:
@@ -149,8 +326,15 @@ def run_seed() -> None:
         session.commit()  # Ensure tenants are saved and IDs exist
         seed_tenant_details(session)
         seed_subscription_plans(session)
+        seed_user_tenant_plans(session)
         seed_users(session, roles_by_name)
         session.commit()
+
+        seed_departments(session)
+        seed_doctors(session)
+        seed_patients(session)
+        seed_enrollment(session)
+        seed_appointments(session)
         print("Seed completed.")
     except Exception:
         session.rollback()

@@ -1,7 +1,6 @@
 import enum
-from sqlalchemy import ForeignKey, Text, DateTime, Enum
+from sqlalchemy import ForeignKey, ForeignKeyConstraint, Text, DateTime, Enum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy.sql import func
 
 from .base import Base, TimestampMixin
 
@@ -15,6 +14,13 @@ class AppointmentStatus(enum.Enum):
 
 class Appointment(Base, TimestampMixin):
     __tablename__ = "appointments"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["tenant_id", "patient_user_id"],
+            ["patients.tenant_id", "patients.user_id"],
+            name="fk_appointments_patient_tenant_user",
+        ),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
 
@@ -30,7 +36,7 @@ class Appointment(Base, TimestampMixin):
     )
 
     patient_user_id: Mapped[int] = mapped_column(
-        ForeignKey("patients.user_id")
+        nullable=False,
     )
 
     tenant_id: Mapped[int] = mapped_column(
@@ -44,8 +50,8 @@ class Appointment(Base, TimestampMixin):
 
     # Relationships
     doctor = relationship("Doctor", back_populates="appointments")
-    patient = relationship("Patient", back_populates="appointments")
-    tenant = relationship("Tenant")
+    patient = relationship("Patient", back_populates="appointments", overlaps="tenant")
+    tenant = relationship("Tenant", overlaps="appointments,patient")
     status_history = relationship(
         "AppointmentStatusHistory",
         back_populates="appointment",

@@ -48,6 +48,11 @@ class TenantDepartment(Base, TimestampMixin):
         back_populates="tenant_departments"
     )
 
+    doctors = relationship(
+        "Doctor",
+        back_populates="tenant_department"
+    )
+
     services = relationship(
         "Service",
         back_populates="tenant_department",
