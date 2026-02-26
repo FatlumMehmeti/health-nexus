@@ -1,19 +1,19 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import date
 
 from app.auth.auth_utils import hash_password
 from app.db import SessionLocal
 from app.models import (
     Patient,
-    SubscriptionPlan,
     Role,
+    SubscriptionPlan,
     Tenant,
+    TenantManager,
     TenantStatus,
     User,
     UserTenantPlan,
-    TenantManager,
 )
 
 
@@ -41,6 +41,34 @@ SEED_USERS = [
     SeedUser("Doctor", "One", "doctor.one@seed.com", "Team2026@", "DOCTOR"),
     SeedUser("Sales", "Agent", "sales.agent@seed.com", "Team2026@", "SALES"),
     SeedUser("Client", "User", "client.user@seed.com", "Team2026@", "CLIENT"),
+    SeedUser("Registered", "Client", "registered.client@seed.com", "Team2026@", "CLIENT"),
+    SeedUser("Global", "Only", "global.only@seed.com", "Team2026@", "CLIENT"),
+]
+
+SEED_PATIENTS = [
+    # Existing registration in tenant 1 -> POST /tenants/1/clients/register with this email returns 409.
+    {
+        "user_email": "registered.client@seed.com",
+        "tenant_name": "Bluestone Clinic",
+        "birthdate": date(1992, 1, 10),
+        "gender": "female",
+        "blood_type": "O+",
+    },
+    # Same global user in two tenants -> proves cross-tenant presence is valid.
+    {
+        "user_email": "client.user@seed.com",
+        "tenant_name": "Bluestone Clinic",
+        "birthdate": date(1991, 6, 15),
+        "gender": "male",
+        "blood_type": "A+",
+    },
+    {
+        "user_email": "client.user@seed.com",
+        "tenant_name": "Riverside Health Partners",
+        "birthdate": date(1991, 6, 15),
+        "gender": "male",
+        "blood_type": "A+",
+    },
 ]
 
 
@@ -115,14 +143,38 @@ def seed_tenants(session):
         tenant = existing.get(payload["name"])
         if tenant is None:
             session.add(Tenant(**payload))
+            continue
+
+        # Keep seeded tenants deterministic on reseed.
+        tenant.email = payload["email"]
+        tenant.licence_number = payload["licence_number"]
+        tenant.status = payload["status"]
 
 def seed_tenant_details(session):
     from app.models import TenantDetails
     existing = {detail.tenant_id: detail for detail in session.query(TenantDetails).all()}
+    tenants_by_name = {tenant.name: tenant for tenant in session.query(Tenant).all()}
 
     for payload in SEED_TENANT_DETAILS:
-        if payload["tenant_id"] not in existing:
-            session.add(TenantDetails(**payload))
+        tenant = tenants_by_name.get(payload["title"])
+        if tenant is None:
+            continue
+
+        detail = existing.get(tenant.id)
+        if detail is None:
+            session.add(
+                TenantDetails(
+                    tenant_id=tenant.id,
+                    logo=payload["logo"],
+                    moto=payload["moto"],
+                    title=payload["title"],
+                )
+            )
+            continue
+
+        detail.logo = payload["logo"]
+        detail.moto = payload["moto"]
+        detail.title = payload["title"]
 
 def seed_subscription_plans(session):
     existing = {subscription_plan.name: subscription_plan for subscription_plan in session.query(SubscriptionPlan).all()}
@@ -150,64 +202,88 @@ def seed_users(session, roles_by_name):
             )
         )
     session.flush()
-    return {u.email: u for u in session.query(User).all()}
+    return {user.email: user for user in session.query(User).all()}
 
 
 def seed_patients(session, users_by_email):
-    """Create Patient record for CLIENT user so they can be enrolled."""
-    client_email = "client.user@seed.com"
-    if client_email not in users_by_email:
-        return
-    user = users_by_email[client_email]
-    if session.query(Patient).filter(Patient.user_id == user.id).first() is not None:
-        return
-    session.add(Patient(user_id=user.id))
+    tenants_by_name = {tenant.name: tenant for tenant in session.query(Tenant).all()}
+    existing = {
+        (patient.tenant_id, patient.user_id): patient
+        for patient in session.query(Patient).all()
+    }
+
+    for payload in SEED_PATIENTS:
+        user = users_by_email.get(payload["user_email"])
+        tenant = tenants_by_name.get(payload["tenant_name"])
+        if user is None or tenant is None:
+            continue
+
+        key = (tenant.id, user.id)
+        patient = existing.get(key)
+        if patient is None:
+            session.add(
+                Patient(
+                    tenant_id=tenant.id,
+                    user_id=user.id,
+                    birthdate=payload["birthdate"],
+                    gender=payload["gender"],
+                    blood_type=payload["blood_type"],
+                )
+            )
+            continue
+
+        patient.birthdate = payload["birthdate"]
+        patient.gender = payload["gender"]
+        patient.blood_type = payload["blood_type"]
 
 
 def seed_user_tenant_plans(session):
-    """Create one UserTenantPlan per approved tenant (for enrollment testing)."""
-    from sqlalchemy import func
-    now = datetime.now(timezone.utc)
-    approved = session.query(Tenant).filter(Tenant.status == TenantStatus.approved).limit(6).all()
-    next_id = (session.query(func.coalesce(func.max(UserTenantPlan.id), 0)).scalar() or 0) + 1
-    for tenant in approved:
+    """Create one FREE UserTenantPlan per approved tenant."""
+    approved_tenants = (
+        session.query(Tenant)
+        .filter(Tenant.status == TenantStatus.approved)
+        .limit(6)
+        .all()
+    )
+    for tenant in approved_tenants:
         existing = (
             session.query(UserTenantPlan)
-            .filter(UserTenantPlan.tenant_id == tenant.id, UserTenantPlan.name == "FREE")
+            .filter(
+                UserTenantPlan.tenant_id == tenant.id,
+                UserTenantPlan.name == "FREE",
+            )
             .first()
         )
         if existing is not None:
             continue
         session.add(
             UserTenantPlan(
-                id=next_id,
                 tenant_id=tenant.id,
                 name="FREE",
                 description="Starter plan",
                 price=0,
                 duration=30,
                 is_active=True,
-                created_at=now,
-                updated_at=now,
             )
         )
-        next_id += 1
 
 
 def seed_tenant_managers(session, users_by_email):
-    """Link Tenant Manager user to tenant 1 (Bluestone) so they can manage enrollments."""
-    tm_email = "tenant.manager@seed.com"
-    if tm_email not in users_by_email:
+    """Link Tenant Manager user to tenant 1 (Bluestone)."""
+    manager = users_by_email.get("tenant.manager@seed.com")
+    if manager is None:
         return
-    user = users_by_email[tm_email]
     existing = (
         session.query(TenantManager)
-        .filter(TenantManager.user_id == user.id, TenantManager.tenant_id == 1)
+        .filter(
+            TenantManager.user_id == manager.id,
+            TenantManager.tenant_id == 1,
+        )
         .first()
     )
     if existing is not None:
         return
-    session.add(TenantManager(user_id=user.id, tenant_id=1))
+    session.add(TenantManager(user_id=manager.id, tenant_id=1))
 
 
 def run_seed() -> None:
