@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from datetime import datetime
 from app.models.lead import LeadStatus
 
@@ -11,5 +11,4 @@ class LeadStatusHistoryRead(BaseModel):
     changed_by_user_id: int | None
     changed_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

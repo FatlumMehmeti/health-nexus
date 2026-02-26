@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from datetime import datetime
 from typing import Optional
 
@@ -20,5 +20,4 @@ class TenantSubscriptionRead(TenantSubscriptionBase):
     approved_at: Optional[datetime]
     terminated_reason: Optional[str]
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

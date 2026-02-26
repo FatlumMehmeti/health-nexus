@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import Optional
 
 
@@ -14,5 +14,4 @@ class RecommendationCreate(RecommendationBase):
 class RecommendationRead(RecommendationBase):
     id: int
 
-    class Config:
-        from_attributes = True  # for SQLAlchemy 2.0
+    model_config = ConfigDict(from_attributes=True)

@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from typing import Optional
 from datetime import timedelta
 from decimal import Decimal
@@ -23,8 +23,7 @@ class UserTenantPlanCreate(UserTenantPlanBase):
 class UserTenantPlanRead(UserTenantPlanBase):
     id: int
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class UserTenantPlanUpdate(BaseModel):
