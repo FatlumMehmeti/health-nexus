@@ -90,9 +90,7 @@ class TenantDetailsLandingRead(BaseModel):
     brand_color_foreground: Optional[str] = None
     brand_color_muted: Optional[str] = None
     title: Optional[str] = None
-    slogan: Optional[str] = None
     about_text: Optional[str] = None
-    font_key: Optional[str] = None
     font_id: Optional[int] = None
     font_name: Optional[str] = None
     font_header_family: Optional[str] = None

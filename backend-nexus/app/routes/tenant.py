@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from app.auth.auth_utils import require_role
 from app.db import get_db
 from app.models.tenant import Tenant, TenantStatus
-from app.models.tenant_details import TenantDetails, FontKey
+from app.models.tenant_details import TenantDetails
 from app.models.department import Department
 from app.models.tenant_department import TenantDepartment
 from app.models.service import Service
@@ -137,9 +137,7 @@ def get_tenant_landing_by_slug(slug: str, db: Session = Depends(get_db)):
             brand_color_foreground=brand.brand_color_foreground if brand else None,
             brand_color_muted=brand.brand_color_muted if brand else None,
             title=details.title,
-            slogan=details.slogan,
             about_text=details.about_text,
-            font_key=details.font_key.value if details.font_key else None,
             font_id=details.font_id,
             font_name=font.name if font else None,
             font_header_family=font.header_font_family if font else None,
@@ -235,8 +233,6 @@ def upsert_tenant_details(
     _assert_tenant_exists(db, tenant_id)
     details = db.query(TenantDetails).filter(TenantDetails.tenant_id == tenant_id).first()
     data = payload.model_dump(exclude_unset=True)
-    if data.get("font_key") is not None and isinstance(data["font_key"], str):
-        data["font_key"] = FontKey(data["font_key"])
     if details is None:
         details = TenantDetails(tenant_id=tenant_id, **data)
         db.add(details)
