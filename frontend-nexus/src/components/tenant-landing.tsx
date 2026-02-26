@@ -73,6 +73,13 @@ const defaultDepartments: DepartmentRow[] = [
   { name: 'Pediatrics', services: 'Well-child visits, vaccinations' },
 ]
 
+/** Shown first for clients while API plans are loading; then replaced by API data. */
+const DEFAULT_MOCK_PLANS: TenantPlan[] = [
+  { id: 'mock-1', name: 'Basic Care', description: 'Routine check-ups and essential diagnostics.', price: 25, currency: 'EUR', durationDays: 30, maxAppointments: 2, maxConsultations: 1, isActive: true },
+  { id: 'mock-2', name: 'Standard', description: 'Balanced coverage for outpatient visits.', price: 45, currency: 'EUR', durationDays: 30, maxAppointments: 4, maxConsultations: 2, isActive: true },
+  { id: 'mock-3', name: 'Premium', description: 'Expanded care with priority scheduling.', price: 75, currency: 'EUR', durationDays: 30, maxAppointments: 6, maxConsultations: 4, isActive: true },
+]
+
 export function TenantLanding({
   tenantSlug,
   config,
@@ -253,7 +260,7 @@ export function TenantLanding({
       return
     }
 
-    // For clients: use only API plans from GET /user-tenant-plans/tenant/{id}; no mock fallback.
+    // For clients: show 3 mock plans first while loading; then replace with API data.
     if (!tenantNumericId) {
       if (clientTenantId != null && clientPlans !== undefined) {
         const mapped = clientPlans.map(mapApiPlanToTenantPlan)
@@ -264,6 +271,9 @@ export function TenantLanding({
         } else {
           setSelectedPlanId(undefined)
         }
+      } else if (clientTenantId != null) {
+        setPlans(DEFAULT_MOCK_PLANS)
+        setSelectedPlanId(DEFAULT_MOCK_PLANS[0]?.id ?? undefined)
       } else {
         setPlans([])
         setSelectedPlanId(undefined)
