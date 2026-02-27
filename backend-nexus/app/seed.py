@@ -33,6 +33,7 @@ SEED_USERS = [
     SeedUser("Sales", "Agent", "sales.agent@seed.com", "Team2026@", "SALES"),
     SeedUser("Client", "User", "client.user@seed.com", "Team2026@", "CLIENT"),
     SeedUser("Client", "NoEnroll", "client.noenroll@seed.com", "Team2026@", "CLIENT"),
+    SeedUser("Client", "OtherTenant", "client.othertenant@seed.com", "Team2026@", "CLIENT"),
 ]
 
 
@@ -125,32 +126,33 @@ def seed_subscription_plans(session):
             session.add(SubscriptionPlan(**payload))
 
 def seed_user_tenant_plans(session):
-    tenant = session.query(Tenant).filter_by(name="Bluestone Clinic").first()
-    if tenant is None:
-        return
+    tenant_names = ["Bluestone Clinic", "Riverside Health Partners"]
+    for tenant_name in tenant_names:
+        tenant = session.query(Tenant).filter_by(name=tenant_name).first()
+        if tenant is None:
+            continue
 
-    existing = session.query(UserTenantPlan).filter_by(
-        tenant_id=tenant.id,
-        name="Starter Plan"
-    ).first()
-
-    if existing:
-        return
-
-    session.add(
-        UserTenantPlan(
+        existing = session.query(UserTenantPlan).filter_by(
             tenant_id=tenant.id,
-            name="Starter Plan",
-            description="Baseline plan for seeded enrollment data",
-            price=0,
-            duration=30,
-            max_appointments=10,
-            max_consultations=5,
-            is_active=True,
-            created_at=datetime.now(timezone.utc),
-            updated_at=datetime.now(timezone.utc),
+            name="Starter Plan"
+        ).first()
+        if existing:
+            continue
+
+        session.add(
+            UserTenantPlan(
+                tenant_id=tenant.id,
+                name="Starter Plan",
+                description="Baseline plan for seeded enrollment data",
+                price=0,
+                duration=30,
+                max_appointments=10,
+                max_consultations=5,
+                is_active=True,
+                created_at=datetime.now(timezone.utc),
+                updated_at=datetime.now(timezone.utc),
+            )
         )
-    )
 
 
 def seed_users(session, roles_by_name):
@@ -225,19 +227,20 @@ def seed_doctors(session):
 def seed_patients(session):
     from app.models import Patient
 
-    patient_emails = [
-        "client.user@seed.com",
-        "client.noenroll@seed.com",
+    patient_targets = [
+        {"email": "client.user@seed.com", "tenant_id": 1},
+        {"email": "client.noenroll@seed.com", "tenant_id": 1},
+        {"email": "client.othertenant@seed.com", "tenant_id": 2},
     ]
 
-    for email in patient_emails:
-        user = session.query(User).filter_by(email=email).first()
+    for target in patient_targets:
+        user = session.query(User).filter_by(email=target["email"]).first()
         if not user:
             continue
 
         existing = session.query(Patient).filter_by(
             user_id=user.id,
-            tenant_id=1,
+            tenant_id=target["tenant_id"],
         ).first()
         if existing:
             continue
@@ -245,47 +248,50 @@ def seed_patients(session):
         session.add(
             Patient(
                 user_id=user.id,
-                tenant_id=1
+                tenant_id=target["tenant_id"]
             )
         )
     session.commit()
 
 
 def seed_enrollment(session):
-    patient_user = session.query(User).filter_by(
-        email="client.user@seed.com"
-    ).first()
+    enrollment_targets = [
+        {"email": "client.user@seed.com", "tenant_name": "Bluestone Clinic"},
+        {"email": "client.othertenant@seed.com", "tenant_name": "Riverside Health Partners"},
+    ]
 
-    if not patient_user:
-        return
+    for target in enrollment_targets:
+        patient_user = session.query(User).filter_by(email=target["email"]).first()
+        if not patient_user:
+            continue
 
-    tenant = session.query(Tenant).filter_by(name="Bluestone Clinic").first()
-    if tenant is None:
-        return
+        tenant = session.query(Tenant).filter_by(name=target["tenant_name"]).first()
+        if tenant is None:
+            continue
 
-    plan = session.query(UserTenantPlan).filter_by(
-        tenant_id=tenant.id,
-        name="Starter Plan"
-    ).first()
-    if plan is None:
-        return
+        plan = session.query(UserTenantPlan).filter_by(
+            tenant_id=tenant.id,
+            name="Starter Plan"
+        ).first()
+        if plan is None:
+            continue
 
-    existing = session.query(Enrollment).filter_by(
-        tenant_id=tenant.id,
-        patient_user_id=patient_user.id
-    ).first()
-    if existing:
-        return
+        existing = session.query(Enrollment).filter_by(
+            tenant_id=tenant.id,
+            patient_user_id=patient_user.id
+        ).first()
+        if existing:
+            continue
 
-    enrollment = Enrollment(
-        tenant_id=tenant.id,
-        patient_user_id=patient_user.id,
-        user_tenant_plan_id=plan.id,
-        created_by=patient_user.id,
-        status=EnrollmentStatus.ACTIVE
-    )
+        enrollment = Enrollment(
+            tenant_id=tenant.id,
+            patient_user_id=patient_user.id,
+            user_tenant_plan_id=plan.id,
+            created_by=patient_user.id,
+            status=EnrollmentStatus.ACTIVE
+        )
+        session.add(enrollment)
 
-    session.add(enrollment)
     session.commit()
 
 

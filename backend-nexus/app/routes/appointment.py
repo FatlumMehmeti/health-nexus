@@ -34,6 +34,28 @@ def _has_doctor_overlap(
         AppointmentStatus.CONFIRMED,
     ),
 ) -> bool:
+    return _get_doctor_overlap(
+        db=db,
+        doctor_id=doctor_id,
+        start_dt=start_dt,
+        duration_minutes=duration_minutes,
+        exclude_appointment_id=exclude_appointment_id,
+        statuses=statuses,
+    ) is not None
+
+
+def _get_doctor_overlap(
+    db: Session,
+    doctor_id: int,
+    start_dt: datetime,
+    duration_minutes: int = 30,
+    *,
+    exclude_appointment_id: int | None = None,
+    statuses: tuple[AppointmentStatus, ...] = (
+        AppointmentStatus.REQUESTED,
+        AppointmentStatus.CONFIRMED,
+    ),
+) -> Appointment | None:
     start_dt = _normalize_datetime(start_dt)
     end_dt = start_dt + timedelta(minutes=duration_minutes)
 
@@ -46,10 +68,10 @@ def _has_doctor_overlap(
 
     for existing in query.all():
         existing_start = _normalize_datetime(existing.appointment_datetime)
-        existing_end = existing_start + timedelta(minutes=30)
+        existing_end = existing_start + timedelta(minutes=existing.duration_minutes)
         if existing_start < end_dt and start_dt < existing_end:
-            return True
-    return False
+            return existing
+    return None
 
 
 def _parse_work_block(block: object) -> tuple[str, str]:
@@ -80,7 +102,7 @@ def _normalize_day_blocks(day_blocks: object) -> list[object]:
     raise HTTPException(400, "Invalid doctor working hours format")
 
 
-def _require_doctor(current_user: dict, db: Session) -> int:
+def _require_doctor(current_user: dict, db: Session, tenant_id: int | None = None) -> Doctor:
     role = str(current_user.get("role", "")).upper()
     if role != "DOCTOR":
         raise HTTPException(403, "Only doctors can perform this action")
@@ -89,11 +111,18 @@ def _require_doctor(current_user: dict, db: Session) -> int:
     if user_id is None:
         raise HTTPException(401, "Invalid token payload")
 
-    doctor = db.query(Doctor).filter_by(user_id=user_id).first()
+    query = db.query(Doctor).filter(
+        Doctor.user_id == user_id,
+        Doctor.is_active == True,
+    )
+    if tenant_id is not None:
+        query = query.filter(Doctor.tenant_id == tenant_id)
+
+    doctor = query.first()
     if not doctor:
         raise HTTPException(403, "Doctor profile not found")
 
-    return user_id
+    return doctor
 
 
 def _require_patient(current_user: dict, db: Session, tenant_id: int) -> int:
@@ -161,6 +190,13 @@ def _validate_slot_for_doctor(
         raise HTTPException(400, "Outside doctor's working hours")
 
 
+def _ensure_not_past(appointment_datetime: datetime):
+    normalized = _normalize_datetime(appointment_datetime)
+    now_utc = datetime.now(timezone.utc).replace(second=0, microsecond=0)
+    if normalized < now_utc:
+        raise HTTPException(400, "Cannot book or reschedule appointments in the past")
+
+
 def get_available_slots(db: Session, doctor_id: int, day_dt: datetime):
     doctor = db.query(Doctor).filter_by(user_id=doctor_id).first()
     if not doctor:
@@ -205,6 +241,7 @@ def book_appointment(
     description: str | None = None,
 ):
     appointment_datetime = _normalize_datetime(appointment_datetime)
+    _ensure_not_past(appointment_datetime)
     user_id = current_user.get("user_id")
     if user_id is None:
         raise HTTPException(401, "Invalid token payload")
@@ -238,17 +275,25 @@ def book_appointment(
 
         _validate_slot_for_doctor(doctor, appointment_datetime, duration_minutes)
 
-        if _has_doctor_overlap(
+        conflict = _get_doctor_overlap(
             db=db,
             doctor_id=doctor_id,
             start_dt=appointment_datetime,
             duration_minutes=duration_minutes,
             statuses=(AppointmentStatus.REQUESTED, AppointmentStatus.CONFIRMED),
-        ):
-            raise HTTPException(400, "Time slot already booked")
+        )
+        if conflict:
+            raise HTTPException(
+                400,
+                {
+                    "message": "Time slot already booked",
+                    "conflict_appointment_id": conflict.id,
+                },
+            )
 
         appointment = Appointment(
             appointment_datetime=appointment_datetime,
+            duration_minutes=duration_minutes,
             description=description,
             doctor_user_id=doctor_id,
             patient_user_id=user_id,

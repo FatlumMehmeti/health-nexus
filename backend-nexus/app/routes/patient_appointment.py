@@ -5,13 +5,16 @@ from app.auth.auth_utils import get_current_user
 from app.db import get_db
 from app.models.appointment import Appointment, AppointmentStatus
 from app.models.doctor import Doctor
+from app.models.patient import Patient
 from app.schemas.appointment import AppointmentCreate
 from app.routes.appointment import (
-    _has_doctor_overlap,
+    _ensure_not_past,
+    _get_doctor_overlap,
     _normalize_datetime,
     _record_status_change,
-    _require_patient,
+    _require_doctor,
     _validate_slot_for_doctor,
+    _require_patient,
     book_appointment,
 )
 
@@ -46,6 +49,7 @@ def reschedule_appointment(
     current_user=Depends(get_current_user),
 ):
     normalized_dt = _normalize_datetime(payload.appointment_datetime)
+    _ensure_not_past(normalized_dt)
     user_id = _require_patient(current_user, db, payload.tenant_id)
     appointment = db.query(Appointment).filter(Appointment.id == appointment_id).first()
     if not appointment:
@@ -68,17 +72,25 @@ def reschedule_appointment(
 
     _validate_slot_for_doctor(doctor, normalized_dt, payload.duration_minutes)
 
-    if _has_doctor_overlap(
+    conflict = _get_doctor_overlap(
         db=db,
         doctor_id=payload.doctor_id,
         start_dt=normalized_dt,
         duration_minutes=payload.duration_minutes,
         exclude_appointment_id=appointment.id,
         statuses=(AppointmentStatus.REQUESTED, AppointmentStatus.CONFIRMED),
-    ):
-        raise HTTPException(400, "Time slot already booked")
+    )
+    if conflict:
+        raise HTTPException(
+            400,
+            {
+                "message": "Time slot already booked",
+                "conflict_appointment_id": conflict.id,
+            },
+        )
 
     appointment.appointment_datetime = normalized_dt
+    appointment.duration_minutes = payload.duration_minutes
     appointment.description = payload.description
     appointment.doctor_user_id = payload.doctor_id
     if appointment.status != AppointmentStatus.REQUESTED:
@@ -112,8 +124,19 @@ def cancel_appointment(
         raise HTTPException(404, "Appointment not found")
 
     role = str(current_user.get("role", "")).upper()
-    is_doctor = role == "DOCTOR" and appointment.doctor_user_id == user_id
-    is_patient = appointment.patient_user_id == user_id
+    is_doctor = False
+    if role == "DOCTOR" and appointment.doctor_user_id == user_id:
+        try:
+            _require_doctor(current_user, db, tenant_id=appointment.tenant_id)
+            is_doctor = True
+        except HTTPException:
+            is_doctor = False
+
+    patient_profile = db.query(Patient).filter(
+        Patient.user_id == user_id,
+        Patient.tenant_id == appointment.tenant_id,
+    ).first()
+    is_patient = appointment.patient_user_id == user_id and patient_profile is not None
     if not (is_doctor or is_patient):
         raise HTTPException(403, "You can only cancel your own appointments")
 
