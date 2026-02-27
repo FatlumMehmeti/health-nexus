@@ -1,9 +1,8 @@
-from pydantic import BaseModel, ConfigDict
-from typing import Optional, TYPE_CHECKING
+from pydantic import BaseModel
+from typing import Optional
 from datetime import datetime
 
-if TYPE_CHECKING:
-    from typing import Any as ServiceLandingItem
+from app.schemas.landing import ServiceLandingItem
 
 
 class TenantDepartmentBase(BaseModel):
@@ -18,10 +17,30 @@ class TenantDepartmentCreate(TenantDepartmentBase):
     pass
 
 
-class TenantDepartmentUpdate(BaseModel):
+class AddTenantDepartmentRequest(BaseModel):
+    department_id: int
     phone_number: Optional[str] = None
     email: Optional[str] = None
     location: Optional[str] = None
+
+
+class UpdateTenantDepartmentRequest(BaseModel):
+    phone_number: Optional[str] = None
+    email: Optional[str] = None
+    location: Optional[str] = None
+
+
+class BulkDepartmentItem(BaseModel):
+    """Department assignment with optional contact info. Services are managed via /api/services."""
+    department_id: int
+    phone_number: Optional[str] = None
+    email: Optional[str] = None
+    location: Optional[str] = None
+
+
+class BulkDepartmentsRequest(BaseModel):
+    """Bulk set departments for a tenant. Replaces existing with this list."""
+    items: list[BulkDepartmentItem]
 
 
 class TenantDepartmentRead(TenantDepartmentBase):
@@ -29,10 +48,11 @@ class TenantDepartmentRead(TenantDepartmentBase):
     created_at: datetime
     updated_at: Optional[datetime]
 
-    model_config = ConfigDict(from_attributes=True)
+    class Config:
+        from_attributes = True
 
 
 class TenantDepartmentWithServicesRead(TenantDepartmentRead):
     """Tenant department with department name and services."""
     department_name: str
-    services: list = []  # list[ServiceLandingItem]
+    services: list[ServiceLandingItem] = []

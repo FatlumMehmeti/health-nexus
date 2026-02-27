@@ -1,4 +1,4 @@
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel
 from app.models.lead import LeadStatus
 
 
@@ -17,6 +17,13 @@ class LeadCreate(LeadBase):
     status: LeadStatus | None = None
 
 
+class PublicLeadCreate(BaseModel):
+    """Schema for public consultation/contact form - no tenant_id required."""
+    tenant_name: str
+    contact_email: str
+    description: str | None = None
+
+
 class LeadUpdate(BaseModel):
     status: LeadStatus | None = None
     notes: str | None = None
@@ -25,4 +32,5 @@ class LeadUpdate(BaseModel):
 class LeadRead(LeadBase):
     id: int
 
-    model_config = ConfigDict(from_attributes=True)
+    class Config:
+        from_attributes = True

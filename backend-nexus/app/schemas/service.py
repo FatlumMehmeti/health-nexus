@@ -1,4 +1,4 @@
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel
 from typing import Optional
 from datetime import datetime
 
@@ -10,6 +10,14 @@ class ServiceBase(BaseModel):
     tenant_departments_id: int
     tenant_id: int
     is_active: bool = True
+
+
+class ServiceCreateInput(BaseModel):
+    """Create service under a tenant department. tenant_id is inferred from tenant_department."""
+    tenant_department_id: int
+    name: str
+    price: float
+    description: Optional[str] = None
 
 
 class ServiceCreate(ServiceBase):
@@ -28,4 +36,5 @@ class ServiceRead(ServiceBase):
     created_at: datetime
     updated_at: Optional[datetime] = None
 
-    model_config = ConfigDict(from_attributes=True)
+    class Config:
+        from_attributes = True

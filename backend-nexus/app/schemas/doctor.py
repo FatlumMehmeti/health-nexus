@@ -1,4 +1,4 @@
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel
 from typing import Optional
 from datetime import datetime
 
@@ -15,6 +15,19 @@ class DoctorCreate(DoctorBase):
     user_id: int
 
 
+class AssignDoctorRequest(BaseModel):
+    user_id: int
+
+
+class DoctorCreateForTenant(BaseModel):
+    """Create/assign doctor to tenant. tenant_id from JWT."""
+    user_id: int
+    specialization: Optional[str] = None
+    education: Optional[str] = None
+    licence_number: Optional[str] = None
+    working_hours: Optional[dict] = None
+
+
 class DoctorUpdate(BaseModel):
     specialization: Optional[str]
     education: Optional[str]
@@ -28,4 +41,5 @@ class DoctorRead(DoctorBase):
     is_active: bool
     created_at: datetime
 
-    model_config = ConfigDict(from_attributes=True)
+    class Config:
+        from_attributes = True
