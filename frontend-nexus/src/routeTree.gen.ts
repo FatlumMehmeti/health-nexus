@@ -28,6 +28,7 @@ import { Route as DashboardDataRouteImport } from './routes/dashboard/data'
 import { Route as DashboardLandingPagesRouteRouteImport } from './routes/dashboard/landing-pages/route'
 import { Route as DashboardLandingPagesIndexRouteImport } from './routes/dashboard/landing-pages/index'
 import { Route as DashboardAuditLogsIndexRouteImport } from './routes/dashboard/audit-logs/index'
+import { Route as DashboardTenantSectionRouteImport } from './routes/dashboard/tenant.$section'
 import { Route as DashboardLandingPagesPageIdRouteImport } from './routes/dashboard/landing-pages/$pageId'
 
 const UnauthorizedRoute = UnauthorizedRouteImport.update({
@@ -127,6 +128,11 @@ const DashboardAuditLogsIndexRoute = DashboardAuditLogsIndexRouteImport.update({
   path: '/audit-logs/',
   getParentRoute: () => DashboardRouteRoute,
 } as any)
+const DashboardTenantSectionRoute = DashboardTenantSectionRouteImport.update({
+  id: '/$section',
+  path: '/$section',
+  getParentRoute: () => DashboardTenantRoute,
+} as any)
 const DashboardLandingPagesPageIdRoute =
   DashboardLandingPagesPageIdRouteImport.update({
     id: '/$pageId',
@@ -148,11 +154,12 @@ export interface FileRoutesByFullPath {
   '/dashboard/forms': typeof DashboardFormsRoute
   '/dashboard/global-state': typeof DashboardGlobalStateRoute
   '/dashboard/roles': typeof DashboardRolesRoute
-  '/dashboard/tenant': typeof DashboardTenantRoute
+  '/dashboard/tenant': typeof DashboardTenantRouteWithChildren
   '/dashboard/tenants': typeof DashboardTenantsRoute
   '/landing/$tenantSlug': typeof LandingTenantSlugRoute
   '/dashboard/': typeof DashboardIndexRoute
   '/dashboard/landing-pages/$pageId': typeof DashboardLandingPagesPageIdRoute
+  '/dashboard/tenant/$section': typeof DashboardTenantSectionRoute
   '/dashboard/audit-logs/': typeof DashboardAuditLogsIndexRoute
   '/dashboard/landing-pages/': typeof DashboardLandingPagesIndexRoute
 }
@@ -168,11 +175,12 @@ export interface FileRoutesByTo {
   '/dashboard/forms': typeof DashboardFormsRoute
   '/dashboard/global-state': typeof DashboardGlobalStateRoute
   '/dashboard/roles': typeof DashboardRolesRoute
-  '/dashboard/tenant': typeof DashboardTenantRoute
+  '/dashboard/tenant': typeof DashboardTenantRouteWithChildren
   '/dashboard/tenants': typeof DashboardTenantsRoute
   '/landing/$tenantSlug': typeof LandingTenantSlugRoute
   '/dashboard': typeof DashboardIndexRoute
   '/dashboard/landing-pages/$pageId': typeof DashboardLandingPagesPageIdRoute
+  '/dashboard/tenant/$section': typeof DashboardTenantSectionRoute
   '/dashboard/audit-logs': typeof DashboardAuditLogsIndexRoute
   '/dashboard/landing-pages': typeof DashboardLandingPagesIndexRoute
 }
@@ -191,11 +199,12 @@ export interface FileRoutesById {
   '/dashboard/forms': typeof DashboardFormsRoute
   '/dashboard/global-state': typeof DashboardGlobalStateRoute
   '/dashboard/roles': typeof DashboardRolesRoute
-  '/dashboard/tenant': typeof DashboardTenantRoute
+  '/dashboard/tenant': typeof DashboardTenantRouteWithChildren
   '/dashboard/tenants': typeof DashboardTenantsRoute
   '/landing/$tenantSlug': typeof LandingTenantSlugRoute
   '/dashboard/': typeof DashboardIndexRoute
   '/dashboard/landing-pages/$pageId': typeof DashboardLandingPagesPageIdRoute
+  '/dashboard/tenant/$section': typeof DashboardTenantSectionRoute
   '/dashboard/audit-logs/': typeof DashboardAuditLogsIndexRoute
   '/dashboard/landing-pages/': typeof DashboardLandingPagesIndexRoute
 }
@@ -220,6 +229,7 @@ export interface FileRouteTypes {
     | '/landing/$tenantSlug'
     | '/dashboard/'
     | '/dashboard/landing-pages/$pageId'
+    | '/dashboard/tenant/$section'
     | '/dashboard/audit-logs/'
     | '/dashboard/landing-pages/'
   fileRoutesByTo: FileRoutesByTo
@@ -240,6 +250,7 @@ export interface FileRouteTypes {
     | '/landing/$tenantSlug'
     | '/dashboard'
     | '/dashboard/landing-pages/$pageId'
+    | '/dashboard/tenant/$section'
     | '/dashboard/audit-logs'
     | '/dashboard/landing-pages'
   id:
@@ -262,6 +273,7 @@ export interface FileRouteTypes {
     | '/landing/$tenantSlug'
     | '/dashboard/'
     | '/dashboard/landing-pages/$pageId'
+    | '/dashboard/tenant/$section'
     | '/dashboard/audit-logs/'
     | '/dashboard/landing-pages/'
   fileRoutesById: FileRoutesById
@@ -411,6 +423,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardAuditLogsIndexRouteImport
       parentRoute: typeof DashboardRouteRoute
     }
+    '/dashboard/tenant/$section': {
+      id: '/dashboard/tenant/$section'
+      path: '/$section'
+      fullPath: '/dashboard/tenant/$section'
+      preLoaderRoute: typeof DashboardTenantSectionRouteImport
+      parentRoute: typeof DashboardTenantRoute
+    }
     '/dashboard/landing-pages/$pageId': {
       id: '/dashboard/landing-pages/$pageId'
       path: '/$pageId'
@@ -437,6 +456,18 @@ const DashboardLandingPagesRouteRouteWithChildren =
     DashboardLandingPagesRouteRouteChildren,
   )
 
+interface DashboardTenantRouteChildren {
+  DashboardTenantSectionRoute: typeof DashboardTenantSectionRoute
+}
+
+const DashboardTenantRouteChildren: DashboardTenantRouteChildren = {
+  DashboardTenantSectionRoute: DashboardTenantSectionRoute,
+}
+
+const DashboardTenantRouteWithChildren = DashboardTenantRoute._addFileChildren(
+  DashboardTenantRouteChildren,
+)
+
 interface DashboardRouteRouteChildren {
   DashboardLandingPagesRouteRoute: typeof DashboardLandingPagesRouteRouteWithChildren
   DashboardDataRoute: typeof DashboardDataRoute
@@ -444,7 +475,7 @@ interface DashboardRouteRouteChildren {
   DashboardFormsRoute: typeof DashboardFormsRoute
   DashboardGlobalStateRoute: typeof DashboardGlobalStateRoute
   DashboardRolesRoute: typeof DashboardRolesRoute
-  DashboardTenantRoute: typeof DashboardTenantRoute
+  DashboardTenantRoute: typeof DashboardTenantRouteWithChildren
   DashboardTenantsRoute: typeof DashboardTenantsRoute
   DashboardIndexRoute: typeof DashboardIndexRoute
   DashboardAuditLogsIndexRoute: typeof DashboardAuditLogsIndexRoute
@@ -457,7 +488,7 @@ const DashboardRouteRouteChildren: DashboardRouteRouteChildren = {
   DashboardFormsRoute: DashboardFormsRoute,
   DashboardGlobalStateRoute: DashboardGlobalStateRoute,
   DashboardRolesRoute: DashboardRolesRoute,
-  DashboardTenantRoute: DashboardTenantRoute,
+  DashboardTenantRoute: DashboardTenantRouteWithChildren,
   DashboardTenantsRoute: DashboardTenantsRoute,
   DashboardIndexRoute: DashboardIndexRoute,
   DashboardAuditLogsIndexRoute: DashboardAuditLogsIndexRoute,

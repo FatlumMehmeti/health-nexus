@@ -75,7 +75,10 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
   }
 
   const handleGoToTenantDashboard = () => {
-    navigate({ to: '/dashboard/tenant', search: { section: 'departments-services' } })
+    navigate({
+      to: '/dashboard/tenant/$section',
+      params: { section: 'departments-services' },
+    })
   }
 
   const userInitial = (user?.email?.trim().charAt(0) || user?.fullName?.trim().charAt(0) || 'U')
