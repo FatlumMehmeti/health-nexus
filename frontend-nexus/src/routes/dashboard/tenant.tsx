@@ -1,5 +1,5 @@
-import { useEffect, useState, type ReactNode } from "react";
-import { createFileRoute } from "@tanstack/react-router";
+import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
+import { Outlet, createFileRoute, useRouterState } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { IconPencil, IconTrash } from "@tabler/icons-react";
 import { toast } from "sonner";
@@ -50,17 +50,6 @@ import { Badge } from "@/components/ui/badge";
 
 export const Route = createFileRoute("/dashboard/tenant")({
   beforeLoad: requireAuth({ routeKey: "DASHBOARD_TENANT" }),
-  validateSearch: (search: Record<string, unknown>) => {
-    const allowed = new Set([
-      "departments-services",
-      "products",
-      "plans",
-      "settings",
-    ]);
-    const raw = typeof search.section === "string" ? search.section : "";
-    const section = allowed.has(raw) ? raw : "departments-services";
-    return { section: section as TenantSectionKey };
-  },
   component: TenantManagerPage,
 });
 
@@ -118,11 +107,24 @@ interface DepartmentFormModalState {
   location: string;
 }
 
-type TenantSectionKey =
-  | "departments-services"
-  | "products"
-  | "plans"
-  | "settings";
+export const TENANT_SECTION_KEYS = [
+  "departments-services",
+  "products",
+  "plans",
+  "settings",
+] as const;
+
+export type TenantSectionKey = (typeof TENANT_SECTION_KEYS)[number];
+
+export function normalizeTenantSection(
+  rawSection: string | null | undefined,
+): TenantSectionKey {
+  const section = (rawSection ?? "").trim();
+  if ((TENANT_SECTION_KEYS as readonly string[]).includes(section)) {
+    return section as TenantSectionKey;
+  }
+  return "departments-services";
+}
 
 const TENANT_SECTIONS: Array<{
   key: TenantSectionKey;
@@ -152,8 +154,19 @@ const TENANT_SECTIONS: Array<{
 ];
 
 function TenantManagerPage() {
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
+  if (pathname !== "/dashboard/tenant") {
+    return <Outlet />;
+  }
+  return <TenantManagerPageContent activeSection="departments-services" />;
+}
+
+export function TenantManagerPageContent({
+  activeSection,
+}: {
+  activeSection: TenantSectionKey;
+}) {
   const queryClient = useQueryClient();
-  const { section: activeSection } = Route.useSearch();
 
   const currentTenantQuery = useQuery({
     queryKey: QUERY_KEYS.current,
@@ -498,18 +511,12 @@ function TenantDetailsEditor({ onSaved }: { onSaved: () => void }) {
                         type="button"
                         onClick={() => setForm((s) => ({ ...s, brand_id: brand.id }))}
                         className={[
-                          "rounded-lg border p-4 text-left transition",
+                          "rounded-lg border p-4 text-left transition-all",
                           form.brand_id === brand.id
-                            ? "border-primary ring-primary/20 ring-2"
-                            : "hover:border-primary/50",
+                            ? "shadow-md -translate-y-0.5 scale-[1.01]"
+                            : "hover:border-primary/50 hover:shadow-sm",
                         ].join(" ")}
-                        style={{
-                          background:
-                            brand.brand_color_background &&
-                            brand.brand_color_background !== "transparent"
-                              ? `linear-gradient(180deg, ${brand.brand_color_background}, rgba(255,255,255,0.9))`
-                              : undefined,
-                        }}
+                        style={buildPaletteCardColors(brand, form.brand_id === brand.id)}
                       >
                         <p className="font-medium">{brand.name}</p>
                         <div className="mt-3 grid grid-cols-5 gap-2">
@@ -526,11 +533,11 @@ function TenantDetailsEditor({ onSaved }: { onSaved: () => void }) {
                                 style={{ backgroundColor: String(hex) }}
                                 title={`${label}: ${hex}`}
                               />
-                              <p className="text-[10px] text-muted-foreground">{label}</p>
+                              <p className="text-[10px] opacity-70">{label}</p>
                             </div>
                           ))}
                         </div>
-                        <div className="mt-2 space-y-1 text-[10px] text-muted-foreground">
+                        <div className="mt-2 space-y-1 text-[10px] opacity-75">
                           <p>Primary: {brand.brand_color_primary}</p>
                           <p>Secondary: {brand.brand_color_secondary}</p>
                           <p>Background: {brand.brand_color_background}</p>
@@ -1859,6 +1866,96 @@ function nullIfBlank(value: string): string | null {
 
 function createLocalId(): string {
   return `local-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function buildPaletteCardColors(brand: {
+  brand_color_background?: string | null;
+  brand_color_foreground?: string | null;
+  brand_color_primary?: string | null;
+}, isSelected = false): CSSProperties {
+  const background = normalizeHexColor(brand.brand_color_background) ?? "#f8fafc";
+  const preferredText = normalizeHexColor(brand.brand_color_foreground);
+  const selectedAccent = normalizeHexColor(brand.brand_color_primary) ?? "#2563eb";
+  const text = pickReadableTextColor(background, preferredText);
+  const border = mixHex(background, text, 0.18);
+  const gradientEnd = mixHex(background, text, 0.06);
+  const selectedBorder = mixHex(selectedAccent, text, 0.2);
+  const highlight = isSelected
+    ? `linear-gradient(180deg, ${selectedAccent} 0 3px, transparent 3px), `
+    : "";
+
+  return {
+    backgroundImage: `${highlight}linear-gradient(180deg, ${background}, ${gradientEnd})`,
+    color: text,
+    borderColor: isSelected ? selectedBorder : border,
+  };
+}
+
+function pickReadableTextColor(background: string, preferredText?: string | null): string {
+  if (preferredText && contrastRatio(background, preferredText) >= 4.5) return preferredText;
+
+  const light = "#f8fafc";
+  const dark = "#0f172a";
+  return contrastRatio(background, light) >= contrastRatio(background, dark) ? light : dark;
+}
+
+function contrastRatio(hexA: string, hexB: string): number {
+  const luminanceA = getRelativeLuminance(hexA);
+  const luminanceB = getRelativeLuminance(hexB);
+  const lighter = Math.max(luminanceA, luminanceB);
+  const darker = Math.min(luminanceA, luminanceB);
+  return (lighter + 0.05) / (darker + 0.05);
+}
+
+function getRelativeLuminance(hex: string): number {
+  const rgb = hexToRgb(hex);
+  if (!rgb) return 0;
+  const toLinear = (value: number) => {
+    const channel = value / 255;
+    return channel <= 0.03928 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
+  };
+  const r = toLinear(rgb.r);
+  const g = toLinear(rgb.g);
+  const b = toLinear(rgb.b);
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+function mixHex(baseHex: string, overlayHex: string, amount: number): string {
+  const base = hexToRgb(baseHex);
+  const overlay = hexToRgb(overlayHex);
+  if (!base || !overlay) return baseHex;
+  const ratio = Math.min(1, Math.max(0, amount));
+  const r = Math.round(base.r + (overlay.r - base.r) * ratio);
+  const g = Math.round(base.g + (overlay.g - base.g) * ratio);
+  const b = Math.round(base.b + (overlay.b - base.b) * ratio);
+  return rgbToHex(r, g, b);
+}
+
+function normalizeHexColor(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const hex = value.trim().toLowerCase();
+  if (hex === "transparent") return null;
+  if (/^#[0-9a-f]{6}$/.test(hex)) return hex;
+  if (/^#[0-9a-f]{3}$/.test(hex)) {
+    return `#${hex[1]}${hex[1]}${hex[2]}${hex[2]}${hex[3]}${hex[3]}`;
+  }
+  return null;
+}
+
+function hexToRgb(hex: string): { r: number; g: number; b: number } | null {
+  const normalized = normalizeHexColor(hex);
+  if (!normalized) return null;
+  return {
+    r: Number.parseInt(normalized.slice(1, 3), 16),
+    g: Number.parseInt(normalized.slice(3, 5), 16),
+    b: Number.parseInt(normalized.slice(5, 7), 16),
+  };
+}
+
+function rgbToHex(r: number, g: number, b: number): string {
+  return `#${[r, g, b]
+    .map((value) => value.toString(16).padStart(2, "0"))
+    .join("")}`;
 }
 
 function getErrorMessage(err: unknown): string {

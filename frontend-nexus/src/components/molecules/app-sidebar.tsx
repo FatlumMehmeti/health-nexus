@@ -17,6 +17,7 @@ import {
 import { NavDocuments } from "./nav-documents";
 import { NavMain } from "./nav-main";
 import { NavUser } from "./nav-user";
+import { Link } from "@tanstack/react-router";
 import {
   Sidebar,
   SidebarContent,
@@ -95,22 +96,22 @@ const superAdminDocuments = [
 const tenantManagerDocuments = [
   {
     name: "Departments & Services",
-    url: "/dashboard/tenant?section=departments-services",
+    url: "/dashboard/tenant/departments-services",
     icon: IconFolder,
   },
   {
     name: "Products",
-    url: "/dashboard/tenant?section=products",
+    url: "/dashboard/tenant/products",
     icon: IconBuildingStore,
   },
   {
     name: "Plans",
-    url: "/dashboard/tenant?section=plans",
+    url: "/dashboard/tenant/plans",
     icon: IconReport,
   },
   {
     name: "Settings",
-    url: "/dashboard/tenant?section=settings",
+    url: "/dashboard/tenant/settings",
     icon: IconSettings,
   },
 ] as const;
@@ -149,10 +150,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               asChild
               className="data-[slot=sidebar-menu-button]:!p-1.5"
             >
-              <a href="/">
+              <Link to="/">
                 <IconInnerShadowTop className="!size-5" />
                 <span className="text-base font-semibold">Health Nexus</span>
-              </a>
+              </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
