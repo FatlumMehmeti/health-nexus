@@ -1,46 +1,59 @@
 /**
  * Public tenant landing route: /landing/$tenantSlug
- * No requireAuth – accessible to everyone.
- * Plans are loaded from API (GET /user-tenant-plans/tenant/{tenantId}), not mock data.
+ * Fetches landing data from GET /api/tenants/by-slug/{slug}/landing. No auth.
  */
-import { createFileRoute, Link } from '@tanstack/react-router'
-import { TenantLanding, type TenantLandingConfig } from '../../components/tenant-landing'
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
+import { tenantsService } from "@/services/tenants.service";
+import { TenantLanding } from "@/components/tenant-landing";
+import { isApiError } from "@/lib/api-client";
 
-/** Config keyed by tenant slug. Plans come from API via tenantId. */
-export const tenantLandingConfig: TenantLandingConfig = {
-  'spitali-amerikan': {
-    title: 'American Hospital',
-    subtitle: 'Quality care, close to you.',
-    logo: '/images/logo.webp',
-    moto: 'Excellence in healthcare',
-    about:
-      'American Hospital Kosovo provides comprehensive healthcare services with a focus on patient safety, modern technology, and compassionate teams.',
-    tenantId: 1,
-  },
-  'spital-iliria': {
-    title: 'Iliria Hospital',
-    subtitle: 'Your health, our priority.',
-    logo: '/images/logo.webp',
-    moto: 'Care that feels personal',
-    about:
-      'Iliria Hospital combines experienced specialists with friendly staff to deliver a warm, patient‑centric experience for families and individuals.',
-    tenantId: 2,
-  },
-}
-
-export const Route = createFileRoute(
-  '/landing/$tenantSlug'
-)({
+export const Route = createFileRoute("/landing/$tenantSlug")({
   component: TenantLandingPage,
-})
+});
 
 function TenantLandingPage() {
-  const { tenantSlug } = Route.useParams()
+  const { tenantSlug } = Route.useParams();
+  const {
+    data: landingData,
+    isLoading,
+    isError,
+    error,
+  } = useQuery({
+    queryKey: ["tenant-landing", tenantSlug],
+    queryFn: () => tenantsService.getLandingBySlug(tenantSlug),
+    staleTime: 60_000,
+  });
+
+  if (isError && isApiError(error) && error.status === 404) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-4">
+        <h1 className="text-xl font-semibold">Tenant not found</h1>
+        <p className="text-muted-foreground text-sm">
+          No approved tenant with slug &quot;{tenantSlug}&quot;.
+        </p>
+        <Link to="/" className="text-primary text-sm underline">
+          Back to home
+        </Link>
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-4">
+        <h1 className="text-xl font-semibold">Something went wrong</h1>
+        <p className="text-muted-foreground text-sm">
+          {isApiError(error) ? error.displayMessage : String(error)}
+        </p>
+        <Link to="/" className="text-primary text-sm underline">
+          Back to home
+        </Link>
+      </div>
+    );
+  }
+
   return (
-    <TenantLanding
-      tenantSlug={tenantSlug}
-      config={tenantLandingConfig}
-      backToHome={<Link to="/">Back to home</Link>}
-    />
-  )
+    <TenantLanding landingData={isLoading ? null : (landingData ?? null)} />
+  );
 }

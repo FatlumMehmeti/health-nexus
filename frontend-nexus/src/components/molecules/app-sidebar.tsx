@@ -1,29 +1,23 @@
 import * as React from "react";
 import {
-  IconCamera,
   IconDashboard,
   IconDatabase,
   IconDatabaseExport,
-  IconFileAi,
   IconFileDescription,
-  IconFileWord,
   IconFolder,
-  IconHelp,
   IconInnerShadowTop,
   IconKey,
-  IconMessage,
   IconReport,
   IconBuildingStore,
   IconHistory,
-  IconSearch,
   IconSettings,
   type Icon,
 } from "@tabler/icons-react";
 
 import { NavDocuments } from "./nav-documents";
 import { NavMain } from "./nav-main";
-import { NavSecondary } from "./nav-secondary";
 import { NavUser } from "./nav-user";
+import { Link } from "@tanstack/react-router";
 import {
   Sidebar,
   SidebarContent,
@@ -51,6 +45,12 @@ const navMainAll: Array<{
     routeKey: "DASHBOARD_HOME",
   },
   {
+    title: "My Tenant",
+    url: "/dashboard/tenant",
+    icon: IconSettings,
+    routeKey: "DASHBOARD_TENANT",
+  },
+  {
     title: "Tenants",
     url: "/dashboard/tenants",
     icon: IconBuildingStore,
@@ -65,59 +65,56 @@ const navMainAll: Array<{
   
 ];
 
-const data = {
-  user: {
-    name: "User",
-    email: "user@healthnexus.com",
-    avatar: "/images/logo.webp",
+const superAdminDocuments = [
+  {
+    name: "Forms",
+    url: "/dashboard/forms",
+    icon: IconFileDescription,
   },
-  navMain: [
-    {
-      title: "Dashboard",
-      url: "/dashboard",
-      icon: IconDashboard,
-    },
+  {
+    name: "Global State",
+    url: "/dashboard/global-state",
+    icon: IconDatabase,
+  },
+  {
+    name: "Landing Pages",
+    url: "/dashboard/landing-pages",
+    icon: IconFolder,
+  },
+  {
+    name: "Data Fetching",
+    url: "/dashboard/data",
+    icon: IconDatabaseExport,
+  },
+  {
+    name: "Roles",
+    url: "/dashboard/roles",
+    icon: IconKey,
+  },
+] as const;
 
-    {
-      title: "Tenants",
-      url: "/dashboard/tenants",
-      icon: IconReport,
-    },
-    {
-      title: "Tenant Audit Logs",
-      url: "/dashboard/audit-logs",
-      icon: IconReport,
-    },
-  ],
-
-  component_examples: [
-    {
-      name: "Forms",
-      url: "/dashboard/forms",
-      icon: IconFileDescription,
-    },
-    {
-      name: "Global State",
-      url: "/dashboard/global-state",
-      icon: IconDatabase,
-    },
-    {
-      name: "Landing Pages",
-      url: "/dashboard/landing-pages",
-      icon: IconFolder,
-    },
-    {
-      name: "Data Fetching",
-      url: "/dashboard/data",
-      icon: IconDatabaseExport,
-    },
-    {
-      name: "Roles",
-      url: "/dashboard/roles",
-      icon: IconKey,
-    },
-  ],
-};
+const tenantManagerDocuments = [
+  {
+    name: "Departments & Services",
+    url: "/dashboard/tenant/departments-services",
+    icon: IconFolder,
+  },
+  {
+    name: "Products",
+    url: "/dashboard/tenant/products",
+    icon: IconBuildingStore,
+  },
+  {
+    name: "Plans",
+    url: "/dashboard/tenant/plans",
+    icon: IconReport,
+  },
+  {
+    name: "Settings",
+    url: "/dashboard/tenant/settings",
+    icon: IconSettings,
+  },
+] as const;
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { user, role } = useAuthStore();
@@ -129,6 +126,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       ),
     [role],
   );
+  const documentItems = React.useMemo(() => {
+    if (role === "SUPER_ADMIN") return [...superAdminDocuments];
+    if (role === "TENANT_MANAGER") return [...tenantManagerDocuments];
+    return [];
+  }, [role]);
+  const documentsLabel = role === "TENANT_MANAGER" ? "My Tenant" : "Documents";
   const sidebarUser = React.useMemo(() => {
     if (!user) return null;
     return {
@@ -147,17 +150,17 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               asChild
               className="data-[slot=sidebar-menu-button]:!p-1.5"
             >
-              <a href="/">
+              <Link to="/">
                 <IconInnerShadowTop className="!size-5" />
                 <span className="text-base font-semibold">Health Nexus</span>
-              </a>
+              </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
         <NavMain items={navMain} />
-        <NavDocuments items={data.component_examples} />
+        <NavDocuments items={documentItems} label={documentsLabel} />
       </SidebarContent>
       <SidebarFooter>
         <NavUser user={sidebarUser} />

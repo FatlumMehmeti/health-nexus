@@ -72,8 +72,10 @@ function mapBackendRole(role: unknown): Role | undefined {
   if (upper === 'TENANT_MANAGER' || lower === 'tenant_manager' || lower === 'tenant-manager')
     return 'TENANT_MANAGER'
   if (upper === 'DOCTOR' || lower === 'doctor') return 'DOCTOR'
-  if (upper === 'SALES' || lower === 'sales') return 'SALES'
-  if (upper === 'CLIENT' || lower === 'client') return 'CLIENT'
+  if (upper === 'SALES' || lower === 'sales' || upper === 'SALES_AGENT' || lower === 'sales_agent')
+    return 'SALES'
+  if (upper === 'CLIENT' || lower === 'client' || upper === 'PATIENT' || lower === 'patient')
+    return 'CLIENT'
 
   return undefined
 }
@@ -217,7 +219,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         throw new Error('Failed to load profile')
       }
     } catch (err) {
-      const message = err instanceof ApiError ? err.message : err instanceof Error ? err.message : 'Sign in failed'
+      const message =
+        err instanceof ApiError ? err.displayMessage : err instanceof Error ? err.message : 'Sign in failed'
       set({ ...initialState, error: message })
       throw err
     }
