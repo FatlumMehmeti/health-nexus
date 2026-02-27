@@ -26,6 +26,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { isApiError } from '@/lib/api-client'
 import { useAuthStore } from '@/stores/auth.store'
 import { tenantPlansService, type TenantPlanApi } from '@/services/tenant-plans.service'
 
@@ -73,11 +74,11 @@ const defaultDepartments: DepartmentRow[] = [
   { name: 'Pediatrics', services: 'Well-child visits, vaccinations' },
 ]
 
-/** Shown first for clients while API plans are loading; then replaced by API data. */
+/** Three example mock plans (Starter, Basic Care, Standard). Shown until API plans load; then replaced by API data. */
 const DEFAULT_MOCK_PLANS: TenantPlan[] = [
-  { id: 'mock-1', name: 'Basic Care', description: 'Routine check-ups and essential diagnostics.', price: 25, currency: 'EUR', durationDays: 30, maxAppointments: 2, maxConsultations: 1, isActive: true },
-  { id: 'mock-2', name: 'Standard', description: 'Balanced coverage for outpatient visits.', price: 45, currency: 'EUR', durationDays: 30, maxAppointments: 4, maxConsultations: 2, isActive: true },
-  { id: 'mock-3', name: 'Premium', description: 'Expanded care with priority scheduling.', price: 75, currency: 'EUR', durationDays: 30, maxAppointments: 6, maxConsultations: 4, isActive: true },
+  { id: 'mock-starter', name: 'Starter', description: 'Quick access to primary care and basic imaging.', price: 18, currency: 'EUR', durationDays: 30, maxAppointments: 1, maxConsultations: 1, isActive: true },
+  { id: 'mock-basic', name: 'Basic Care', description: 'Routine check-ups and essential diagnostics.', price: 25, currency: 'EUR', durationDays: 30, maxAppointments: 2, maxConsultations: 1, isActive: true },
+  { id: 'mock-standard', name: 'Standard', description: 'Balanced coverage for outpatient visits.', price: 45, currency: 'EUR', durationDays: 30, maxAppointments: 4, maxConsultations: 2, isActive: true },
 ]
 
 export function TenantLanding({
@@ -86,10 +87,12 @@ export function TenantLanding({
   backToHome,
 }: TenantLandingProps) {
   const { role, tenantId } = useAuthStore()
-  const isTenantManager = role === 'TENANT_MANAGER'
-  const tenantNumericId = isTenantManager && tenantId ? Number(tenantId) : null
-
   const tenant = config[tenantSlug]
+  const isTenantManager = role === 'TENANT_MANAGER'
+  // Use auth tenantId for managers when present; else use current landing's tenantId so plans still load.
+  const tenantNumericId = isTenantManager
+    ? (tenantId ? Number(tenantId) : tenant?.tenantId ?? null)
+    : null
   const title = tenant?.title ?? `Tenant: ${tenantSlug}`
   const subtitle = tenant?.subtitle ?? 'Welcome to our landing page.'
   const logo = tenant?.logo
@@ -98,9 +101,14 @@ export function TenantLanding({
     tenant?.about ??
     'This is a sample description for the tenant landing page. Real content will come from the backend.'
   const fontClass = tenant?.primaryFontClass ?? 'font-sans'
-  // Local state for plans; initially populated from backend (for managers) or static config.
-  const [plans, setPlans] = useState<TenantPlan[]>([])
-  const [selectedPlanId, setSelectedPlanId] = useState<string | undefined>(undefined)
+  // Show mock plans on first paint for tenant landings (slug has tenantId); effect then syncs API data.
+  const hasTenantInConfig = tenant?.tenantId != null
+  const [plans, setPlans] = useState<TenantPlan[]>(() =>
+    hasTenantInConfig ? DEFAULT_MOCK_PLANS : [],
+  )
+  const [selectedPlanId, setSelectedPlanId] = useState<string | undefined>(() =>
+    hasTenantInConfig ? DEFAULT_MOCK_PLANS[0]?.id : undefined,
+  )
 
   // Inline form state for adding or editing a plan.
   const [newPlanName, setNewPlanName] = useState('')
@@ -241,39 +249,30 @@ export function TenantLanding({
   // For clients: fetch plans from GET /user-tenant-plans/tenant/{tenantId} (active plans only).
   const clientTenantId = !isTenantManager && tenant?.tenantId != null ? tenant.tenantId : null
   const { data: clientPlans } = useQuery({
-    queryKey: ['tenant-plans', clientTenantId],
+    queryKey: ['tenant-plans', 'client', clientTenantId],
     enabled: Boolean(clientTenantId),
     queryFn: () => tenantPlansService.listByTenant(clientTenantId!),
   })
 
   useEffect(() => {
-    // For tenant managers, prefer backend plans when available
-    if (tenantNumericId && backendPlans) {
-      const mapped = backendPlans.map(mapApiPlanToTenantPlan)
-      setPlans(mapped)
-      if (mapped.length > 0) {
-        const firstActive = mapped.find((p) => p.isActive !== false) ?? mapped[0]
-        setSelectedPlanId(firstActive.id ?? firstActive.name)
-      } else {
-        setSelectedPlanId(undefined)
-      }
+    // Tenant manager: always show 3 mock plans + API plans (mocks first, then API data).
+    if (tenantNumericId) {
+      const apiPlans = (backendPlans ?? []).map(mapApiPlanToTenantPlan)
+      const combined = [...DEFAULT_MOCK_PLANS, ...apiPlans]
+      setPlans(combined)
+      const firstActive = combined.find((p) => p.isActive !== false) ?? combined[0]
+      setSelectedPlanId(firstActive?.id ?? firstActive?.name ?? DEFAULT_MOCK_PLANS[0]?.id)
       return
     }
 
-    // For clients: show 3 mock plans first while loading; then replace with API data.
+    // Client: always show 3 mock plans + API plans (mocks first, then API data from GET /user-tenant-plans/tenant/{id}).
     if (!tenantNumericId) {
-      if (clientTenantId != null && clientPlans !== undefined) {
-        const mapped = clientPlans.map(mapApiPlanToTenantPlan)
-        setPlans(mapped)
-        if (mapped.length > 0) {
-          const firstActive = mapped.find((p) => p.isActive !== false) ?? mapped[0]
-          setSelectedPlanId(firstActive.id ?? firstActive.name)
-        } else {
-          setSelectedPlanId(undefined)
-        }
-      } else if (clientTenantId != null) {
-        setPlans(DEFAULT_MOCK_PLANS)
-        setSelectedPlanId(DEFAULT_MOCK_PLANS[0]?.id ?? undefined)
+      if (clientTenantId != null) {
+        const apiPlans = (clientPlans ?? []).map(mapApiPlanToTenantPlan)
+        const combined = [...DEFAULT_MOCK_PLANS, ...apiPlans]
+        setPlans(combined)
+        const firstActive = combined.find((p) => p.isActive !== false) ?? combined[0]
+        setSelectedPlanId(firstActive?.id ?? firstActive?.name ?? DEFAULT_MOCK_PLANS[0]?.id)
       } else {
         setPlans([])
         setSelectedPlanId(undefined)
@@ -535,30 +534,35 @@ export function TenantLanding({
                           return
                         }
 
-                        if (editingPlanId) {
-                          const numericId = Number(editingPlanId)
-                          await updatePlanMutation.mutateAsync({
-                            id: numericId,
-                            data: {
+                        try {
+                          if (editingPlanId) {
+                            const numericId = Number(editingPlanId)
+                            await updatePlanMutation.mutateAsync({
+                              id: numericId,
+                              data: {
+                                name: trimmedName,
+                                price,
+                                max_appointments: maxAppt ?? undefined,
+                                max_consultations: maxCons ?? undefined,
+                              },
+                            })
+                            setEditingPlanId(null)
+                          } else {
+                            await createPlanMutation.mutateAsync({
                               name: trimmedName,
                               price,
                               max_appointments: maxAppt ?? undefined,
                               max_consultations: maxCons ?? undefined,
-                            },
-                          })
-                          setEditingPlanId(null)
-                        } else {
-                          await createPlanMutation.mutateAsync({
-                            name: trimmedName,
-                            price,
-                            max_appointments: maxAppt ?? undefined,
-                            max_consultations: maxCons ?? undefined,
-                          })
+                            })
+                          }
+                          setNewPlanName('')
+                          setNewPlanPrice('0')
+                          setNewPlanMaxAppointments('')
+                          setNewPlanMaxConsultations('')
+                        } catch (err) {
+                          const message = isApiError(err) ? err.displayMessage : (err instanceof Error ? err.message : 'Failed to save plan. Check API.')
+                          setPlanFormError(message)
                         }
-                        setNewPlanName('')
-                        setNewPlanPrice('0')
-                        setNewPlanMaxAppointments('')
-                        setNewPlanMaxConsultations('')
                       }}
                     >
                       {editingPlanId ? 'Save changes' : 'Add plan'}
