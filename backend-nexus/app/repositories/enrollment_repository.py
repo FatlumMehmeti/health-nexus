@@ -34,16 +34,39 @@ def get_tenant(db: Session, tenant_id: int) -> Optional[Tenant]:
     return db.query(Tenant).filter(Tenant.id == tenant_id).first()
 
 
-def get_patient(db: Session, patient_user_id: int) -> Optional[Patient]:
+def get_patient_by_tenant_and_user(
+    db: Session,
+    *,
+    tenant_id: int,
+    patient_user_id: int,
+) -> Optional[Patient]:
     """
-    Retrieve a Patient by the associated user_id.
+    Retrieve a Patient scoped to a tenant and user identifier.
 
     Args:
         db: Active SQLAlchemy session.
+        tenant_id: Identifier of the Tenant.
         patient_user_id: User ID linked to the Patient record.
 
     Returns:
-        The Patient instance if found, otherwise None.
+        The Patient instance if found within the tenant, otherwise None.
+    """
+    return (
+        db.query(Patient)
+        .filter(
+            Patient.tenant_id == tenant_id,
+            Patient.user_id == patient_user_id,
+        )
+        .first()
+    )
+
+
+def get_patient_by_user(db: Session, patient_user_id: int) -> Optional[Patient]:
+    """
+    Retrieve any Patient by associated user_id (cross-tenant).
+
+    This helper is only used to distinguish "not found" from
+    "exists but in a different tenant" for deterministic API errors.
     """
     return db.query(Patient).filter(Patient.user_id == patient_user_id).first()
 

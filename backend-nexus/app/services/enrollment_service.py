@@ -14,7 +14,8 @@ from app.models.audit_event import AuditEvent
 from app.models import TenantManager, Doctor
 from app.repositories import (
     get_tenant,
-    get_patient,
+    get_patient_by_tenant_and_user,
+    get_patient_by_user,
     get_user_tenant_plan,
     get_enrollment_by_id,
     get_enrollment_by_tenant_and_patient,
@@ -173,6 +174,58 @@ def _ensure_actor_can_mutate_tenant(
         )
 
 
+def _ensure_actor_can_create_enrollment(
+    db: Session,
+    actor: ActorContext,
+    *,
+    tenant_id: int,
+    patient_user_id: int,
+) -> None:
+    """
+    Enforce create-level authorization for enrollments.
+
+    Rules:
+    - SUPER_ADMIN: always allowed.
+    - TENANT_MANAGER: must manage the target tenant.
+    - CLIENT/PATIENT: may create enrollment only for self.
+    - Others: forbidden.
+    """
+    role = _normalize_role(actor.role)
+
+    if _is_super_admin(actor):
+        return
+
+    if role == ROLE_TENANT_MANAGER:
+        _ensure_actor_can_mutate_tenant(db, actor, tenant_id)
+        return
+
+    if role in {ROLE_CLIENT, ROLE_PATIENT}:
+        if actor.user_id is None:
+            raise EnrollmentServiceError(
+                EnrollmentErrorCode.UNAUTHORIZED,
+                "Missing actor user_id for enrollment creation",
+                http_status=403,
+            )
+        if actor.user_id != patient_user_id:
+            raise EnrollmentServiceError(
+                EnrollmentErrorCode.TENANT_SCOPE_VIOLATION,
+                "Client can only create enrollment for self",
+                http_status=403,
+                details={
+                    "actor_user_id": actor.user_id,
+                    "patient_user_id": patient_user_id,
+                },
+            )
+        return
+
+    raise EnrollmentServiceError(
+        EnrollmentErrorCode.UNAUTHORIZED,
+        "Actor is not allowed to create enrollments",
+        http_status=403,
+        details={"role": role},
+    )
+
+
 def _ensure_actor_can_view_enrollment(
     db: Session,
     actor: ActorContext,
@@ -262,6 +315,73 @@ def _serialize_enrollment(enrollment: Enrollment) -> Dict[str, Any]:
 # Enrollment Creation
 # ============================================================================
 
+def _get_constraint_name(exc: IntegrityError) -> Optional[str]:
+    """
+    Extract DB constraint name from an IntegrityError when available.
+    """
+    diag = getattr(getattr(exc, "orig", None), "diag", None)
+    name = getattr(diag, "constraint_name", None)
+    if not name:
+        return None
+    return str(name)
+
+
+def _map_create_integrity_error(
+    exc: IntegrityError,
+    *,
+    tenant_id: int,
+    patient_user_id: int,
+) -> EnrollmentServiceError:
+    """
+    Convert low-level integrity failures into deterministic domain errors.
+    """
+    constraint_name = (_get_constraint_name(exc) or "").lower()
+    raw_message = str(getattr(exc, "orig", exc)).lower()
+
+    is_duplicate = (
+        "uq_enrollment_patient_tenant" in constraint_name
+        or "unique constraint" in raw_message
+    )
+    if is_duplicate:
+        return EnrollmentServiceError(
+            EnrollmentErrorCode.CONFLICT,
+            "Enrollment already exists for this tenant and patient",
+            http_status=409,
+            details={
+                "tenant_id": tenant_id,
+                "patient_user_id": patient_user_id,
+            },
+        )
+
+    is_patient_tenant_fk = (
+        "fk_enrollments_patient_tenant_user" in constraint_name
+        or (
+            "foreign key" in raw_message
+            and "patient" in raw_message
+        )
+    )
+    if is_patient_tenant_fk:
+        return EnrollmentServiceError(
+            EnrollmentErrorCode.TENANT_SCOPE_VIOLATION,
+            "Patient does not belong to the specified tenant",
+            http_status=403,
+            details={
+                "tenant_id": tenant_id,
+                "patient_user_id": patient_user_id,
+            },
+        )
+
+    return EnrollmentServiceError(
+        EnrollmentErrorCode.CONFLICT,
+        "Enrollment could not be created due to a data integrity violation",
+        http_status=409,
+        details={
+            "tenant_id": tenant_id,
+            "patient_user_id": patient_user_id,
+        },
+    )
+
+
 def create_enrollment(
     db: Session,
     *,
@@ -281,7 +401,12 @@ def create_enrollment(
     - Writes both status history and audit log entries.
     - Commits atomically.
     """
-    _ensure_actor_can_mutate_tenant(db, actor, tenant_id)
+    _ensure_actor_can_create_enrollment(
+        db,
+        actor,
+        tenant_id=tenant_id,
+        patient_user_id=patient_user_id,
+    )
 
     tenant = get_tenant(db, tenant_id)
     if tenant is None:
@@ -292,13 +417,28 @@ def create_enrollment(
             details={"tenant_id": tenant_id},
         )
 
-    patient = get_patient(db, patient_user_id)
+    patient = get_patient_by_tenant_and_user(
+        db,
+        tenant_id=tenant_id,
+        patient_user_id=patient_user_id,
+    )
     if patient is None:
+        any_tenant_patient = get_patient_by_user(db, patient_user_id)
+        if any_tenant_patient is None:
+            raise EnrollmentServiceError(
+                EnrollmentErrorCode.VALIDATION_ERROR,
+                "Patient not found",
+                http_status=400,
+                details={"patient_user_id": patient_user_id},
+            )
         raise EnrollmentServiceError(
-            EnrollmentErrorCode.VALIDATION_ERROR,
-            "Patient not found",
-            http_status=400,
-            details={"patient_user_id": patient_user_id},
+            EnrollmentErrorCode.TENANT_SCOPE_VIOLATION,
+            "Patient does not belong to the specified tenant",
+            http_status=403,
+            details={
+                "tenant_id": tenant_id,
+                "patient_user_id": patient_user_id,
+            },
         )
 
     plan = get_user_tenant_plan(db, user_tenant_plan_id)
@@ -351,7 +491,7 @@ def create_enrollment(
     history = EnrollmentStatusHistory(
         enrollment=enrollment,
         tenant_id=tenant_id,
-        old_status=None,
+        old_status=EnrollmentStatus.PENDING,
         new_status=EnrollmentStatus.PENDING,
         changed_by=actor.user_id,
         changed_by_role=_normalize_role(actor.role),
@@ -385,16 +525,12 @@ def create_enrollment(
     except EnrollmentServiceError:
         db.rollback()
         raise
-    except IntegrityError:
+    except IntegrityError as exc:
         db.rollback()
-        raise EnrollmentServiceError(
-            EnrollmentErrorCode.CONFLICT,
-            "Enrollment already exists for this tenant and patient",
-            http_status=409,
-            details={
-                "tenant_id": tenant_id,
-                "patient_user_id": patient_user_id,
-            },
+        raise _map_create_integrity_error(
+            exc,
+            tenant_id=tenant_id,
+            patient_user_id=patient_user_id,
         )
 
 
@@ -408,6 +544,7 @@ def transition_enrollment(
     enrollment_id: int,
     target_status: EnrollmentStatus,
     actor: ActorContext,
+    expected_tenant_id: Optional[int] = None,
     reason: Optional[str] = None,
     system: bool = False,
 ) -> Enrollment:
@@ -428,6 +565,18 @@ def transition_enrollment(
             "Enrollment not found",
             http_status=404,
             details={"enrollment_id": enrollment_id},
+        )
+
+    if expected_tenant_id is not None and enrollment.tenant_id != expected_tenant_id:
+        raise EnrollmentServiceError(
+            EnrollmentErrorCode.TENANT_SCOPE_VIOLATION,
+            "Enrollment does not belong to the specified tenant",
+            http_status=403,
+            details={
+                "enrollment_id": enrollment_id,
+                "tenant_id": expected_tenant_id,
+                "enrollment_tenant_id": enrollment.tenant_id,
+            },
         )
 
     current_status = enrollment.status
@@ -554,6 +703,7 @@ def get_enrollment_scoped(
     *,
     enrollment_id: int,
     actor: ActorContext,
+    expected_tenant_id: Optional[int] = None,
 ) -> Enrollment:
     """
     Retrieve a single enrollment with read-level authorization enforced.
@@ -565,6 +715,18 @@ def get_enrollment_scoped(
             "Enrollment not found",
             http_status=404,
             details={"enrollment_id": enrollment_id},
+        )
+
+    if expected_tenant_id is not None and enrollment.tenant_id != expected_tenant_id:
+        raise EnrollmentServiceError(
+            EnrollmentErrorCode.TENANT_SCOPE_VIOLATION,
+            "Enrollment does not belong to the specified tenant",
+            http_status=403,
+            details={
+                "enrollment_id": enrollment_id,
+                "tenant_id": expected_tenant_id,
+                "enrollment_tenant_id": enrollment.tenant_id,
+            },
         )
 
     _ensure_actor_can_view_enrollment(db, actor, enrollment)
@@ -641,6 +803,7 @@ def get_operational_status(
     *,
     enrollment_id: int,
     actor: ActorContext,
+    expected_tenant_id: Optional[int] = None,
 ) -> dict[str, Any]:
     """
     Return the operational status of an enrollment.
@@ -652,7 +815,12 @@ def get_operational_status(
     The returned structure is deterministic and reflects the
     effective state at the time of evaluation.
     """
-    enrollment = get_enrollment_scoped(db, enrollment_id=enrollment_id, actor=actor)
+    enrollment = get_enrollment_scoped(
+        db,
+        enrollment_id=enrollment_id,
+        actor=actor,
+        expected_tenant_id=expected_tenant_id,
+    )
 
     now = datetime.now(timezone.utc)
 
@@ -667,6 +835,7 @@ def get_operational_status(
             enrollment_id=enrollment.id,
             target_status=EnrollmentStatus.EXPIRED,
             actor=system_actor,
+            expected_tenant_id=expected_tenant_id,
             reason="Auto-expired due to operational status check",
             system=True,
         )

@@ -15,7 +15,8 @@ By centralizing exports here:
 # Re-export repository functions as the package API.
 from .enrollment_repository import (
     get_tenant,
-    get_patient,
+    get_patient_by_tenant_and_user,
+    get_patient_by_user,
     get_user_tenant_plan,
     get_enrollment_by_id,
     get_enrollment_by_tenant_and_patient,
@@ -29,7 +30,8 @@ from .enrollment_repository import (
 # Explicit public exports for `from app.repositories import *`.
 __all__ = [
     "get_tenant",
-    "get_patient",
+    "get_patient_by_tenant_and_user",
+    "get_patient_by_user",
     "get_user_tenant_plan",
     "get_enrollment_by_id",
     "get_enrollment_by_tenant_and_patient",
