@@ -64,7 +64,6 @@ def login_user(email: str, password: str) -> TokenResponse:
 
         # Get tenant_id based on user role
         tenant_id = get_tenant_id_for_user(session, user)
-
         payload = {
             "user_id": user.id,
             "email": user.email,
@@ -154,8 +153,12 @@ def refresh_access_token(refresh_token: str) -> TokenResponse:
         # Get tenant_id based on user role
         tenant_id = get_tenant_id_for_user(session, user)
 
+<<<<<<< HEAD
         new_payload = {"user_id": user.id,
                        "email": user.email, "role": user.role.name}
+=======
+        new_payload = {"user_id": user.id, "email": user.email, "role": user.role.name}
+>>>>>>> 78a9c4e912fcd9fc656bbead42b9bb924b324cdf
         if tenant_id is not None:
             new_payload["tenant_id"] = tenant_id
         new_access = create_access_token(new_payload)

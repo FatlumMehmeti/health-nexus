@@ -1,10 +1,43 @@
 import { api } from "@/lib/api-client";
-import type { TenantCreate, TenantRead, TenantStatus } from "@/interfaces";
+import type {
+  TenantCreate,
+  TenantRead,
+  TenantStatus,
+  FontRead,
+  BrandPaletteRead,
+  DepartmentRead,
+  TenantPublicCard,
+  TenantLandingPageResponse,
+  TenantCurrentRead,
+  TenantDetailsRead,
+  TenantDetailsUpdate,
+  DoctorRead,
+  TenantDepartmentWithServicesRead,
+  TenantDepartmentsBulkRequest,
+  ProductRead,
+  ProductCreateForTenant,
+  ProductUpdateInput,
+  ServiceLandingItem,
+  ServiceRead,
+  ServiceCreateInput,
+  ServiceUpdateInput,
+} from "@/interfaces";
 
 /**
  * Tenant service for public and superadmin tenant operations
  */
 export const tenantsService = {
+  /**
+   * List approved tenants for public display (e.g. tenant selector). No auth.
+   */
+  listPublicTenants: () => api.get<TenantPublicCard[]>("/api/tenants"),
+
+  /**
+   * Get full landing page data for a tenant by slug (public). No auth.
+   */
+  getLandingBySlug: (slug: string) =>
+    api.get<TenantLandingPageResponse>(`/api/tenants/by-slug/${encodeURIComponent(slug)}/landing`),
+
   /**
    * Submit a tenant application to join the platform
    * @param data - Tenant application data (name, email, licence_number)
@@ -46,4 +79,44 @@ export const tenantsService = {
       reason,
     });
   },
+<<<<<<< HEAD
+=======
+
+  /** List fonts for tenant branding dropdown (no auth). */
+  listFonts: () => api.get<FontRead[]>("/api/fonts"),
+
+  /** List brand palettes for tenant branding cards (no auth). */
+  listBrands: () => api.get<BrandPaletteRead[]>("/api/brands"),
+
+  /** List global departments for tenant department assignment (no auth). */
+  listDepartmentCatalog: () => api.get<DepartmentRead[]>("/api/departments"),
+
+  // Tenant manager (JWT-scoped) endpoints
+  getCurrentTenant: () => api.get<TenantCurrentRead>("/api/tenants/current"),
+  getTenantDetails: () => api.get<TenantDetailsRead>("/api/tenants/details"),
+  updateTenantDetails: (data: TenantDetailsUpdate) =>
+    api.put<TenantDetailsRead>("/api/tenants/details", data),
+  listTenantDoctors: () => api.get<DoctorRead[]>("/api/tenants/doctors"),
+  listTenantDepartments: () =>
+    api.get<TenantDepartmentWithServicesRead[]>("/api/tenants/departments"),
+  replaceTenantDepartments: (data: TenantDepartmentsBulkRequest) =>
+    api.post<TenantDepartmentWithServicesRead[]>("/api/tenants/departments", data),
+  listTenantProducts: () => api.get<ProductRead[]>("/api/tenants/products"),
+  createTenantProduct: (data: ProductCreateForTenant) =>
+    api.post<ProductRead>("/api/tenants/products", data),
+  updateTenantProduct: (productId: number, data: ProductUpdateInput) =>
+    api.put<ProductRead>(`/api/tenants/products/${productId}`, data),
+  deleteTenantProduct: (productId: number) =>
+    api.delete<void>(`/api/tenants/products/${productId}`),
+
+  // Services (per tenant department)
+  listServices: (tenantDepartmentId: number) =>
+    api.get<ServiceLandingItem[]>(
+      `/api/services?tenant_department_id=${encodeURIComponent(String(tenantDepartmentId))}`,
+    ),
+  createService: (data: ServiceCreateInput) => api.post<ServiceRead>("/api/services", data),
+  updateService: (serviceId: number, data: ServiceUpdateInput) =>
+    api.put<ServiceRead>(`/api/services/${serviceId}`, data),
+  deleteService: (serviceId: number) => api.delete<void>(`/api/services/${serviceId}`),
+>>>>>>> 78a9c4e912fcd9fc656bbead42b9bb924b324cdf
 };

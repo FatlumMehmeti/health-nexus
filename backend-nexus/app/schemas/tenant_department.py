@@ -27,3 +27,9 @@ class TenantDepartmentRead(TenantDepartmentBase):
     updated_at: Optional[datetime]
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class TenantDepartmentWithServicesRead(TenantDepartmentRead):
+    """Tenant department with department name and services."""
+    department_name: str
+    services: list[ServiceLandingItem] = []

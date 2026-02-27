@@ -1,11 +1,15 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
+import { PublicAuthHeader } from "@/components/molecules/public-auth-header";
+import { useAuthStore } from "@/stores/auth.store";
 
 export const Route = createFileRoute("/")({
   component: LandingPage,
 });
 
 function LandingPage() {
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+
   return (
     <div className="relative flex min-h-screen flex-col overflow-hidden">
       {/* Background */}
@@ -14,35 +18,26 @@ function LandingPage() {
         <div className="absolute inset-0 bg-[linear-gradient(to_right,oklch(0.9_0.01_265/0.5)_1px,transparent_1px),linear-gradient(to_bottom,oklch(0.9_0.01_265/0.5)_1px,transparent_1px)] bg-[size:4rem_4rem]" />
       </div>
 
-      <header className="sticky top-0 z-50 border-b border-border/40 bg-background/80 backdrop-blur-xl">
-        <div className="container flex h-16 items-center justify-between px-6 mx-auto">
-          <Link
-            to="/"
-            className="flex items-center gap-2 transition-opacity hover:opacity-90"
-          >
-            <img
-              src="/images/logo.webp"
-              alt="Health Nexus"
-              className="h-9 w-9 rounded-lg object-contain"
-            />
-            <span className="text-xl font-semibold tracking-tight">
-              Health Nexus
-            </span>
-          </Link>
-          <nav className="flex items-center gap-2">
-            <Link to="/login" search={{ reason: undefined, redirect: undefined }}>
-              <Button size="sm" variant="ghost" className="font-medium">
-                Sign in
+      <PublicAuthHeader
+        className="z-50"
+        containerClassName="h-16 px-6"
+        showRightSlotWhenAuthenticated
+        rightSlot={
+          isAuthenticated ? (
+            <Link to="/tenants">
+              <Button size="sm" className="font-medium shadow-sm">
+                Go to tenants
               </Button>
             </Link>
+          ) : (
             <Link to="/register">
               <Button size="sm" className="font-medium shadow-sm">
                 Join Platform
               </Button>
             </Link>
-          </nav>
-        </div>
-      </header>
+          )
+        }
+      />
 
       <main className="flex flex-1 flex-col items-center justify-center px-6 py-24 sm:py-32">
         <section className="mx-auto max-w-2xl space-y-8 text-center">
