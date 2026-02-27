@@ -1,5 +1,5 @@
 """
-Pytest for POST /auth/signup: user creation.
+Pytest for POST /auth/signup: user creation and tenant membership.
 Uses conftest's reset_database and db_session; seeds roles and tenants.
 """
 import pytest
@@ -7,7 +7,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy import select
 
 from app.main import app
-from app.models import Role, Tenant, User
+from app.models import Role, Tenant, User, UserTenantMembership
 from app.auth.auth_utils import hash_password, verify_password
 
 
@@ -36,8 +36,8 @@ def client_with_doctor_role(db_session):
     yield TestClient(app)
 
 
-def test_signup_success_creates_user(client):
-    """POST /auth/signup with valid body creates user, returns 201."""
+def test_signup_success_creates_user_and_membership(client):
+    """POST /auth/signup with valid body creates user and user_tenant_membership, returns 201."""
     response = client.post(
         "/auth/signup",
         json={
@@ -63,6 +63,13 @@ def test_signup_success_creates_user(client):
         user = session.execute(select(User).where(User.email == "new@example.com")).scalar_one()
         assert user.first_name == "New"
         assert user.last_name == "User"
+        m = session.execute(
+            select(UserTenantMembership).where(
+                UserTenantMembership.user_id == user.id,
+                UserTenantMembership.tenant_id == 1,
+            )
+        ).scalar_one()
+        assert m is not None
     finally:
         session.close()
 
@@ -84,8 +91,8 @@ def test_signup_duplicate_email_same_tenant_returns_409(client):
     assert "already" in r2.json().get("detail", "").lower() or "membership" in r2.json().get("detail", "").lower()
 
 
-def test_signup_same_email_new_tenant_returns_201(client_with_doctor_role):
-    """Same email for a different tenant returns 201."""
+def test_signup_same_email_new_tenant_creates_membership(client_with_doctor_role):
+    """Same email for a different tenant creates only membership, returns 201."""
     payload = {
         "email": "multi@example.com",
         "password": "pass1234",
@@ -103,6 +110,16 @@ def test_signup_same_email_new_tenant_returns_201(client_with_doctor_role):
     assert r2.status_code == 201
     assert r2.json()["user_id"] == user_id_first
     assert r2.json()["tenant_id"] == 2
+
+    from app.db import SessionLocal
+    session = SessionLocal()
+    try:
+        memberships = session.execute(
+            select(UserTenantMembership).where(UserTenantMembership.user_id == user_id_first)
+        ).scalars().all()
+        assert len(memberships) == 2
+    finally:
+        session.close()
 
 
 def test_signup_tenant_not_found_returns_404(client):
