@@ -16,12 +16,39 @@ from app.auth.auth_utils import (
     verify_refresh_token,
 )
 from app.db import SessionLocal
-from app.models import Role, Session, Tenant, User, Enrollment
+from app.models import Role, Session, Tenant, User, Enrollment, Patient, Doctor, TenantManager
 
 logger = logging.getLogger(__name__)
 
 # Backward-compatible role name aliases (input after .upper() -> DB role name)
 ROLE_NAME_ALIASES = {"ADMIN": "SUPER_ADMIN"}
+
+
+def _resolve_user_tenant_id(session, user_id: int) -> int | None:
+    # resolve a user's tenant_id from tenant-scoped profile tables
+    patient_tenant = session.execute(
+        select(Patient.tenant_id)
+        .where(Patient.user_id == user_id)
+        .order_by(Patient.tenant_id.asc())
+    ).scalar_one_or_none()
+    if patient_tenant is not None:
+        return int(patient_tenant)
+
+    doctor_tenant = session.execute(
+        select(Doctor.tenant_id).where(Doctor.user_id == user_id)
+    ).scalar_one_or_none()
+    if doctor_tenant is not None:
+        return int(doctor_tenant)
+
+    manager_tenant = session.execute(
+        select(TenantManager.tenant_id)
+        .where(TenantManager.user_id == user_id)
+        .order_by(TenantManager.tenant_id.asc())
+    ).scalar_one_or_none()
+    if manager_tenant is not None:
+        return int(manager_tenant)
+
+    return None
 
 
 def login_user(email: str, password: str) -> TokenResponse:
@@ -42,7 +69,7 @@ def login_user(email: str, password: str) -> TokenResponse:
         if not verify_password(password, user.password):
             logger.warning("auth.login_failed bad_password email=%s", email)
             raise HTTPException(status_code=401, detail="Invalid email or password")
-        tenant_id = getattr(user, "tenant_id", None)
+        tenant_id = _resolve_user_tenant_id(session, user.id)
         payload = {
             "user_id": user.id,
             "email": user.email,
@@ -72,7 +99,19 @@ def login_user(email: str, password: str) -> TokenResponse:
         )
         session.add(db_session)
         session.commit()
-        logger.info("auth.login_success user_id=%s email=%s role=%s", user.id, user.email, user.role.name)
+        logger.info(
+            "auth.login_tenant_resolved user_id=%s email=%s tenant_id=%s",
+            user.id,
+            user.email,
+            tenant_id,
+        )
+        logger.info(
+            "auth.login_success user_id=%s email=%s role=%s tenant_id=%s",
+            user.id,
+            user.email,
+            user.role.name,
+            tenant_id,
+        )
         return TokenResponse(access_token=token, refresh_token=refresh_token, token_type="bearer")
     except HTTPException:
         raise
@@ -117,7 +156,7 @@ def refresh_access_token(refresh_token: str) -> TokenResponse:
         if user is None:
             raise HTTPException(status_code=401, detail="Invalid refresh token")
         new_payload = {"user_id": user.id, "email": user.email, "role": user.role.name}
-        tenant_id = getattr(user, "tenant_id", None)
+        tenant_id = _resolve_user_tenant_id(session, user.id)
         if tenant_id is not None:
             new_payload["tenant_id"] = tenant_id
         new_access = create_access_token(new_payload)
