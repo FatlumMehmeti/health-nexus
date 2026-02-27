@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, Optional
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
@@ -15,6 +15,7 @@ from app.schemas.enrollment import (
 )
 from app.services.enrollment_service import (
     ActorContext,
+    EnrollmentErrorCode,
     EnrollmentServiceError,
     create_enrollment,
     transition_enrollment,
@@ -26,7 +27,7 @@ from app.models.enrollment import EnrollmentStatus
 
 
 router = APIRouter(
-    prefix="/enrollments",
+    prefix="/tenants/{tenant_id}/enrollments",
     tags=["Enrollments"],
 )
 
@@ -64,6 +65,62 @@ def _actor_from_user_payload(payload: Dict[str, Any]) -> ActorContext:
     return ActorContext(user_id=user_id, role=str(role))
 
 
+def _ensure_tenant_context_consistency(
+    *,
+    requested_tenant_id: int,
+    user_payload: Dict[str, Any],
+    request: Request,
+) -> None:
+    """
+    Ensure request tenant context is consistent across token/header/request payload.
+    """
+    token_tenant_raw = user_payload.get("tenant_id")
+    if token_tenant_raw is not None:
+        try:
+            token_tenant_id = int(token_tenant_raw)
+        except (TypeError, ValueError):
+            raise EnrollmentServiceError(
+                EnrollmentErrorCode.UNAUTHORIZED,
+                "Invalid tenant context in authentication token",
+                http_status=403,
+            )
+
+        if token_tenant_id != requested_tenant_id:
+            raise EnrollmentServiceError(
+                EnrollmentErrorCode.TENANT_SCOPE_VIOLATION,
+                "Token tenant does not match requested tenant",
+                http_status=403,
+                details={
+                    "token_tenant_id": token_tenant_id,
+                    "requested_tenant_id": requested_tenant_id,
+                },
+            )
+
+    header_tenant_raw = request.headers.get("X-Tenant-Id")
+    if header_tenant_raw is None or header_tenant_raw.strip() == "":
+        return
+
+    try:
+        header_tenant_id = int(header_tenant_raw)
+    except ValueError:
+        raise EnrollmentServiceError(
+            EnrollmentErrorCode.VALIDATION_ERROR,
+            "X-Tenant-Id must be a valid integer",
+            http_status=400,
+        )
+
+    if header_tenant_id != requested_tenant_id:
+        raise EnrollmentServiceError(
+            EnrollmentErrorCode.TENANT_SCOPE_VIOLATION,
+            "Header tenant does not match requested tenant",
+            http_status=403,
+            details={
+                "header_tenant_id": header_tenant_id,
+                "requested_tenant_id": requested_tenant_id,
+            },
+        )
+
+
 def _error_response(exc: EnrollmentServiceError) -> JSONResponse:
     """
     Convert a service-layer exception into a standardized JSON error response.
@@ -89,7 +146,9 @@ def _error_response(exc: EnrollmentServiceError) -> JSONResponse:
 
 @router.post("", response_model=EnrollmentStatusRead, status_code=201)
 def create_enrollment_endpoint(
+    tenant_id: int,
     payload: EnrollmentCreateRequest,
+    request: Request,
     db: Session = Depends(get_db),
     user: Dict[str, Any] = Depends(get_current_user),
 ):
@@ -97,8 +156,8 @@ def create_enrollment_endpoint(
     Create a new enrollment record.
 
     Args:
-        payload: EnrollmentCreateRequest containing tenant, patient,
-            and plan identifiers.
+        tenant_id: Tenant identifier from the route.
+        payload: EnrollmentCreateRequest containing patient and plan identifiers.
         db: Active SQLAlchemy session.
         user: Authenticated user payload provided by dependency injection.
 
@@ -111,9 +170,14 @@ def create_enrollment_endpoint(
     """
     actor = _actor_from_user_payload(user)
     try:
+        _ensure_tenant_context_consistency(
+            requested_tenant_id=tenant_id,
+            user_payload=user,
+            request=request,
+        )
         enrollment = create_enrollment(
             db,
-            tenant_id=payload.tenant_id,
+            tenant_id=tenant_id,
             patient_user_id=payload.patient_user_id,
             user_tenant_plan_id=payload.user_tenant_plan_id,
             actor=actor,
@@ -143,7 +207,9 @@ def create_enrollment_endpoint(
 
 @router.get("/{enrollment_id}", response_model=EnrollmentStatusRead)
 def get_enrollment_endpoint(
+    tenant_id: int,
     enrollment_id: int,
+    request: Request,
     db: Session = Depends(get_db),
     user: Dict[str, Any] = Depends(get_current_user),
 ):
@@ -151,6 +217,7 @@ def get_enrollment_endpoint(
     Retrieve a single enrollment by its identifier.
 
     Args:
+        tenant_id: Tenant identifier from the route.
         enrollment_id: Primary key of the enrollment.
         db: Active SQLAlchemy session.
         user: Authenticated user payload.
@@ -164,10 +231,16 @@ def get_enrollment_endpoint(
     """
     actor = _actor_from_user_payload(user)
     try:
+        _ensure_tenant_context_consistency(
+            requested_tenant_id=tenant_id,
+            user_payload=user,
+            request=request,
+        )
         enrollment = get_enrollment_scoped(
             db,
             enrollment_id=enrollment_id,
             actor=actor,
+            expected_tenant_id=tenant_id,
         )
 
         return EnrollmentStatusRead(
@@ -194,7 +267,8 @@ def get_enrollment_endpoint(
 
 @router.get("", response_model=list[EnrollmentStatusRead])
 def list_enrollments_endpoint(
-    tenant_id: int = Query(...),
+    tenant_id: int,
+    request: Request,
     patient_user_id: Optional[int] = Query(default=None),
     db: Session = Depends(get_db),
     user: Dict[str, Any] = Depends(get_current_user),
@@ -216,6 +290,11 @@ def list_enrollments_endpoint(
     """
     actor = _actor_from_user_payload(user)
     try:
+        _ensure_tenant_context_consistency(
+            requested_tenant_id=tenant_id,
+            user_payload=user,
+            request=request,
+        )
         enrollments = list_enrollments_scoped(
             db,
             tenant_id=tenant_id,
@@ -250,8 +329,10 @@ def list_enrollments_endpoint(
 
 @router.post("/{enrollment_id}/transition", response_model=EnrollmentStatusRead)
 def transition_enrollment_endpoint(
+    tenant_id: int,
     enrollment_id: int,
     body: Dict[str, Any],
+    request: Request,
     db: Session = Depends(get_db),
     user: Dict[str, Any] = Depends(get_current_user),
 ):
@@ -259,6 +340,7 @@ def transition_enrollment_endpoint(
     Transition an enrollment to a new status.
 
     Args:
+        tenant_id: Tenant identifier from the route.
         enrollment_id: Identifier of the enrollment to transition.
         body: Request body containing 'target_status' and optional 'reason'.
         db: Active SQLAlchemy session.
@@ -272,6 +354,14 @@ def transition_enrollment_endpoint(
         Returns a structured JSON error for service-level failures.
     """
     actor = _actor_from_user_payload(user)
+    try:
+        _ensure_tenant_context_consistency(
+            requested_tenant_id=tenant_id,
+            user_payload=user,
+            request=request,
+        )
+    except EnrollmentServiceError as exc:
+        return _error_response(exc)
 
     target_status_value = body.get("target_status")
     reason = body.get("reason")
@@ -308,6 +398,7 @@ def transition_enrollment_endpoint(
             enrollment_id=enrollment_id,
             target_status=target_status_value,
             actor=actor,
+            expected_tenant_id=tenant_id,
             reason=reason,
             system=False,
         )
@@ -336,7 +427,9 @@ def transition_enrollment_endpoint(
 
 @router.get("/{enrollment_id}/status", response_model=EnrollmentOperationalStatus)
 def enrollment_operational_status_endpoint(
+    tenant_id: int,
     enrollment_id: int,
+    request: Request,
     db: Session = Depends(get_db),
     user: Dict[str, Any] = Depends(get_current_user),
 ):
@@ -344,6 +437,7 @@ def enrollment_operational_status_endpoint(
     Retrieve the operational status of an enrollment.
 
     Args:
+        tenant_id: Tenant identifier from the route.
         enrollment_id: Identifier of the enrollment.
         db: Active SQLAlchemy session.
         user: Authenticated user payload.
@@ -358,10 +452,16 @@ def enrollment_operational_status_endpoint(
     """
     actor = _actor_from_user_payload(user)
     try:
+        _ensure_tenant_context_consistency(
+            requested_tenant_id=tenant_id,
+            user_payload=user,
+            request=request,
+        )
         status_payload = get_operational_status(
             db,
             enrollment_id=enrollment_id,
             actor=actor,
+            expected_tenant_id=tenant_id,
         )
         return EnrollmentOperationalStatus(**status_payload)
     except EnrollmentServiceError as exc:

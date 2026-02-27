@@ -33,7 +33,6 @@ class EnrollmentRead(EnrollmentBase):
         from_attributes = True
 
 class EnrollmentCreateRequest(BaseModel):
-    tenant_id: int
     patient_user_id: int
     user_tenant_plan_id: int
 
