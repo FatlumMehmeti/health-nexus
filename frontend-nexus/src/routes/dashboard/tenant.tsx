@@ -109,6 +109,7 @@ interface DepartmentFormModalState {
 
 export const TENANT_SECTION_KEYS = [
   "departments-services",
+  "doctors",
   "products",
   "plans",
   "settings",
@@ -135,6 +136,11 @@ const TENANT_SECTIONS: Array<{
     key: "departments-services",
     label: "Departments & Services",
     description: "Department contacts and nested services",
+  },
+  {
+    key: "doctors",
+    label: "Doctors",
+    description: "Read-only list of doctors assigned to this tenant",
   },
   {
     key: "products",
@@ -256,11 +262,10 @@ export function TenantManagerPageContent({
 
       <div className="space-y-6">
         {activeSection === "departments-services" && (
-          <>
-            <DoctorsManager />
-            <TenantDepartmentsManager onSaved={notifyDataChanged} />
-          </>
+          <TenantDepartmentsManager onSaved={notifyDataChanged} />
         )}
+
+        {activeSection === "doctors" && <DoctorsManager />}
 
         {activeSection === "products" && (
           <ProductsManager onSaved={notifyDataChanged} />

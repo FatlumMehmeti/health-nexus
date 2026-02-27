@@ -19,4 +19,5 @@ __all__ = [
     "brand_router",
     "service_router",
     "tenant_audit_log",
+    "user_tenant_plan_router",
 ]

@@ -34,7 +34,7 @@ export function PublicAuthHeader({
 
   const handleLogout = async () => {
     await logout();
-    navigate({ to: "/login", search: { reason: undefined, redirect: undefined } });
+    navigate({ to: "/login", search: { reason: undefined, redirect: undefined }, replace: true });
   };
 
   const userInitial = (user?.email?.trim().charAt(0) || user?.fullName?.trim().charAt(0) || "U")

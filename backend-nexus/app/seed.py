@@ -486,33 +486,6 @@ def seed_products(session, tenants_by_name):
     session.flush()
 
 
-def seed_tenant_managers(session):
-    existing = {
-        (tm.user_id, tm.tenant_id): tm
-        for tm in session.query(TenantManager).all()
-    }
-
-    manager_user = session.query(User).filter_by(
-        email="tenant.manager@seed.com"
-    ).first()
-
-    tenant = session.query(Tenant).filter_by(
-        name="Bluestone Clinic"
-    ).first()
-
-    if not manager_user or not tenant:
-        return
-
-    key = (manager_user.id, tenant.id)
-
-    if key not in existing:
-        session.add(
-            TenantManager(
-                user_id=manager_user.id,
-                tenant_id=tenant.id,
-            )
-        )
-
 def run_seed() -> None:
     session = SessionLocal()
     try:
@@ -532,8 +505,6 @@ def run_seed() -> None:
         seed_doctors(session, users_by_email, tenants_by_name)
         seed_services(session, tenants_by_name, departments_by_name)
         seed_products(session, tenants_by_name)
-        session.commit()
-        seed_tenant_managers(session)
         session.commit()
         print("Seed completed.")
     except Exception:

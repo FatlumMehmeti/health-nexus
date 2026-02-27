@@ -18,12 +18,8 @@ export function ProtectedRoute({ children, routeKey, fallback = null }: Protecte
 
   useEffect(() => {
     let cancelled = false
-    const searchObj = location.search as Record<string, unknown> | undefined
-    const q = new URLSearchParams()
-    if (searchObj && typeof searchObj === 'object')
-      for (const [k, v] of Object.entries(searchObj))
-        if (v != null && v !== '') q.set(k, String(v))
-    const currentPath = location.pathname + (q.toString() ? `?${q.toString()}` : '')
+    // Use pathname only for redirect; avoid passing tokens/codes from search params
+    const currentPath = location.pathname
 
     getProtectedRedirect(routeKey != null ? { routeKey } : undefined, currentPath).then((result) => {
       if (!cancelled) setRedirect(result ?? null)
@@ -31,7 +27,7 @@ export function ProtectedRoute({ children, routeKey, fallback = null }: Protecte
     return () => {
       cancelled = true
     }
-  }, [location.pathname, location.search, routeKey])
+  }, [location.pathname, routeKey])
 
   if (redirect === undefined) return <>{fallback}</>
   if (redirect) {

@@ -11,10 +11,10 @@ import {
   IconBuildingStore,
   IconHistory,
   IconSettings,
+  IconStethoscope,
   type Icon,
 } from "@tabler/icons-react";
 
-import { NavDocuments } from "./nav-documents";
 import { NavMain } from "./nav-main";
 import { NavUser } from "./nav-user";
 import { Link } from "@tanstack/react-router";
@@ -67,27 +67,27 @@ const navMainAll: Array<{
 
 const superAdminDocuments = [
   {
-    name: "Forms",
+    title: "Forms",
     url: "/dashboard/forms",
     icon: IconFileDescription,
   },
   {
-    name: "Global State",
+    title: "Global State",
     url: "/dashboard/global-state",
     icon: IconDatabase,
   },
   {
-    name: "Landing Pages",
+    title: "Landing Pages",
     url: "/dashboard/landing-pages",
     icon: IconFolder,
   },
   {
-    name: "Data Fetching",
+    title: "Data Fetching",
     url: "/dashboard/data",
     icon: IconDatabaseExport,
   },
   {
-    name: "Roles",
+    title: "Roles",
     url: "/dashboard/roles",
     icon: IconKey,
   },
@@ -95,22 +95,27 @@ const superAdminDocuments = [
 
 const tenantManagerDocuments = [
   {
-    name: "Departments & Services",
+    title: "Departments & Services",
     url: "/dashboard/tenant/departments-services",
     icon: IconFolder,
   },
   {
-    name: "Products",
+    title: "Doctors",
+    url: "/dashboard/tenant/doctors",
+    icon: IconStethoscope,
+  },
+  {
+    title: "Products",
     url: "/dashboard/tenant/products",
     icon: IconBuildingStore,
   },
   {
-    name: "Plans",
+    title: "Plans",
     url: "/dashboard/tenant/plans",
     icon: IconReport,
   },
   {
-    name: "Settings",
+    title: "Settings",
     url: "/dashboard/tenant/settings",
     icon: IconSettings,
   },
@@ -160,7 +165,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarHeader>
       <SidebarContent>
         <NavMain items={navMain} />
-        <NavDocuments items={documentItems} label={documentsLabel} />
+        <NavMain items={documentItems} label={documentsLabel} />
       </SidebarContent>
       <SidebarFooter>
         <NavUser user={sidebarUser} />
