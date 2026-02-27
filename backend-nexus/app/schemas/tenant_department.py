@@ -1,6 +1,9 @@
 from pydantic import BaseModel, ConfigDict
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 from datetime import datetime
+
+if TYPE_CHECKING:
+    from typing import Any as ServiceLandingItem
 
 
 class TenantDepartmentBase(BaseModel):
@@ -32,4 +35,4 @@ class TenantDepartmentRead(TenantDepartmentBase):
 class TenantDepartmentWithServicesRead(TenantDepartmentRead):
     """Tenant department with department name and services."""
     department_name: str
-    services: list[ServiceLandingItem] = []
+    services: list = []  # list[ServiceLandingItem]

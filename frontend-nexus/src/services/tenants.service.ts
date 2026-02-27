@@ -79,8 +79,6 @@ export const tenantsService = {
       reason,
     });
   },
-<<<<<<< HEAD
-=======
 
   /** List fonts for tenant branding dropdown (no auth). */
   listFonts: () => api.get<FontRead[]>("/api/fonts"),
@@ -118,5 +116,4 @@ export const tenantsService = {
   updateService: (serviceId: number, data: ServiceUpdateInput) =>
     api.put<ServiceRead>(`/api/services/${serviceId}`, data),
   deleteService: (serviceId: number) => api.delete<void>(`/api/services/${serviceId}`),
->>>>>>> 78a9c4e912fcd9fc656bbead42b9bb924b324cdf
 };

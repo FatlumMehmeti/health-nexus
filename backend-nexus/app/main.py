@@ -17,11 +17,14 @@ app.add_middleware(
 
 # Include routers
 app.include_router(role_router)
-app.include_router(superadmin_tenant_router, prefix="/api/superadmin", tags=["Super Admin - Tenant Management"])
-app.include_router(public_tenant_router, prefix="/api/public", tags=["Public Tenant Requests"])
+app.include_router(superadmin_tenant_router, prefix="/api/superadmin",
+                   tags=["Super Admin - Tenant Management"])
+app.include_router(public_tenant_router, prefix="/api/public",
+                   tags=["Public Tenant Requests"])
 app.include_router(auth_router, prefix="/api")
 app.include_router(tenant_audit_log)
 app.include_router(user_tenant_plan_router)
+
 
 @app.get("/")
 def root():

@@ -124,7 +124,7 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
     >
       <div className="pointer-events-none fixed inset-0 -z-10">
         <div
-          className="absolute inset-0 bg-gradient-to-b from-primary/5 via-background to-background"
+          className="absolute inset-0 bg-linear-to-b from-primary/5 via-background to-background"
           style={brand.background ? { backgroundColor: brand.background } : undefined}
         />
       </div>
@@ -155,7 +155,7 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
             </div>
           </div>
           <div className="flex items-center gap-4">
-            <TabsList variant="line" className="inline-flex items-center gap-1 rounded-lg p-[3px]">
+            <TabsList variant="line" className="inline-flex items-center gap-1 rounded-lg p-0.75">
               <TabsTrigger value="home">HOME</TabsTrigger>
               <TabsTrigger value="departments">DEPARTMENTS</TabsTrigger>
               <TabsTrigger value="products">PRODUCTS</TabsTrigger>
@@ -167,7 +167,7 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
                   <Button
                     variant="outline"
                     size="icon-sm"
-                    className="rounded-full text-xs !text-white font-semibold"
+                    className="rounded-full text-xs text-white! font-semibold"
                     aria-label="Open account menu"
                     title={user.email}
                     style={accountButtonStyle}
