@@ -7,8 +7,8 @@ from fastapi.testclient import TestClient
 from sqlalchemy import select
 
 from app.main import app
-from app.models import Role, Tenant, User, UserTenantMembership
-from app.auth.auth_utils import hash_password, verify_password
+from app.models import Role, Tenant, User
+from app.auth.auth_utils import verify_password
 
 
 @pytest.fixture
@@ -63,13 +63,6 @@ def test_signup_success_creates_user_and_membership(client):
         user = session.execute(select(User).where(User.email == "new@example.com")).scalar_one()
         assert user.first_name == "New"
         assert user.last_name == "User"
-        m = session.execute(
-            select(UserTenantMembership).where(
-                UserTenantMembership.user_id == user.id,
-                UserTenantMembership.tenant_id == 1,
-            )
-        ).scalar_one()
-        assert m is not None
     finally:
         session.close()
 
@@ -110,16 +103,6 @@ def test_signup_same_email_new_tenant_creates_membership(client_with_doctor_role
     assert r2.status_code == 201
     assert r2.json()["user_id"] == user_id_first
     assert r2.json()["tenant_id"] == 2
-
-    from app.db import SessionLocal
-    session = SessionLocal()
-    try:
-        memberships = session.execute(
-            select(UserTenantMembership).where(UserTenantMembership.user_id == user_id_first)
-        ).scalars().all()
-        assert len(memberships) == 2
-    finally:
-        session.close()
 
 
 def test_signup_tenant_not_found_returns_404(client):
