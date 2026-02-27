@@ -1,20 +1,24 @@
-from pydantic import BaseModel, Field, ConfigDict
-from typing import Optional
 from datetime import timedelta
 from decimal import Decimal
+from typing import Optional
+
+from pydantic import BaseModel, ConfigDict, Field
+
 
 class UserTenantPlanBase(BaseModel):
     tenant_id: int
     name: str
     description: Optional[str] = None
 
-    price: Decimal = Field(..., gt=0)
+    # Global pricing bounds; tenant-specific bounds are enforced in route logic.
+    price: Decimal = Field(..., gt=0, le=100000)
 
-    duration: Optional[int] = None
+    duration: Optional[int] = Field(None, gt=0)
 
-    max_appointments: Optional[int] = None
-    max_consultations: Optional[int] = None
+    max_appointments: Optional[int] = Field(None, gt=0)
+    max_consultations: Optional[int] = Field(None, gt=0)
     is_active: Optional[bool] = True
+
 
 class UserTenantPlanCreate(UserTenantPlanBase):
     pass
@@ -29,8 +33,8 @@ class UserTenantPlanRead(UserTenantPlanBase):
 class UserTenantPlanUpdate(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
-    price: Optional[Decimal] = Field(None, gt=0)
-    duration: Optional[int] = None
-    max_appointments: Optional[int] = None
-    max_consultations: Optional[int] = None
+    price: Optional[Decimal] = Field(None, gt=0, le=100000)
+    duration: Optional[int] = Field(None, gt=0)
+    max_appointments: Optional[int] = Field(None, gt=0)
+    max_consultations: Optional[int] = Field(None, gt=0)
     is_active: Optional[bool] = None
