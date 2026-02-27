@@ -1,9 +1,6 @@
 import enum
-from uuid import uuid4
-
-from sqlalchemy import Enum, String
+from sqlalchemy import String, Enum, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-
 from .base import Base, TimestampMixin
 
 
@@ -20,26 +17,10 @@ class Tenant(Base, TimestampMixin):
 
     id: Mapped[int] = mapped_column(primary_key=True)
 
-    # Defaults keep tests that seed Tenant() directly compatible.
-    name: Mapped[str] = mapped_column(
-        String(255),
-        nullable=False,
-        default=lambda: f"Tenant-{uuid4().hex[:8]}",
-    )
-    email: Mapped[str] = mapped_column(
-        String(255),
-        nullable=False,
-        unique=True,
-        index=True,
-        default=lambda: f"tenant-{uuid4().hex}@example.com",
-    )
-    licence_number: Mapped[str] = mapped_column(
-        String(255),
-        nullable=False,
-        unique=True,
-        index=True,
-        default=lambda: f"LIC-{uuid4().hex[:12].upper()}",
-    )
+    # Application/Identity fields
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    email: Mapped[str] = mapped_column(String(255), nullable=False, unique=True, index=True)
+    licence_number: Mapped[str] = mapped_column(String(255), nullable=False, unique=True, index=True)
     status: Mapped[TenantStatus] = mapped_column(
         Enum(TenantStatus), default=TenantStatus.pending, nullable=False
     )

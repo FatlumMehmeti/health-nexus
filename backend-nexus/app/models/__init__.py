@@ -1,7 +1,7 @@
 from .base import Base
 from .role import Role
 from .user import User
-from .enrollment import Enrollment, EnrollmentStatus
+from .enrollment import Enrollment
 from .user_tenant_plan import UserTenantPlan
 from .tenant import Tenant, TenantStatus
 from .tenant_audit_log import TenantAuditLog
@@ -32,9 +32,6 @@ from .enrollment_status_history import EnrollmentStatusHistory
 from .audit_event import AuditEvent
 from .offer_delivery import OfferDelivery
 
-# Backward compatibility alias used in auth/signup tests.
-UserTenantMembership = Enrollment
-
 __all__ = [
     "Base",
     "Role",
@@ -62,8 +59,6 @@ __all__ = [
     "Report",
     "Recommendation",
     "Enrollment",
-    "EnrollmentStatus",
-    "UserTenantMembership",
     "EnrollmentStatusHistory",
     "AuditEvent",
     "UserTenantPlan",
@@ -73,5 +68,5 @@ __all__ = [
     "TenantSubscription",
     "ConsultationStatus",
     "Session",
-    "TenantAuditLog",
+    "TenantAuditLog"
 ]

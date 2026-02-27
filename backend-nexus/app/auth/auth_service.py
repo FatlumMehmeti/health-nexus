@@ -1,7 +1,7 @@
 import logging
 from datetime import datetime, timezone
 
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.orm import joinedload
 
 from fastapi import HTTPException
@@ -229,14 +229,13 @@ def signup_user(body: SignupRequest) -> SignupResponse:
                 "auth.signup_tenant_not_found tenant_id=%s", body.tenant_id)
             raise HTTPException(status_code=404, detail="Tenant not found")
 
-        # Resolve role by name case-insensitively to support existing seed data.
-        role_name = (body.role or "client").strip()
-        role_lookup = ROLE_NAME_ALIASES.get(role_name.upper(), role_name).lower()
-        role = session.execute(
-            select(Role).where(func.lower(Role.name) == role_lookup)
-        ).scalar_one_or_none()
+        # Resolve role by name (normalized uppercase to match Roles table)
+        role_name = (body.role or "client").strip().upper()
+        role_name = ROLE_NAME_ALIASES.get(role_name, role_name)
+        role = session.execute(select(Role).where(
+            Role.name == role_name)).scalar_one_or_none()
         if role is None:
-            logger.warning("auth.signup_role_not_found role=%s", role_lookup)
+            logger.warning("auth.signup_role_not_found role=%s", role_name)
             raise HTTPException(status_code=404, detail="Role not found")
 
         # Find existing user by email (with role for response)
@@ -332,5 +331,3 @@ def signup_user(body: SignupRequest) -> SignupResponse:
         raise
     finally:
         session.close()
-
-
