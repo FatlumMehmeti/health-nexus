@@ -19,6 +19,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as DashboardIndexRouteImport } from './routes/dashboard/index'
 import { Route as LandingTenantSlugRouteImport } from './routes/landing/$tenantSlug'
 import { Route as DashboardTenantsRouteImport } from './routes/dashboard/tenants'
+import { Route as DashboardTenantRouteImport } from './routes/dashboard/tenant'
 import { Route as DashboardRolesRouteImport } from './routes/dashboard/roles'
 import { Route as DashboardGlobalStateRouteImport } from './routes/dashboard/global-state'
 import { Route as DashboardFormsRouteImport } from './routes/dashboard/forms'
@@ -77,6 +78,11 @@ const LandingTenantSlugRoute = LandingTenantSlugRouteImport.update({
 const DashboardTenantsRoute = DashboardTenantsRouteImport.update({
   id: '/tenants',
   path: '/tenants',
+  getParentRoute: () => DashboardRouteRoute,
+} as any)
+const DashboardTenantRoute = DashboardTenantRouteImport.update({
+  id: '/tenant',
+  path: '/tenant',
   getParentRoute: () => DashboardRouteRoute,
 } as any)
 const DashboardRolesRoute = DashboardRolesRouteImport.update({
@@ -142,6 +148,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/forms': typeof DashboardFormsRoute
   '/dashboard/global-state': typeof DashboardGlobalStateRoute
   '/dashboard/roles': typeof DashboardRolesRoute
+  '/dashboard/tenant': typeof DashboardTenantRoute
   '/dashboard/tenants': typeof DashboardTenantsRoute
   '/landing/$tenantSlug': typeof LandingTenantSlugRoute
   '/dashboard/': typeof DashboardIndexRoute
@@ -161,6 +168,7 @@ export interface FileRoutesByTo {
   '/dashboard/forms': typeof DashboardFormsRoute
   '/dashboard/global-state': typeof DashboardGlobalStateRoute
   '/dashboard/roles': typeof DashboardRolesRoute
+  '/dashboard/tenant': typeof DashboardTenantRoute
   '/dashboard/tenants': typeof DashboardTenantsRoute
   '/landing/$tenantSlug': typeof LandingTenantSlugRoute
   '/dashboard': typeof DashboardIndexRoute
@@ -183,6 +191,7 @@ export interface FileRoutesById {
   '/dashboard/forms': typeof DashboardFormsRoute
   '/dashboard/global-state': typeof DashboardGlobalStateRoute
   '/dashboard/roles': typeof DashboardRolesRoute
+  '/dashboard/tenant': typeof DashboardTenantRoute
   '/dashboard/tenants': typeof DashboardTenantsRoute
   '/landing/$tenantSlug': typeof LandingTenantSlugRoute
   '/dashboard/': typeof DashboardIndexRoute
@@ -206,6 +215,7 @@ export interface FileRouteTypes {
     | '/dashboard/forms'
     | '/dashboard/global-state'
     | '/dashboard/roles'
+    | '/dashboard/tenant'
     | '/dashboard/tenants'
     | '/landing/$tenantSlug'
     | '/dashboard/'
@@ -225,6 +235,7 @@ export interface FileRouteTypes {
     | '/dashboard/forms'
     | '/dashboard/global-state'
     | '/dashboard/roles'
+    | '/dashboard/tenant'
     | '/dashboard/tenants'
     | '/landing/$tenantSlug'
     | '/dashboard'
@@ -246,6 +257,7 @@ export interface FileRouteTypes {
     | '/dashboard/forms'
     | '/dashboard/global-state'
     | '/dashboard/roles'
+    | '/dashboard/tenant'
     | '/dashboard/tenants'
     | '/landing/$tenantSlug'
     | '/dashboard/'
@@ -334,6 +346,13 @@ declare module '@tanstack/react-router' {
       path: '/tenants'
       fullPath: '/dashboard/tenants'
       preLoaderRoute: typeof DashboardTenantsRouteImport
+      parentRoute: typeof DashboardRouteRoute
+    }
+    '/dashboard/tenant': {
+      id: '/dashboard/tenant'
+      path: '/tenant'
+      fullPath: '/dashboard/tenant'
+      preLoaderRoute: typeof DashboardTenantRouteImport
       parentRoute: typeof DashboardRouteRoute
     }
     '/dashboard/roles': {
@@ -425,6 +444,7 @@ interface DashboardRouteRouteChildren {
   DashboardFormsRoute: typeof DashboardFormsRoute
   DashboardGlobalStateRoute: typeof DashboardGlobalStateRoute
   DashboardRolesRoute: typeof DashboardRolesRoute
+  DashboardTenantRoute: typeof DashboardTenantRoute
   DashboardTenantsRoute: typeof DashboardTenantsRoute
   DashboardIndexRoute: typeof DashboardIndexRoute
   DashboardAuditLogsIndexRoute: typeof DashboardAuditLogsIndexRoute
@@ -437,6 +457,7 @@ const DashboardRouteRouteChildren: DashboardRouteRouteChildren = {
   DashboardFormsRoute: DashboardFormsRoute,
   DashboardGlobalStateRoute: DashboardGlobalStateRoute,
   DashboardRolesRoute: DashboardRolesRoute,
+  DashboardTenantRoute: DashboardTenantRoute,
   DashboardTenantsRoute: DashboardTenantsRoute,
   DashboardIndexRoute: DashboardIndexRoute,
   DashboardAuditLogsIndexRoute: DashboardAuditLogsIndexRoute,

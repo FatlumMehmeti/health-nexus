@@ -79,11 +79,14 @@ function LoginPage() {
         redirectTo && redirectTo.startsWith('/') && !redirectTo.startsWith('//') ? redirectTo : defaultPath
       await navigate({ to: target, replace: true })
     } catch (err) {
-      if (err instanceof ApiError) setSubmitError(err.message)
-      else setSubmitError('Sign in failed')
+      if (err instanceof ApiError) {
+        setSubmitError(err.displayMessage)
+      } else {
+        setSubmitError('Sign in failed')
+      }
     }
   }
-
+  
   const isSubmitting = status === 'loading'
 
   return (

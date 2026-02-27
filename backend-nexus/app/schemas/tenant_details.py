@@ -5,6 +5,7 @@ from datetime import datetime
 
 class TenantDetailsBase(BaseModel):
     logo: Optional[str] = None
+    image: Optional[str] = None
     moto: Optional[str] = None
     brand_id: Optional[int] = None
     title: Optional[str] = None

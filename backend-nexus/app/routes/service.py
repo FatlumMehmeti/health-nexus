@@ -5,7 +5,7 @@ from decimal import Decimal
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
-from app.auth.auth_utils import require_role
+from app.auth.auth_utils import get_current_user, normalize_role
 from app.db import get_db
 from app.models.service import Service
 from app.models.tenant_department import TenantDepartment
@@ -14,6 +14,23 @@ from app.schemas.landing import ServiceLandingItem
 from app.schemas.service import ServiceCreateInput, ServiceRead, ServiceUpdate
 
 router = APIRouter(prefix="/services", tags=["Services"])
+
+
+def _require_service_manager_or_admin(user: dict) -> tuple[bool, int | None]:
+    """Return (is_super_admin, tenant_id_if_manager)."""
+    role = normalize_role(user.get("role"))
+    if role in {"admin", "super_admin"}:
+        return True, None
+    if role == "tenant_manager":
+        tenant_id_raw = user.get("tenant_id")
+        if tenant_id_raw is None:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Tenant access denied")
+        try:
+            tenant_id = int(tenant_id_raw) if not isinstance(tenant_id_raw, int) else tenant_id_raw
+        except (TypeError, ValueError):
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Tenant access denied")
+        return False, tenant_id
+    raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Insufficient permissions")
 
 
 @router.get("", response_model=list[ServiceLandingItem])
@@ -36,11 +53,14 @@ def list_services(
 def create_service(
     payload: ServiceCreateInput,
     db: Session = Depends(get_db),
-    _: dict = Depends(require_role("SUPER_ADMIN")),
+    user: dict = Depends(get_current_user),
 ):
     """Create a service under a tenant department."""
+    is_super_admin, tenant_id = _require_service_manager_or_admin(user)
     td = db.query(TenantDepartment).filter(TenantDepartment.id == payload.tenant_department_id).first()
     if not td:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tenant department not found")
+    if not is_super_admin and td.tenant_id != tenant_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tenant department not found")
     existing = db.query(Service).filter(
         Service.tenant_departments_id == payload.tenant_department_id,
@@ -67,11 +87,14 @@ def update_service(
     service_id: int,
     payload: ServiceUpdate,
     db: Session = Depends(get_db),
-    _: dict = Depends(require_role("SUPER_ADMIN")),
+    user: dict = Depends(get_current_user),
 ):
     """Update a service."""
+    is_super_admin, tenant_id = _require_service_manager_or_admin(user)
     service = db.query(Service).filter(Service.id == service_id).first()
     if not service:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Service not found")
+    if not is_super_admin and service.tenant_id != tenant_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Service not found")
     data = payload.model_dump(exclude_unset=True)
     for k, v in data.items():
@@ -87,11 +110,14 @@ def update_service(
 def delete_service(
     service_id: int,
     db: Session = Depends(get_db),
-    _: dict = Depends(require_role("SUPER_ADMIN")),
+    user: dict = Depends(get_current_user),
 ):
     """Delete a service (hard delete)."""
+    is_super_admin, tenant_id = _require_service_manager_or_admin(user)
     service = db.query(Service).filter(Service.id == service_id).first()
     if not service:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Service not found")
+    if not is_super_admin and service.tenant_id != tenant_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Service not found")
     db.delete(service)
     db.commit()

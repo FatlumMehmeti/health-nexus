@@ -1,70 +1,129 @@
 /**
  * Public tenant landing with simple tabs:
- * HOME (hero/about) + DEPARTMENTS (table) implemented,
+ * HOME (hero/about) + DEPARTMENTS from API,
  * PRODUCTS / PLANS are placeholders for now.
  *
- * Used by /landing/$tenantSlug (PRD-03).
+ * Used by /landing/$tenantSlug (PRD-03). Data from GET /api/tenants/by-slug/{slug}/landing.
  */
-import type { ReactNode } from 'react'
+import type { CSSProperties } from 'react'
+import { useState } from 'react'
+import { useNavigate } from '@tanstack/react-router'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Button } from '@/components/ui/button'
 import {
-  Table,
-  TableBody,
-  TableCaption,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
-
-export type TenantLandingConfig = Record<
-  string,
-  {
-    title: string
-    subtitle: string
-    logo?: string
-    moto?: string
-    about?: string
-    primaryFontClass?: string
-  }
->
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import { can } from '@/lib/rbac'
+import { useAuthStore } from '@/stores/auth.store'
+import { resolveMediaUrl } from '@/lib/media-url'
+import type { TenantLandingPageResponse } from '@/interfaces'
 
 export interface TenantLandingProps {
-  tenantSlug: string
-  config: TenantLandingConfig
-  backToHome?: ReactNode
+  /** Landing data from API; null while loading */
+  landingData: TenantLandingPageResponse | null
 }
 
-type DepartmentRow = {
-  name: string
-  services: string
+interface BrandStyles {
+  headerStyle?: CSSProperties
+  bodyStyle?: CSSProperties
+  primary?: string | null
+  secondary?: string | null
+  background?: string | null
+  foreground?: string | null
 }
 
-const defaultDepartments: DepartmentRow[] = [
-  { name: 'Cardiology', services: 'ECG, Echocardiography, Stress testing' },
-  { name: 'Radiology', services: 'X-ray, CT, MRI, Ultrasound' },
-  { name: 'Pediatrics', services: 'Well-child visits, vaccinations' },
-]
+function buildBrandStyles(details: TenantLandingPageResponse['details']): BrandStyles {
+  return {
+    headerStyle:
+      details?.font_header_family != null ? { fontFamily: details.font_header_family } : undefined,
+    bodyStyle:
+      details?.font_body_family != null ? { fontFamily: details.font_body_family } : undefined,
+    primary: details?.brand_color_primary ?? null,
+    secondary: details?.brand_color_secondary ?? null,
+    background: details?.brand_color_background ?? null,
+    foreground: details?.brand_color_foreground ?? null,
+  }
+}
 
-export function TenantLanding({
-  tenantSlug,
-  config,
-  backToHome,
-}: TenantLandingProps) {
-  const tenant = config[tenantSlug]
-  const title = tenant?.title ?? `Tenant: ${tenantSlug}`
-  const subtitle = tenant?.subtitle ?? 'Welcome to our landing page.'
-  const logo = tenant?.logo
-  const moto = tenant?.moto ?? 'Your health, our priority.'
-  const about =
-    tenant?.about ??
-    'This is a sample description for the tenant landing page. Real content will come from the backend.'
-  const fontClass = tenant?.primaryFontClass ?? 'font-sans'
+const usdFormatter = new Intl.NumberFormat('en-US', {
+  style: 'currency',
+  currency: 'USD',
+  minimumFractionDigits: 2,
+})
+
+function formatCurrency(value: number): string {
+  return usdFormatter.format(Number.isFinite(value) ? value : 0)
+}
+
+export function TenantLanding({ landingData }: TenantLandingProps) {
+  const [activeTab, setActiveTab] = useState('home')
+  const user = useAuthStore((s) => s.user)
+  const role = useAuthStore((s) => s.role)
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
+  const logout = useAuthStore((s) => s.logout)
+  const navigate = useNavigate()
+  const canOpenTenantDashboard = can({ role }, 'DASHBOARD_TENANT')
+
+  const handleLogout = async () => {
+    await logout()
+    navigate({ to: '/login', search: { reason: undefined, redirect: undefined } })
+  }
+
+  const handleGoToTenantDashboard = () => {
+    navigate({ to: '/dashboard/tenant', search: { section: 'departments-services' } })
+  }
+
+  const userInitial = (user?.email?.trim().charAt(0) || user?.fullName?.trim().charAt(0) || 'U')
+    .toUpperCase()
+
+  if (!landingData) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <p className="text-muted-foreground text-sm">Loading…</p>
+      </div>
+    )
+  }
+
+  const { tenant, details, departments, products } = landingData
+  const title = details?.title ?? tenant.name
+  const subtitle = details?.slogan ?? 'Welcome to our landing page.'
+  const logo = resolveMediaUrl(details?.logo)
+  const heroImage = resolveMediaUrl(details?.image)
+  const moto = details?.moto ?? 'Your health, our priority.'
+  const about = details?.about_text ?? 'No description available.'
+  const slug = tenant.slug ?? ''
+  const brand = buildBrandStyles(details)
+  const fontHeaderStyle = brand.headerStyle
+  const fontBodyStyle = brand.bodyStyle
+  const featuredDepartments = departments.slice(0, 3)
+  const availableProducts = products.filter((product) => product.is_available !== false)
+  const accountButtonStyle: CSSProperties | undefined = brand.primary
+    ? {
+        backgroundColor: brand.primary,
+        borderColor: brand.primary,
+        color: brand.foreground ?? '#ffffff',
+      }
+    : brand.secondary
+      ? { borderColor: brand.secondary, color: brand.secondary }
+      : undefined
 
   return (
-    <div className="relative flex min-h-screen flex-col overflow-hidden">
+    <Tabs
+      value={activeTab}
+      onValueChange={setActiveTab}
+      className="relative flex min-h-screen flex-col overflow-hidden"
+      style={fontBodyStyle}
+    >
       <div className="pointer-events-none fixed inset-0 -z-10">
-        <div className="absolute inset-0 bg-gradient-to-b from-primary/5 via-background to-background" />
+        <div
+          className="absolute inset-0 bg-gradient-to-b from-primary/5 via-background to-background"
+          style={brand.background ? { backgroundColor: brand.background } : undefined}
+        />
       </div>
 
       <header className="sticky top-0 z-40 border-b border-border/40 bg-background/80 backdrop-blur-xl">
@@ -92,51 +151,161 @@ export function TenantLanding({
               </span>
             </div>
           </div>
-          {backToHome ? (
-            <div className="text-xs text-muted-foreground sm:text-sm">
-              {backToHome}
-            </div>
-          ) : null}
+          <div className="flex items-center gap-4">
+            <TabsList variant="line" className="inline-flex items-center gap-1 rounded-lg p-[3px]">
+              <TabsTrigger value="home">HOME</TabsTrigger>
+              <TabsTrigger value="departments">DEPARTMENTS</TabsTrigger>
+              <TabsTrigger value="products">PRODUCTS</TabsTrigger>
+              <TabsTrigger value="plans">PLANS</TabsTrigger>
+            </TabsList>
+            {isAuthenticated && user ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="icon-sm"
+                    className="rounded-full text-xs !text-white font-semibold"
+                    aria-label="Open account menu"
+                    title={user.email}
+                    style={accountButtonStyle}
+                  >
+                    {userInitial}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="min-w-40">
+                  <DropdownMenuLabel className="text-xs sm:text-sm">
+                    Signed in as
+                    <br />
+                    <span className="font-medium">{user.email}</span>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  {canOpenTenantDashboard ? (
+                    <>
+                      <DropdownMenuItem onClick={handleGoToTenantDashboard}>
+                        Go to dashboard
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                    </>
+                  ) : null}
+                  <DropdownMenuItem onClick={handleLogout}>
+                    <span className="text-destructive">Log out</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : null}
+          </div>
         </div>
       </header>
 
       <main className="container mx-auto flex-1 px-4 py-6 sm:px-6 sm:py-10">
-        <Tabs defaultValue="home" className="flex flex-1 flex-col gap-6">
-          <TabsList variant="line" className="w-full justify-start overflow-x-auto">
-            <TabsTrigger value="home">HOME</TabsTrigger>
-            <TabsTrigger value="departments">DEPARTMENTS</TabsTrigger>
-            <TabsTrigger value="products">PRODUCTS</TabsTrigger>
-            <TabsTrigger value="plans">PLANS</TabsTrigger>
-          </TabsList>
-
+        <div className="flex flex-1 flex-col gap-6">
           <TabsContent value="home" className="mt-0 flex-1">
             <section className="mx-auto flex max-w-5xl flex-col gap-8 lg:flex-row">
               <div className="flex-1 space-y-4 lg:space-y-6">
-                <p className="text-sm font-medium uppercase tracking-[0.2em] text-primary">
+                <p
+                  className="text-sm font-medium uppercase tracking-[0.2em] text-primary"
+                  style={brand.secondary ? { color: brand.secondary } : undefined}
+                >
                   {moto}
                 </p>
                 <h1
-                  className={`${fontClass} text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl`}
+                  className="text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl"
+                  style={fontHeaderStyle}
                 >
                   {title}
                 </h1>
                 <p className="text-base leading-relaxed text-muted-foreground sm:text-lg">
                   {about}
                 </p>
+
+                {featuredDepartments.length > 0 && (
+                  <div className="mt-4 space-y-2">
+                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                      Key departments
+                    </p>
+                    <ul className="grid gap-1 text-sm text-muted-foreground sm:grid-cols-2">
+                      {featuredDepartments.map((d) => (
+                        <li key={d.id} className="flex items-center gap-2">
+                          <span
+                            className="h-1.5 w-1.5 rounded-full"
+                            style={
+                              brand.primary ? { backgroundColor: brand.primary } : undefined
+                            }
+                          />
+                          <span>{d.name}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                <div className="mt-5 flex flex-wrap gap-3">
+                  <Button
+                    size="sm"
+                    onClick={() => setActiveTab('departments')}
+                    style={
+                      brand.primary
+                        ? { backgroundColor: brand.primary, borderColor: brand.primary }
+                        : undefined
+                    }
+                  >
+                    View departments
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+                    style={
+                      brand.secondary
+                        ? { borderColor: brand.secondary, color: brand.secondary }
+                        : undefined
+                    }
+                  >
+                    Back to top
+                  </Button>
+                </div>
               </div>
               <aside className="mt-4 flex flex-1 flex-col gap-3 rounded-xl border bg-card/60 p-4 text-sm shadow-sm sm:p-5 lg:mt-0 lg:max-w-sm">
+                <div className="relative h-40 overflow-hidden rounded-lg border bg-muted/40">
+                  {heroImage ? (
+                    <img
+                      src={heroImage}
+                      alt={title}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
+                      Hero image not set
+                    </div>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  {logo ? (
+                    <img src={logo} alt={title} className="h-8 w-8 rounded-md object-contain" />
+                  ) : (
+                    <div className="bg-primary/10 text-primary flex h-8 w-8 items-center justify-center rounded-md text-xs font-semibold">
+                      {title
+                        .split(' ')
+                        .map((p) => p[0])
+                        .join('')
+                        .slice(0, 2)}
+                    </div>
+                  )}
+                  <p className="text-xs text-muted-foreground">Brand preview</p>
+                </div>
                 <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                   At a glance
                 </h2>
                 <div className="space-y-2 text-sm">
                   <p>
-                    <span className="text-muted-foreground">Tenant slug:</span>{' '}
-                    <code className="rounded bg-muted px-1 text-xs">{tenantSlug}</code>
+                    <span className="text-muted-foreground">Tenant:</span>{' '}
+                    <code className="rounded bg-muted px-1 text-xs">{slug || tenant.name}</code>
                   </p>
-                  <p className="text-muted-foreground">
-                    This section will later show real metrics like locations, phone, and opening
-                    hours, driven from backend tenant details.
-                  </p>
+                  {departments.length > 0 && (
+                    <p className="text-muted-foreground">
+                      {departments.length} department(s) with services listed below.
+                    </p>
+                  )}
                 </div>
               </aside>
             </section>
@@ -149,46 +318,118 @@ export function TenantLanding({
                   Departments & services
                 </h2>
                 <p className="text-sm text-muted-foreground sm:text-base">
-                  Static demo data for now; will be replaced with real departments and services from
-                  the API.
+                  {departments.length > 0
+                    ? 'Departments and services for this tenant.'
+                    : 'No departments configured yet.'}
                 </p>
               </div>
 
-              <div className="rounded-xl border bg-card/60 p-3 shadow-sm sm:p-4">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-[30%]">Department</TableHead>
-                      <TableHead>Services</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {defaultDepartments.map((row) => (
-                      <TableRow key={row.name}>
-                        <TableCell className="font-medium">{row.name}</TableCell>
-                        <TableCell className="text-muted-foreground">
-                          {row.services}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                  <TableCaption className="text-xs sm:text-sm">
-                    Example layout – connect this table to tenant departments once backend is ready.
-                  </TableCaption>
-                </Table>
-              </div>
+              {departments.length > 0 ? (
+                <div className="grid gap-4 md:grid-cols-2">
+                  {departments.map((dept) => (
+                    <article
+                      key={dept.id}
+                      className="flex h-full flex-col rounded-xl border bg-card/60 p-4 shadow-sm"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <h3 className="text-sm font-semibold sm:text-base">{dept.name}</h3>
+                          {dept.location && (
+                            <p className="text-xs text-muted-foreground sm:text-sm">
+                              {dept.location}
+                            </p>
+                          )}
+                        </div>
+                        {(dept.phone_number || dept.email) && (
+                          <div className="space-y-0.5 text-right text-[0.7rem] text-muted-foreground">
+                            {dept.phone_number && <p>{dept.phone_number}</p>}
+                            {dept.email && <p>{dept.email}</p>}
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {dept.services.length > 0 ? (
+                          dept.services.map((service) => (
+                            <span
+                              key={service.id}
+                              className="rounded-full border px-2 py-1 text-xs"
+                              style={
+                                brand.primary
+                                  ? { borderColor: brand.primary, color: brand.primary }
+                                  : undefined
+                              }
+                            >
+                              {service.name}
+                            </span>
+                          ))
+                        ) : (
+                          <p className="text-xs text-muted-foreground">No services listed.</p>
+                        )}
+                      </div>
+
+                      {dept.services.some((s) => s.description) && (
+                        <p className="mt-3 text-xs text-muted-foreground">
+                          {dept.services
+                            .filter((s) => s.description)
+                            .slice(0, 2)
+                            .map((s) => s.description)
+                            .join(' • ')}
+                        </p>
+                      )}
+                    </article>
+                  ))}
+                </div>
+              ) : (
+                <div className="rounded-xl border bg-card/60 p-6 text-center text-sm text-muted-foreground">
+                  No departments configured yet.
+                </div>
+              )}
             </section>
           </TabsContent>
 
           <TabsContent value="products" className="mt-0 flex-1">
-            <section className="mx-auto max-w-3xl space-y-3 text-center">
-              <h2 className="text-xl font-semibold tracking-tight sm:text-2xl">
-                Products – coming soon
-              </h2>
-              <p className="text-sm text-muted-foreground sm:text-base">
-                This tab will showcase healthcare products, packages, or featured services offered by
-                the tenant once product data is available.
-              </p>
+            <section className="mx-auto max-w-5xl space-y-4">
+              <div className="space-y-1">
+                <h2 className="text-xl font-semibold tracking-tight sm:text-2xl">Products</h2>
+                <p className="text-sm text-muted-foreground sm:text-base">
+                  {availableProducts.length > 0
+                    ? 'Healthcare products currently available from this tenant.'
+                    : 'No products available yet.'}
+                </p>
+              </div>
+
+              {availableProducts.length > 0 ? (
+                <div className="grid gap-4 md:grid-cols-2">
+                  {availableProducts.map((product) => (
+                    <article
+                      key={product.product_id}
+                      className="flex h-full flex-col rounded-xl border bg-card/60 p-4 shadow-sm"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <h3 className="text-sm font-semibold sm:text-base">{product.name}</h3>
+                        <span
+                          className="rounded-full border px-2 py-0.5 text-xs font-medium"
+                          style={
+                            brand.primary
+                              ? { borderColor: brand.primary, color: brand.primary }
+                              : undefined
+                          }
+                        >
+                          {formatCurrency(product.price)}
+                        </span>
+                      </div>
+                      <p className="mt-2 text-sm text-muted-foreground">
+                        {product.description || 'No description provided.'}
+                      </p>
+                    </article>
+                  ))}
+                </div>
+              ) : (
+                <div className="rounded-xl border bg-card/60 p-6 text-center text-sm text-muted-foreground">
+                  No products configured yet.
+                </div>
+              )}
             </section>
           </TabsContent>
 
@@ -203,8 +444,8 @@ export function TenantLanding({
               </p>
             </section>
           </TabsContent>
-        </Tabs>
+        </div>
       </main>
-    </div>
+    </Tabs>
   )
 }

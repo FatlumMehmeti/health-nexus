@@ -10,8 +10,14 @@ class TenantPublicCard(BaseModel):
     slug: Optional[str] = None
     name: str
     moto: Optional[str] = None
+    about_text: Optional[str] = None
     logo: Optional[str] = None
     image: Optional[str] = None
+    brand_color_primary: Optional[str] = None
+    brand_color_secondary: Optional[str] = None
+    brand_color_background: Optional[str] = None
+    brand_color_foreground: Optional[str] = None
+    brand_color_muted: Optional[str] = None
 
     class Config:
         from_attributes = True

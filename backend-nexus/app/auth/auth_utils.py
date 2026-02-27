@@ -18,16 +18,27 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 7 * 24 * 60  # 7 days
 REFRESH_TOKEN_EXPIRE_DAYS = 7
 
 # Role -> list of permission identifiers (for documentation / tooling)
+# Matches DB role names: SUPER_ADMIN, TENANT_MANAGER, DOCTOR, SALES, CLIENT
 ROLE_PERMISSIONS: Dict[str, list[str]] = {
-    "admin": ["auth:me"],
+    "super_admin": ["auth:me", "auth:admin"],
+    "tenant_manager": ["auth:me"],
     "doctor": ["auth:me"],
-    "sales": [],
+    "sales": ["auth:me"],
+    "client": ["auth:me"],
 }
 
 # Centralized RBAC: (method, route_id) -> allowed roles (lowercase)
+# auth:me: any authenticated user can read their own profile
 PERMISSIONS_MATRIX: Dict[tuple[str, str], set[str]] = {
     ("GET", "auth:admin"): {"admin", "super_admin"},
-    ("GET", "auth:me"): {"admin", "doctor"},
+    ("GET", "auth:me"): {
+        "admin",
+        "super_admin",
+        "tenant_manager",
+        "doctor",
+        "sales",
+        "client",
+    },
 }
 
 # Create pwd_context using CryptContext for bcrypt hashing

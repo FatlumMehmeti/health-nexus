@@ -46,7 +46,7 @@ router = APIRouter(prefix="/tenants", tags=["Tenants"])
 
 @router.get("", response_model=list[TenantPublicCard])
 def list_active_tenants(db: Session = Depends(get_db)):
-    """Returns approved tenants only for public display: id, slug, name, moto, logo, image."""
+    """Returns approved tenants only for public display: id, slug, name, moto, about_text, logo, image, and palette."""
     tenants = (
         db.query(Tenant)
         .filter(Tenant.status == TenantStatus.approved)
@@ -56,14 +56,21 @@ def list_active_tenants(db: Session = Depends(get_db)):
     result = []
     for t in tenants:
         details = db.query(TenantDetails).filter(TenantDetails.tenant_id == t.id).first()
+        brand = details.brand if details else None
         result.append(
             TenantPublicCard(
                 id=t.id,
                 slug=t.slug,
                 name=t.name,
                 moto=details.moto if details else None,
+                about_text=details.about_text if details else None,
                 logo=details.logo if details else None,
                 image=details.image if details else None,
+                brand_color_primary=brand.brand_color_primary if brand else None,
+                brand_color_secondary=brand.brand_color_secondary if brand else None,
+                brand_color_background=brand.brand_color_background if brand else None,
+                brand_color_foreground=brand.brand_color_foreground if brand else None,
+                brand_color_muted=brand.brand_color_muted if brand else None,
             )
         )
     return result
@@ -291,6 +298,18 @@ def _assert_tenant_exists(db: Session, tenant_id: int) -> None:
 
 
 # ─── Tenant management (tenant_id from JWT token) ───
+
+@router.get("/current", response_model=TenantLandingRead)
+def get_current_tenant(
+    db: Session = Depends(get_db),
+    auth: tuple = Depends(require_tenant_from_token),
+):
+    """Get current tenant profile from JWT tenant_id."""
+    _, tenant_id = auth
+    tenant = db.query(Tenant).filter(Tenant.id == tenant_id).first()
+    if not tenant:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tenant not found")
+    return TenantLandingRead.model_validate(tenant)
 
 @router.get("/details", response_model=TenantDetailsRead)
 def get_tenant_details(
@@ -646,5 +665,3 @@ def delete_tenant_service(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Service not found")
     db.delete(service)
     db.commit()
-
-

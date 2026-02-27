@@ -107,7 +107,7 @@ export function NavUser({
               </DropdownMenuItem>
               <DropdownMenuItem>
                 <IconCreditCard />
-                Billing
+                Upgrade Plan
               </DropdownMenuItem>
               <DropdownMenuItem>
                 <IconNotification />
