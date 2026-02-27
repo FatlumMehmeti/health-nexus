@@ -18,6 +18,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { can } from '@/lib/rbac'
 import { useAuthStore } from '@/stores/auth.store'
 import { resolveMediaUrl } from '@/lib/media-url'
 import type { TenantLandingPageResponse } from '@/interfaces'
@@ -62,13 +63,19 @@ function formatCurrency(value: number): string {
 export function TenantLanding({ landingData }: TenantLandingProps) {
   const [activeTab, setActiveTab] = useState('home')
   const user = useAuthStore((s) => s.user)
+  const role = useAuthStore((s) => s.role)
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
   const logout = useAuthStore((s) => s.logout)
   const navigate = useNavigate()
+  const canOpenTenantDashboard = can({ role }, 'DASHBOARD_TENANT')
 
   const handleLogout = async () => {
     await logout()
     navigate({ to: '/login', search: { reason: undefined, redirect: undefined } })
+  }
+
+  const handleGoToTenantDashboard = () => {
+    navigate({ to: '/dashboard/tenant', search: { section: 'departments-services' } })
   }
 
   const userInitial = (user?.email?.trim().charAt(0) || user?.fullName?.trim().charAt(0) || 'U')
@@ -172,6 +179,14 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
                     <span className="font-medium">{user.email}</span>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
+                  {canOpenTenantDashboard ? (
+                    <>
+                      <DropdownMenuItem onClick={handleGoToTenantDashboard}>
+                        Go to dashboard
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                    </>
+                  ) : null}
                   <DropdownMenuItem onClick={handleLogout}>
                     <span className="text-destructive">Log out</span>
                   </DropdownMenuItem>
