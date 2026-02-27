@@ -1,11 +1,13 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
+import { useAuthStore } from "@/stores/auth.store";
 
 export const Route = createFileRoute("/")({
   component: LandingPage,
 });
 
 function LandingPage() {
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   return (
     <div className="relative flex min-h-screen flex-col overflow-hidden">
       {/* Background */}
@@ -66,6 +68,15 @@ function LandingPage() {
                 className="min-w-[180px] shadow-md transition-all hover:shadow-lg"
               >
                 Join the Platform
+              </Button>
+            </Link>
+            <Link to="/appointments/book">
+              <Button
+                size="lg"
+                className="min-w-[180px] shadow-md transition-all hover:shadow-lg bg-primary text-primary-foreground border-2 border-primary/70 ring-2 ring-primary/10 hover:bg-primary/90 hover:ring-primary/20 focus:ring-4 focus:ring-primary/30"
+                style={{ boxShadow: '0 4px 24px 0 rgba(80, 72, 229, 0.10)' }}
+              >
+                Book Appointment
               </Button>
             </Link>
           </div>

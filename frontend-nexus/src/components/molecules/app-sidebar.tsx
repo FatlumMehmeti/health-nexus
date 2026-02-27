@@ -15,6 +15,7 @@ import {
   IconReport,
   IconBuildingStore,
   IconHistory,
+  IconCalendarCheck,
   IconSearch,
   IconSettings,
   type Icon,
@@ -24,6 +25,7 @@ import { NavDocuments } from "./nav-documents";
 import { NavMain } from "./nav-main";
 import { NavSecondary } from "./nav-secondary";
 import { NavUser } from "./nav-user";
+import { NotificationBell } from "@/components/NotificationBell";
 import {
   Sidebar,
   SidebarContent,
@@ -61,6 +63,12 @@ const navMainAll: Array<{
     url: "/dashboard/audit-logs",
     icon: IconHistory,
     routeKey: "DASHBOARD_AUDIT_LOGS",
+  },
+  {
+    title: "Appointments",
+    url: "/dashboard/appointments",
+    icon: IconCalendarCheck,
+    routeKey: "DASHBOARD_DOCTOR_APPOINTMENTS",
   },
   
 ];
@@ -143,15 +151,18 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton
-              asChild
-              className="data-[slot=sidebar-menu-button]:!p-1.5"
-            >
-              <a href="/">
-                <IconInnerShadowTop className="!size-5" />
-                <span className="text-base font-semibold">Health Nexus</span>
-              </a>
-            </SidebarMenuButton>
+            <div className="flex items-center justify-between w-full">
+              <SidebarMenuButton
+                asChild
+                className="data-[slot=sidebar-menu-button]:!p-1.5"
+              >
+                <a href="/">
+                  <IconInnerShadowTop className="!size-5" />
+                  <span className="text-base font-semibold">Health Nexus</span>
+                </a>
+              </SidebarMenuButton>
+              {user && <NotificationBell />}
+            </div>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>

@@ -21,6 +21,7 @@ export type RouteKey =
   | 'DASHBOARD_TENANTS'
   | 'DASHBOARD_AUDIT_LOGS'
   | 'DASHBOARD_ROLES'
+  | 'DASHBOARD_DOCTOR_APPOINTMENTS'
 
 // Internal mapping of route keys to roles that can access them.
 const rbacMatrix: Record<RouteKey, Role[]> = {
@@ -32,6 +33,7 @@ const rbacMatrix: Record<RouteKey, Role[]> = {
   DASHBOARD_TENANTS: ['SUPER_ADMIN'],
   DASHBOARD_AUDIT_LOGS: ['SUPER_ADMIN'],
   DASHBOARD_ROLES: ['SUPER_ADMIN'],
+  DASHBOARD_DOCTOR_APPOINTMENTS: ['DOCTOR'],
 }
 
 export function canAccess(role: Role | null | undefined, routeKey: RouteKey): boolean {

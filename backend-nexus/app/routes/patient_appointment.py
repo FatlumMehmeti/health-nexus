@@ -17,6 +17,8 @@ from app.routes.appointment import (
     _require_patient,
     book_appointment,
 )
+from app.models.notification import NotificationType
+from app.services.notification_service import create_notification
 
 
 router = APIRouter(prefix="/appointments", tags=["Patient Appointments"])
@@ -38,6 +40,18 @@ def book_appointment_endpoint(
         duration_minutes=payload.duration_minutes,
         description=payload.description,
     )
+    # Notify the doctor about the new appointment
+    create_notification(
+        db,
+        user_id=payload.doctor_id,
+        tenant_id=payload.tenant_id,
+        notification_type=NotificationType.APPOINTMENT_CREATED,
+        title="New Appointment Request",
+        message=f"A patient has requested an appointment on {payload.appointment_datetime}.",
+        entity_type="appointment",
+        entity_id=appointment.id,
+    )
+    db.commit()
     return {"id": appointment.id, "status": appointment.status.value}
 
 
@@ -61,12 +75,16 @@ def reschedule_appointment(
     if appointment.status in (AppointmentStatus.CANCELLED, AppointmentStatus.COMPLETED):
         raise HTTPException(400, "This appointment cannot be rescheduled")
 
-    doctor = db.query(Doctor).filter(
-        Doctor.user_id == payload.doctor_id,
-        Doctor.tenant_id == payload.tenant_id,
-        Doctor.tenant_department_id == payload.department_id,
-        Doctor.is_active == True,
-    ).first()
+    doctor = (
+        db.query(Doctor)
+        .filter(
+            Doctor.user_id == payload.doctor_id,
+            Doctor.tenant_id == payload.tenant_id,
+            Doctor.tenant_department_id == payload.department_id,
+            Doctor.is_active == True,
+        )
+        .first()
+    )
     if not doctor:
         raise HTTPException(404, "Doctor not found in this department")
 
@@ -104,6 +122,17 @@ def reschedule_appointment(
             changed_by=user_id,
         )
 
+    # Notify the doctor about the reschedule
+    create_notification(
+        db,
+        user_id=appointment.doctor_user_id,
+        tenant_id=appointment.tenant_id,
+        notification_type=NotificationType.APPOINTMENT_RESCHEDULED,
+        title="Appointment Rescheduled",
+        message=f"A patient has rescheduled their appointment to {normalized_dt}.",
+        entity_type="appointment",
+        entity_id=appointment.id,
+    )
     db.commit()
     db.refresh(appointment)
     return {"id": appointment.id, "status": appointment.status.value}
@@ -132,10 +161,14 @@ def cancel_appointment(
         except HTTPException:
             is_doctor = False
 
-    patient_profile = db.query(Patient).filter(
-        Patient.user_id == user_id,
-        Patient.tenant_id == appointment.tenant_id,
-    ).first()
+    patient_profile = (
+        db.query(Patient)
+        .filter(
+            Patient.user_id == user_id,
+            Patient.tenant_id == appointment.tenant_id,
+        )
+        .first()
+    )
     is_patient = appointment.patient_user_id == user_id and patient_profile is not None
     if not (is_doctor or is_patient):
         raise HTTPException(403, "You can only cancel your own appointments")
@@ -153,6 +186,17 @@ def cancel_appointment(
         old_status=old_status,
         new_status=AppointmentStatus.CANCELLED,
         changed_by=user_id,
+    )
+    # Notify the doctor about the cancellation
+    create_notification(
+        db,
+        user_id=appointment.doctor_user_id,
+        tenant_id=appointment.tenant_id,
+        notification_type=NotificationType.APPOINTMENT_CANCELLED,
+        title="Appointment Cancelled",
+        message="A patient has cancelled their appointment.",
+        entity_type="appointment",
+        entity_id=appointment.id,
     )
     db.commit()
     db.refresh(appointment)

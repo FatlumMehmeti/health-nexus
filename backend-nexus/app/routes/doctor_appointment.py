@@ -4,7 +4,13 @@ from sqlalchemy.orm import Session
 from app.auth.auth_utils import get_current_user
 from app.db import get_db
 from app.models.appointment import Appointment, AppointmentStatus
-from app.routes.appointment import _get_doctor_overlap, _record_status_change, _require_doctor
+from app.routes.appointment import (
+    _get_doctor_overlap,
+    _record_status_change,
+    _require_doctor,
+)
+from app.models.notification import NotificationType
+from app.services.notification_service import create_notification
 
 
 router = APIRouter(prefix="/appointments", tags=["Doctor Appointments"])
@@ -85,6 +91,17 @@ def approve_appointment(
         new_status=AppointmentStatus.CONFIRMED,
         changed_by=doctor.user_id,
     )
+    # Notify the patient about confirmation
+    create_notification(
+        db,
+        user_id=appointment.patient_user_id,
+        tenant_id=appointment.tenant_id,
+        notification_type=NotificationType.APPOINTMENT_CONFIRMED,
+        title="Appointment Confirmed",
+        message=f"Your appointment on {appointment.appointment_datetime} has been confirmed by the doctor.",
+        entity_type="appointment",
+        entity_id=appointment.id,
+    )
     db.commit()
     db.refresh(appointment)
     return {"id": appointment.id, "status": appointment.status.value}
@@ -119,6 +136,62 @@ def complete_appointment(
         old_status=old_status,
         new_status=AppointmentStatus.COMPLETED,
         changed_by=doctor.user_id,
+    )
+    # Notify the patient about completion
+    create_notification(
+        db,
+        user_id=appointment.patient_user_id,
+        tenant_id=appointment.tenant_id,
+        notification_type=NotificationType.APPOINTMENT_COMPLETED,
+        title="Appointment Completed",
+        message="Your appointment has been marked as completed.",
+        entity_type="appointment",
+        entity_id=appointment.id,
+    )
+    db.commit()
+    db.refresh(appointment)
+    return {"id": appointment.id, "status": appointment.status.value}
+
+
+@router.patch("/{appointment_id}/reject", response_model=dict)
+def reject_appointment(
+    appointment_id: int,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """Doctor rejects a requested appointment, freeing the slot."""
+    doctor = _require_doctor(current_user, db)
+    appointment = db.query(Appointment).filter(Appointment.id == appointment_id).first()
+    if not appointment:
+        raise HTTPException(404, "Appointment not found")
+    if appointment.doctor_user_id != doctor.user_id:
+        raise HTTPException(403, "You can only reject your own appointments")
+    if appointment.tenant_id != doctor.tenant_id:
+        raise HTTPException(403, "You can only reject appointments in your tenant")
+    if appointment.status == AppointmentStatus.CANCELLED:
+        return {"id": appointment.id, "status": appointment.status.value}
+    if appointment.status in (AppointmentStatus.COMPLETED,):
+        raise HTTPException(400, "Completed appointments cannot be rejected")
+
+    old_status = appointment.status
+    appointment.status = AppointmentStatus.CANCELLED
+    _record_status_change(
+        db=db,
+        appointment=appointment,
+        old_status=old_status,
+        new_status=AppointmentStatus.CANCELLED,
+        changed_by=doctor.user_id,
+    )
+    # Notify the patient about rejection
+    create_notification(
+        db,
+        user_id=appointment.patient_user_id,
+        tenant_id=appointment.tenant_id,
+        notification_type=NotificationType.APPOINTMENT_REJECTED,
+        title="Appointment Rejected",
+        message="Your appointment request has been rejected by the doctor.",
+        entity_type="appointment",
+        entity_id=appointment.id,
     )
     db.commit()
     db.refresh(appointment)

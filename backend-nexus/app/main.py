@@ -11,6 +11,7 @@ from app.routes import (
     doctor_appointment_router,
     patient_appointment_router,
     appointment_status_history_router,
+    notification_router,
 )
 
 app = FastAPI(title="Healthcare SaaS API", version="0.1.0")
@@ -26,14 +27,22 @@ app.add_middleware(
 
 # Include routers
 app.include_router(role_router)
-app.include_router(superadmin_tenant_router, prefix="/api/superadmin", tags=["Super Admin - Tenant Management"])
-app.include_router(public_tenant_router, prefix="/api/public", tags=["Public Tenant Requests"])
+app.include_router(
+    superadmin_tenant_router,
+    prefix="/api/superadmin",
+    tags=["Super Admin - Tenant Management"],
+)
+app.include_router(
+    public_tenant_router, prefix="/api/public", tags=["Public Tenant Requests"]
+)
 app.include_router(auth_router, prefix="/api")
 app.include_router(tenant_audit_log)
 app.include_router(appointment_router)
 app.include_router(doctor_appointment_router)
 app.include_router(patient_appointment_router)
 app.include_router(appointment_status_history_router)
+app.include_router(notification_router)
+
 
 @app.get("/")
 def root():

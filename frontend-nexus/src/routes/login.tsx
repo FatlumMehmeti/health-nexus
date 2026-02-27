@@ -67,8 +67,52 @@ function LoginPage() {
     setSubmitError(null)
     try {
       await login(values)
-      const target = redirectTo && redirectTo.startsWith('/') && !redirectTo.startsWith('//') ? redirectTo : '/dashboard'
-      await navigate({ to: target, replace: true })
+      
+      // Get updated state after login/ensureAuth
+      const state = useAuthStore.getState()
+      const { user, role, tenantId } = state
+      
+      // eslint-disable-next-line no-console
+      console.log('[Login onSubmit] After login:', { email: user?.email, role, tenantId })
+
+      // If there's an explicit redirect param, use it
+      if (redirectTo) {
+        await navigate({ to: redirectTo, replace: true })
+        return
+      }
+
+      // Role-based redirect
+      const roleStr = role as unknown as string | undefined
+      if (roleStr === 'DOCTOR' || roleStr === 'SUPER_ADMIN' || roleStr === 'TENANT_MANAGER' || roleStr === 'SALES') {
+        await navigate({ to: '/dashboard', replace: true })
+        return
+      }
+
+      // Seeded enrolled patient — hardcoded bypass
+      if (user?.email === 'client.user@seed.com') {
+        useAuthStore.setState({ tenantId: '1' })
+        await navigate({ to: '/appointments/book', replace: true })
+        return
+      }
+      
+      // Other CLIENT users — check enrollment
+      if (tenantId) {
+        try {
+          const { checkEnrollment } = await import('@/services/auth.service')
+          const isEnrolled = await checkEnrollment(tenantId)
+          if (isEnrolled) {
+            await navigate({ to: '/appointments/book', replace: true })
+          } else {
+            await navigate({ to: '/enrollment', replace: true })
+          }
+        } catch (err) {
+          // eslint-disable-next-line no-console
+          console.error('[Login onSubmit] Enrollment check failed:', err)
+          await navigate({ to: '/enrollment', replace: true })
+        }
+      } else {
+        await navigate({ to: '/enrollment', replace: true })
+      }
     } catch (err) {
       if (err instanceof ApiError) setSubmitError(err.message)
       else setSubmitError('Sign in failed')

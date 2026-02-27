@@ -33,6 +33,7 @@ from .payment import Payment
 from .enrollment_status_history import EnrollmentStatusHistory
 from .audit_event import AuditEvent
 from .offer_delivery import OfferDelivery
+from .notification import Notification, NotificationType
 
 __all__ = [
     "Base",
@@ -68,9 +69,11 @@ __all__ = [
     "UserTenantPlan",
     "OfferDelivery",
     "FontKey",
+    "Notification",
+    "NotificationType",
     "SubscriptionPlan",
     "TenantSubscription",
     "ConsultationStatus",
     "Session",
-    "TenantAuditLog"
+    "TenantAuditLog",
 ]
