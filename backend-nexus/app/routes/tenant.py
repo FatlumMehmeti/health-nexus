@@ -17,9 +17,7 @@ from app.models.font import Font
 from app.models.doctor import Doctor
 from app.models.role import Role
 from app.models.user import User
-from app.models.lead import Lead, LeadStatus
 
-from app.schemas.tenant import TenantCreate, TenantRead
 from app.schemas.tenant_details import TenantDetailsRead, TenantDetailsUpdate
 from app.schemas.doctor import DoctorRead, DoctorCreateForTenant, DoctorUpdate
 from app.schemas.tenant_department import (
@@ -27,7 +25,6 @@ from app.schemas.tenant_department import (
     TenantDepartmentWithServicesRead,
     BulkDepartmentsRequest,
 )
-from app.schemas.lead import PublicLeadCreate
 from app.schemas.product import ProductRead, ProductCreateForTenant, ProductUpdate
 from app.schemas.service import ServiceCreateInput, ServiceUpdate, ServiceRead
 from app.schemas.landing import (
