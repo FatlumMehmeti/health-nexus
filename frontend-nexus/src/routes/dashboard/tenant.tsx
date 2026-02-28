@@ -296,6 +296,12 @@ function TenantPlansPanel() {
     enabled: !!tenantId,
   });
 
+  const enrollmentsQuery = useQuery({
+    queryKey: ["tenant-manager", "enrollments", tenantId],
+    queryFn: () => tenantPlansService.listEnrollments(tenantId!),
+    enabled: !!tenantId,
+  });
+
   const [formState, setFormState] = useState({
     name: "",
     description: "",
@@ -589,6 +595,69 @@ function TenantPlansPanel() {
             ))}
           </div>
         )}
+        {/* Enrolled users table */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Selected plans</CardTitle>
+            <CardDescription>Users who have subscribed to your plans.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {enrollmentsQuery.isLoading ? (
+              <div className="space-y-2">
+                <Skeleton className="h-8 w-full" />
+                <Skeleton className="h-8 w-full" />
+                <Skeleton className="h-8 w-full" />
+              </div>
+            ) : (enrollmentsQuery.data ?? []).length === 0 ? (
+              <p className="text-sm text-muted-foreground">No users have subscribed to a plan yet.</p>
+            ) : (
+              <div className="rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>User ID</TableHead>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Email</TableHead>
+                      <TableHead>Plan</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Subscribed</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {(enrollmentsQuery.data ?? []).map((enrollment) => (
+                      <TableRow key={enrollment.id}>
+                        <TableCell className="font-mono text-xs">{enrollment.patient_user_id}</TableCell>
+                        <TableCell>
+                          {enrollment.patient_first_name || enrollment.patient_last_name
+                            ? `${enrollment.patient_first_name ?? ''} ${enrollment.patient_last_name ?? ''}`.trim()
+                            : <span className="text-muted-foreground">—</span>}
+                        </TableCell>
+                        <TableCell className="text-sm">{enrollment.patient_email ?? '—'}</TableCell>
+                        <TableCell>
+                          <Badge variant="outline">{enrollment.plan_name}</Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            variant={enrollment.status === 'ACTIVE' ? 'default' : enrollment.status === 'CANCELLED' ? 'destructive' : 'secondary'}
+                          >
+                            {enrollment.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-xs text-muted-foreground">
+                          {enrollment.activated_at
+                            ? new Date(enrollment.activated_at).toLocaleDateString()
+                            : enrollment.created_at
+                              ? new Date(enrollment.created_at).toLocaleDateString()
+                              : '—'}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </CardContent>
     </Card>
   );

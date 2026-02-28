@@ -8,6 +8,7 @@
 import type { CSSProperties } from 'react'
 import { useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
+import { useMutation } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
@@ -20,7 +21,9 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { can } from '@/lib/rbac'
+import { isApiError } from '@/lib/api-client'
 import { useAuthStore } from '@/stores/auth.store'
+import { tenantPlansService } from '@/services/tenant-plans.service'
 import { resolveMediaUrl } from '@/lib/media-url'
 import type { TenantLandingPageResponse } from '@/interfaces'
 
@@ -64,6 +67,19 @@ function formatCurrency(value: number): string {
 export function TenantLanding({ landingData }: TenantLandingProps) {
   const [activeTab, setActiveTab] = useState('home')
   const [selectedPlanId, setSelectedPlanId] = useState<number | null>(null)
+
+  const enrollMutation = useMutation({
+    mutationFn: ({ tenantId, planId }: { tenantId: number; planId: number }) =>
+      tenantPlansService.enroll(tenantId, planId),
+    onSuccess: (_data, variables) => {
+      setSelectedPlanId(variables.planId)
+      toast.success('Successfully subscribed!', { description: 'Your plan has been selected.' })
+    },
+    onError: (err) => {
+      toast.error(isApiError(err) ? err.message : 'Failed to subscribe. Please try again.')
+    },
+  })
+
   const user = useAuthStore((s) => s.user)
   const role = useAuthStore((s) => s.role)
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
@@ -538,7 +554,7 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
                         size="sm"
                         className="mt-4 w-full"
                         variant={isSelected ? 'outline' : 'default'}
-                        disabled={isSelected}
+                        disabled={isSelected || enrollMutation.isPending}
                         style={
                           isSelected
                             ? { borderColor: brand.primary ?? undefined, color: brand.primary ?? undefined }
@@ -547,13 +563,14 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
                               : undefined
                         }
                         onClick={() => {
-                          setSelectedPlanId(plan.id)
-                          toast.success(`Subscribed to ${plan.name}!`, {
-                            description: 'Your plan has been selected.',
-                          })
+                          if (!isAuthenticated) {
+                            toast.error('Please log in to subscribe to a plan.')
+                            return
+                          }
+                          enrollMutation.mutate({ tenantId: tenant.id, planId: plan.id })
                         }}
                       >
-                        {isSelected ? 'You have selected this plan' : 'Subscribe to this plan'}
+                        {isSelected ? 'You have selected this plan' : enrollMutation.isPending ? 'Subscribing…' : 'Subscribe to this plan'}
                       </Button>
                     </article>
                   )})}

@@ -32,3 +32,21 @@ class EnrollmentRead(EnrollmentBase):
     expires_at: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class EnrollmentDetailRead(BaseModel):
+    """Enriched enrollment view for the tenant manager dashboard."""
+    id: int
+    status: EnrollmentStatus
+    patient_user_id: int
+    patient_email: Optional[str] = None
+    patient_first_name: Optional[str] = None
+    patient_last_name: Optional[str] = None
+    plan_id: int
+    plan_name: str
+    activated_at: Optional[str] = None
+    cancelled_at: Optional[str] = None
+    expires_at: Optional[str] = None
+    created_at: Optional[str] = None
+
+    model_config = ConfigDict(from_attributes=True)
