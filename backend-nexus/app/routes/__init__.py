@@ -8,6 +8,7 @@ from .brand import router as brand_router
 from .service import router as service_router
 from .tenant_audit_log import router as tenant_audit_log
 from .user_tenant_plan import router as user_tenant_plan_router
+from .public_tenant import router as public_tenant_router
 
 __all__ = [
     "role_router",
@@ -20,4 +21,5 @@ __all__ = [
     "service_router",
     "tenant_audit_log",
     "user_tenant_plan_router",
+    "public_tenant_router",
 ]

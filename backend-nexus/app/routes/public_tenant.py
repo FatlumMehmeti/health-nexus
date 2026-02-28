@@ -42,13 +42,13 @@ def create_tenant_application(payload: TenantCreate, db: Session = Depends(get_d
 
 
 # Endpoint for potential tenants to submit a consultation request 
-# (e.g: to get more info about the product, ask for a demo etc) without applying for a tenant account.
+# (e.g: to get more info about the what nexus offers, ask for a demo etc) without applying for a tenant account.
 @router.post(
     "/consultation",
     status_code=status.HTTP_201_CREATED,
 )
 def create_public_lead(
-    payload: LeadCreate,  # you can rename schema later
+    payload: LeadCreate,
     db: Session = Depends(get_db),
 ):
 
@@ -65,4 +65,3 @@ def create_public_lead(
     db.refresh(lead)
 
     return lead
-# Add an endpoint that gets plans. (IGNORE because it is a scrapped for now)

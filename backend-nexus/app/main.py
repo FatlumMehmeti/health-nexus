@@ -13,6 +13,7 @@ from app.routes import (
     service_router,
     tenant_audit_log,
     user_tenant_plan_router,
+    public_tenant_router,
 )
 
 app = FastAPI(title="Healthcare SaaS API", version="0.1.0")
@@ -36,6 +37,7 @@ app.include_router(font_router, prefix="/api")
 app.include_router(brand_router, prefix="/api")
 app.include_router(service_router, prefix="/api")
 app.include_router(auth_router, prefix="/api")
+app.include_router(public_tenant_router, prefix="/api/public")
 app.include_router(tenant_audit_log)
 app.include_router(user_tenant_plan_router)
 
