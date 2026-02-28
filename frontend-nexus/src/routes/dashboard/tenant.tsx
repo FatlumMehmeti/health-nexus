@@ -128,38 +128,6 @@ export function normalizeTenantSection(
   return "departments-services";
 }
 
-const TENANT_SECTIONS: Array<{
-  key: TenantSectionKey;
-  label: string;
-  description: string;
-}> = [
-  {
-    key: "departments-services",
-    label: "Departments & Services",
-    description: "Department contacts and nested services",
-  },
-  {
-    key: "doctors",
-    label: "Doctors",
-    description: "Read-only list of doctors assigned to this tenant",
-  },
-  {
-    key: "products",
-    label: "Products",
-    description: "Tenant products shown on landing",
-  },
-  {
-    key: "plans",
-    label: "Plans",
-    description: "Manage tenant plans and pricing",
-  },
-  {
-    key: "settings",
-    label: "Settings",
-    description: "Branding, fonts, and palette",
-  },
-];
-
 function TenantManagerPage() {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   if (pathname !== "/dashboard/tenant") {
@@ -223,10 +191,6 @@ export function TenantManagerPageContent({
     );
   }
 
-  const activeSectionMeta =
-    TENANT_SECTIONS.find((item) => item.key === activeSection) ??
-    TENANT_SECTIONS[0];
-
   return (
     <div className="space-y-4 p-4 sm:space-y-6 sm:p-6 lg:p-8">
       <div className="space-y-2">
@@ -252,13 +216,6 @@ export function TenantManagerPageContent({
             value={tenant.status ? String(tenant.status) : "unknown"}
           />
         </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>{activeSectionMeta.label}</CardTitle>
-          <CardDescription>{activeSectionMeta.description}</CardDescription>
-        </CardHeader>
       </Card>
 
       <div className="space-y-6">
