@@ -1,4 +1,5 @@
 from pydantic import BaseModel, ConfigDict
+from datetime import datetime
 from enum import Enum
 from typing import Optional
 
@@ -27,9 +28,9 @@ class EnrollmentRead(EnrollmentBase):
     patient_user_id: int
     user_tenant_plan_id: int
 
-    activated_at: Optional[str] = None
-    cancelled_at: Optional[str] = None
-    expires_at: Optional[str] = None
+    activated_at: Optional[datetime] = None
+    cancelled_at: Optional[datetime] = None
+    expires_at: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)
 
