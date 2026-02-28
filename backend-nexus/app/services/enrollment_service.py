@@ -92,9 +92,7 @@ class ActorContext:
 ROLE_SUPER_ADMIN = "SUPER_ADMIN"
 ROLE_TENANT_MANAGER = "TENANT_MANAGER"
 ROLE_DOCTOR = "DOCTOR"
-ROLE_CLIENT = "CLIENT"
 ROLE_PATIENT = "PATIENT"
-ROLE_SALES = "SALES"
 ROLE_SALES_AGENT = "SALES_AGENT"
 
 
@@ -187,7 +185,7 @@ def _ensure_actor_can_create_enrollment(
     Rules:
     - SUPER_ADMIN: always allowed.
     - TENANT_MANAGER: must manage the target tenant.
-    - CLIENT/PATIENT: may create enrollment only for self.
+    - PATIENT: may create enrollment only for self.
     - Others: forbidden.
     """
     role = _normalize_role(actor.role)
@@ -198,8 +196,8 @@ def _ensure_actor_can_create_enrollment(
     if role == ROLE_TENANT_MANAGER:
         _ensure_actor_can_mutate_tenant(db, actor, tenant_id)
         return
-
-    if role in {ROLE_CLIENT, ROLE_PATIENT}:
+    #changed this part of the code to allow patients to create enrollments for themselves.
+    if role == ROLE_PATIENT:
         if actor.user_id is None:
             raise EnrollmentServiceError(
                 EnrollmentErrorCode.UNAUTHORIZED,
@@ -237,7 +235,7 @@ def _ensure_actor_can_view_enrollment(
     Access rules:
     - SUPER_ADMIN: full access.
     - TENANT_MANAGER: must manage the enrollment's tenant.
-    - PATIENT / CLIENT: may only view own enrollment.
+    - PATIENT: may only view own enrollment.
     - DOCTOR: may view enrollments within their tenant.
     - Others: unauthorized.
     """
@@ -270,7 +268,7 @@ def _ensure_actor_can_view_enrollment(
             )
         return
 
-    if role in {ROLE_CLIENT, ROLE_PATIENT} and actor.user_id is not None:
+    if role == ROLE_PATIENT and actor.user_id is not None:
         if enrollment.patient_user_id == actor.user_id:
             return
 
@@ -486,6 +484,7 @@ def create_enrollment(
         user_tenant_plan_id=user_tenant_plan_id,
         created_by=actor.user_id,
         status=EnrollmentStatus.PENDING,
+        updated_at=now,
     )
 
     history = EnrollmentStatusHistory(
@@ -750,7 +749,7 @@ def list_enrollments_scoped(
         pass
     elif role == ROLE_TENANT_MANAGER:
         _ensure_actor_can_mutate_tenant(db, actor, tenant_id)
-    elif role in {ROLE_CLIENT, ROLE_PATIENT}:
+    elif role == ROLE_PATIENT:
         if actor.user_id is None:
             raise EnrollmentServiceError(
                 EnrollmentErrorCode.UNAUTHORIZED,
