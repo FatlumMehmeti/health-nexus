@@ -14,10 +14,10 @@ class TenantSubscriptionCreate(TenantSubscriptionBase):
 
 class TenantSubscriptionRead(TenantSubscriptionBase):
     id: int
+    status: str
     activated_at: Optional[datetime]
     expires_at: Optional[datetime]
-    approved_by: Optional[int]
-    approved_at: Optional[datetime]
-    terminated_reason: Optional[str]
+    cancelled_at: Optional[datetime]
+    cancellation_reason: Optional[str]
 
     model_config = ConfigDict(from_attributes=True)

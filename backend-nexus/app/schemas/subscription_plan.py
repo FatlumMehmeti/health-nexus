@@ -5,13 +5,13 @@ from datetime import datetime
 
 
 class SubscriptionPlanBase(BaseModel):
-    name: str = Field(..., max_length=100)
-    price: Decimal = Field(..., gt=0)
-    duration: int = Field(..., gt=0, description="Duration in days")
+    name: str = Field(..., max_length=100, example="Basic Plan")
+    price: Decimal = Field(..., ge=0, example=99.99)
+    duration: int = Field(..., gt=0, description="Duration in days", example=30)
 
-    max_doctors: Optional[int] = None
-    max_patients: Optional[int] = None
-    max_departments: Optional[int] = None
+    max_doctors: Optional[int] = Field(None, example=5)
+    max_patients: Optional[int] = Field(None, example=100)
+    max_departments: Optional[int] = Field(None, example=3)
 
 
 class SubscriptionPlanCreate(SubscriptionPlanBase):
@@ -20,7 +20,7 @@ class SubscriptionPlanCreate(SubscriptionPlanBase):
 
 class SubscriptionPlanUpdate(BaseModel):
     name: Optional[str] = Field(None, max_length=100)
-    price: Optional[Decimal] = Field(None, gt=0)
+    price: Optional[Decimal] = Field(None, ge=0)
     duration: Optional[int] = Field(None, gt=0)
 
     max_doctors: Optional[int] = None
@@ -30,8 +30,6 @@ class SubscriptionPlanUpdate(BaseModel):
 
 class SubscriptionPlanRead(SubscriptionPlanBase):
     id: int
-    created_at: datetime
-    updated_at: datetime
 
     model_config = {
         "from_attributes": True

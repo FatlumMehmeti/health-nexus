@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from decimal import Decimal
+from datetime import datetime, timezone, timedelta
 
 from app.auth.auth_utils import hash_password
 from app.db import SessionLocal
@@ -19,6 +20,7 @@ from app.models import (
     TenantManager,
     Doctor,
     Service,
+    TenantSubscription,
 )
 
 
@@ -139,10 +141,10 @@ SEED_TENANT_DETAILS = [
 ]
 
 SEED_SUBSCRIPTION_PLANS = [
-    {"name": "FREE", "price": 0.00, "duration": 30},  # default starter plan
-    {"name": "Small Clinic", "price": 1500.00, "duration": 30},
-    {"name": "Medium Clinic", "price": 5000.00, "duration": 30},
-    {"name": "Hospital", "price": 10000.00, "duration": 30},
+    {"name": "FREE", "price": Decimal("0.00"), "duration": 30, "max_doctors": 5, "max_patients": 100, "max_departments": 3},
+    {"name": "Small Clinic", "price": Decimal("1499.00"), "duration": 30, "max_doctors": 15, "max_patients": 1000, "max_departments": 8},
+    {"name": "Medium Clinic", "price": Decimal("3999.00"), "duration": 30, "max_doctors": 50, "max_patients": 5000, "max_departments": 20},
+    {"name": "Hospital", "price": Decimal("9999.00"), "duration": 30, "max_doctors": 200, "max_patients": 20000, "max_departments": 50},
 ]
 
 # tenant_name, name, price, description
@@ -330,6 +332,45 @@ def seed_subscription_plans(session):
             session.add(SubscriptionPlan(**payload))
 
 
+def seed_tenant_subscriptions(session, tenants_by_name):
+    from app.models.tenant_subscription import SubscriptionStatus
+    from datetime import timedelta
+    
+    # Get the FREE plan
+    free_plan = session.query(SubscriptionPlan).filter(SubscriptionPlan.name == "FREE").first()
+    
+    if not free_plan:
+        raise Exception("FREE subscription plan not found")
+    
+    existing_subscriptions = {
+        (sub.tenant_id, sub.subscription_plan_id): sub 
+        for sub in session.query(TenantSubscription).all()
+    }
+    
+    # Create subscriptions for all approved tenants
+    for tenant_name, tenant in tenants_by_name.items():
+        if tenant.status == TenantStatus.approved:
+            key = (tenant.id, free_plan.id)
+            
+            # Skip if subscription already exists
+            if key in existing_subscriptions:
+                continue
+            
+            # Create FREE subscription for approved tenant
+            activated_at = datetime.now(timezone.utc)
+            expires_at = activated_at + timedelta(days=free_plan.duration)
+            
+            subscription = TenantSubscription(
+                tenant_id=tenant.id,
+                subscription_plan_id=free_plan.id,
+                activated_at=activated_at,
+                expires_at=expires_at,
+                status=SubscriptionStatus.ACTIVE
+            )
+            
+            session.add(subscription)
+
+
 def seed_users(session, roles_by_name):
     existing = {user.email: user for user in session.query(User).all()}
 
@@ -497,6 +538,8 @@ def run_seed() -> None:
         tenants_by_name = {t.name: t for t in session.query(Tenant).all()}
         seed_tenant_details(session, tenants_by_name)
         seed_subscription_plans(session)
+        session.flush()  # Flush to make SubscriptionPlan records available for query
+        seed_tenant_subscriptions(session, tenants_by_name)
         users_by_email = seed_users(session, roles_by_name)
         seed_tenant_managers(session, users_by_email, tenants_by_name)
         session.commit()
