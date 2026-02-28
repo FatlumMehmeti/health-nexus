@@ -1,6 +1,6 @@
 /**
  * Login route: email/password form, session-expired/revoked messaging, redirect when already authenticated.
- * beforeLoad: if user is already authenticated, redirect to /dashboard so /login is not shown when logged in.
+ * beforeLoad: if authenticated, redirect to /dashboard or /tenants based on DASHBOARD_HOME access (rbacMatrix).
  */
 import { createFileRoute, Link, redirect, useNavigate } from '@tanstack/react-router'
 import { useState } from 'react'
@@ -13,6 +13,12 @@ import { FormField } from '@/components/atoms/form-field'
 import { PasswordField } from '@/components/atoms/password-field'
 import { useAuthStore } from '@/stores/auth.store'
 import { ApiError } from '@/lib/api-client'
+import { can, type Role } from '@/lib/rbac'
+
+/** Default post-login path: dashboard if user can access DASHBOARD_HOME, otherwise tenant selector. */
+function getDefaultPostLoginPath(role: Role | undefined): string {
+  return can({ role: role ?? undefined }, 'DASHBOARD_HOME') ? '/dashboard' : '/tenants'
+}
 
 export const Route = createFileRoute('/login')({
   beforeLoad: async () => {
@@ -20,7 +26,8 @@ export const Route = createFileRoute('/login')({
     if (!isAuthenticated) await ensureAuth()
     const state = useAuthStore.getState()
     if (state.isAuthenticated) {
-      throw redirect({ to: '/dashboard' })
+      const to = getDefaultPostLoginPath(state.role)
+      throw redirect({ to })
     }
   },
   /** Parses ?reason=expired|revoked and ?redirect= for post-login redirect. */
@@ -67,14 +74,19 @@ function LoginPage() {
     setSubmitError(null)
     try {
       await login(values)
-      const target = redirectTo && redirectTo.startsWith('/') && !redirectTo.startsWith('//') ? redirectTo : '/dashboard'
+      const defaultPath = getDefaultPostLoginPath(useAuthStore.getState().role)
+      const target =
+        redirectTo && redirectTo.startsWith('/') && !redirectTo.startsWith('//') ? redirectTo : defaultPath
       await navigate({ to: target, replace: true })
     } catch (err) {
-      if (err instanceof ApiError) setSubmitError(err.message)
-      else setSubmitError('Sign in failed')
+      if (err instanceof ApiError) {
+        setSubmitError(err.displayMessage)
+      } else {
+        setSubmitError('Sign in failed')
+      }
     }
   }
-
+  
   const isSubmitting = status === 'loading'
 
   return (

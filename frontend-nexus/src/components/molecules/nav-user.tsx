@@ -46,7 +46,7 @@ export function NavUser({
 
   const handleLogout = async () => {
     await logout()
-    navigate({ to: "/login", search: { reason: undefined, redirect: undefined } })
+    navigate({ to: "/login", search: { reason: undefined, redirect: undefined }, replace: true })
   }
 
   const display = user
@@ -107,7 +107,7 @@ export function NavUser({
               </DropdownMenuItem>
               <DropdownMenuItem>
                 <IconCreditCard />
-                Billing
+                Upgrade Plan
               </DropdownMenuItem>
               <DropdownMenuItem>
                 <IconNotification />

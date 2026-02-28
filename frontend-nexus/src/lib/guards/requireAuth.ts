@@ -33,10 +33,15 @@ export async function getProtectedRedirect(
   if (!state.isAuthenticated) {
     const search: { reason?: 'expired' | 'revoked'; redirect?: string } = {}
     if (state.authErrorReason) search.reason = state.authErrorReason
-    const path =
+    const rawPath =
       currentPath ??
-      (typeof window !== 'undefined' ? `${window.location.pathname}${window.location.search}` : undefined)
-    if (path && path !== '/login') search.redirect = path
+      (typeof window !== 'undefined' ? window.location.pathname : undefined)
+    // Only use pathname for redirect; avoid long encoded search strings (tokens, codes, state).
+    const path =
+      typeof rawPath === 'string' && rawPath.startsWith('/') && !rawPath.startsWith('//')
+        ? rawPath.split('?')[0]?.trim() ?? rawPath
+        : undefined
+    if (path && path !== '/login' && path.length <= 256) search.redirect = path
     return { to: '/login', search }
   }
 

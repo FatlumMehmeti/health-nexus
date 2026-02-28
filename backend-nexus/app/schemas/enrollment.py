@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from enum import Enum
 from typing import Optional
 
@@ -24,6 +24,8 @@ class EnrollmentCreate(EnrollmentBase):
 class EnrollmentRead(EnrollmentBase):
     id: int
     status: EnrollmentStatus
+    patient_user_id: int
+    user_tenant_plan_id: int
 
     activated_at: Optional[str] = None
     cancelled_at: Optional[str] = None
@@ -53,3 +55,4 @@ class EnrollmentOperationalStatus(BaseModel):
     expires_at: Optional[str] = None
     isExpired: bool
     last_updated: Optional[str] = None
+    model_config = ConfigDict(from_attributes=True)
