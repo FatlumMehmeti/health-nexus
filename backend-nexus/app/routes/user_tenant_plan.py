@@ -105,6 +105,63 @@ def create_plan(
     return db_plan
 
 
+@router.post("/enroll", response_model=EnrollmentRead)
+def enroll_in_plan(
+    tenant_id: int,
+    plan_id: int,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """Allow any authenticated user (with a patient profile) to subscribe to a plan."""
+    user_id = current_user.get("user_id")
+
+    # Verify the plan exists and belongs to the tenant and is active
+    plan = db.query(UserTenantPlan).filter(
+        UserTenantPlan.id == plan_id,
+        UserTenantPlan.tenant_id == tenant_id,
+        UserTenantPlan.is_active == True,
+    ).first()
+    if not plan:
+        raise HTTPException(
+            status_code=404, detail="Plan not found or not active")
+
+    # Verify the user has a patient profile
+    patient = db.query(Patient).filter(Patient.user_id == user_id).first()
+    if not patient:
+        raise HTTPException(
+            status_code=400,
+            detail="Only patients can subscribe to plans. Please complete your patient profile first.",
+        )
+
+    # Check for existing enrollment for this tenant (unique per patient+tenant)
+    existing = db.query(Enrollment).filter(
+        Enrollment.tenant_id == tenant_id,
+        Enrollment.patient_user_id == user_id,
+    ).first()
+    if existing:
+        # Update existing enrollment to the new plan
+        existing.user_tenant_plan_id = plan_id
+        existing.status = EnrollmentStatusModel.ACTIVE
+        existing.activated_at = datetime.now(timezone.utc)
+        existing.cancelled_at = None
+        db.commit()
+        db.refresh(existing)
+        return existing
+
+    enrollment = Enrollment(
+        tenant_id=tenant_id,
+        patient_user_id=user_id,
+        user_tenant_plan_id=plan_id,
+        created_by=user_id,
+        status=EnrollmentStatusModel.ACTIVE,
+        activated_at=datetime.now(timezone.utc),
+    )
+    db.add(enrollment)
+    db.commit()
+    db.refresh(enrollment)
+    return enrollment
+
+
 @router.put("/{plan_id}", response_model=UserTenantPlanRead)
 def update_plan(
     plan_id: int,
@@ -217,63 +274,6 @@ def get_tenant_enrollments(
         )
 
     return result
-
-
-@router.post("/enroll", response_model=EnrollmentRead)
-def enroll_in_plan(
-    tenant_id: int,
-    plan_id: int,
-    db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user),
-):
-    """Allow any authenticated user (with a patient profile) to subscribe to a plan."""
-    user_id = current_user.get("user_id")
-
-    # Verify the plan exists and belongs to the tenant and is active
-    plan = db.query(UserTenantPlan).filter(
-        UserTenantPlan.id == plan_id,
-        UserTenantPlan.tenant_id == tenant_id,
-        UserTenantPlan.is_active == True,
-    ).first()
-    if not plan:
-        raise HTTPException(
-            status_code=404, detail="Plan not found or not active")
-
-    # Verify the user has a patient profile
-    patient = db.query(Patient).filter(Patient.user_id == user_id).first()
-    if not patient:
-        raise HTTPException(
-            status_code=400,
-            detail="Only patients can subscribe to plans. Please complete your patient profile first.",
-        )
-
-    # Check for existing enrollment for this tenant (unique per patient+tenant)
-    existing = db.query(Enrollment).filter(
-        Enrollment.tenant_id == tenant_id,
-        Enrollment.patient_user_id == user_id,
-    ).first()
-    if existing:
-        # Update existing enrollment to the new plan
-        existing.user_tenant_plan_id = plan_id
-        existing.status = EnrollmentStatusModel.ACTIVE
-        existing.activated_at = datetime.now(timezone.utc)
-        existing.cancelled_at = None
-        db.commit()
-        db.refresh(existing)
-        return existing
-
-    enrollment = Enrollment(
-        tenant_id=tenant_id,
-        patient_user_id=user_id,
-        user_tenant_plan_id=plan_id,
-        created_by=user_id,
-        status=EnrollmentStatusModel.ACTIVE,
-        activated_at=datetime.now(timezone.utc),
-    )
-    db.add(enrollment)
-    db.commit()
-    db.refresh(enrollment)
-    return enrollment
 
 
 @router.delete("/{plan_id}")
