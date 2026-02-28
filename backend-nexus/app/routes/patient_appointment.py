@@ -27,6 +27,37 @@ from app.services.notification_service import create_notification
 router = APIRouter(prefix="/appointments", tags=["Patient Appointments"])
 
 
+@router.get("/patient/me", response_model=list[dict])
+def list_my_appointments(
+    status: AppointmentStatus | None = None,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """List all appointments for the currently authenticated patient."""
+    user_id = current_user.get("user_id")
+    if user_id is None:
+        raise HTTPException(401, "Invalid token payload")
+
+    query = db.query(Appointment).filter(Appointment.patient_user_id == user_id)
+    if status is not None:
+        query = query.filter(Appointment.status == status)
+    appointments = query.order_by(Appointment.appointment_datetime.desc()).all()
+    return [
+        {
+            "id": a.id,
+            "appointment_datetime": a.appointment_datetime,
+            "description": a.description,
+            "doctor_user_id": a.doctor_user_id,
+            "patient_user_id": a.patient_user_id,
+            "tenant_id": a.tenant_id,
+            "status": a.status.value,
+            "created_at": a.created_at,
+            "updated_at": a.updated_at,
+        }
+        for a in appointments
+    ]
+
+
 @router.get("/enrollment-status", response_model=dict)
 def check_enrollment_status(
     tenant_id: int,

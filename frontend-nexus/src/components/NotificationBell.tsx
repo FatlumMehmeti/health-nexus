@@ -25,6 +25,7 @@ import {
   useMarkAllRead,
 } from "@/services/notifications.queries";
 import type { Notification } from "@/services/notifications.service";
+import { useAuthStore } from "@/stores/auth.store";
 
 function notificationIcon(type: string) {
   switch (type) {
@@ -96,7 +97,13 @@ export function NotificationBell() {
   const handleNavigate = (n: Notification) => {
     setOpen(false);
     if (n.entity_type === "appointment" && n.entity_id) {
-      navigate({ to: "/appointments/$appointmentId", params: { appointmentId: String(n.entity_id) } });
+      const role = useAuthStore.getState().role;
+      if (role === "DOCTOR") {
+        // Doctors go to their appointment management dashboard
+        navigate({ to: "/dashboard/appointments" });
+      } else {
+        navigate({ to: "/appointments/$appointmentId", params: { appointmentId: String(n.entity_id) } });
+      }
     }
   };
 

@@ -1,6 +1,6 @@
 import { createFileRoute, Link, redirect } from '@tanstack/react-router'
 import { useAuthStore } from '@/stores/auth.store'
-import { getMyAppointments, type SavedAppointment } from '@/services/appointments.store'
+import { usePatientAppointments, type PatientAppointment } from '@/services/appointments.patient'
 import { StatusBadge, type AppointmentStatus } from '@/components/StatusBadge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -31,7 +31,7 @@ function toNaiveDate(iso: string): Date {
 }
 
 function MyAppointmentsPage() {
-  const appointments = getMyAppointments()
+  const { data: appointments = [], isLoading, isError, error } = usePatientAppointments()
   const [filter, setFilter] = useState<FilterStatus>('ALL')
 
   const filtered = useMemo(() => {
@@ -40,6 +40,9 @@ function MyAppointmentsPage() {
   }, [appointments, filter])
 
   const filters: FilterStatus[] = ['ALL', 'REQUESTED', 'CONFIRMED', 'COMPLETED', 'CANCELLED']
+
+  if (isLoading) return <div className="p-8">Loading appointments…</div>
+  if (isError) return <div className="p-8 text-destructive">{(error as Error)?.message || 'Error loading appointments'}</div>
 
   return (
     <div className="w-full">
@@ -124,7 +127,7 @@ function MyAppointmentsPage() {
   )
 }
 
-function AppointmentRow({ appointment }: { appointment: SavedAppointment }) {
+function AppointmentRow({ appointment }: { appointment: PatientAppointment }) {
   const dt = toNaiveDate(appointment.appointment_datetime)
   const dateStr = format(dt, 'EEE, MMM d, yyyy')
   const timeStr = format(dt, 'h:mm a')
@@ -132,7 +135,7 @@ function AppointmentRow({ appointment }: { appointment: SavedAppointment }) {
   return (
     <Link
       to="/appointments/$appointmentId"
-      params={{ appointmentId: appointment.id }}
+      params={{ appointmentId: String(appointment.id) }}
       search={{ datetime: appointment.appointment_datetime }}
     >
       <Card className="transition-colors hover:bg-muted/40 cursor-pointer">
