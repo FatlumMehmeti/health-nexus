@@ -34,6 +34,9 @@ from .enrollment_status_history import EnrollmentStatusHistory
 from .audit_event import AuditEvent
 from .offer_delivery import OfferDelivery
 
+# Backward compatibility alias for legacy imports.
+UserTenantMembership = Enrollment
+
 __all__ = [
     "Base",
     "Font",
@@ -63,6 +66,7 @@ __all__ = [
     "Report",
     "Recommendation",
     "Enrollment",
+    "UserTenantMembership",
     "EnrollmentStatusHistory",
     "AuditEvent",
     "UserTenantPlan",
@@ -71,5 +75,5 @@ __all__ = [
     "TenantSubscription",
     "ConsultationStatus",
     "Session",
-    "TenantAuditLog"
+    "TenantAuditLog",
 ]
