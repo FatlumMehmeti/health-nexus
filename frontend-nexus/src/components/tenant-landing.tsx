@@ -63,6 +63,7 @@ function formatCurrency(value: number): string {
 
 export function TenantLanding({ landingData }: TenantLandingProps) {
   const [activeTab, setActiveTab] = useState('home')
+  const [selectedPlanId, setSelectedPlanId] = useState<number | null>(null)
   const user = useAuthStore((s) => s.user)
   const role = useAuthStore((s) => s.role)
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
@@ -451,12 +452,52 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
                 </p>
               </div>
 
+              {selectedPlanId && (() => {
+                const selected = plans.find((p) => p.id === selectedPlanId)
+                if (!selected) return null
+                return (
+                  <div
+                    className="flex items-center justify-between rounded-xl border-2 p-4"
+                    style={{ borderColor: brand.primary ?? undefined, backgroundColor: `${brand.primary ?? '#2563eb'}10` }}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div
+                        className="flex h-8 w-8 items-center justify-center rounded-full text-white text-sm font-bold"
+                        style={{ backgroundColor: brand.primary ?? '#2563eb' }}
+                      >
+                        ✓
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold">{selected.name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          €{Number(selected.price).toFixed(2)}{selected.duration ? ` / ${selected.duration} days` : ''}
+                        </p>
+                      </div>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setSelectedPlanId(null)}
+                    >
+                      Change plan
+                    </Button>
+                  </div>
+                )
+              })()}
+
               {plans.length > 0 ? (
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                  {plans.map((plan) => (
+                  {plans.map((plan) => {
+                    const isSelected = selectedPlanId === plan.id
+                    return (
                     <article
                       key={plan.id}
-                      className="flex h-full flex-col rounded-xl border bg-card/60 p-5 shadow-sm"
+                      className={`flex h-full flex-col rounded-xl border p-5 shadow-sm transition-all ${
+                        isSelected
+                          ? 'ring-2 bg-card/80'
+                          : 'bg-card/60'
+                      }`}
+                      style={isSelected ? { borderColor: brand.primary ?? undefined, outlineColor: brand.primary ?? undefined } : undefined}
                     >
                       <div className="flex items-start justify-between gap-3">
                         <h3 className="text-sm font-semibold sm:text-base">{plan.name}</h3>
@@ -496,21 +537,26 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
                       <Button
                         size="sm"
                         className="mt-4 w-full"
+                        variant={isSelected ? 'outline' : 'default'}
+                        disabled={isSelected}
                         style={
-                          brand.primary
-                            ? { backgroundColor: brand.primary, borderColor: brand.primary }
-                            : undefined
+                          isSelected
+                            ? { borderColor: brand.primary ?? undefined, color: brand.primary ?? undefined }
+                            : brand.primary
+                              ? { backgroundColor: brand.primary, borderColor: brand.primary }
+                              : undefined
                         }
-                        onClick={() =>
-                          toast.info(`Selected plan: ${plan.name}`, {
-                            description: 'Plan enrollment coming soon.',
+                        onClick={() => {
+                          setSelectedPlanId(plan.id)
+                          toast.success(`Subscribed to ${plan.name}!`, {
+                            description: 'Your plan has been selected.',
                           })
-                        }
+                        }}
                       >
-                        Choose this plan
+                        {isSelected ? 'You have selected this plan' : 'Subscribe to this plan'}
                       </Button>
                     </article>
-                  ))}
+                  )})}
                 </div>
               ) : (
                 <div className="rounded-xl border bg-card/60 p-6 text-center text-sm text-muted-foreground">
