@@ -1,5 +1,6 @@
 """Schemas for the tenant landing page API - single response with all data."""
 
+from datetime import datetime
 from pydantic import BaseModel
 from typing import Optional
 
@@ -21,9 +22,6 @@ class TenantPublicCard(BaseModel):
 
     class Config:
         from_attributes = True
-
-
-from datetime import datetime
 
 
 class ServiceLandingItem(BaseModel):
@@ -106,9 +104,25 @@ class TenantDetailsLandingRead(BaseModel):
         from_attributes = True
 
 
+class PlanLandingItem(BaseModel):
+    """Active plan shown on the public tenant landing page."""
+    id: int
+    name: str
+    description: Optional[str] = None
+    price: float
+    duration: Optional[int] = None
+    max_appointments: Optional[int] = None
+    max_consultations: Optional[int] = None
+    is_active: bool = True
+
+    class Config:
+        from_attributes = True
+
+
 class TenantLandingPageResponse(BaseModel):
     tenant: TenantLandingRead
     details: Optional[TenantDetailsLandingRead] = None
     departments: list[DepartmentLandingItem] = []
     doctors: list[DoctorLandingItem] = []
     products: list[ProductLandingItem] = []
+    plans: list[PlanLandingItem] = []

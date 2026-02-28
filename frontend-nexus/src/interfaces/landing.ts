@@ -83,10 +83,22 @@ export interface TenantDetailsLandingRead {
   font_body_family: string | null;
 }
 
+export interface PlanLandingItem {
+  id: number;
+  name: string;
+  description: string | null;
+  price: number;
+  duration: number | null;
+  max_appointments: number | null;
+  max_consultations: number | null;
+  is_active: boolean;
+}
+
 export interface TenantLandingPageResponse {
   tenant: TenantLandingRead;
   details: TenantDetailsLandingRead | null;
   departments: DepartmentLandingItem[];
   doctors: DoctorLandingItem[];
   products: ProductLandingItem[];
+  plans: PlanLandingItem[];
 }

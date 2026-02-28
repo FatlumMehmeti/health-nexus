@@ -8,6 +8,7 @@
 import type { CSSProperties } from 'react'
 import { useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
+import { toast } from 'sonner'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import {
@@ -93,6 +94,7 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
   }
 
   const { tenant, details, departments, products } = landingData
+  const plans = landingData.plans ?? []
   const title = details?.title ?? tenant.name
   const subtitle = details?.slogan ?? 'Welcome to our landing page.'
   const logo = resolveMediaUrl(details?.logo)
@@ -437,14 +439,84 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
           </TabsContent>
 
           <TabsContent value="plans" className="mt-0 flex-1">
-            <section className="mx-auto max-w-3xl space-y-3 text-center">
-              <h2 className="text-xl font-semibold tracking-tight sm:text-2xl">
-                Plans – coming soon
-              </h2>
-              <p className="text-sm text-muted-foreground sm:text-base">
-                Future area for pricing plans, memberships, or insurance coverage details for this
-                tenant.
-              </p>
+            <section className="mx-auto max-w-5xl space-y-4">
+              <div className="space-y-1">
+                <h2 className="text-xl font-semibold tracking-tight sm:text-2xl">
+                  Plans &amp; memberships
+                </h2>
+                <p className="text-sm text-muted-foreground sm:text-base">
+                  {plans.length > 0
+                    ? 'Explore tenant-specific pricing and coverage limits for care packages.'
+                    : 'No plans available yet.'}
+                </p>
+              </div>
+
+              {plans.length > 0 ? (
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                  {plans.map((plan) => (
+                    <article
+                      key={plan.id}
+                      className="flex h-full flex-col rounded-xl border bg-card/60 p-5 shadow-sm"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <h3 className="text-sm font-semibold sm:text-base">{plan.name}</h3>
+                        <span className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+                          Active
+                        </span>
+                      </div>
+
+                      <p className="mt-3 text-2xl font-bold tracking-tight">
+                        €{Number(plan.price).toFixed(2)}
+                      </p>
+                      {plan.duration && (
+                        <p className="text-xs text-muted-foreground">
+                          {plan.duration} day{plan.duration !== 1 ? 's' : ''} duration
+                        </p>
+                      )}
+
+                      <p className="mt-3 flex-1 text-sm text-muted-foreground">
+                        {plan.description || 'No description provided.'}
+                      </p>
+
+                      <div className="mt-4 space-y-2 border-t pt-3">
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-muted-foreground">Appointments</span>
+                          <span className="font-medium">
+                            {plan.max_appointments != null ? plan.max_appointments : 'Unlimited'}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-muted-foreground">Consultations</span>
+                          <span className="font-medium">
+                            {plan.max_consultations != null ? plan.max_consultations : 'Unlimited'}
+                          </span>
+                        </div>
+                      </div>
+
+                      <Button
+                        size="sm"
+                        className="mt-4 w-full"
+                        style={
+                          brand.primary
+                            ? { backgroundColor: brand.primary, borderColor: brand.primary }
+                            : undefined
+                        }
+                        onClick={() =>
+                          toast.info(`Selected plan: ${plan.name}`, {
+                            description: 'Plan enrollment coming soon.',
+                          })
+                        }
+                      >
+                        Choose this plan
+                      </Button>
+                    </article>
+                  ))}
+                </div>
+              ) : (
+                <div className="rounded-xl border bg-card/60 p-6 text-center text-sm text-muted-foreground">
+                  No plans configured yet.
+                </div>
+              )}
             </section>
           </TabsContent>
         </div>
