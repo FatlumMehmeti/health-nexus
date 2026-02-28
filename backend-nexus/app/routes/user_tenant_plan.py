@@ -125,13 +125,12 @@ def enroll_in_plan(
         raise HTTPException(
             status_code=404, detail="Plan not found or not active")
 
-    # Verify the user has a patient profile
+    # Ensure the user has a patient profile (auto-create if missing)
     patient = db.query(Patient).filter(Patient.user_id == user_id).first()
     if not patient:
-        raise HTTPException(
-            status_code=400,
-            detail="Only patients can subscribe to plans. Please complete your patient profile first.",
-        )
+        patient = Patient(user_id=user_id)
+        db.add(patient)
+        db.flush()
 
     # Check for existing enrollment for this tenant (unique per patient+tenant)
     existing = db.query(Enrollment).filter(
