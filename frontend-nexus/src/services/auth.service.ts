@@ -1,26 +1,14 @@
 // Checks if the current user is enrolled (patient) for the current tenant
 export async function checkEnrollment(tenantId: string): Promise<boolean> {
-  // TEMP: Hardcoded for seeded user client.user@seed.com and tenantId 1
-  // In production, this will use the backend API
-  if (tenantId === '1') {
-    // Always return true for tenantId 1 (seeded data testing)
-    return true
-  }
-  
-  // fallback to API (for other tenants)
   try {
-    const { useAuthStore } = await import('@/stores/auth.store')
-    const { user } = useAuthStore.getState()
-    // eslint-disable-next-line no-console
-    console.log('[checkEnrollment] Checking enrollment for user:', user?.email, 'tenantId:', tenantId)
-  } catch {}
-  
-  const res = await fetch(`/api/patient/enrollment-status?tenant_id=${tenantId}`, {
-    credentials: 'include',
-  });
-  if (!res.ok) return false;
-  const data = await res.json();
-  return !!data.enrolled;
+    const { apiFetch } = await import('@/lib/api-client')
+    const res = await apiFetch(`/appointments/enrollment-status?tenant_id=${tenantId}`)
+    if (!(res instanceof Response) || !res.ok) return false
+    const data = await res.json()
+    return !!data.enrolled
+  } catch {
+    return false
+  }
 }
 /**
  * Auth service: login, current user, refresh, logout.

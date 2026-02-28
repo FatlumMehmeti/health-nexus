@@ -94,8 +94,8 @@ function LoginPage() {
         await navigate({ to: '/appointments/book', replace: true })
         return
       }
-      
-      // Other CLIENT users — check enrollment
+
+      // CLIENT users — check enrollment via backend
       if (tenantId) {
         try {
           const { checkEnrollment } = await import('@/services/auth.service')

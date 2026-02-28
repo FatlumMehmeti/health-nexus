@@ -1,10 +1,13 @@
-from fastapi import APIRouter, Depends, HTTPException
+from datetime import datetime, timezone
+
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.auth.auth_utils import get_current_user
 from app.db import get_db
 from app.models.appointment import Appointment, AppointmentStatus
 from app.models.doctor import Doctor
+from app.models.enrollment import Enrollment, EnrollmentStatus
 from app.models.patient import Patient
 from app.schemas.appointment import AppointmentCreate
 from app.routes.appointment import (
@@ -22,6 +25,40 @@ from app.services.notification_service import create_notification
 
 
 router = APIRouter(prefix="/appointments", tags=["Patient Appointments"])
+
+
+@router.get("/enrollment-status", response_model=dict)
+def check_enrollment_status(
+    tenant_id: int,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """Check if the current user has an active enrollment for the given tenant."""
+    user_id = current_user.get("user_id")
+    if user_id is None:
+        raise HTTPException(401, "Invalid token payload")
+
+    patient = db.query(Patient).filter_by(user_id=user_id, tenant_id=tenant_id).first()
+    if not patient:
+        return {"enrolled": False, "reason": "no_patient_profile"}
+
+    enrollment = (
+        db.query(Enrollment)
+        .filter(
+            Enrollment.tenant_id == tenant_id,
+            Enrollment.patient_user_id == user_id,
+            Enrollment.status == EnrollmentStatus.ACTIVE,
+        )
+        .first()
+    )
+
+    if not enrollment:
+        return {"enrolled": False, "reason": "no_active_enrollment"}
+
+    if enrollment.expires_at and enrollment.expires_at < datetime.now(timezone.utc):
+        return {"enrolled": False, "reason": "enrollment_expired"}
+
+    return {"enrolled": True}
 
 
 @router.post("/book", response_model=dict)

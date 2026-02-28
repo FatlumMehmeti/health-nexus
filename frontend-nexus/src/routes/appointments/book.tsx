@@ -13,7 +13,7 @@ import { NotificationBell } from '@/components/NotificationBell'
 
 export const Route = createFileRoute('/appointments/book')({
   beforeLoad: async () => {
-    const { ensureAuth, tenantId, role, user } = useAuthStore.getState()
+    const { ensureAuth } = useAuthStore.getState()
     await ensureAuth()
 
     // Re-read state after ensureAuth (it may have updated)
@@ -35,7 +35,7 @@ export const Route = createFileRoute('/appointments/book')({
       throw redirect({ to: '/unauthorized' })
     }
 
-    // Check enrollment status from backend for all users
+    // Check enrollment status from backend
     if (!state.tenantId) {
       throw redirect({ to: '/enrollment' })
     }
@@ -48,8 +48,8 @@ export const Route = createFileRoute('/appointments/book')({
 })
 
 function AppointmentBookingPage() {
-  // Hardcoded doctorId for demo (from seed data: doctor.one@seed.com is user_id=8)
-  const doctorId = '8'
+  // Hardcoded doctorId for demo (from seed data: doctor.one@seed.com is user_id=3)
+  const doctorId = '3'
   const { tenantId, user } = useAuthStore()
   const [date, setDate] = useState<Date | undefined>(undefined)
   const formattedDate = date ? format(date, 'yyyy-MM-dd') : ''

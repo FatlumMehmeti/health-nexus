@@ -40,7 +40,7 @@ export const Route = createFileRoute('/appointments/$appointmentId')({
 /* Hardcoded doctor / tenant / department for the demo seed.
    Same values used in the booking page. */
 const TENANT_ID = 1
-const DOCTOR_ID = 8
+const DOCTOR_ID = 3
 const DEPARTMENT_ID = 1
 
 function AppointmentDetailRoute() {
