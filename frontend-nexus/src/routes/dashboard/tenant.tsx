@@ -39,7 +39,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Tabs, TabsList, TabsTrigger} from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Table,
   TableBody,
@@ -351,184 +351,199 @@ function TenantEnrollmentsPanel() {
   const allEnrollments = enrollmentsQuery.data ?? [];
   const filteredEnrollments = allEnrollments.filter((e) => e.status === activeStatus);
   const historyItems = historyQuery.data ?? [];
+return (
+  <Card>
+    <CardHeader>
+      <CardTitle>Enrollments</CardTitle>
+      <CardDescription>
+        View and manage tenant enrollments, statuses, and full history.
+      </CardDescription>
+    </CardHeader>
 
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Enrollments</CardTitle>
-        <CardDescription>
-          View and manage tenant enrollments, statuses, and full history.
-        </CardDescription>
-      </CardHeader>
+    <CardContent>
+      <Tabs
+        value={activeStatus}
+        onValueChange={(value) => setActiveStatus(value as TenantStatus)}
+        className="mb-6"
+      >
+        {/*Status Tabs*/}
+        <TabsList variant="line" className="mb-4">
+          {STATUS_TABS.map((tab) => (
+            <TabsTrigger key={tab.value} value={tab.value}>
+              {tab.label}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+      </Tabs>
 
-      <CardContent>
-        <Tabs
-          value={activeStatus}
-          onValueChange={(value) => setActiveStatus(value as TenantStatus)}
-          className="mb-6"
-        >
-          {/*Status Tabs*/}
-          <TabsList variant="line" className="mb-4">
-            {STATUS_TABS.map((tab) => (
-              <TabsTrigger key={tab.value} value={tab.value}>
-                {tab.label}
-              </TabsTrigger>
-            ))}
-          </TabsList>
-        </Tabs>
-       
-        {isLoading ? (
-          <div className="space-y-2">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <Skeleton key={i} className="h-16 w-full" />
-            ))}
-          </div>
-        ) : isError ? (
-          <div className="py-8 text-center text-destructive">
-            Error loading data: {(error as Error)?.message || "Unknown error"}
-        ) : activeStatus === "HISTORY" ? (
-          historyItems.length === 0 ? (
-            <div className="py-12 text-center text-muted-foreground">
-              No history found for this tenant.
-            </div>
-          ) : (
-            <div className="overflow-x-auto rounded-md border">
-              </div>
-              {/* History Tabs */}
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Enrollment ID</TableHead>
-                    <TableHead>Change</TableHead>
-                    <TableHead>Changed By (Role)</TableHead>
-                    <TableHead>Reason</TableHead>
-                    <TableHead>Date</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {historyItems.map((item) => (
-                    <TableRow key={item.id}>
-                      <TableCell className="font-medium">
-                        {item.enrollment_id}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Badge variant={getEnrollmentStatusVariant(item.old_status)} className="opacity-70 scale-90">
-                            {item.old_status}
-                          </Badge>
-                          <span className="text-muted-foreground">→</span>
-                          <Badge variant={getEnrollmentStatusVariant(item.new_status)}>
-                            {item.new_status}
-                          </Badge>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        {item.changed_by ? (
-                          <div className="text-sm">
-                            ID: {item.changed_by}
-                            <div className="text-xs text-muted-foreground">{item.changed_by_role}</div>
-                          </div>
-                        ) : (
-                          <span className="text-muted-foreground italic tracking-wider text-sm">System</span>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-sm text-muted-foreground max-w-[200px] truncate">
-                        {item.reason || "—"}
-                      </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        {formatDate(item.changed_at)}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          )
-        ) : filteredEnrollments.length === 0 ? (
+      {isLoading ? (
+        <div className="space-y-2">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <Skeleton key={i} className="h-16 w-full" />
+          ))}
+        </div>
+      ) : isError ? (
+        <div className="py-8 text-center text-destructive">
+          Error loading data: {(error as Error)?.message || "Unknown error"}
+        </div>
+      ) : activeStatus === "HISTORY" ? (
+        historyItems.length === 0 ? (
           <div className="py-12 text-center text-muted-foreground">
-            No {activeStatus.toLowerCase()} enrollments found.
+            No history found for this tenant.
           </div>
         ) : (
           <div className="overflow-x-auto rounded-md border">
+            {/* History Table */}
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>ID</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Patient ID</TableHead>
-                  <TableHead>Activated</TableHead>
-                  <TableHead>Expires / Cancelled</TableHead>
-                  <TableHead>Updated</TableHead>
+                  <TableHead>Enrollment ID</TableHead>
+                  <TableHead>Change</TableHead>
+                  <TableHead>Changed By (Role)</TableHead>
+                  <TableHead>Reason</TableHead>
+                  <TableHead>Date</TableHead>
                 </TableRow>
               </TableHeader>
-
               <TableBody>
-                {filteredEnrollments.map((enrollment) => (
-                  <TableRow key={enrollment.id}>
-                    {/* Enrollmetn Id */}
+                {historyItems.map((item) => (
+                  <TableRow key={item.id}>
                     <TableCell className="font-medium">
-                      {enrollment.id}
+                      {item.enrollment_id}
                     </TableCell>
-
-                    {/* Enrollmetn Status */}
                     <TableCell>
-                      <Badge variant={getEnrollmentStatusVariant(enrollment.status)}>
-                        {enrollment.status}
-                      </Badge>
+                      <div className="flex items-center gap-2">
+                        <Badge
+                          variant={getEnrollmentStatusVariant(item.old_status)}
+                          className="opacity-70 scale-90"
+                        >
+                          {item.old_status}
+                        </Badge>
+                        <span className="text-muted-foreground">→</span>
+                        <Badge
+                          variant={getEnrollmentStatusVariant(item.new_status)}
+                        >
+                          {item.new_status}
+                        </Badge>
+                      </div>
                     </TableCell>
+                    <TableCell>
+                      {item.changed_by ? (
+                        <div className="text-sm">
+                          ID: {item.changed_by}
+                          <div className="text-xs text-muted-foreground">
+                            {item.changed_by_role}
+                          </div>
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground italic tracking-wider text-sm">
+                          System
+                        </span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground max-w-[200px] truncate">
+                      {item.reason || "—"}
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {formatDate(item.changed_at)}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )
+      ) : filteredEnrollments.length === 0 ? (
+        <div className="py-12 text-center text-muted-foreground">
+          No {activeStatus.toLowerCase()} enrollments found.
+        </div>
+      ) : (
+        <div className="overflow-x-auto rounded-md border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>ID</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Patient ID</TableHead>
+                <TableHead>Activated</TableHead>
+                <TableHead>Expires / Cancelled</TableHead>
+                <TableHead>Updated</TableHead>
+              </TableRow>
+            </TableHeader>
 
-                    {/* Enrollmetn Patient ID */}
-                    <TableCell className="text-muted-foreground text-sm">
-                      {enrollment.patient_user_id}
-                    </TableCell>
+            <TableBody>
+              {filteredEnrollments.map((enrollment) => (
+                <TableRow key={enrollment.id}>
+                  {/* Enrollmetn Id */}
+                  <TableCell className="font-medium">{enrollment.id}</TableCell>
 
-                    {/* Enrollmetn Activated At */}
-                    <TableCell className="text-muted-foreground text-sm">
-                      {formatDate(enrollment.activated_at)}
-                    </TableCell>
+                  {/* Enrollmetn Status */}
+                  <TableCell>
+                    <Badge
+                      variant={getEnrollmentStatusVariant(enrollment.status)}
+                    >
+                      {enrollment.status}
+                    </Badge>
+                  </TableCell>
 
-                    {/* Enrollmetn Expires / Cancelled At */}
-                    <TableCell className="text-muted-foreground text-sm">
-                      {enrollment.status === "CANCELLED" 
-                        ? formatDate(enrollment.cancelled_at) 
-                        : formatDate(enrollment.expires_at)}
-                    </TableCell>
+                  {/* Enrollmetn Patient ID */}
+                  <TableCell className="text-muted-foreground text-sm">
+                    {enrollment.patient_user_id}
+                  </TableCell>
 
-                    {/* Enrollmetn Updated At */}
-                    <TableCell className="text-muted-foreground text-sm">
-                      {formatDate(enrollment.updated_at)}
-                    </TableCell>
-                    {/* Action buttons - Approve / Cancel an enrollment */}
-                    {/*<TableCell className="space-x-3">
-                      {enrollment.status !== "ACTIVE" && enrollment.status !== "CANCELLED" && (
+                  {/* Enrollmetn Activated At */}
+                  <TableCell className="text-muted-foreground text-sm">
+                    {formatDate(enrollment.activated_at)}
+                  </TableCell>
+
+                  {/* Enrollmetn Expires / Cancelled At */}
+                  <TableCell className="text-muted-foreground text-sm">
+                    {enrollment.status === "CANCELLED"
+                      ? formatDate(enrollment.cancelled_at)
+                      : formatDate(enrollment.expires_at)}
+                  </TableCell>
+
+                  {/* Enrollmetn Updated At */}
+                  <TableCell className="text-muted-foreground text-sm">
+                    {formatDate(enrollment.updated_at)}
+                  </TableCell>
+
+                  {/* Action buttons - Approve / Cancel an enrollment */}
+                  {/*<TableCell className="space-x-3">
+                    {enrollment.status !== "ACTIVE" &&
+                      enrollment.status !== "CANCELLED" && (
                         <button
                           className="text-primary hover:text-primary/80 transition-colors text-sm font-medium disabled:opacity-50"
-                          onClick={() => handleTransition(enrollment.id, "ACTIVE")}
+                          onClick={() =>
+                            handleTransition(enrollment.id, "ACTIVE")
+                          }
                           disabled={transitionMutation.isPending}
                         >
                           Approve
                         </button>
                       )}
 
-                      {enrollment.status !== "CANCELLED" && enrollment.status !== "EXPIRED" && (
+                    {enrollment.status !== "CANCELLED" &&
+                      enrollment.status !== "EXPIRED" && (
                         <button
                           className="text-destructive hover:text-destructive/80 transition-colors text-sm font-medium disabled:opacity-50"
-                          onClick={() => handleTransition(enrollment.id, "CANCELLED")}
+                          onClick={() =>
+                            handleTransition(enrollment.id, "CANCELLED")
+                          }
                           disabled={transitionMutation.isPending}
                         >
                           Cancel
                         </button>
                       )}
-                    </TableCell>*/}
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        )}
-      </CardContent>
-    </Card>
-  );
+                  </TableCell>*/}
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      )}
+    </CardContent>
+  </Card>
+);
 }
 
 function TenantPlansPanel() {
