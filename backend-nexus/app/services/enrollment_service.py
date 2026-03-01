@@ -871,35 +871,16 @@ def get_operational_status(
 def get_enrollment_history_scoped(
     db: Session,
     *,
-    enrollment_id: int,
     actor: ActorContext,
     expected_tenant_id: int,
 ) -> list[EnrollmentStatusHistory]:
     """
-    Retrieve enrollment status history with tenant and authorization validation.
+    Retrieve all enrollment status history records scoped to a tenant.
+
+    Returns every history entry for every enrollment that belongs to
+    the given tenant, ordered by most recent change first.
     """
-
-    enrollment = get_enrollment_by_id(db, enrollment_id)
-
-    if not enrollment:
-        raise EnrollmentServiceError(
-            EnrollmentErrorCode.NOT_FOUND,
-            "Enrollment not found",
-            http_status=404,
-        )
-
-    if enrollment.tenant_id != expected_tenant_id:
-        raise EnrollmentServiceError(
-            EnrollmentErrorCode.TENANT_SCOPE_VIOLATION,
-            "Enrollment does not belong to this tenant",
-            http_status=403,
-        )
-
-    # Optional: role-based access checks
-    # if actor.role not allowed → raise EnrollmentServiceError
-
     return list_enrollment_status_history(
         db,
-        enrollment_id=enrollment_id,
         tenant_id=expected_tenant_id,
     )

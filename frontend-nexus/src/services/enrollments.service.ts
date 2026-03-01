@@ -80,9 +80,9 @@ export const enrollmentsService = {
       `${ENROLLMENTS_BASE(tenantId)}/${enrollmentId}/status`,
       { method: "GET" },
     ),
-  getHistory: (tenantId: number, enrollmentId: number) =>
+  getHistory: (tenantId: number) =>
     apiFetch<EnrollmentStatusHistoryApi[]>(
-      `${ENROLLMENTS_BASE(tenantId)}/${enrollmentId}/history`,
+      `${ENROLLMENTS_BASE(tenantId)}/history`,
       { method: "GET" },
     ),
 };

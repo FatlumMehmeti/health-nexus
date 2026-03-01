@@ -187,6 +187,7 @@ def create_enrollment_endpoint(
 
         return EnrollmentStatusRead(
             id=enrollment.id,
+            patient_user_id=enrollment.patient_user_id,
             status=enrollment.status.value
             if isinstance(enrollment.status, EnrollmentStatus)
             else str(enrollment.status),
@@ -203,6 +204,42 @@ def create_enrollment_endpoint(
             if hasattr(enrollment, "updated_at") and enrollment.updated_at
             else None,
         )
+    except EnrollmentServiceError as exc:
+        return _error_response(exc)
+
+
+@router.get(
+    "/history",
+    response_model=list[EnrollmentStatusHistoryRead],
+)
+def enrollment_history_endpoint(
+    tenant_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    user: Dict[str, Any] = Depends(get_current_user),
+):
+    """
+    Retrieve the full enrollment status history for a tenant.
+    Returns every history record associated with any enrollment
+    that belongs to the given tenant.
+    """
+    actor = _actor_from_user_payload(user)
+
+    try:
+        _ensure_tenant_context_consistency(
+            requested_tenant_id=tenant_id,
+            user_payload=user,
+            request=request,
+        )
+
+        history = get_enrollment_history_scoped(
+            db,
+            actor=actor,
+            expected_tenant_id=tenant_id,
+        )
+
+        return history  # Pydantic handles conversion (from_attributes=True)
+
     except EnrollmentServiceError as exc:
         return _error_response(exc)
 
@@ -247,6 +284,7 @@ def get_enrollment_endpoint(
 
         return EnrollmentStatusRead(
             id=enrollment.id,
+            patient_user_id=enrollment.patient_user_id,
             status=enrollment.status.value
             if isinstance(enrollment.status, EnrollmentStatus)
             else str(enrollment.status),
@@ -410,6 +448,7 @@ def transition_enrollment_endpoint(
 
         return EnrollmentStatusRead(
             id=enrollment.id,
+            patient_user_id=enrollment.patient_user_id,
             status=enrollment.status.value
             if isinstance(enrollment.status, EnrollmentStatus)
             else str(enrollment.status),
@@ -469,40 +508,5 @@ def enrollment_operational_status_endpoint(
             expected_tenant_id=tenant_id,
         )
         return EnrollmentOperationalStatus(**status_payload)
-    except EnrollmentServiceError as exc:
-        return _error_response(exc)
-
-@router.get(
-    "/{enrollment_id}/history",
-    response_model=list[EnrollmentStatusHistoryRead],
-)
-def enrollment_history_endpoint(
-    tenant_id: int,
-    enrollment_id: int,
-    request: Request,
-    db: Session = Depends(get_db),
-    user: Dict[str, Any] = Depends(get_current_user),
-):
-    """
-    Retrieve status history for a given enrollment.
-    """
-    actor = _actor_from_user_payload(user)
-
-    try:
-        _ensure_tenant_context_consistency(
-            requested_tenant_id=tenant_id,
-            user_payload=user,
-            request=request,
-        )
-
-        history = get_enrollment_history_scoped(
-            db,
-            enrollment_id=enrollment_id,
-            actor=actor,
-            expected_tenant_id=tenant_id,
-        )
-
-        return history  # Pydantic handles conversion (from_attributes=True)
-
     except EnrollmentServiceError as exc:
         return _error_response(exc)

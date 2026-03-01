@@ -250,7 +250,6 @@ def insert_audit_event(
 def list_enrollment_status_history(
     db: Session,
     *,
-    enrollment_id: int,
     tenant_id: int,
 ) -> list[EnrollmentStatusHistory]:
     """
@@ -260,7 +259,6 @@ def list_enrollment_status_history(
     return (
         db.query(EnrollmentStatusHistory)
         .filter(
-            EnrollmentStatusHistory.enrollment_id == enrollment_id,
             EnrollmentStatusHistory.tenant_id == tenant_id,
         )
         .order_by(EnrollmentStatusHistory.changed_at.desc())
