@@ -1,6 +1,11 @@
 #!/usr/bin/env sh
 set -eu
 
+# Format code before starting (Black for Python, Prettier for JSON/MD/YAML)
+echo "Formatting code..."
+python -m black . 2>/dev/null || true
+npx prettier --write "." 2>/dev/null || true
+
 echo "Waiting for database..."
 python << END
 import socket
