@@ -4,7 +4,9 @@
 from fastapi import APIRouter, HTTPException, Depends, status, Query
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta, timezone
-from app.db import SessionLocal
+from typing import Dict, Any
+from app.db import SessionLocal, get_db
+from app.auth.auth_utils import require_permission
 from app.models.tenant import Tenant, TenantStatus
 from app.models.subscription_plan import SubscriptionPlan
 from app.models.tenant_subscription import TenantSubscription, SubscriptionStatus
@@ -14,16 +16,6 @@ from app.models.tenant_audit_log import TenantAuditEventType
 
 router = APIRouter(prefix="/tenants", tags=["Super Admin - Tenant Management"])
 
-
-# Temporary DB dependency (we can later move this to app/db.py cleanly)
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
-
 # Endpoint to list tenants for the Super Admin dashboard.
 # Supports optional filtering by status and search (name).
 # Defaults to returning all tenants ordered by newest first.
@@ -32,6 +24,7 @@ def list_tenants(
     status_filter: TenantStatus | None = Query(default=None, alias="status"),
     search: str | None = None,
     db: Session = Depends(get_db),
+    user: Dict[str, Any] = Depends(require_permission("auth:admin")),
 ):
     query = db.query(Tenant)
 
@@ -47,7 +40,11 @@ def list_tenants(
 
 # Gets tenant details for the Super Admin dashboard tenant details page.
 @router.get("/{tenant_id}", response_model=TenantRead)
-def get_tenant(tenant_id: int, db: Session = Depends(get_db)):
+def get_tenant(
+    tenant_id: int,
+    db: Session = Depends(get_db),
+    user: Dict[str, Any] = Depends(require_permission("auth:admin")),
+):
     tenant = db.query(Tenant).filter(Tenant.id == tenant_id).first()
 
     if not tenant:
@@ -65,6 +62,7 @@ def update_tenant_status(
     tenant_id: int,
     status_update: TenantStatusUpdate,
     db: Session = Depends(get_db),
+    user: Dict[str, Any] = Depends(require_permission("auth:admin")),
 ):
     tenant = db.query(Tenant).filter(Tenant.id == tenant_id).first()
 

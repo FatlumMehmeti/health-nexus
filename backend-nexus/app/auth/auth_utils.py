@@ -29,10 +29,14 @@ ROLE_PERMISSIONS: Dict[str, list[str]] = {
 
 # Centralized RBAC: (method, route_id) -> allowed roles (lowercase)
 # auth:me: any authenticated user can read their own profile
+# auth:admin: super admin endpoints accessible via any HTTP method
 PERMISSIONS_MATRIX: Dict[tuple[str, str], set[str]] = {
-    ("GET", "auth:admin"): {"admin", "super_admin"},
+    ("GET", "auth:admin"): {"super_admin"},
+    ("POST", "auth:admin"): {"super_admin"},
+    ("PUT", "auth:admin"): {"super_admin"},
+    ("PATCH", "auth:admin"): {"super_admin"},
+    ("DELETE", "auth:admin"): {"super_admin"},
     ("GET", "auth:me"): {
-        "admin",
         "super_admin",
         "tenant_manager",
         "doctor",
