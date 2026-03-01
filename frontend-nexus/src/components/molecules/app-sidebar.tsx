@@ -115,6 +115,11 @@ const tenantManagerDocuments = [
     icon: IconReport,
   },
   {
+    title: "Enrollments",
+    url: "/dashboard/tenant/enrollments",
+    icon: IconHistory,
+  },
+  {
     title: "Settings",
     url: "/dashboard/tenant/settings",
     icon: IconSettings,
