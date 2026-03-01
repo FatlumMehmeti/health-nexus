@@ -8,7 +8,7 @@
 import type { CSSProperties } from 'react'
 import { useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
@@ -68,6 +68,26 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
   const [activeTab, setActiveTab] = useState('home')
   const [selectedPlanId, setSelectedPlanId] = useState<number | null>(null)
 
+  const user = useAuthStore((s) => s.user)
+  const role = useAuthStore((s) => s.role)
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
+
+  const tenantId = landingData?.tenant?.id
+
+  // Hydrate the selected plan from the user's existing enrollment
+  useQuery({
+    queryKey: ['my-enrollment', tenantId],
+    queryFn: () => tenantPlansService.myEnrollment(tenantId!),
+    enabled: !!tenantId && isAuthenticated,
+    retry: false,
+    select: (data) => {
+      if (data?.user_tenant_plan_id && data.status === 'ACTIVE') {
+        setSelectedPlanId(data.user_tenant_plan_id)
+      }
+      return data
+    },
+  })
+
   const enrollMutation = useMutation({
     mutationFn: ({ tenantId, planId }: { tenantId: number; planId: number }) =>
       tenantPlansService.enroll(tenantId, planId),
@@ -79,10 +99,6 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
       toast.error(isApiError(err) ? err.message : 'Failed to subscribe. Please try again.')
     },
   })
-
-  const user = useAuthStore((s) => s.user)
-  const role = useAuthStore((s) => s.role)
-  const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
   const logout = useAuthStore((s) => s.logout)
   const navigate = useNavigate()
   const canOpenTenantDashboard = can({ role }, 'DASHBOARD_TENANT')
