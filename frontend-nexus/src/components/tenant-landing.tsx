@@ -6,9 +6,9 @@
  * Used by /landing/$tenantSlug. Data from GET /api/tenants/by-slug/{slug}/landing.
  */
 import type { CSSProperties } from 'react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
@@ -74,31 +74,51 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
 
   const tenantId = landingData?.tenant?.id
 
-  // Hydrate the selected plan from the user's existing enrollment
-  useQuery({
+  const queryClient = useQueryClient()
+
+  // Hydrate the selected plan from the user's existing enrollment.
+  // Only sync on initial fetch — not on every render — so the user
+  // can click "Change plan" without it snapping back immediately.
+  const { data: enrollmentData } = useQuery({
     queryKey: ['my-enrollment', tenantId],
     queryFn: () => tenantPlansService.myEnrollment(tenantId!),
     enabled: !!tenantId && isAuthenticated,
     retry: false,
-    select: (data) => {
-      if (data?.user_tenant_plan_id && data.status === 'ACTIVE') {
-        setSelectedPlanId(data.user_tenant_plan_id)
-      }
-      return data
-    },
   })
+
+  useEffect(() => {
+    if (enrollmentData?.user_tenant_plan_id && enrollmentData.status === 'ACTIVE') {
+      setSelectedPlanId(enrollmentData.user_tenant_plan_id)
+    }
+  }, [enrollmentData])
 
   const enrollMutation = useMutation({
     mutationFn: ({ tenantId, planId }: { tenantId: number; planId: number }) =>
       tenantPlansService.enroll(tenantId, planId),
     onSuccess: (_data, variables) => {
       setSelectedPlanId(variables.planId)
+      // Invalidate the cached enrollment so next hydration uses the new plan
+      queryClient.invalidateQueries({ queryKey: ['my-enrollment', tenantId] })
       toast.success('Successfully subscribed!', { description: 'Your plan has been selected.' })
     },
     onError: (err) => {
       toast.error(isApiError(err) ? err.message : 'Failed to subscribe. Please try again.')
     },
   })
+
+  // Cancel enrollment so tenant manager sees "no active plan"
+  const cancelMutation = useMutation({
+    mutationFn: (tid: number) => tenantPlansService.cancelEnrollment(tid),
+    onSuccess: () => {
+      setSelectedPlanId(null)
+      queryClient.invalidateQueries({ queryKey: ['my-enrollment', tenantId] })
+      toast.success('Plan cancelled', { description: 'You can pick a new plan below.' })
+    },
+    onError: (err) => {
+      toast.error(isApiError(err) ? err.message : 'Failed to cancel. Please try again.')
+    },
+  })
+
   const logout = useAuthStore((s) => s.logout)
   const navigate = useNavigate()
   const canOpenTenantDashboard = can({ role }, 'DASHBOARD_TENANT')
@@ -509,9 +529,12 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => setSelectedPlanId(null)}
+                      disabled={cancelMutation.isPending}
+                      onClick={() => {
+                        if (tenantId) cancelMutation.mutate(tenantId)
+                      }}
                     >
-                      Change plan
+                      {cancelMutation.isPending ? 'Cancelling…' : 'Change plan'}
                     </Button>
                   </div>
                 )

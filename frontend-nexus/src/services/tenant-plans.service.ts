@@ -87,5 +87,8 @@ export const tenantPlansService = {
 
   myEnrollment: (tenantId: number) =>
     apiFetch<EnrollmentApi>(`${BASE}/my-enrollment?tenant_id=${tenantId}`, { method: 'GET' }),
+
+  cancelEnrollment: (tenantId: number) =>
+    apiFetch<EnrollmentApi>(`${BASE}/cancel-enrollment?tenant_id=${tenantId}`, { method: 'POST' }),
 }
 
