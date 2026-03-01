@@ -1,6 +1,6 @@
 # app/models/report.py
 
-from sqlalchemy import ForeignKey, Text, TIMESTAMP, UniqueConstraint
+from sqlalchemy import ForeignKey, ForeignKeyConstraint, Text, TIMESTAMP
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
@@ -9,6 +9,13 @@ from .base import Base
 
 class Report(Base):
     __tablename__ = "reports"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["tenant_id", "patient_user_id"],
+            ["patients.tenant_id", "patients.user_id"],
+            name="fk_reports_patient_tenant_user",
+        ),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
 
@@ -30,7 +37,6 @@ class Report(Base):
     )
 
     patient_user_id: Mapped[int] = mapped_column(
-        ForeignKey("patients.user_id"),
         nullable=False
     )
 
@@ -47,5 +53,5 @@ class Report(Base):
     # Relationships
     appointment = relationship("Appointment")
     doctor = relationship("Doctor")
-    patient = relationship("Patient")
-    tenant = relationship("Tenant")
+    patient = relationship("Patient", overlaps="tenant")
+    tenant = relationship("Tenant", overlaps="patient")

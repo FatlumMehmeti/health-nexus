@@ -105,6 +105,26 @@ def create_plan(
     return db_plan
 
 
+@router.get("/my-enrollment", response_model=EnrollmentRead)
+def get_my_enrollment(
+    tenant_id: int,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """Return the current user's enrollment for a given tenant (if any)."""
+    user_id = current_user.get("user_id")
+
+    enrollment = db.query(Enrollment).filter(
+        Enrollment.tenant_id == tenant_id,
+        Enrollment.patient_user_id == user_id,
+    ).first()
+
+    if not enrollment:
+        raise HTTPException(status_code=404, detail="No enrollment found")
+
+    return enrollment
+
+
 @router.post("/enroll", response_model=EnrollmentRead)
 def enroll_in_plan(
     tenant_id: int,

@@ -84,5 +84,8 @@ export const tenantPlansService = {
     apiFetch<EnrollmentApi>(`${BASE}/enroll?tenant_id=${tenantId}&plan_id=${planId}`, {
       method: 'POST',
     }),
+
+  myEnrollment: (tenantId: number) =>
+    apiFetch<EnrollmentApi>(`${BASE}/my-enrollment?tenant_id=${tenantId}`, { method: 'GET' }),
 }
 
