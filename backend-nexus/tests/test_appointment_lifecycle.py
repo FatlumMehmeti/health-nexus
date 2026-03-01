@@ -473,3 +473,200 @@ def test_tenant_isolation_for_doctor_actions(appointment_client):
         headers={"Authorization": f"Bearer {doctor_token}"},
     )
     assert own_doctor_approve.status_code == 200
+
+def test_booking_rejected_when_plan_max_appointments_reached(appointment_client, db_session):
+    client, ctx = appointment_client
+    patient_token = _login(client, ctx["patient_email"], "Team2026@")
+
+    enrollment = (
+        db_session.query(Enrollment)
+        .filter(
+            Enrollment.tenant_id == ctx["tenant_id"],
+            Enrollment.patient_user_id
+            == db_session.query(User).filter_by(email=ctx["patient_email"]).first().id,
+            Enrollment.status == EnrollmentStatus.ACTIVE,
+        )
+        .first()
+    )
+    enrollment.user_tenant_plan.max_appointments = 1
+    db_session.commit()
+
+    first_booking = client.post(
+        "/appointments/book",
+        headers={"Authorization": f"Bearer {patient_token}"},
+        json={
+            "tenant_id": ctx["tenant_id"],
+            "doctor_id": ctx["doctor_id"],
+            "department_id": ctx["department_id"],
+            "appointment_datetime": "2026-03-09T10:00:00Z",
+            "duration_minutes": 30,
+            "description": "First booking",
+        },
+    )
+    assert first_booking.status_code == 200
+
+    second_booking = client.post(
+        "/appointments/book",
+        headers={"Authorization": f"Bearer {patient_token}"},
+        json={
+            "tenant_id": ctx["tenant_id"],
+            "doctor_id": ctx["doctor_id"],
+            "department_id": ctx["department_id"],
+            "appointment_datetime": "2026-03-09T11:00:00Z",
+            "duration_minutes": 30,
+            "description": "Second booking should fail",
+        },
+    )
+    assert second_booking.status_code == 403
+    assert second_booking.json()["detail"] == "Appointment limit reached for your plan"
+
+
+def test_booking_outside_working_hours_returns_400(appointment_client):
+    client, ctx = appointment_client
+    patient_token = _login(client, ctx["patient_email"], "Team2026@")
+
+    response = client.post(
+        "/appointments/book",
+        headers={"Authorization": f"Bearer {patient_token}"},
+        json={
+            "tenant_id": ctx["tenant_id"],
+            "doctor_id": ctx["doctor_id"],
+            "department_id": ctx["department_id"],
+            "appointment_datetime": "2026-03-09T08:30:00Z",
+            "duration_minutes": 30,
+            "description": "Outside working hours",
+        },
+    )
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Outside doctor's working hours"
+
+
+def test_booking_on_non_working_day_returns_400(appointment_client):
+    client, ctx = appointment_client
+    patient_token = _login(client, ctx["patient_email"], "Team2026@")
+
+    response = client.post(
+        "/appointments/book",
+        headers={"Authorization": f"Bearer {patient_token}"},
+        json={
+            "tenant_id": ctx["tenant_id"],
+            "doctor_id": ctx["doctor_id"],
+            "department_id": ctx["department_id"],
+            "appointment_datetime": "2026-03-11T10:00:00Z",
+            "duration_minutes": 30,
+            "description": "Non-working day",
+        },
+    )
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Doctor does not work this day"
+
+
+def test_patient_me_lists_and_filters_by_status(appointment_client):
+    client, ctx = appointment_client
+    patient_token = _login(client, ctx["patient_email"], "Team2026@")
+
+    first_booking = client.post(
+        "/appointments/book",
+        headers={"Authorization": f"Bearer {patient_token}"},
+        json={
+            "tenant_id": ctx["tenant_id"],
+            "doctor_id": ctx["doctor_id"],
+            "department_id": ctx["department_id"],
+            "appointment_datetime": "2026-03-09T10:00:00Z",
+            "duration_minutes": 30,
+            "description": "Requested appointment",
+        },
+    )
+    assert first_booking.status_code == 200
+
+    second_booking = client.post(
+        "/appointments/book",
+        headers={"Authorization": f"Bearer {patient_token}"},
+        json={
+            "tenant_id": ctx["tenant_id"],
+            "doctor_id": ctx["doctor_id"],
+            "department_id": ctx["department_id"],
+            "appointment_datetime": "2026-03-10T10:00:00Z",
+            "duration_minutes": 30,
+            "description": "Will be cancelled",
+        },
+    )
+    assert second_booking.status_code == 200
+
+    cancel_resp = client.patch(
+        f"/appointments/{second_booking.json()['id']}/cancel",
+        headers={"Authorization": f"Bearer {patient_token}"},
+    )
+    assert cancel_resp.status_code == 200
+
+    all_appointments = client.get(
+        "/appointments/patient/me",
+        headers={"Authorization": f"Bearer {patient_token}"},
+    )
+    assert all_appointments.status_code == 200
+    assert len(all_appointments.json()) == 2
+
+    requested_only = client.get(
+        "/appointments/patient/me",
+        params={"status": "REQUESTED"},
+        headers={"Authorization": f"Bearer {patient_token}"},
+    )
+    assert requested_only.status_code == 200
+    requested_items = requested_only.json()
+    assert len(requested_items) == 1
+    assert requested_items[0]["id"] == first_booking.json()["id"]
+    assert requested_items[0]["status"] == "REQUESTED"
+
+
+
+def test_enrollment_status_reports_enrolled_for_active_enrollment(appointment_client):
+    client, ctx = appointment_client
+    patient_token = _login(client, ctx["patient_email"], "Team2026@")
+
+    response = client.get(
+        "/appointments/enrollment-status",
+        params={"tenant_id": ctx["tenant_id"]},
+        headers={"Authorization": f"Bearer {patient_token}"},
+    )
+    assert response.status_code == 200
+    assert response.json() == {"enrolled": True}
+
+
+
+def test_enrollment_status_reports_no_patient_profile_for_non_patient_user(appointment_client):
+    client, ctx = appointment_client
+    doctor_token = _login(client, ctx["doctor_email"], "Team2026@")
+
+    response = client.get(
+        "/appointments/enrollment-status",
+        params={"tenant_id": ctx["tenant_id"]},
+        headers={"Authorization": f"Bearer {doctor_token}"},
+    )
+    assert response.status_code == 200
+    assert response.json() == {"enrolled": False, "reason": "no_patient_profile"}
+
+
+
+def test_enrollment_status_reports_no_active_enrollment(appointment_client, db_session):
+    client, ctx = appointment_client
+    patient_token = _login(client, ctx["patient_email"], "Team2026@")
+
+    patient_user = db_session.query(User).filter_by(email=ctx["patient_email"]).first()
+    enrollment = (
+        db_session.query(Enrollment)
+        .filter(
+            Enrollment.tenant_id == ctx["tenant_id"],
+            Enrollment.patient_user_id == patient_user.id,
+        )
+        .first()
+    )
+    enrollment.status = EnrollmentStatus.CANCELLED
+    db_session.commit()
+
+    response = client.get(
+        "/appointments/enrollment-status",
+        params={"tenant_id": ctx["tenant_id"]},
+        headers={"Authorization": f"Bearer {patient_token}"},
+    )
+    assert response.status_code == 200
+    assert response.json() == {"enrolled": False, "reason": "no_active_enrollment"}
