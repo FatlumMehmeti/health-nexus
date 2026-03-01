@@ -30,6 +30,8 @@ import { Route as DashboardLandingPagesIndexRouteImport } from './routes/dashboa
 import { Route as DashboardAuditLogsIndexRouteImport } from './routes/dashboard/audit-logs/index'
 import { Route as DashboardTenantSectionRouteImport } from './routes/dashboard/tenant.$section'
 import { Route as DashboardLandingPagesPageIdRouteImport } from './routes/dashboard/landing-pages/$pageId'
+import { Route as DashboardTenantContractsRouteRouteImport } from './routes/dashboard/tenant/contracts/route'
+import { Route as DashboardTenantContractsIndexRouteImport } from './routes/dashboard/tenant/contracts/index'
 
 const UnauthorizedRoute = UnauthorizedRouteImport.update({
   id: '/unauthorized',
@@ -139,6 +141,18 @@ const DashboardLandingPagesPageIdRoute =
     path: '/$pageId',
     getParentRoute: () => DashboardLandingPagesRouteRoute,
   } as any)
+const DashboardTenantContractsRouteRoute =
+  DashboardTenantContractsRouteRouteImport.update({
+    id: '/contracts',
+    path: '/contracts',
+    getParentRoute: () => DashboardTenantRoute,
+  } as any)
+const DashboardTenantContractsIndexRoute =
+  DashboardTenantContractsIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => DashboardTenantContractsRouteRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -158,10 +172,12 @@ export interface FileRoutesByFullPath {
   '/dashboard/tenants': typeof DashboardTenantsRoute
   '/landing/$tenantSlug': typeof LandingTenantSlugRoute
   '/dashboard/': typeof DashboardIndexRoute
+  '/dashboard/tenant/contracts': typeof DashboardTenantContractsRouteRouteWithChildren
   '/dashboard/landing-pages/$pageId': typeof DashboardLandingPagesPageIdRoute
   '/dashboard/tenant/$section': typeof DashboardTenantSectionRoute
   '/dashboard/audit-logs/': typeof DashboardAuditLogsIndexRoute
   '/dashboard/landing-pages/': typeof DashboardLandingPagesIndexRoute
+  '/dashboard/tenant/contracts/': typeof DashboardTenantContractsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -183,6 +199,7 @@ export interface FileRoutesByTo {
   '/dashboard/tenant/$section': typeof DashboardTenantSectionRoute
   '/dashboard/audit-logs': typeof DashboardAuditLogsIndexRoute
   '/dashboard/landing-pages': typeof DashboardLandingPagesIndexRoute
+  '/dashboard/tenant/contracts': typeof DashboardTenantContractsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -203,10 +220,12 @@ export interface FileRoutesById {
   '/dashboard/tenants': typeof DashboardTenantsRoute
   '/landing/$tenantSlug': typeof LandingTenantSlugRoute
   '/dashboard/': typeof DashboardIndexRoute
+  '/dashboard/tenant/contracts': typeof DashboardTenantContractsRouteRouteWithChildren
   '/dashboard/landing-pages/$pageId': typeof DashboardLandingPagesPageIdRoute
   '/dashboard/tenant/$section': typeof DashboardTenantSectionRoute
   '/dashboard/audit-logs/': typeof DashboardAuditLogsIndexRoute
   '/dashboard/landing-pages/': typeof DashboardLandingPagesIndexRoute
+  '/dashboard/tenant/contracts/': typeof DashboardTenantContractsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -228,10 +247,12 @@ export interface FileRouteTypes {
     | '/dashboard/tenants'
     | '/landing/$tenantSlug'
     | '/dashboard/'
+    | '/dashboard/tenant/contracts'
     | '/dashboard/landing-pages/$pageId'
     | '/dashboard/tenant/$section'
     | '/dashboard/audit-logs/'
     | '/dashboard/landing-pages/'
+    | '/dashboard/tenant/contracts/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -253,6 +274,7 @@ export interface FileRouteTypes {
     | '/dashboard/tenant/$section'
     | '/dashboard/audit-logs'
     | '/dashboard/landing-pages'
+    | '/dashboard/tenant/contracts'
   id:
     | '__root__'
     | '/'
@@ -272,10 +294,12 @@ export interface FileRouteTypes {
     | '/dashboard/tenants'
     | '/landing/$tenantSlug'
     | '/dashboard/'
+    | '/dashboard/tenant/contracts'
     | '/dashboard/landing-pages/$pageId'
     | '/dashboard/tenant/$section'
     | '/dashboard/audit-logs/'
     | '/dashboard/landing-pages/'
+    | '/dashboard/tenant/contracts/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -437,6 +461,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardLandingPagesPageIdRouteImport
       parentRoute: typeof DashboardLandingPagesRouteRoute
     }
+    '/dashboard/tenant/contracts': {
+      id: '/dashboard/tenant/contracts'
+      path: '/contracts'
+      fullPath: '/dashboard/tenant/contracts'
+      preLoaderRoute: typeof DashboardTenantContractsRouteRouteImport
+      parentRoute: typeof DashboardTenantRoute
+    }
+    '/dashboard/tenant/contracts/': {
+      id: '/dashboard/tenant/contracts/'
+      path: '/'
+      fullPath: '/dashboard/tenant/contracts/'
+      preLoaderRoute: typeof DashboardTenantContractsIndexRouteImport
+      parentRoute: typeof DashboardTenantContractsRouteRoute
+    }
   }
 }
 
@@ -456,11 +494,28 @@ const DashboardLandingPagesRouteRouteWithChildren =
     DashboardLandingPagesRouteRouteChildren,
   )
 
+interface DashboardTenantContractsRouteRouteChildren {
+  DashboardTenantContractsIndexRoute: typeof DashboardTenantContractsIndexRoute
+}
+
+const DashboardTenantContractsRouteRouteChildren: DashboardTenantContractsRouteRouteChildren =
+  {
+    DashboardTenantContractsIndexRoute: DashboardTenantContractsIndexRoute,
+  }
+
+const DashboardTenantContractsRouteRouteWithChildren =
+  DashboardTenantContractsRouteRoute._addFileChildren(
+    DashboardTenantContractsRouteRouteChildren,
+  )
+
 interface DashboardTenantRouteChildren {
+  DashboardTenantContractsRouteRoute: typeof DashboardTenantContractsRouteRouteWithChildren
   DashboardTenantSectionRoute: typeof DashboardTenantSectionRoute
 }
 
 const DashboardTenantRouteChildren: DashboardTenantRouteChildren = {
+  DashboardTenantContractsRouteRoute:
+    DashboardTenantContractsRouteRouteWithChildren,
   DashboardTenantSectionRoute: DashboardTenantSectionRoute,
 }
 

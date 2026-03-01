@@ -58,7 +58,7 @@ function TenantSelectorPage() {
                     key={tenant.id}
                     to="/landing/$tenantSlug"
                     params={{ tenantSlug: slug }}
-                    className="focus-visible:outline-none"
+                    className="flex flex-col focus-visible:outline-none"
                   >
                     <TenantBrandPreview
                       className="h-full cursor-pointer transition hover:-translate-y-0.5 hover:border-primary/60 hover:shadow-md"

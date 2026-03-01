@@ -5,7 +5,7 @@ from app.db import SessionLocal
 from app.models import Role
 from app.schemas import RoleCreate, RoleRead, RoleUpdate
 
-router = APIRouter(prefix="/roles", tags=["roles"])
+router = APIRouter(prefix="/roles", tags=["Roles"])
 
 
 def get_db():

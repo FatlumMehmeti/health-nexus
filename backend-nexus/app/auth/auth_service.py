@@ -214,114 +214,53 @@ def logout_user(refresh_token: str) -> None:
 
 def signup_user(body: SignupRequest) -> SignupResponse:
     """
-    Create a user account and tenant enrollment. If the user already exists
-    (same email), only create the enrollment for the given tenant if not already present.
-    Raises 404 if tenant or role not found, 409 if enrollment already exists for (email, tenant).
+    Create a global user account.
+
+    Behavior:
+    - Resolves role from the provided role name.
+    - Creates a new user if email does not exist.
+    - Returns 409 if the email is already registered.
     """
     session = SessionLocal()
     try:
-        # Tenant must exist
-        tenant = session.execute(select(Tenant).where(
-            Tenant.id == body.tenant_id)).scalar_one_or_none()
-        if tenant is None:
-            logger.warning(
-                "auth.signup_tenant_not_found tenant_id=%s", body.tenant_id)
-            raise HTTPException(status_code=404, detail="Tenant not found")
-
         # Resolve role by name (normalized uppercase to match Roles table)
         role_name = (body.role or "client").strip().upper()
         role_name = ROLE_NAME_ALIASES.get(role_name, role_name)
-        role = session.execute(select(Role).where(
-            Role.name == role_name)).scalar_one_or_none()
+        role = session.execute(select(Role).where(Role.name == role_name)).scalar_one_or_none()
         if role is None:
             logger.warning("auth.signup_role_not_found role=%s", role_name)
             raise HTTPException(status_code=404, detail="Role not found")
 
         # Find existing user by email (with role for response)
         user = session.execute(
-            select(User).where(User.email == body.email).options(
-                joinedload(User.role))
+            select(User).where(User.email == body.email).options(joinedload(User.role))
         ).scalar_one_or_none()
 
         if user is not None:
-            # User exists: check if enrollment for this tenant already exists
-            existing = session.execute(
-                select(Enrollment).where(
-                    Enrollment.user_id == user.id,
-                    Enrollment.tenant_id == body.tenant_id,
-                )
-            ).scalar_one_or_none()
-            if existing is not None:
-                logger.warning(
-                    "auth.signup_duplicate email=%s tenant_id=%s",
-                    body.email,
-                    body.tenant_id,
-                )
-                raise HTTPException(
-                    status_code=409,
-                    detail="User already has a enrollment for this tenant",
-                )
-            # Create enrollment only
-            enrollment = Enrollment(user_id=user.id, tenant_id=body.tenant_id)
-            session.add(enrollment)
+            logger.warning("auth.signup_duplicate email=%s", body.email)
+            raise HTTPException(status_code=409, detail="User already exists")
 
-            # If role is TENANT_MANAGER, also create TenantManager record
-            if role.name == "TENANT_MANAGER":
-                tenant_manager = TenantManager(
-                    user_id=user.id, tenant_id=body.tenant_id)
-                session.add(tenant_manager)
-
-            session.commit()
-            session.refresh(enrollment)
-            logger.info(
-                "auth.signup_enrollment_created user_id=%s tenant_id=%s",
-                user.id,
-                body.tenant_id,
-            )
-            return SignupResponse(
-                user_id=user.id,
-                email=user.email,
-                role=user.role.name,
-                tenant_id=body.tenant_id,
-            )
-        else:
-            # Create user and enrollment
-            hashed = hash_password(body.password)
-            new_user = User(
-                email=body.email,
-                password=hashed,
-                first_name=body.first_name,
-                last_name=body.last_name,
-                role_id=role.id,
-            )
-            session.add(new_user)
-            session.flush()
-            enrollment = Enrollment(
-                user_id=new_user.id,
-                tenant_id=body.tenant_id,
-            )
-            session.add(enrollment)
-
-            # If role is TENANT_MANAGER, also create TenantManager record
-            if role.name == "TENANT_MANAGER":
-                tenant_manager = TenantManager(
-                    user_id=new_user.id, tenant_id=body.tenant_id)
-                session.add(tenant_manager)
-
-            session.commit()
-            session.refresh(new_user)
-            logger.info(
-                "auth.signup_success user_id=%s email=%s tenant_id=%s",
-                new_user.id,
-                new_user.email,
-                body.tenant_id,
-            )
-            return SignupResponse(
-                user_id=new_user.id,
-                email=new_user.email,
-                role=role.name,
-                tenant_id=body.tenant_id,
-            )
+        hashed = hash_password(body.password)
+        new_user = User(
+            email=body.email,
+            password=hashed,
+            first_name=body.first_name,
+            last_name=body.last_name,
+            role_id=role.id,
+        )
+        session.add(new_user)
+        session.commit()
+        session.refresh(new_user)
+        logger.info(
+            "auth.signup_success user_id=%s email=%s",
+            new_user.id,
+            new_user.email,
+        )
+        return SignupResponse(
+            user_id=new_user.id,
+            email=new_user.email,
+            role=role.name,
+        )
     except HTTPException:
         session.rollback()
         raise
