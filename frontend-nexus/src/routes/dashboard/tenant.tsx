@@ -7,6 +7,7 @@ import { requireAuth } from "@/lib/guards/requireAuth";
 import { isApiError } from "@/lib/api-client";
 import { tenantsService } from "@/services/tenants.service";
 import { tenantPlansService, type TenantPlanApi } from "@/services/tenant-plans.service";
+import { useAuthStore } from "@/stores/auth.store";
 import { TenantBrandPreview } from "@/components/molecules/tenant-brand-preview";
 import type {
   DoctorRead,
@@ -15,6 +16,7 @@ import type {
   ProductUpdateInput,
   ServiceLandingItem,
   ServiceUpdateInput,
+  TenantCurrentRead,
   TenantDepartmentWithServicesRead,
   TenantDetailsRead,
   TenantDetailsUpdate,
@@ -118,6 +120,50 @@ export const TENANT_SECTION_KEYS = [
 
 export type TenantSectionKey = (typeof TENANT_SECTION_KEYS)[number];
 
+/**
+ * Frontend-only resilience layer:
+ * - Primary source remains /api/tenants/current.
+ * - If backend temporarily returns "no tenant assigned" but auth store already has tenantId,
+ *   we derive minimal tenant context from public tenant listing so the dashboard can continue.
+ */
+async function getCurrentTenantWithFallback(
+  tenantIdFromStore?: string,
+): Promise<TenantCurrentRead> {
+  try {
+    return await tenantsService.getCurrentTenant();
+  } catch (error) {
+    if (!isApiError(error)) throw error;
+
+    const hasNoTenantMessage = error.displayMessage
+      .toLowerCase()
+      .includes("no tenant assigned");
+    const parsedTenantId = Number(tenantIdFromStore);
+
+    if (
+      !hasNoTenantMessage ||
+      !Number.isFinite(parsedTenantId) ||
+      parsedTenantId <= 0
+    ) {
+      throw error;
+    }
+
+    const publicTenants = await tenantsService.listPublicTenants();
+    const matchedTenant = publicTenants.find((tenant) => tenant.id === parsedTenantId);
+
+    if (!matchedTenant) throw error;
+
+    return {
+      id: matchedTenant.id,
+      name: matchedTenant.name,
+      slug: matchedTenant.slug,
+      // Public endpoint does not expose private tenant manager contact/licence fields.
+      email: "-",
+      licence_number: "-",
+      status: "approved",
+    };
+  }
+}
+
 export function normalizeTenantSection(
   rawSection: string | null | undefined,
 ): TenantSectionKey {
@@ -142,10 +188,11 @@ export function TenantManagerPageContent({
   activeSection: TenantSectionKey;
 }) {
   const queryClient = useQueryClient();
+  const tenantIdFromStore = useAuthStore((state) => state.tenantId);
 
   const currentTenantQuery = useQuery({
     queryKey: QUERY_KEYS.current,
-    queryFn: () => tenantsService.getCurrentTenant(),
+    queryFn: () => getCurrentTenantWithFallback(tenantIdFromStore),
   });
 
   const notifyDataChanged = () => {
@@ -241,9 +288,10 @@ export function TenantManagerPageContent({
 
 function TenantPlansPanel() {
   const queryClient = useQueryClient();
+  const tenantIdFromStore = useAuthStore((state) => state.tenantId);
   const tenantQuery = useQuery({
     queryKey: QUERY_KEYS.current,
-    queryFn: () => tenantsService.getCurrentTenant(),
+    queryFn: () => getCurrentTenantWithFallback(tenantIdFromStore),
   });
   const tenantId = tenantQuery.data?.id;
 
