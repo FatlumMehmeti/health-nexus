@@ -2,9 +2,10 @@ import { jest } from "@jest/globals";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-import { ContractsPage } from "@/components/contracts/ContractsPage";
-import { useAuthStore } from "@/stores/auth.store";
+import * as ContractsPageModule from "@/components/contracts/ContractsPage";
 import type { Contract } from "@/interfaces/contract";
+import { contractsService } from "@/services/contracts.service";
+import { useAuthStore } from "@/stores/auth.store";
 
 jest.mock("sonner", () => ({
   toast: {
@@ -13,113 +14,190 @@ jest.mock("sonner", () => ({
   },
 }));
 
-const STORAGE_KEY = "hn_contracts";
-
 function setTenantContext(tenantId: string) {
   useAuthStore.setState((state) => ({ ...state, tenantId }));
 }
 
-function writeContracts(contracts: Contract[]) {
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(contracts));
-}
-
-function baseContract(overrides: Partial<Contract>): Contract {
+function makeContract(overrides: Partial<Contract>): Contract {
   return {
-    id: `contract-${Math.random().toString(36).slice(2)}`,
-    tenantId: 1,
-    name: "Contract",
+    id: 100,
+    tenant_id: 1,
+    doctor_user_id: 77,
     status: "DRAFT",
-    activatedAt: null,
-    expiresAt: null,
-    termsMetadata: null,
-    terminatedReason: null,
-    createdAt: "2026-02-01T10:00:00.000Z",
-    updatedAt: "2026-02-01T10:00:00.000Z",
+    salary: "12000",
+    terms_content: "<p>Default terms</p>",
+    start_date: "2026-01-01",
+    end_date: "2026-12-31",
+    activated_at: null,
+    expires_at: null,
+    terms_metadata: null,
+    terminated_reason: null,
+    doctor_signed_at: null,
+    doctor_signature: null,
+    hospital_signed_at: null,
+    hospital_signature: null,
+    created_at: "2026-01-01T00:00:00.000Z",
+    updated_at: "2026-01-01T00:00:00.000Z",
     ...overrides,
   };
 }
 
 describe("ContractsPage", () => {
   beforeEach(() => {
-    window.localStorage.clear();
+    jest.clearAllMocks();
     setTenantContext("1");
   });
 
-  it("DRAFT row shows Activate; activating updates status to ACTIVE and banner to Allowed", async () => {
-    const draft = baseContract({ id: "draft-1", name: "Draft Contract", status: "DRAFT" });
-    const expired = baseContract({
-      id: "expired-1",
-      name: "Expired Contract",
-      status: "EXPIRED",
-      activatedAt: "2025-12-01T08:00:00.000Z",
-      expiresAt: "2026-01-10T08:00:00.000Z",
-    });
+  it("DRAFT without both signatures keeps Activate hidden/disabled", async () => {
+    const unsignedDraft = makeContract({ status: "DRAFT" });
 
-    writeContracts([draft, expired]);
+    const getContractsSpy = jest
+      .spyOn(contractsService, "getContracts")
+      .mockResolvedValue([unsignedDraft]);
+    const transitionSpy = jest.spyOn(contractsService, "transitionContract");
 
     const user = userEvent.setup();
-    render(<ContractsPage />);
+    render(
+      <ContractsPageModule.ContractsPage
+        pickFile={async () =>
+          new File(["signature"], "signature.png", { type: "image/png" })
+        }
+      />,
+    );
 
-    await screen.findByText("Draft Contract");
-    expect(screen.getByText("Booking eligibility: Blocked")).toBeInTheDocument();
+    await screen.findByText("Doctor booking eligibility: 0 eligible / 1 not eligible");
 
-    const draftRow = screen.getByText("Draft Contract").closest("tr");
-    expect(draftRow).not.toBeNull();
+    const row = screen.getByText(String(unsignedDraft.doctor_user_id)).closest("tr");
+    expect(row).not.toBeNull();
 
-    const actionsButton = within(draftRow as HTMLTableRowElement).getByRole("button", {
-      name: /open menu/i,
-    });
+    await user.click(
+      within(row as HTMLTableRowElement).getByRole("button", {
+        name: /open menu/i,
+      }),
+    );
 
-    await user.click(actionsButton);
-    expect(screen.getByRole("menuitem", { name: "Activate" })).toBeInTheDocument();
+    const activateItem = screen.getByRole("menuitem", { name: "Activate" });
+    expect(activateItem).toHaveAttribute("data-disabled");
 
-    await user.click(screen.getByRole("menuitem", { name: "Activate" }));
-
-    await waitFor(() => {
-      const updatedRow = screen.getByText("Draft Contract").closest("tr");
-      expect(updatedRow).not.toBeNull();
-      expect(within(updatedRow as HTMLTableRowElement).getByText("ACTIVE")).toBeInTheDocument();
-      expect(screen.getByText("Booking eligibility: Allowed")).toBeInTheDocument();
-    });
+    // Disabled action must not trigger transition calls.
+    await user.click(activateItem);
+    expect(transitionSpy).not.toHaveBeenCalled();
+    getContractsSpy.mockRestore();
+    transitionSpy.mockRestore();
   });
 
-  it("ACTIVE row shows Expire + Terminate, and DRAFT row does not show Expire", async () => {
-    const draft = baseContract({ id: "draft-2", name: "Draft Contract", status: "DRAFT" });
-    const active = baseContract({
-      id: "active-2",
-      name: "Active Contract",
-      status: "ACTIVE",
-      activatedAt: "2026-02-10T08:00:00.000Z",
-      expiresAt: "2026-03-10T08:00:00.000Z",
+  it("after doctor + hospital signatures, Activate appears enabled and ACTIVE updates eligibility banner", async () => {
+    const draftUnsigned = makeContract({
+      id: 201,
+      doctor_user_id: 501,
+      status: "DRAFT",
+      doctor_signed_at: null,
+      hospital_signed_at: null,
     });
 
-    writeContracts([draft, active]);
+    const draftDoctorSigned = makeContract({
+      ...draftUnsigned,
+      doctor_signed_at: "2026-01-05T10:00:00.000Z",
+      doctor_signature: "/uploads/doctor-sign-201.png",
+    });
+
+    const draftFullySigned = makeContract({
+      ...draftDoctorSigned,
+      hospital_signed_at: "2026-01-06T10:00:00.000Z",
+      hospital_signature: "/uploads/hospital-sign-201.png",
+    });
+
+    const activeEligible = makeContract({
+      ...draftFullySigned,
+      status: "ACTIVE",
+      activated_at: "2026-01-07T10:00:00.000Z",
+      updated_at: "2026-01-07T10:00:00.000Z",
+    });
+
+    // Contract list refreshes after each action, so we return staged backend states.
+    const getContractsSpy = jest
+      .spyOn(contractsService, "getContracts")
+      .mockResolvedValueOnce([draftUnsigned])
+      .mockResolvedValueOnce([draftDoctorSigned])
+      .mockResolvedValueOnce([draftFullySigned])
+      .mockResolvedValueOnce([activeEligible])
+      .mockResolvedValue([activeEligible]);
+
+    const signDoctorSpy = jest
+      .spyOn(contractsService, "signDoctor")
+      .mockResolvedValue(draftDoctorSigned);
+    const signHospitalSpy = jest
+      .spyOn(contractsService, "signHospital")
+      .mockResolvedValue(draftFullySigned);
+    const transitionSpy = jest
+      .spyOn(contractsService, "transitionContract")
+      .mockResolvedValue(activeEligible);
 
     const user = userEvent.setup();
-    render(<ContractsPage />);
-
-    await screen.findByText("Active Contract");
-
-    const activeRow = screen.getByText("Active Contract").closest("tr");
-    expect(activeRow).not.toBeNull();
-
-    await user.click(
-      within(activeRow as HTMLTableRowElement).getByRole("button", { name: /open menu/i }),
+    render(
+      <ContractsPageModule.ContractsPage
+        pickFile={async () =>
+          new File(["signature"], "signature.png", { type: "image/png" })
+        }
+      />,
     );
 
-    expect(screen.getByRole("menuitem", { name: "Expire" })).toBeInTheDocument();
-    expect(screen.getByRole("menuitem", { name: "Terminate" })).toBeInTheDocument();
+    await screen.findByText("Doctor booking eligibility: 0 eligible / 1 not eligible");
 
-    await user.keyboard("{Escape}");
-
-    const draftRow = screen.getByText("Draft Contract").closest("tr");
-    expect(draftRow).not.toBeNull();
+    const row = screen.getByText(String(draftUnsigned.doctor_user_id)).closest("tr");
+    expect(row).not.toBeNull();
 
     await user.click(
-      within(draftRow as HTMLTableRowElement).getByRole("button", { name: /open menu/i }),
+      within(row as HTMLTableRowElement).getByRole("button", {
+        name: /open menu/i,
+      }),
+    );
+    await user.click(screen.getByRole("menuitem", { name: "Sign Doctor" }));
+
+    await waitFor(() => {
+      expect(signDoctorSpy).toHaveBeenCalledWith(
+        draftUnsigned.id,
+        expect.any(File),
+      );
+    });
+
+    await user.click(
+      within(row as HTMLTableRowElement).getByRole("button", {
+        name: /open menu/i,
+      }),
+    );
+    await user.click(screen.getByRole("menuitem", { name: "Sign Hospital" }));
+
+    await waitFor(() => {
+      expect(signHospitalSpy).toHaveBeenCalledWith(
+        draftUnsigned.id,
+        expect.any(File),
+      );
+    });
+
+    await user.click(
+      within(row as HTMLTableRowElement).getByRole("button", {
+        name: /open menu/i,
+      }),
     );
 
-    expect(screen.queryByRole("menuitem", { name: "Expire" })).not.toBeInTheDocument();
-    expect(screen.getByRole("menuitem", { name: "Activate" })).toBeInTheDocument();
+    const activateItem = screen.getByRole("menuitem", { name: "Activate" });
+    expect(activateItem).not.toHaveAttribute("data-disabled");
+    await user.click(activateItem);
+
+    await waitFor(() => {
+      expect(transitionSpy).toHaveBeenCalledWith(
+        draftUnsigned.id,
+        "ACTIVE",
+      );
+      expect(
+        screen.getByText("Doctor booking eligibility: 1 eligible / 0 not eligible"),
+      ).toBeInTheDocument();
+    });
+
+    getContractsSpy.mockRestore();
+    signDoctorSpy.mockRestore();
+    signHospitalSpy.mockRestore();
+    transitionSpy.mockRestore();
   });
 });
