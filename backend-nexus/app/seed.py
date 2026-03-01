@@ -51,6 +51,10 @@ SEED_USERS = [
     SeedUser("Doctor", "Four", "doctor.four@seed.com", "Team2026@", "DOCTOR"),
     SeedUser("Doctor", "Five", "doctor.five@seed.com", "Team2026@", "DOCTOR"),
     SeedUser("Doctor", "Six", "doctor.six@seed.com", "Team2026@", "DOCTOR"),
+    SeedUser("Doctor", "Seven", "doctor.seven@seed.com", "Team2026@", "DOCTOR"),
+    SeedUser("Doctor", "Eight", "doctor.eight@seed.com", "Team2026@", "DOCTOR"),
+    SeedUser("Doctor", "Nine", "doctor.nine@seed.com", "Team2026@", "DOCTOR"),
+    SeedUser("Doctor", "Ten", "doctor.ten@seed.com", "Team2026@", "DOCTOR"),
     SeedUser("Sales", "Agent", "sales.agent@seed.com", "Team2026@", "SALES"),
     SeedUser("Client", "User", "client.user@seed.com", "Team2026@", "CLIENT"),
 ]
@@ -180,6 +184,7 @@ SEED_DEPARTMENTS = [
 SEED_TENANT_DEPARTMENTS = [
     {"tenant_name": "Bluestone Clinic", "department_name": "General Practice", "phone_number": "+1-555-1001", "email": "gp@bluestone.com", "location": "Building A, Floor 1"},
     {"tenant_name": "Bluestone Clinic", "department_name": "Cardiology", "phone_number": "+1-555-1002", "email": "cardio@bluestone.com", "location": "Building A, Floor 2"},
+    {"tenant_name": "Bluestone Clinic", "department_name": "Pediatrics", "phone_number": "+1-555-1003", "email": "pediatrics@bluestone.com", "location": "Building B, Floor 1"},
     {"tenant_name": "Riverside Health Partners", "department_name": "General Practice", "phone_number": "+1-555-2001", "email": "info@riverside.com", "location": "Main Street 100"},
     {"tenant_name": "Riverside Health Partners", "department_name": "Pediatrics", "phone_number": "+1-555-2002", "email": "pediatrics@riverside.com", "location": "Main Street 100, Wing B"},
     {"tenant_name": "Apex Medical Group", "department_name": "General Practice", "phone_number": "+1-555-3001", "email": "gp@apex.com", "location": "Downtown Plaza, Level 1"},
@@ -198,6 +203,10 @@ SEED_TENANT_DEPARTMENTS = [
 SEED_DOCTORS = [
     {"user_email": "doctor.one@seed.com", "tenant_name": "Bluestone Clinic", "specialization": "General Practice", "licence_number": "MD-BLU-001"},
     {"user_email": "doctor.two@seed.com", "tenant_name": "Bluestone Clinic", "specialization": "Cardiology", "licence_number": "MD-BLU-002"},
+    {"user_email": "doctor.seven@seed.com", "tenant_name": "Bluestone Clinic", "specialization": "General Practice", "licence_number": "MD-BLU-003"},
+    {"user_email": "doctor.eight@seed.com", "tenant_name": "Bluestone Clinic", "specialization": "Cardiology", "licence_number": "MD-BLU-004"},
+    {"user_email": "doctor.nine@seed.com", "tenant_name": "Bluestone Clinic", "specialization": "Pediatrics", "licence_number": "MD-BLU-005"},
+    {"user_email": "doctor.ten@seed.com", "tenant_name": "Bluestone Clinic", "specialization": "Dermatology", "licence_number": "MD-BLU-006"},
     {"user_email": "doctor.three@seed.com", "tenant_name": "Riverside Health Partners", "specialization": "General Practice", "licence_number": "MD-RIV-001"},
     {"user_email": "doctor.four@seed.com", "tenant_name": "Riverside Health Partners", "specialization": "Pediatrics", "licence_number": "MD-RIV-002"},
     # Apex Medical Group - full example
@@ -336,8 +345,11 @@ def seed_tenant_subscriptions(session, tenants_by_name):
     from app.models.tenant_subscription import SubscriptionStatus
     from datetime import timedelta
     
-    # Get the FREE plan
+    # Get all subscription plans
     free_plan = session.query(SubscriptionPlan).filter(SubscriptionPlan.name == "FREE").first()
+    small_clinic_plan = session.query(SubscriptionPlan).filter(SubscriptionPlan.name == "Small Clinic").first()
+    medium_clinic_plan = session.query(SubscriptionPlan).filter(SubscriptionPlan.name == "Medium Clinic").first()
+    hospital_plan = session.query(SubscriptionPlan).filter(SubscriptionPlan.name == "Hospital").first()
     
     if not free_plan:
         raise Exception("FREE subscription plan not found")
@@ -347,22 +359,33 @@ def seed_tenant_subscriptions(session, tenants_by_name):
         for sub in session.query(TenantSubscription).all()
     }
     
+    # Map specific tenants to their subscription plans (non-FREE)
+    specific_subscriptions = {
+        "Bluestone Clinic": medium_clinic_plan,  # Tenant manager's clinic gets Medium plan
+        "Riverside Health Partners": small_clinic_plan,  # Small Clinic plan
+        "Apex Medical Group": hospital_plan,  # Hospital plan
+    }
+    
     # Create subscriptions for all approved tenants
     for tenant_name, tenant in tenants_by_name.items():
         if tenant.status == TenantStatus.approved:
-            key = (tenant.id, free_plan.id)
+            # Check if this tenant has a specific plan assigned
+            specific_plan = specific_subscriptions.get(tenant_name)
+            plan_to_use = specific_plan if specific_plan else free_plan
+            
+            key = (tenant.id, plan_to_use.id)
             
             # Skip if subscription already exists
             if key in existing_subscriptions:
                 continue
             
-            # Create FREE subscription for approved tenant
+            # Create subscription
             activated_at = datetime.now(timezone.utc)
-            expires_at = activated_at + timedelta(days=free_plan.duration)
+            expires_at = activated_at + timedelta(days=plan_to_use.duration)
             
             subscription = TenantSubscription(
                 tenant_id=tenant.id,
-                subscription_plan_id=free_plan.id,
+                subscription_plan_id=plan_to_use.id,
                 activated_at=activated_at,
                 expires_at=expires_at,
                 status=SubscriptionStatus.ACTIVE
