@@ -147,7 +147,7 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
   }
 
   const { tenant, details, departments, products } = landingData
-  const plans = landingData.plans ?? []
+  const plans = (landingData.plans ?? []).filter((p) => p.is_active !== false)
   const title = details?.title ?? tenant.name
   const subtitle = details?.slogan ?? 'Welcome to our landing page.'
   const logo = resolveMediaUrl(details?.logo)
@@ -557,7 +557,7 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
                       <div className="flex items-start justify-between gap-3">
                         <h3 className="text-sm font-semibold sm:text-base">{plan.name}</h3>
                         <span className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
-                          Active
+                          Available
                         </span>
                       </div>
 

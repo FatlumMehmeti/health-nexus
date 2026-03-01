@@ -84,6 +84,52 @@ def enforce_tenant_pricing_rules(db: Session, tenant_id: int, price: Decimal):
         )
 
 
+@router.get("/pricing-bounds")
+def get_pricing_bounds(
+    tenant_id: int,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """
+    Return the allowed price range for plans in this tenant, derived from the
+    active subscription's base price (50%–200%).  Returns null bounds if no
+    active paid subscription exists (i.e. only global schema limits apply).
+    """
+    user_id = current_user.get("user_id")
+    verify_tenant_manager(db, user_id, tenant_id)
+
+    active_subscription = (
+        db.query(TenantSubscription)
+        .join(
+            SubscriptionPlan,
+            TenantSubscription.subscription_plan_id == SubscriptionPlan.id,
+        )
+        .filter(
+            TenantSubscription.tenant_id == tenant_id,
+            TenantSubscription.status == SubscriptionStatus.ACTIVE,
+        )
+        .order_by(TenantSubscription.activated_at.desc(), TenantSubscription.id.desc())
+        .first()
+    )
+
+    if (
+        not active_subscription
+        or active_subscription.subscription_plan is None
+        or Decimal(str(active_subscription.subscription_plan.price or 0)) <= 0
+    ):
+        return {"min_price": None, "max_price": None, "base_price": None}
+
+    base_price = Decimal(str(active_subscription.subscription_plan.price))
+    min_allowed = (base_price * Decimal("0.50")).quantize(Decimal("0.01"))
+    max_allowed = (base_price * Decimal("2.00")).quantize(Decimal("0.01"))
+
+    return {
+        "min_price": float(min_allowed),
+        "max_price": float(max_allowed),
+        "base_price": float(base_price),
+    }
+
+
 @router.post("/", response_model=UserTenantPlanRead)
 def create_plan(
     plan: UserTenantPlanCreate,
