@@ -13,6 +13,7 @@ from app.schemas.enrollment import (
     EnrollmentStatusRead,
     EnrollmentOperationalStatus,
 )
+from app.schemas.enrollment_status_history import EnrollmentStatusHistoryRead
 from app.services.enrollment_service import (
     ActorContext,
     EnrollmentErrorCode,
@@ -22,6 +23,7 @@ from app.services.enrollment_service import (
     get_enrollment_scoped,
     list_enrollments_scoped,
     get_operational_status,
+    get_enrollment_history_scoped,
 )
 from app.models.enrollment import EnrollmentStatus
 
@@ -270,6 +272,7 @@ def list_enrollments_endpoint(
     tenant_id: int,
     request: Request,
     patient_user_id: Optional[int] = Query(default=None),
+    status: Optional[EnrollmentStatus] = Query(default=None), 
     db: Session = Depends(get_db),
     user: Dict[str, Any] = Depends(get_current_user),
 ):
@@ -300,6 +303,7 @@ def list_enrollments_endpoint(
             tenant_id=tenant_id,
             actor=actor,
             patient_user_id=patient_user_id,
+            status=status,
         )
 
         return [
@@ -308,6 +312,7 @@ def list_enrollments_endpoint(
                 status=e.status.value
                 if isinstance(e.status, EnrollmentStatus)
                 else str(e.status),
+                patient_user_id=e.patient_user_id,
                 activated_at=e.activated_at.isoformat()
                 if e.activated_at
                 else None,
@@ -464,5 +469,40 @@ def enrollment_operational_status_endpoint(
             expected_tenant_id=tenant_id,
         )
         return EnrollmentOperationalStatus(**status_payload)
+    except EnrollmentServiceError as exc:
+        return _error_response(exc)
+
+@router.get(
+    "/{enrollment_id}/history",
+    response_model=list[EnrollmentStatusHistoryRead],
+)
+def enrollment_history_endpoint(
+    tenant_id: int,
+    enrollment_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    user: Dict[str, Any] = Depends(get_current_user),
+):
+    """
+    Retrieve status history for a given enrollment.
+    """
+    actor = _actor_from_user_payload(user)
+
+    try:
+        _ensure_tenant_context_consistency(
+            requested_tenant_id=tenant_id,
+            user_payload=user,
+            request=request,
+        )
+
+        history = get_enrollment_history_scoped(
+            db,
+            enrollment_id=enrollment_id,
+            actor=actor,
+            expected_tenant_id=tenant_id,
+        )
+
+        return history  # Pydantic handles conversion (from_attributes=True)
+
     except EnrollmentServiceError as exc:
         return _error_response(exc)

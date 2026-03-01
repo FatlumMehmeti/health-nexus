@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Iterable, Optional
 
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session,joinedload
 
 from app.models import (
     Enrollment,
@@ -242,3 +242,27 @@ def insert_audit_event(
     """
     db.add(event)
     db.flush()
+
+    # ---------------------------------------------------------------------------
+# Enrollment Status History Retrieval
+# ---------------------------------------------------------------------------
+
+def list_enrollment_status_history(
+    db: Session,
+    *,
+    enrollment_id: int,
+    tenant_id: int,
+) -> list[EnrollmentStatusHistory]:
+    """
+    Retrieve status history records for a given enrollment scoped to tenant.
+    """
+
+    return (
+        db.query(EnrollmentStatusHistory)
+        .filter(
+            EnrollmentStatusHistory.enrollment_id == enrollment_id,
+            EnrollmentStatusHistory.tenant_id == tenant_id,
+        )
+        .order_by(EnrollmentStatusHistory.changed_at.desc())
+        .all()
+    )

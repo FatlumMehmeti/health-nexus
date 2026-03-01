@@ -48,7 +48,12 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { enrollmentsService } from "@/services/enrollments.service";
+import {
+  enrollmentsService,
+  EnrollmentStatus,
+  EnrollmentStatusApi,
+  EnrollmentStatusHistoryApi,
+} from "@/services/enrollments.service";
 
 export const Route = createFileRoute("/dashboard/tenant")({
   beforeLoad: requireAuth({ routeKey: "DASHBOARD_TENANT" }),
@@ -245,6 +250,263 @@ export function TenantManagerPageContent({
 }
 
 //Enrollments management page for tenant manager
+function TenantEnrollmentsPanel() {
+  const queryClient = useQueryClient();
+
+  const [selectedEnrollment, setSelectedEnrollment] =
+    useState<EnrollmentStatusApi | null>(null);
+
+  /* -----------------------------------------------------
+   * Fetch current tenant
+   * --------------------------------------------------- */
+  const tenantQuery = useQuery({
+    queryKey: QUERY_KEYS.current,
+    queryFn: () => tenantsService.getCurrentTenant(),
+  });
+
+  const tenantId = tenantQuery.data?.id;
+
+  /* -----------------------------------------------------
+   * List Enrollments
+   * --------------------------------------------------- */
+  const enrollmentsQuery = useQuery({
+    queryKey: ["tenant-manager", "enrollments", tenantId],
+    queryFn: () => enrollmentsService.list(tenantId!),
+    enabled: !!tenantId,
+  });
+
+  /* -----------------------------------------------------
+   * Transition Mutation (Activate / Cancel)
+   * --------------------------------------------------- */
+  const transitionMutation = useMutation({
+    mutationFn: ({
+      enrollmentId,
+      target,
+      reason,
+    }: {
+      enrollmentId: number;
+      target: EnrollmentStatus;
+      reason?: string;
+    }) =>
+      enrollmentsService.transition(tenantId!, enrollmentId, target, reason),
+
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["tenant-manager", "enrollments", tenantId],
+      });
+
+      if (selectedEnrollment) {
+        queryClient.invalidateQueries({
+          queryKey: ["enrollment-history", tenantId, selectedEnrollment.id],
+        });
+      }
+    },
+  });
+
+  /* -----------------------------------------------------
+   * Lazy History Query
+   * --------------------------------------------------- */
+  const historyQuery = useQuery({
+    queryKey: ["enrollment-history", tenantId, selectedEnrollment?.id],
+    queryFn: () =>
+      enrollmentsService.getHistory(tenantId!, selectedEnrollment!.id),
+    enabled: !!selectedEnrollment && !!tenantId,
+  });
+
+  /* -----------------------------------------------------
+   * Helpers
+   * --------------------------------------------------- */
+  const handleTransition = (
+    enrollment: EnrollmentStatusApi,
+    target: EnrollmentStatus,
+  ) => {
+    const reason = window.prompt("Reason for transition?");
+    transitionMutation.mutate({
+      enrollmentId: enrollment.id,
+      target,
+      reason: reason || undefined,
+    });
+  };
+
+  const formatDate = (dateString: string | null) => {
+    if (!dateString) return "—";
+    return new Date(dateString).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
+  const getEnrollmentStatusVariant = (
+    status: string,
+  ): "success" | "warning" | "destructive" | "secondary" | "default" => {
+    switch (status) {
+      case "ACTIVE":
+        return "success";
+      case "PENDING":
+        return "warning";
+      case "CANCELLED":
+        return "destructive";
+      case "EXPIRED":
+        return "secondary";
+      default:
+        return "default";
+    }
+  };
+
+  const enrollments = enrollmentsQuery.data ?? [];
+  const isLoading = enrollmentsQuery.isLoading || tenantQuery.isLoading;
+  const isError = enrollmentsQuery.isError;
+  const error = enrollmentsQuery.error;
+
+  /* -----------------------------------------------------
+   * Render
+   * --------------------------------------------------- */
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Enrollments</CardTitle>
+        <CardDescription>
+          {isLoading
+            ? "Loading..."
+            : `${enrollments.length} enrollment${
+                enrollments.length !== 1 ? "s" : ""
+              } found`}
+        </CardDescription>
+      </CardHeader>
+
+      <CardContent>
+        {isLoading ? (
+          <div className="space-y-2">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <Skeleton key={i} className="h-16 w-full" />
+            ))}
+          </div>
+        ) : isError ? (
+          <div className="py-8 text-center text-destructive">
+            Error loading enrollments:{" "}
+            {(error as Error)?.message || "Unknown error"}
+          </div>
+        ) : enrollments.length === 0 ? (
+          <div className="py-12 text-center text-muted-foreground">
+            No enrollments found for this tenant.
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>ID</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Patient ID</TableHead>
+                  <TableHead>Activated</TableHead>
+                  <TableHead>Expires</TableHead>
+                  <TableHead>Cancelled</TableHead>
+                  <TableHead>Updated</TableHead>
+                  <TableHead>Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+
+              <TableBody>
+                {enrollments.map((enrollment) => (
+                  <TableRow key={enrollment.id}>
+                    <TableCell className="font-medium">
+                      {enrollment.id}
+                    </TableCell>
+
+                    <TableCell>
+                      <Badge
+                        variant={getEnrollmentStatusVariant(enrollment.status)}
+                      >
+                        {enrollment.status}
+                      </Badge>
+                    </TableCell>
+
+                    <TableCell className="text-muted-foreground text-sm">
+                      {enrollment.patient_user_id}
+                    </TableCell>
+
+                    <TableCell className="text-muted-foreground text-sm">
+                      {formatDate(enrollment.activated_at)}
+                    </TableCell>
+
+                    <TableCell className="text-muted-foreground text-sm">
+                      {formatDate(enrollment.expires_at)}
+                    </TableCell>
+
+                    <TableCell className="text-muted-foreground text-sm">
+                      {formatDate(enrollment.cancelled_at)}
+                    </TableCell>
+
+                    <TableCell className="text-muted-foreground text-sm">
+                      {formatDate(enrollment.updated_at)}
+                    </TableCell>
+
+                    {/* NEW ACTIONS COLUMN */}
+                    <TableCell className="space-x-2">
+                      <button
+                        className="text-blue-600 underline text-sm"
+                        onClick={() => setSelectedEnrollment(enrollment)}
+                      >
+                        History
+                      </button>
+
+                      {enrollment.status !== "ACTIVE" && (
+                        <button
+                          className="text-green-600 underline text-sm"
+                          onClick={() => handleTransition(enrollment, "ACTIVE")}
+                        >
+                          Activate
+                        </button>
+                      )}
+
+                      {enrollment.status !== "CANCELLED" && (
+                        <button
+                          className="text-red-600 underline text-sm"
+                          onClick={() =>
+                            handleTransition(enrollment, "CANCELLED")
+                          }
+                        >
+                          Cancel
+                        </button>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+      </CardContent>
+
+      {/* HISTORY MODAL */}
+      {selectedEnrollment && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-[600px] max-h-[80vh] overflow-y-auto">
+            <h3 className="text-lg font-semibold mb-4">
+              Enrollment History (ID {selectedEnrollment.id})
+            </h3>
+
+            {historyQuery.isLoading && <p>Loading history...</p>}
+
+            {historyQuery.data && <HistoryTimeline items={historyQuery.data} />}
+
+            <div className="mt-4 text-right">
+              <button
+                onClick={() => setSelectedEnrollment(null)}
+                className="px-4 py-2 bg-gray-200 rounded"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </Card>
+  );
+}
 //function TenantEnrollmentsPanel() {
 //  const tenantQuery = useQuery({
 //    queryKey: QUERY_KEYS.current,
@@ -255,89 +517,116 @@ export function TenantManagerPageContent({
 
 //  const enrollmentsQuery = useQuery({
 //    queryKey: ["tenant-manager", "enrollments", tenantId],
-//    queryFn: () => tenantPlansService.listEnrollments(tenantId!),
+//    queryFn: () => enrollmentsService.list(tenantId!),
 //    enabled: !!tenantId,
 //  });
+
+//  const formatDate = (dateString: string | null) => {
+//    if (!dateString) return "—";
+//    return new Date(dateString).toLocaleDateString("en-US", {
+//      year: "numeric",
+//      month: "short",
+//      day: "numeric",
+//      hour: "2-digit",
+//      minute: "2-digit",
+//    });
+//  };
+
+//  const getEnrollmentStatusVariant = (
+//    status: string,
+//  ): "success" | "warning" | "destructive" | "secondary" | "default" => {
+//    switch (status) {
+//      case "ACTIVE":
+//        return "success";
+//      case "PENDING":
+//        return "warning";
+//      case "CANCELLED":
+//        return "destructive";
+//      case "EXPIRED":
+//        return "secondary";
+//      default:
+//        return "default";
+//    }
+//  };
+
+//  const enrollments = enrollmentsQuery.data ?? [];
+//  const isLoading = enrollmentsQuery.isLoading || tenantQuery.isLoading;
+//  const isError = enrollmentsQuery.isError;
+//  const error = enrollmentsQuery.error;
 
 //  return (
 //    <Card>
 //      <CardHeader>
-//        <CardTitle className="text-base">Selected plans</CardTitle>
+//        <CardTitle>Enrollments</CardTitle>
 //        <CardDescription>
-//          Users who have subscribed to your plans.
+//          {isLoading
+//            ? "Loading..."
+//            : `${enrollments.length} enrollment${enrollments.length !== 1 ? "s" : ""} found`}
 //        </CardDescription>
 //      </CardHeader>
 //      <CardContent>
-//        {enrollmentsQuery.isLoading ? (
+//        {isLoading ? (
 //          <div className="space-y-2">
-//            <Skeleton className="h-8 w-full" />
-//            <Skeleton className="h-8 w-full" />
-//            <Skeleton className="h-8 w-full" />
+//            {Array.from({ length: 5 }).map((_, i) => (
+//              <Skeleton key={i} className="h-16 w-full" />
+//            ))}
 //          </div>
-//        ) : (enrollmentsQuery.data ?? []).length === 0 ? (
-//          <p className="text-sm text-muted-foreground">
-//            No users have subscribed to a plan yet.
-//          </p>
+//        ) : isError ? (
+//          <div className="py-8 text-center text-destructive">
+//            Error loading enrollments:{" "}
+//            {(error as Error)?.message || "Unknown error"}
+//          </div>
+//        ) : enrollments.length === 0 ? (
+//          <div className="py-12 text-center text-muted-foreground">
+//            No enrollments found for this tenant.
+//          </div>
 //        ) : (
-//          <div className="rounded-md border">
+//          <div className="overflow-x-auto">
 //            <Table>
 //              <TableHeader>
 //                <TableRow>
-//                  <TableHead>User ID</TableHead>
-//                  <TableHead>Name</TableHead>
-//                  <TableHead>Email</TableHead>
-//                  <TableHead>Plan</TableHead>
+//                  <TableHead>ID</TableHead>
 //                  <TableHead>Status</TableHead>
-//                  <TableHead>Subscribed</TableHead>
+//                  <TableHead>Patient ID</TableHead>
+//                  <TableHead>Activated</TableHead>
+//                  <TableHead>Expires</TableHead>
+//                  <TableHead>Cancelled</TableHead>
+//                  <TableHead>Updated</TableHead>
 //                </TableRow>
 //              </TableHeader>
 //              <TableBody>
-//                {(enrollmentsQuery.data ?? []).map((enrollment) => (
+//                {enrollments.map((enrollment) => (
 //                  <TableRow key={enrollment.id}>
-//                    <TableCell className="font-mono text-xs">
-//                      {enrollment.patient_user_id}
+//                    <TableCell className="font-medium">
+//                      {enrollment.id}
 //                    </TableCell>
-//                    <TableCell>
-//                      {enrollment.patient_first_name ||
-//                      enrollment.patient_last_name ? (
-//                        `${enrollment.patient_first_name ?? ""} ${
-//                          enrollment.patient_last_name ?? ""
-//                        }`.trim()
-//                      ) : (
-//                        <span className="text-muted-foreground">—</span>
-//                      )}
-//                    </TableCell>
-//                    <TableCell className="text-sm">
-//                      {enrollment.patient_email ?? "—"}
-//                    </TableCell>
-//                    <TableCell>
-//                      <Badge variant="outline">
-//                        {enrollment.plan_name}
-//                      </Badge>
-//                    </TableCell>
+
 //                    <TableCell>
 //                      <Badge
-//                        variant={
-//                          enrollment.status === "ACTIVE"
-//                            ? "default"
-//                            : enrollment.status === "CANCELLED"
-//                            ? "destructive"
-//                            : "secondary"
-//                        }
+//                        variant={getEnrollmentStatusVariant(enrollment.status)}
 //                      >
 //                        {enrollment.status}
 //                      </Badge>
 //                    </TableCell>
-//                    <TableCell className="text-xs text-muted-foreground">
-//                      {enrollment.activated_at
-//                        ? new Date(
-//                            enrollment.activated_at
-//                          ).toLocaleDateString()
-//                        : enrollment.created_at
-//                        ? new Date(
-//                            enrollment.created_at
-//                          ).toLocaleDateString()
-//                        : "—"}
+
+//                    <TableCell className="text-muted-foreground text-sm">
+//                      {enrollment.patient_user_id}
+//                    </TableCell>
+
+//                    <TableCell className="text-muted-foreground text-sm">
+//                      {formatDate(enrollment.activated_at)}
+//                    </TableCell>
+
+//                    <TableCell className="text-muted-foreground text-sm">
+//                      {formatDate(enrollment.expires_at)}
+//                    </TableCell>
+
+//                    <TableCell className="text-muted-foreground text-sm">
+//                      {formatDate(enrollment.cancelled_at)}
+//                    </TableCell>
+
+//                    <TableCell className="text-muted-foreground text-sm">
+//                      {formatDate(enrollment.updated_at)}
 //                    </TableCell>
 //                  </TableRow>
 //                ))}
@@ -349,114 +638,6 @@ export function TenantManagerPageContent({
 //    </Card>
 //  );
 //}
-function TenantEnrollmentsPanel() {
-  const tenantQuery = useQuery({
-    queryKey: QUERY_KEYS.current,
-    queryFn: () => tenantsService.getCurrentTenant(),
-  });
-
-  const tenantId = tenantQuery.data?.id;
-
-  const enrollmentsQuery = useQuery({
-    queryKey: ["tenant-manager", "enrollments", tenantId],
-    queryFn: () => enrollmentsService.list(tenantId!),
-    enabled: !!tenantId,
-  });
-
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-base">Enrollments</CardTitle>
-        <CardDescription>
-          Enrollment records for this tenant.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        {enrollmentsQuery.isLoading ? (
-          <div className="space-y-2">
-            <Skeleton className="h-8 w-full" />
-            <Skeleton className="h-8 w-full" />
-            <Skeleton className="h-8 w-full" />
-          </div>
-        ) : (enrollmentsQuery.data ?? []).length === 0 ? (
-          <p className="text-sm text-muted-foreground">
-            No enrollments found.
-          </p>
-        ) : (
-          <div className="rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>ID</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Activated</TableHead>
-                  <TableHead>Expires</TableHead>
-                  <TableHead>Cancelled</TableHead>
-                  <TableHead>Updated</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {(enrollmentsQuery.data ?? []).map((enrollment) => (
-                  <TableRow key={enrollment.id}>
-                    <TableCell className="font-mono text-xs">
-                      {enrollment.id}
-                    </TableCell>
-
-                    <TableCell>
-                      <Badge
-                        variant={
-                          enrollment.status === "ACTIVE"
-                            ? "default"
-                            : enrollment.status === "CANCELLED"
-                            ? "destructive"
-                            : "secondary"
-                        }
-                      >
-                        {enrollment.status}
-                      </Badge>
-                    </TableCell>
-
-                    <TableCell className="text-xs text-muted-foreground">
-                      {enrollment.activated_at
-                        ? new Date(
-                            enrollment.activated_at
-                          ).toLocaleDateString()
-                        : "—"}
-                    </TableCell>
-
-                    <TableCell className="text-xs text-muted-foreground">
-                      {enrollment.expires_at
-                        ? new Date(
-                            enrollment.expires_at
-                          ).toLocaleDateString()
-                        : "—"}
-                    </TableCell>
-
-                    <TableCell className="text-xs text-muted-foreground">
-                      {enrollment.cancelled_at
-                        ? new Date(
-                            enrollment.cancelled_at
-                          ).toLocaleDateString()
-                        : "—"}
-                    </TableCell>
-
-                    <TableCell className="text-xs text-muted-foreground">
-                      {enrollment.updated_at
-                        ? new Date(
-                            enrollment.updated_at
-                          ).toLocaleDateString()
-                        : "—"}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        )}
-      </CardContent>
-    </Card>
-  );
-}
 //Plans management page for tenant manager
 function TenantPlansPanel() {
   const queryClient = useQueryClient();

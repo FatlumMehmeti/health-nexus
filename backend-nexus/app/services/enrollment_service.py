@@ -20,6 +20,7 @@ from app.repositories import (
     get_enrollment_by_id,
     get_enrollment_by_tenant_and_patient,
     list_enrollments_by_tenant,
+    list_enrollment_status_history
 )
 
 
@@ -738,6 +739,7 @@ def list_enrollments_scoped(
     tenant_id: int,
     actor: ActorContext,
     patient_user_id: Optional[int] = None,
+    status: Optional[EnrollmentStatus] = None,
 ) -> list[Enrollment]:
     """
     List enrollments within a tenant, applying role-based and tenant-scoped
@@ -784,6 +786,8 @@ def list_enrollments_scoped(
             http_status=403,
             details={"role": role},
         )
+    if status is not None:
+        query = query.filter(Enrollment.status == status)
 
     enrollments = list_enrollments_by_tenant(
         db,
@@ -864,3 +868,38 @@ def get_operational_status(
         "isExpired": is_expired,
         "last_updated": enrollment.updated_at.isoformat() if hasattr(enrollment, "updated_at") and enrollment.updated_at else None,
     }
+def get_enrollment_history_scoped(
+    db: Session,
+    *,
+    enrollment_id: int,
+    actor: ActorContext,
+    expected_tenant_id: int,
+) -> list[EnrollmentStatusHistory]:
+    """
+    Retrieve enrollment status history with tenant and authorization validation.
+    """
+
+    enrollment = get_enrollment_by_id(db, enrollment_id)
+
+    if not enrollment:
+        raise EnrollmentServiceError(
+            EnrollmentErrorCode.NOT_FOUND,
+            "Enrollment not found",
+            http_status=404,
+        )
+
+    if enrollment.tenant_id != expected_tenant_id:
+        raise EnrollmentServiceError(
+            EnrollmentErrorCode.TENANT_SCOPE_VIOLATION,
+            "Enrollment does not belong to this tenant",
+            http_status=403,
+        )
+
+    # Optional: role-based access checks
+    # if actor.role not allowed → raise EnrollmentServiceError
+
+    return list_enrollment_status_history(
+        db,
+        enrollment_id=enrollment_id,
+        tenant_id=expected_tenant_id,
+    )
