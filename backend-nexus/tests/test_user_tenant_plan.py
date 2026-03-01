@@ -125,6 +125,38 @@ def test_create_plan_invalid_price_returns_422(client):
     assert response.status_code == 422
 
 
+def test_get_pricing_bounds_returns_expected_values(client, db_session):
+    # Create base subscription plan
+    base_plan = SubscriptionPlan(
+        name="PAID",
+        price=100,
+        duration=30,
+    )
+    db_session.add(base_plan)
+    db_session.flush()
+
+    # Activate tenant subscription
+    subscription = TenantSubscription(
+        tenant_id=client.tenant_id,
+        subscription_plan_id=base_plan.id,
+        status="ACTIVE",
+        activated_at=datetime.utcnow(),
+        expires_at=datetime.utcnow() + timedelta(days=30),
+    )
+    db_session.add(subscription)
+    db_session.commit()
+
+    response = client.get(
+        "/user-tenant-plans/pricing-bounds",
+        params={"tenant_id": client.tenant_id},
+    )
+
+    assert response.status_code == 200
+
+    data = response.json()
+    assert data["min_price"] == 50  # 100 * 0.5
+    assert data["max_price"] == 200  # 100 * 2
+
 def test_create_plan_enforces_tenant_pricing_bounds(client, db_session):
     paid_plan = SubscriptionPlan(name="PAID", price=100, duration=30)
     db_session.add(paid_plan)
@@ -288,6 +320,21 @@ def test_get_plans_by_tenant_success(client, db_session):
     assert names == {"A", "B"}
 
 
+def test_get_plan_for_other_tenant_returns_403(client, db_session):
+    other_plan = UserTenantPlan(
+        tenant_id=client.other_tenant_id,
+        name="Other Tenant Plan",
+        price=15,
+        is_active=True,
+    )
+    db_session.add(other_plan)
+    db_session.commit()
+
+    response = client.get(f"/user-tenant-plans/{other_plan.id}")
+
+    assert response.status_code == 403
+
+
 def test_get_plans_by_tenant_requires_auth(client):
     saved = app.dependency_overrides.pop(get_current_user, None)
     try:
@@ -381,6 +428,25 @@ def test_get_tenant_enrollments_returns_enriched_details(client, db_session):
     assert row["patient_last_name"] == "Lovelace"
     assert row["plan_name"] == "Premium"
     assert row["patient_user_id"] == patient_user.id
+
+
+def test_update_plan_can_toggle_is_active(client, db_session):
+    plan = UserTenantPlan(
+        tenant_id=client.tenant_id,
+        name="Toggle Plan",
+        price=10,
+        is_active=True,
+    )
+    db_session.add(plan)
+    db_session.commit()
+
+    response = client.put(
+        f"/user-tenant-plans/{plan.id}",
+        json={"is_active": False},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["is_active"] is False
 
 
 def test_get_tenant_enrollments_enforces_tenant_isolation(client, db_session):
