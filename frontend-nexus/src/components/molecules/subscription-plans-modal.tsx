@@ -3,9 +3,13 @@ import { IconX, IconCheck } from "@tabler/icons-react";
 import {
   getSubscriptionPlans,
   getCurrentSubscription,
+  getSubscriptionStats,
+  changePlan,
   type SubscriptionPlan,
   type TenantSubscription,
+  type SubscriptionStats,
 } from "@/services/subscription-plans.service";
+import { isApiError } from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
 
 interface SubscriptionPlansModalProps {
@@ -23,8 +27,38 @@ export function SubscriptionPlansModal({
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
   const [currentSubscription, setCurrentSubscription] =
     useState<TenantSubscription | null>(null);
+  const [stats, setStats] = useState<SubscriptionStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [changingPlanId, setChangingPlanId] = useState<number | null>(null);
+  const [changeError, setChangeError] = useState<string | null>(null);
+
+  // Helper: Check if a plan can accommodate current stats
+  const canPlanFitStats = (plan: SubscriptionPlan): boolean => {
+    if (!stats) return true;
+
+    const docsFit =
+      plan.max_doctors === null || stats.doctors_used <= plan.max_doctors;
+    const patientsFit =
+      plan.max_patients === null || stats.patients_used <= plan.max_patients;
+    const deptsFit =
+      plan.max_departments === null ||
+      stats.departments_used <= plan.max_departments;
+
+    return docsFit && patientsFit && deptsFit;
+  };
+
+  // Helper: Find the recommended plan (smallest plan that fits current stats)
+  const getRecommendedPlanId = (): number | null => {
+    if (!stats) return null;
+
+    // Filter plans that can fit the stats, then sort by total capacity and pick the smallest
+    const fittingPlans = plans.filter(canPlanFitStats);
+    if (fittingPlans.length === 0) return null;
+
+    // Return the first fitting plan (they're already ordered from smallest to largest in the DB)
+    return fittingPlans[0].id;
+  };
 
   // Fetch both subscription plans and current subscription on mount
   useEffect(() => {
@@ -34,15 +68,25 @@ export function SubscriptionPlansModal({
         const results = await Promise.allSettled([
           getSubscriptionPlans(),
           getCurrentSubscription(),
+          getSubscriptionStats(),
         ]);
         const plansData =
           results[0].status === "fulfilled" ? results[0].value : [];
         const currentSub =
           results[1].status === "fulfilled" ? results[1].value : null;
+        const statsData =
+          results[2].status === "fulfilled" ? results[2].value : null;
         setPlans(plansData);
         setCurrentSubscription(currentSub);
+        setStats(statsData);
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to load plans");
+        let message = "Failed to load plans";
+        if (isApiError(err)) {
+          message = err.displayMessage;
+        } else if (err instanceof Error) {
+          message = err.message;
+        }
+        setError(message);
       } finally {
         setLoading(false);
       }
@@ -50,6 +94,27 @@ export function SubscriptionPlansModal({
 
     fetchData();
   }, []);
+
+  const handleChangePlan = async (planId: number) => {
+    try {
+      setChangingPlanId(planId);
+      setChangeError(null);
+      await changePlan(planId);
+      // Refresh the current subscription
+      const updated = await getCurrentSubscription();
+      setCurrentSubscription(updated);
+    } catch (err) {
+      let message = "Failed to change plan";
+      if (isApiError(err)) {
+        message = err.displayMessage;
+      } else if (err instanceof Error) {
+        message = err.message;
+      }
+      setChangeError(message);
+    } finally {
+      setChangingPlanId(null);
+    }
+  };
 
   // Show loading state while fetching data
   if (loading) {
@@ -70,23 +135,61 @@ export function SubscriptionPlansModal({
   }
 
   return (
-    <div className="w-full space-y-8 py-6">
-      <h1 className="text-4xl font-bold text-center mb-12 dark:text-white text-gray-900">
+    <div className="w-full space-y-6 py-6">
+      {/* Title */}
+      <h1 className="text-4xl font-bold text-center mb-4 dark:text-white text-gray-900">
         Choose Your Nexus Plan
       </h1>
 
+      {/* Thin stats summary line */}
+      {stats && (
+        <div className="text-center text-sm text-gray-600 dark:text-gray-400">
+          Currently registered:{" "}
+          <span className="font-semibold text-gray-900 dark:text-white">
+            {stats.doctors_used} doctor{stats.doctors_used !== 1 ? "s" : ""}
+          </span>
+          ,{" "}
+          <span className="font-semibold text-gray-900 dark:text-white">
+            {stats.patients_used} patient{stats.patients_used !== 1 ? "s" : ""}
+          </span>
+          , and{" "}
+          <span className="font-semibold text-gray-900 dark:text-white">
+            {stats.departments_used} department
+            {stats.departments_used !== 1 ? "s" : ""}
+          </span>
+        </div>
+      )}
+
+      {/* Show error message if plan change fails */}
+      {changeError && (
+        <div className="mx-auto max-w-2xl bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900 rounded-lg p-4 text-red-700 dark:text-red-200 text-sm">
+          <p className="font-semibold mb-1">Unable to change plan</p>
+          <p>{changeError}</p>
+        </div>
+      )}
+
       {/* Grid layout: 1 column on mobile, 2 on tablet, 4 on desktop */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-        {plans.map((plan) => (
-          <PlanCard
-            key={plan.id}
-            plan={plan}
-            // Check if this plan is the user's current subscription
-            isCurrentPlan={
-              plan.id === currentSubscription?.subscription_plan_id
-            }
-          />
-        ))}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-8">
+        {plans.map((plan) => {
+          const recommendedPlanId = getRecommendedPlanId();
+          const isRecommended = plan.id === recommendedPlanId;
+          const canFit = canPlanFitStats(plan);
+
+          return (
+            <PlanCard
+              key={plan.id}
+              plan={plan}
+              // Check if this plan is the user's current subscription
+              isCurrentPlan={
+                plan.id === currentSubscription?.subscription_plan_id
+              }
+              isRecommended={isRecommended}
+              canFitStats={canFit}
+              onChangePlan={handleChangePlan}
+              isChanging={changingPlanId === plan.id}
+            />
+          );
+        })}
       </div>
     </div>
   );
@@ -96,26 +199,36 @@ export function SubscriptionPlansModal({
  * PlanCard Component
  * Individual plan card displaying pricing, features, and action button.
  * Shows "CURRENT PLAN" badge for user's active subscription with disabled state.
- * Shows "RECOMMENDED" badge for the Medium Clinic plan.
+ * Shows "RECOMMENDED" badge for plans that fit current resource usage.
+ * Shows availability status based on whether plan can accommodate current stats.
  */
 function PlanCard({
   plan,
   isCurrentPlan = false,
+  isRecommended = false,
+  canFitStats = true,
+  onChangePlan,
+  isChanging = false,
 }: {
   plan: SubscriptionPlan;
   isCurrentPlan?: boolean;
+  isRecommended?: boolean;
+  canFitStats?: boolean;
+  onChangePlan?: (planId: number) => void;
+  isChanging?: boolean;
 }) {
   const price = parseFloat(plan.price);
-  const isRecommended = plan.name === "Medium Clinic";
 
   return (
     <div
-      className={`relative rounded-lg border flex flex-col h-full transition-all group ${
+      className={`relative rounded-lg border flex flex-col h-full min-h-[400px] transition-all group ${
         isCurrentPlan
           ? "dark:border-green-500/50 dark:bg-green-950/20 dark:shadow-lg dark:shadow-green-500/20 border-green-300 bg-green-100 shadow-lg shadow-green-200/50 cursor-not-allowed"
           : isRecommended
-            ? "dark:border-blue-500 dark:bg-blue-950/20 dark:ring-2 dark:ring-blue-500 border-blue-300 bg-blue-50 ring-2 ring-blue-300 light:dark:text-gray-900"
-            : "dark:border-zinc-700 dark:bg-zinc-900/50 dark:hover:border-zinc-600 border-gray-300 bg-white hover:border-gray-400 light:dark:text-gray-900"
+            ? "dark:border-blue-500 dark:bg-blue-950/20 border-blue-300 bg-blue-50 light:dark:text-gray-900"
+            : !canFitStats
+              ? "dark:border-red-500/30 dark:bg-red-950/10 border-red-200 bg-red-50/50 opacity-75"
+              : "dark:border-zinc-700 dark:bg-zinc-900/50 dark:hover:border-zinc-600 border-gray-300 bg-white hover:border-gray-400 light:dark:text-gray-900"
       }`}
       style={
         isCurrentPlan
@@ -134,10 +247,17 @@ function PlanCard({
         </div>
       )}
 
-      {/* Badge for recommended plan - shows for Medium Clinic plan */}
+      {/* Badge for recommended plan - shows for plans that fit current stats */}
       {isRecommended && !isCurrentPlan && (
         <div className="absolute -top-3 left-1/2 -translate-x-1/2 dark:bg-blue-600 dark:text-white bg-blue-500 text-white px-3 py-1 rounded-full text-xs font-semibold">
           RECOMMENDED
+        </div>
+      )}
+
+      {/* Badge for unavailable plan - shows when plan can't fit current stats */}
+      {!canFitStats && !isCurrentPlan && (
+        <div className="absolute -top-3 left-1/2 -translate-x-1/2 dark:bg-red-600 dark:text-white bg-red-500 text-white px-3 py-1 rounded-full text-xs font-semibold">
+          TOO SMALL
         </div>
       )}
 
@@ -199,22 +319,32 @@ function PlanCard({
         </div>
       </div>
 
-      {/* Action button - disabled if this is the current plan */}
+      {/* Action button - disabled if this is the current plan or too small */}
       <Button
-        disabled={isCurrentPlan}
+        disabled={isCurrentPlan || isChanging || !canFitStats}
+        onClick={() => onChangePlan?.(plan.id)}
         className={`w-full mt-6 ${
           isCurrentPlan
             ? "dark:bg-zinc-600 dark:hover:bg-zinc-600 dark:text-white dark:cursor-not-allowed dark:opacity-60 bg-gray-300 hover:bg-gray-300 text-gray-600 cursor-not-allowed opacity-60"
-            : isRecommended
-              ? "dark:bg-blue-600 dark:hover:bg-blue-700 dark:text-white bg-blue-500 hover:bg-blue-600 text-white"
-              : "dark:bg-zinc-800 dark:hover:bg-zinc-700 dark:text-white bg-gray-800 hover:bg-gray-900 text-white"
+            : !canFitStats
+              ? "dark:bg-red-900 dark:hover:bg-red-900 dark:text-white dark:cursor-not-allowed dark:opacity-60 bg-red-200 hover:bg-red-200 text-red-700 cursor-not-allowed opacity-60"
+              : isRecommended
+                ? "dark:bg-blue-600 dark:hover:bg-blue-700 dark:text-white bg-blue-500 hover:bg-blue-600 text-white"
+                : "dark:bg-zinc-800 dark:hover:bg-zinc-700 dark:text-white bg-gray-800 hover:bg-gray-900 text-white"
         }`}
+        title={
+          !canFitStats ? "Plan is too small for your current usage" : undefined
+        }
       >
         {isCurrentPlan
           ? "Current Plan"
-          : price === 0
-            ? "Get Started"
-            : "Choose Plan"}
+          : !canFitStats
+            ? "Plan Too Small"
+            : isChanging
+              ? "Updating..."
+              : price === 0
+                ? "Get Started"
+                : "Choose Plan"}
       </Button>
     </div>
   );

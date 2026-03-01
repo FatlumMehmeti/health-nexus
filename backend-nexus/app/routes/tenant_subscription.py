@@ -1,3 +1,5 @@
+"""Subscription Plan Management Routes"""
+
 from fastapi import APIRouter, HTTPException, Depends, status
 from pydantic import BaseModel
 from app.models import TenantSubscription, TenantManager, SubscriptionPlan, Doctor, Enrollment, TenantDepartment
@@ -7,25 +9,33 @@ from app.schemas.tenant_subscription import TenantSubscriptionRead
 from app.db import get_db
 from sqlalchemy.orm import Session
 from app.auth.auth_utils import get_current_user
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
 
 class ChangePlanRequest(BaseModel):
-    """Request schema for changing subscription plan"""
+    """Request to change subscription plan"""
     new_plan_id: int
+
+
+class SubscriptionStatsRead(BaseModel):
+    """Response with resource usage stats and current plan info"""
+    doctors_used: int
+    patients_used: int
+    departments_used: int
+    current_plan_id: int
+    current_plan_name: str
 
 
 router = APIRouter(prefix="/subscription_plan", tags=["Nexus Health Subscription Plans"])
 
-@router.get("/current", response_model=TenantSubscriptionRead)
-def get_current_subscription(
-    db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user),
-):
-    # Get the tenant_id from the current user (via TenantManager)
+
+# Helper functions to reduce code duplication
+
+
+def get_tenant_id_from_user(db: Session, current_user: dict) -> int:
+    """Extract tenant_id from authenticated user via TenantManager lookup"""
     user_id = current_user.get("user_id")
     
-    # Find the tenant this user manages
     tenant_manager = db.query(TenantManager).filter(
         TenantManager.user_id == user_id
     ).first()
@@ -36,9 +46,11 @@ def get_current_subscription(
             detail="User is not a tenant manager"
         )
     
-    tenant_id = tenant_manager.tenant_id
-    
-    # Find the active subscription for this tenant
+    return tenant_manager.tenant_id
+
+
+def get_active_subscription(db: Session, tenant_id: int) -> TenantSubscription:
+    """Retrieve the currently active (non-expired) subscription for a tenant"""
     current_subscription = db.query(TenantSubscription).filter(
         TenantSubscription.tenant_id == tenant_id,
         TenantSubscription.expires_at > datetime.now(timezone.utc),
@@ -55,58 +67,8 @@ def get_current_subscription(
     return current_subscription
 
 
-@router.post("/change", response_model=TenantSubscriptionRead)
-def change_subscription_plan(
-    request: ChangePlanRequest,
-    db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user),
-):
-    """
-    Change subscription plan for the tenant manager's organization.
-    Validates that the new plan can accommodate existing resources.
-    (blocks downgrades when resources exceed new plan limits)
-    """
-    user_id = current_user.get("user_id")
-    
-    # Verify user is a tenant manager
-    tenant_manager = db.query(TenantManager).filter(
-        TenantManager.user_id == user_id
-    ).first()
-    
-    if not tenant_manager:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="User is not a tenant manager"
-        )
-    
-    tenant_id = tenant_manager.tenant_id
-    
-    # Get current active subscription
-    current_subscription = db.query(TenantSubscription).filter(
-        TenantSubscription.tenant_id == tenant_id,
-        TenantSubscription.expires_at > datetime.now(timezone.utc),
-        TenantSubscription.activated_at.isnot(None),
-        TenantSubscription.status == SubscriptionStatus.ACTIVE
-    ).first()
-    
-    if not current_subscription:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="No active subscription found for this tenant"
-        )
-    
-    # Get the new plan
-    new_plan = db.query(SubscriptionPlan).filter(
-        SubscriptionPlan.id == request.new_plan_id
-    ).first()
-    
-    if not new_plan:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Subscription plan with ID {request.new_plan_id} not found"
-        )
-    
-    # Get current tenant's resource counts
+def get_resource_counts(db: Session, tenant_id: int) -> dict:
+    """Count active doctors, patients, and departments for a tenant"""
     doctor_count = db.query(Doctor).filter(
         Doctor.tenant_id == tenant_id,
         Doctor.is_active == True
@@ -120,6 +82,79 @@ def change_subscription_plan(
     department_count = db.query(TenantDepartment).filter(
         TenantDepartment.tenant_id == tenant_id
     ).count()
+    
+    return {
+        "doctors": doctor_count,
+        "patients": patient_count,
+        "departments": department_count,
+    }
+
+
+# Endpoint handlers
+
+
+@router.get("/current", response_model=TenantSubscriptionRead)
+def get_current_subscription(
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """Get the currently active subscription for the authenticated tenant manager"""
+    tenant_id = get_tenant_id_from_user(db, current_user)
+    return get_active_subscription(db, tenant_id)
+
+
+@router.get("/stats", response_model=SubscriptionStatsRead)
+def get_subscription_stats(
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """
+    Get current resource usage stats for the tenant manager's organization.
+    Returns: doctors used, patients used, departments used, and current plan info.
+    """
+    tenant_id = get_tenant_id_from_user(db, current_user)
+    current_subscription = get_active_subscription(db, tenant_id)
+    resource_counts = get_resource_counts(db, tenant_id)
+    
+    return {
+        "doctors_used": resource_counts["doctors"],
+        "patients_used": resource_counts["patients"],
+        "departments_used": resource_counts["departments"],
+        "current_plan_id": current_subscription.subscription_plan_id,
+        "current_plan_name": current_subscription.subscription_plan.name,
+    }
+
+
+@router.post("/change", response_model=TenantSubscriptionRead)
+def change_subscription_plan(
+    request: ChangePlanRequest,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """
+    Change subscription plan for the tenant manager's organization.
+    Validates that the new plan can accommodate existing resources.
+    (blocks downgrades when resources exceed new plan limits)
+    """
+    tenant_id = get_tenant_id_from_user(db, current_user)
+    current_subscription = get_active_subscription(db, tenant_id)
+    
+    # Get the new plan
+    new_plan = db.query(SubscriptionPlan).filter(
+        SubscriptionPlan.id == request.new_plan_id
+    ).first()
+    
+    if not new_plan:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Subscription plan with ID {request.new_plan_id} not found"
+        )
+    
+    # Get current resource counts
+    resource_counts = get_resource_counts(db, tenant_id)
+    doctor_count = resource_counts["doctors"]
+    patient_count = resource_counts["patients"]
+    department_count = resource_counts["departments"]
     
     # Validate: if new plan has lower limits, check if resources fit
     # If new_plan limit is None, it means unlimited
@@ -143,20 +178,21 @@ def change_subscription_plan(
     
     # Create new subscription
     now = datetime.now(timezone.utc)
+    expires_at = now + timedelta(days=new_plan.duration)
     new_subscription = TenantSubscription(
         tenant_id=tenant_id,
         subscription_plan_id=request.new_plan_id,
         status=SubscriptionStatus.ACTIVE,
         activated_at=now,
-        expires_at=None,  # Will be set by business logic or left open-ended
+        expires_at=expires_at,
     )
     
     db.add(new_subscription)
     
-    # Optionally mark old subscription as EXPIRED or CANCELLED
-    current_subscription.status = SubscriptionStatus.CANCELLED
+    # Mark old subscription as EXPIRED (value already exists in enum)
+    current_subscription.status = SubscriptionStatus.EXPIRED
     current_subscription.cancelled_at = now
-    current_subscription.cancellation_reason = f"Upgraded to {new_plan.name}"
+    current_subscription.cancellation_reason = f"Replaced with {new_plan.name}"
     
     db.commit()
     db.refresh(new_subscription)

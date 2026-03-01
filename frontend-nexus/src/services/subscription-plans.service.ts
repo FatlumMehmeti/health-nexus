@@ -23,6 +23,14 @@ export interface TenantSubscription {
   cancellation_reason: string | null;
 }
 
+export interface SubscriptionStats {
+  doctors_used: number;
+  patients_used: number;
+  departments_used: number;
+  current_plan_id: number;
+  current_plan_name: string;
+}
+
 export async function getSubscriptionPlans(): Promise<SubscriptionPlan[]> {
   return apiFetch(`${BASE}/`, {
     method: "GET",
@@ -32,5 +40,20 @@ export async function getSubscriptionPlans(): Promise<SubscriptionPlan[]> {
 export async function getCurrentSubscription(): Promise<TenantSubscription> {
   return apiFetch(`${BASE}/current`, {
     method: "GET",
+  });
+}
+
+export async function getSubscriptionStats(): Promise<SubscriptionStats> {
+  return apiFetch(`${BASE}/stats`, {
+    method: "GET",
+  });
+}
+
+export async function changePlan(
+  newPlanId: number,
+): Promise<TenantSubscription> {
+  return apiFetch(`${BASE}/change`, {
+    method: "POST",
+    body: { new_plan_id: newPlanId },
   });
 }

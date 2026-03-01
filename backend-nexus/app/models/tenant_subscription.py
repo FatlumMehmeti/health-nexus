@@ -9,7 +9,6 @@ from .base import Base, TimestampMixin
 class SubscriptionStatus(str, enum.Enum):
     ACTIVE = "ACTIVE"
     EXPIRED = "EXPIRED"
-    CANCELLED = "CANCELLED"
 
 
 class TenantSubscription(Base, TimestampMixin):
