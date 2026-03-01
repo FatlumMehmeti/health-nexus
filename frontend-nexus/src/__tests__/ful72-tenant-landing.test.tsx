@@ -5,10 +5,9 @@
  * - Ensures 404 from landing API shows a friendly "Tenant not found" screen.
  * - Covers TenantLanding UI behavior: tabs and tenant-manager "Go to dashboard" entry when permitted.
  */
-import React from "react";
 import "@testing-library/jest-dom";
 import { beforeAll, beforeEach, describe, expect, it, jest } from "@jest/globals";
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import { createRouter, RouterProvider } from "@tanstack/react-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { routeTree } from "../routeTree.gen";
@@ -105,6 +104,7 @@ function buildSampleLanding(overrides: Partial<TenantLandingPageResponse> = {}):
         is_available: true,
       },
     ],
+    plans: [],
     ...overrides,
   };
 }
@@ -189,7 +189,12 @@ describe("FUL-72 TenantLanding component behavior", () => {
   });
 
   it("renders a loading state when landingData is null", () => {
-    render(<TenantLanding landingData={null} />);
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <QueryClientProvider client={queryClient}>
+        <TenantLanding landingData={null} />
+      </QueryClientProvider>,
+    );
     expect(screen.getByText(/Loading…/i)).toBeTruthy();
   });
 });
