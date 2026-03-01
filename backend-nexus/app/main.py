@@ -1,7 +1,11 @@
+from pathlib import Path
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
+from fastapi.staticfiles import StaticFiles
 
+from app.config import get_storage_root
 from app.auth.auth_router import router as auth_router
 from app.routes import (
     role_router,
@@ -23,6 +27,11 @@ app = FastAPI(
     version="0.1.0",
     swagger_ui_parameters={"persistAuthorization": True},
 )
+
+# Serve uploaded files at /uploads/ (e.g. /uploads/signatures/contract_1_doctor_xxx.png)
+_uploads_dir = Path(get_storage_root())
+_uploads_dir.mkdir(parents=True, exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=str(_uploads_dir)), name="uploads")
 
 # CORS configuration for development - allows frontend on various ports
 app.add_middleware(

@@ -33,3 +33,6 @@ backend-nexus/.venv/
 
 # Backend specifics
 backend-nexus/.env.example
+
+# Uploaded files (local storage)
+backend-nexus/uploads/
