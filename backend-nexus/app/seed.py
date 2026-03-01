@@ -795,6 +795,29 @@ def seed_enrollment_status_history(session, users_by_email):
         )
 
 
+#def seed_tenant_managers(session, users_by_email):
+#    tenants_by_name = {tenant.name: tenant for tenant in session.query(Tenant).all()}
+
+#    for payload in SEED_TENANT_MANAGERS:
+#        manager = users_by_email.get(payload["user_email"])
+#        tenant = tenants_by_name.get(payload["tenant_name"])
+#        if manager is None or tenant is None:
+#            continue
+
+#        existing = (
+#            session.query(TenantManager)
+#            .filter(
+#                TenantManager.user_id == manager.id,
+#                TenantManager.tenant_id == tenant.id,
+#            )
+#            .first()
+#        )
+#        if existing is not None:
+#            continue
+
+#        session.add(TenantManager(user_id=manager.id, tenant_id=tenant.id))
+#    return {u.email: u for u in session.query(User).all()}
+
 def seed_tenant_managers(session, users_by_email):
     tenants_by_name = {tenant.name: tenant for tenant in session.query(Tenant).all()}
 
@@ -804,20 +827,18 @@ def seed_tenant_managers(session, users_by_email):
         if manager is None or tenant is None:
             continue
 
-        existing = (
-            session.query(TenantManager)
-            .filter(
-                TenantManager.user_id == manager.id,
-                TenantManager.tenant_id == tenant.id,
+        exists = session.query(TenantManager).filter(
+            TenantManager.user_id == manager.id,
+            TenantManager.tenant_id == tenant.id,
+        ).first()
+
+        if not exists:
+            session.add(
+                TenantManager(
+                    user_id=manager.id,
+                    tenant_id=tenant.id,
+                )
             )
-            .first()
-        )
-        if existing is not None:
-            continue
-
-        session.add(TenantManager(user_id=manager.id, tenant_id=tenant.id))
-    return {u.email: u for u in session.query(User).all()}
-
 
 def seed_departments(session):
     existing = {d.name: d for d in session.query(Department).all()}
@@ -918,20 +939,6 @@ def seed_services(session, tenants_by_name, departments_by_name):
         existing.add((td.id, payload["name"]))
 
 
-def seed_tenant_managers(session, users_by_email, tenants_by_name):
-    """Link tenant.manager@seed.com to Bluestone Clinic."""
-    tm_user = users_by_email.get("tenant.manager@seed.com")
-    bluestone = tenants_by_name.get("Bluestone Clinic")
-    if not tm_user or not bluestone:
-        return
-    existing = session.query(TenantManager).filter(
-        TenantManager.user_id == tm_user.id,
-        TenantManager.tenant_id == bluestone.id,
-    ).first()
-    if not existing:
-        session.add(TenantManager(user_id=tm_user.id, tenant_id=bluestone.id))
-
-
 def seed_products(session, tenants_by_name):
     existing = set()
     for payload in SEED_PRODUCTS:
@@ -972,7 +979,6 @@ def run_seed() -> None:
         seed_tenant_managers(session, users_by_email)
         seed_enrollments(session, users_by_email)
         seed_enrollment_status_history(session, users_by_email)
-        seed_tenant_managers(session, users_by_email, tenants_by_name)
         session.commit()
         departments_by_name = seed_departments(session)
         seed_tenant_departments(session, tenants_by_name, departments_by_name)
