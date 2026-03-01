@@ -128,38 +128,6 @@ export function normalizeTenantSection(
   return "departments-services";
 }
 
-const TENANT_SECTIONS: Array<{
-  key: TenantSectionKey;
-  label: string;
-  description: string;
-}> = [
-  {
-    key: "departments-services",
-    label: "Departments & Services",
-    description: "Department contacts and nested services",
-  },
-  {
-    key: "doctors",
-    label: "Doctors",
-    description: "Read-only list of doctors assigned to this tenant",
-  },
-  {
-    key: "products",
-    label: "Products",
-    description: "Tenant products shown on landing",
-  },
-  {
-    key: "plans",
-    label: "Plans",
-    description: "Manage tenant plans and pricing",
-  },
-  {
-    key: "settings",
-    label: "Settings",
-    description: "Branding, fonts, and palette",
-  },
-];
-
 function TenantManagerPage() {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   if (pathname !== "/dashboard/tenant") {
@@ -223,10 +191,6 @@ export function TenantManagerPageContent({
     );
   }
 
-  const activeSectionMeta =
-    TENANT_SECTIONS.find((item) => item.key === activeSection) ??
-    TENANT_SECTIONS[0];
-
   return (
     <div className="space-y-4 p-4 sm:space-y-6 sm:p-6 lg:p-8">
       <div className="space-y-2">
@@ -252,13 +216,6 @@ export function TenantManagerPageContent({
             value={tenant.status ? String(tenant.status) : "unknown"}
           />
         </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>{activeSectionMeta.label}</CardTitle>
-          <CardDescription>{activeSectionMeta.description}</CardDescription>
-        </CardHeader>
       </Card>
 
       <div className="space-y-6">
@@ -296,6 +253,12 @@ function TenantPlansPanel() {
     enabled: !!tenantId,
   });
 
+  const enrollmentsQuery = useQuery({
+    queryKey: ["tenant-manager", "enrollments", tenantId],
+    queryFn: () => tenantPlansService.listEnrollments(tenantId!),
+    enabled: !!tenantId,
+  });
+
   const [formState, setFormState] = useState({
     name: "",
     description: "",
@@ -304,6 +267,7 @@ function TenantPlansPanel() {
     max_consultations: "",
   });
   const [editingPlanId, setEditingPlanId] = useState<number | null>(null);
+  const [deletingPlanId, setDeletingPlanId] = useState<number | null>(null);
 
   const resetForm = () => {
     setFormState({
@@ -342,6 +306,7 @@ function TenantPlansPanel() {
     mutationFn: (id: number) => tenantPlansService.delete(id),
     onSuccess: () => {
       toast.success("Plan deleted");
+      setDeletingPlanId(null);
       queryClient.invalidateQueries({ queryKey: ["tenant-manager", "plans"] });
     },
     onError: (err) => toast.error(isApiError(err) ? err.message : "Failed to delete plan"),
@@ -513,7 +478,7 @@ function TenantPlansPanel() {
                     size="icon-sm"
                     title="Delete"
                     className="text-destructive hover:text-destructive"
-                    onClick={() => deleteMutation.mutate(plan.id)}
+                    onClick={() => setDeletingPlanId(plan.id)}
                   >
                     <IconTrash className="h-3.5 w-3.5" />
                   </Button>
@@ -522,6 +487,30 @@ function TenantPlansPanel() {
             </div>
           </>
         )}
+
+        {/* Delete confirmation dialog */}
+        <Dialog open={deletingPlanId != null} onOpenChange={(open) => { if (!open) setDeletingPlanId(null); }}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Delete plan</DialogTitle>
+              <DialogDescription>
+                Are you sure you want to delete this plan? This action cannot be undone.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter className="gap-2 sm:gap-0">
+              <Button variant="outline" onClick={() => setDeletingPlanId(null)}>
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                disabled={deleteMutation.isPending}
+                onClick={() => { if (deletingPlanId != null) deleteMutation.mutate(deletingPlanId); }}
+              >
+                {deleteMutation.isPending ? "Deleting…" : "Delete"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         {/* Plan cards preview */}
         {plans.length > 0 && (
@@ -563,6 +552,69 @@ function TenantPlansPanel() {
             ))}
           </div>
         )}
+        {/* Enrolled users table */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Selected plans</CardTitle>
+            <CardDescription>Users who have subscribed to your plans.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {enrollmentsQuery.isLoading ? (
+              <div className="space-y-2">
+                <Skeleton className="h-8 w-full" />
+                <Skeleton className="h-8 w-full" />
+                <Skeleton className="h-8 w-full" />
+              </div>
+            ) : (enrollmentsQuery.data ?? []).length === 0 ? (
+              <p className="text-sm text-muted-foreground">No users have subscribed to a plan yet.</p>
+            ) : (
+              <div className="rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>User ID</TableHead>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Email</TableHead>
+                      <TableHead>Plan</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Subscribed</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {(enrollmentsQuery.data ?? []).map((enrollment) => (
+                      <TableRow key={enrollment.id}>
+                        <TableCell className="font-mono text-xs">{enrollment.patient_user_id}</TableCell>
+                        <TableCell>
+                          {enrollment.patient_first_name || enrollment.patient_last_name
+                            ? `${enrollment.patient_first_name ?? ''} ${enrollment.patient_last_name ?? ''}`.trim()
+                            : <span className="text-muted-foreground">—</span>}
+                        </TableCell>
+                        <TableCell className="text-sm">{enrollment.patient_email ?? '—'}</TableCell>
+                        <TableCell>
+                          <Badge variant="outline">{enrollment.plan_name}</Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            variant={enrollment.status === 'ACTIVE' ? 'default' : enrollment.status === 'CANCELLED' ? 'destructive' : 'secondary'}
+                          >
+                            {enrollment.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-xs text-muted-foreground">
+                          {enrollment.activated_at
+                            ? new Date(enrollment.activated_at).toLocaleDateString()
+                            : enrollment.created_at
+                              ? new Date(enrollment.created_at).toLocaleDateString()
+                              : '—'}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </CardContent>
     </Card>
   );

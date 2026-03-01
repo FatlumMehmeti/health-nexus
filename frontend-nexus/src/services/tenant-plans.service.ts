@@ -36,6 +36,33 @@ export interface TenantPlanUpdateApi {
   is_active?: boolean | null
 }
 
+export interface EnrollmentDetailApi {
+  id: number
+  status: 'PENDING' | 'ACTIVE' | 'CANCELLED' | 'EXPIRED'
+  patient_user_id: number
+  patient_email: string | null
+  patient_first_name: string | null
+  patient_last_name: string | null
+  plan_id: number
+  plan_name: string
+  activated_at: string | null
+  cancelled_at: string | null
+  expires_at: string | null
+  created_at: string | null
+}
+
+export interface EnrollmentApi {
+  id: number
+  tenant_id: number
+  patient_user_id: number
+  user_tenant_plan_id: number
+  created_by: number
+  status: string
+  activated_at: string | null
+  cancelled_at: string | null
+  expires_at: string | null
+}
+
 // Thin client for the user_tenant_plan FastAPI router.
 export const tenantPlansService = {
   listByTenant: (tenantId: number) =>
@@ -49,5 +76,16 @@ export const tenantPlansService = {
 
   delete: (id: number) =>
     apiFetch<{ message: string }>(`${BASE}/${id}`, { method: 'DELETE' }),
+
+  listEnrollments: (tenantId: number) =>
+    apiFetch<EnrollmentDetailApi[]>(`${BASE}/tenant/${tenantId}/enrollments`, { method: 'GET' }),
+
+  enroll: (tenantId: number, planId: number) =>
+    apiFetch<EnrollmentApi>(`${BASE}/enroll?tenant_id=${tenantId}&plan_id=${planId}`, {
+      method: 'POST',
+    }),
+
+  myEnrollment: (tenantId: number) =>
+    apiFetch<EnrollmentApi>(`${BASE}/my-enrollment?tenant_id=${tenantId}`, { method: 'GET' }),
 }
 

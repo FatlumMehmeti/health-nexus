@@ -42,7 +42,6 @@ class SignupRequest(BaseModel):
     password: str
     first_name: str
     last_name: str
-    tenant_id: int
     role: str = "client"
 
     @field_validator("password")
@@ -55,4 +54,3 @@ class SignupResponse(BaseModel):
     user_id: int
     email: str
     role: str
-    tenant_id: int

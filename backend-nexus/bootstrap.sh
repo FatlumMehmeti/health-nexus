@@ -42,4 +42,9 @@ if [ "$VERIFY_SEED_ON_BOOT" = "true" ]; then
 fi
 
 echo "Starting FastAPI..."
-uvicorn app.main:app --host 0.0.0.0 --port 8000
+# Use --reload in dev so backend restarts on code changes (no container restart needed)
+if [ "${UVICORN_RELOAD:-false}" = "true" ]; then
+  exec uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+else
+  exec uvicorn app.main:app --host 0.0.0.0 --port 8000
+fi

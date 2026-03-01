@@ -37,7 +37,6 @@ class User(Base):
     patient_profile = relationship(
         "Patient",
         back_populates="user",
-        uselist=False
     )
 
     managed_tenants = relationship(

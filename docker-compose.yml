@@ -13,6 +13,8 @@ services:
     build: ./backend-nexus
     container_name: health_api
     env_file: .env
+    environment:
+      - UVICORN_RELOAD=true
     volumes:
       - ./backend-nexus:/app
     ports:

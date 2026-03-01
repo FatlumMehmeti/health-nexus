@@ -55,3 +55,8 @@ class Doctor(Base, TimestampMixin):
         "Appointment",
         back_populates="doctor"
     )
+
+    contracts = relationship(
+        "Contract",
+        back_populates="doctor",
+    )
