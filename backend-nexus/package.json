@@ -1,7 +1,0 @@
-{
-  "name": "backend-nexus",
-  "private": true,
-  "devDependencies": {
-    "prettier": "^3.4.2"
-  }
-}
