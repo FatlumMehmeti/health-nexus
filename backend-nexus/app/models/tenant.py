@@ -92,3 +92,9 @@ class Tenant(Base, TimestampMixin):
         back_populates="tenant",
         cascade="all, delete-orphan"
     )
+
+    contracts = relationship(
+        "Contract",
+        back_populates="tenant",
+        cascade="all, delete-orphan"
+    )

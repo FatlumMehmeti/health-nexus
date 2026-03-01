@@ -74,18 +74,25 @@ export function TenantBrandPreview({
   };
 
   return (
-    <div className={cn("overflow-hidden rounded-lg border shadow-sm", className)} style={cardStyle}>
-      <div className={cn("relative h-32 w-full bg-muted/40", heroClassName)}>
+    <div
+      className={cn("flex h-full flex-col overflow-hidden rounded-lg border shadow-sm", className)}
+      style={cardStyle}
+    >
+      <div className={cn("relative h-48 w-full shrink-0 bg-muted/40", heroClassName)}>
         {heroUrl ? (
-          <img src={heroUrl} alt={resolvedTitle} className="h-full w-full object-cover" />
+          <img
+            src={heroUrl}
+            alt={resolvedTitle}
+            className="h-full w-full object-cover"
+          />
         ) : (
           <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
             {emptyHeroLabel}
           </div>
         )}
       </div>
-      <div className="p-4">
-        <div className="flex items-start gap-3">
+      <div className="flex min-h-0 flex-1 flex-col p-4">
+        <div className="flex shrink-0 items-start gap-3">
           {logoUrl ? (
             <img
               src={logoUrl}
@@ -98,7 +105,10 @@ export function TenantBrandPreview({
             </div>
           )}
           <div className="min-w-0">
-            <p className="truncate text-xs font-semibold uppercase tracking-[0.18em]" style={accentStyle}>
+            <p
+              className="truncate text-xs font-semibold uppercase tracking-[0.18em]"
+              style={accentStyle}
+            >
               {resolvedMoto}
             </p>
             <h3 className="mt-1 text-lg font-semibold" style={titleStyle}>
@@ -106,7 +116,21 @@ export function TenantBrandPreview({
             </h3>
           </div>
         </div>
-        <p className="mt-3 text-sm leading-6 opacity-90">{resolvedAbout}</p>
+        <div className="mt-3 flex min-h-0 flex-1 flex-col">
+          <p className="text-sm leading-6 opacity-90 line-clamp-4">
+            {resolvedAbout}
+          </p>
+          <button
+            type="button"
+            className={cn(
+              "mt-auto pt-2 text-xs font-semibold hover:underline",
+              !accentColor && "text-primary"
+            )}
+            style={accentStyle}
+          >
+            Read more
+          </button>
+        </div>
       </div>
     </div>
   );

@@ -20,6 +20,7 @@ from app.routes import (
     tenant_audit_log,
     user_tenant_plan_router,
     public_tenant_router,
+    contract_router,
 )
 
 app = FastAPI(
@@ -56,6 +57,7 @@ app.include_router(public_tenant_router, prefix="/api/public")
 app.include_router(tenant_audit_log)
 app.include_router(enrollment_router, prefix="/api")
 app.include_router(user_tenant_plan_router)
+app.include_router(contract_router)
 
 
 @app.get("/")

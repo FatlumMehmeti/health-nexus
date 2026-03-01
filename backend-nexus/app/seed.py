@@ -6,27 +6,28 @@ from decimal import Decimal
 
 
 from app.auth.auth_utils import hash_password
+from app.lib.html_sanitize import sanitize_html
 from app.db import SessionLocal
 from app.models import (
+    BrandPalette,
+    Contract,
+    ContractStatus,
+    Department,
+    Doctor,
     Enrollment,
     EnrollmentStatusHistory,
+    Font,
     Patient,
+    Product,
     Role,
+    Service,
     SubscriptionPlan,
     Tenant,
+    TenantDepartment,
     TenantManager,
     TenantStatus,
     User,
     UserTenantPlan,
-     Font,
-    BrandPalette,
-    Product,
-    SubscriptionPlan,
-    Department, 
-    TenantDepartment,
-    TenantManager,
-    Doctor,
-    Service,
 )
 from app.models.enrollment import EnrollmentStatus
 
@@ -453,6 +454,18 @@ SEED_DOCTORS = [
      "education": "MD, Harvard Medical School; Residency at Johns Hopkins", "working_hours": {"mon": {"start": "08:00", "end": "17:00"}, "tue": {"start": "08:00", "end": "17:00"}, "wed": {"start": "08:00", "end": "17:00"}, "thu": {"start": "08:00", "end": "17:00"}, "fri": {"start": "08:00", "end": "15:00"}}},
     {"user_email": "doctor.six@seed.com", "tenant_name": "Apex Medical Group", "specialization": "Dermatology", "licence_number": "MD-APX-002",
      "education": "MD, Stanford; Dermatology fellowship at Mayo Clinic", "working_hours": {"mon": {"start": "09:00", "end": "16:00"}, "wed": {"start": "09:00", "end": "16:00"}, "fri": {"start": "09:00", "end": "14:00"}}},
+]
+
+# tenant_name, user_email (doctor), status, salary, terms_content, start_date, end_date
+SEED_CONTRACTS = [
+    {"tenant_name": "Bluestone Clinic", "user_email": "doctor.one@seed.com", "status": ContractStatus.ACTIVE, "salary": 85000,
+     "terms_content": "<h2>Employment Contract</h2><p>This agreement is between Bluestone Clinic and Dr. One.</p><p><strong>Salary:</strong> $85,000/year</p><p><strong>Term:</strong> 12 months from start date.</p>",
+     "start_date": None, "end_date": None},
+    {"tenant_name": "Bluestone Clinic", "user_email": "doctor.two@seed.com", "status": ContractStatus.ACTIVE, "salary": 95000,
+     "terms_content": "<h2>Cardiology Specialist Contract</h2><p>Employment terms for Cardiology department.</p><p><strong>Salary:</strong> $95,000/year</p>",
+     "start_date": None, "end_date": None},
+    {"tenant_name": "Bluestone Clinic", "user_email": "doctor.one@seed.com", "status": ContractStatus.DRAFT, "salary": 90000,
+     "terms_content": "<p>Proposed contract renewal - pending review.</p>", "start_date": None, "end_date": None},
 ]
 
 # tenant_name, department_name, name, price, description
@@ -939,6 +952,56 @@ def seed_services(session, tenants_by_name, departments_by_name):
         existing.add((td.id, payload["name"]))
 
 
+
+def seed_tenant_managers(session, users_by_email, tenants_by_name):
+    """Link tenant.manager@seed.com to Bluestone Clinic."""
+    tm_user = users_by_email.get("tenant.manager@seed.com")
+    bluestone = tenants_by_name.get("Bluestone Clinic")
+    if not tm_user or not bluestone:
+        return
+    existing = session.query(TenantManager).filter(
+        TenantManager.user_id == tm_user.id,
+        TenantManager.tenant_id == bluestone.id,
+    ).first()
+    if not existing:
+        session.add(TenantManager(user_id=tm_user.id, tenant_id=bluestone.id))
+
+
+def seed_contracts(session, users_by_email, tenants_by_name):
+    """Seed contracts for doctors. Bluestone Clinic (tenant 1) gets contracts."""
+    now = datetime.now(timezone.utc)
+    existing_count = session.query(Contract).count()
+    if existing_count > 0:
+        return  # Already seeded
+    for payload in SEED_CONTRACTS:
+        tenant = tenants_by_name.get(payload["tenant_name"])
+        user = users_by_email.get(payload["user_email"])
+        if not tenant or not user:
+            continue
+        doctor = session.query(Doctor).filter(
+            Doctor.user_id == user.id,
+            Doctor.tenant_id == tenant.id,
+        ).first()
+        if not doctor:
+            continue
+        start = payload.get("start_date") or (now - timedelta(days=30))
+        end = payload.get("end_date") or (now + timedelta(days=335))
+        activated = now - timedelta(days=15) if payload["status"] == ContractStatus.ACTIVE else None
+        session.add(
+            Contract(
+                tenant_id=tenant.id,
+                doctor_user_id=doctor.user_id,
+                status=payload["status"],
+                salary=Decimal(str(payload["salary"])),
+                terms_content=sanitize_html(payload.get("terms_content")) if payload.get("terms_content") else None,
+                start_date=start,
+                end_date=end,
+                activated_at=activated,
+            )
+        )
+    session.flush()
+
+
 def seed_products(session, tenants_by_name):
     existing = set()
     for payload in SEED_PRODUCTS:
@@ -983,6 +1046,7 @@ def run_seed() -> None:
         departments_by_name = seed_departments(session)
         seed_tenant_departments(session, tenants_by_name, departments_by_name)
         seed_doctors(session, users_by_email, tenants_by_name)
+        seed_contracts(session, users_by_email, tenants_by_name)
         seed_services(session, tenants_by_name, departments_by_name)
         seed_products(session, tenants_by_name)
         session.commit()
