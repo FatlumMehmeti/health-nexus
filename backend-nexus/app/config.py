@@ -25,5 +25,11 @@ def get_storage_root() -> str:
 
 
 def get_api_base_url() -> str:
-    """Base URL for API (e.g. http://localhost:8000). Used for full URLs in responses."""
-    return os.getenv("API_BASE_URL", "http://localhost:8000").rstrip("/")
+    """Base URL for API. Uses API_BASE_URL, or builds from API_HOST + API_PORT (default localhost:8000)."""
+    url = os.getenv("API_BASE_URL")
+    if url:
+        return url.rstrip("/")
+    host = os.getenv("API_HOST", "localhost")
+    port = os.getenv("API_PORT", "8000")
+    scheme = "https" if os.getenv("API_SCHEME") == "https" else "http"
+    return f"{scheme}://{host}:{port}"
