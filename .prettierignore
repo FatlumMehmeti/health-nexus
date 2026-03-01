@@ -1,0 +1,13 @@
+node_modules
+dist
+build
+.next
+*.min.js
+package-lock.json
+.venv
+venv
+__pycache__
+*.pyc
+.coverage
+.pytest_cache
+uploads

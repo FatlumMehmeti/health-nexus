@@ -6,6 +6,8 @@
     "dev": "vite --port 3000",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
+    "format": "prettier --write \"src/**/*.{ts,tsx,js,jsx,json,css}\"",
+    "format:check": "prettier --check \"src/**/*.{ts,tsx,js,jsx,json,css}\"",
     "test": "NODE_OPTIONS=--experimental-vm-modules jest",
     "test:watch": "NODE_OPTIONS=--experimental-vm-modules jest --watch",
     "test:ci": "NODE_OPTIONS=--experimental-vm-modules jest --runInBand"
@@ -50,6 +52,7 @@
     "zustand": "^5.0.2"
   },
   "devDependencies": {
+    "prettier": "^3.4.2",
     "@tailwindcss/vite": "^4.1.18",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.1.0",

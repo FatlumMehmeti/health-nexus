@@ -1,0 +1,10 @@
+node_modules
+__pycache__
+*.py
+.venv
+venv
+*.pyc
+.coverage
+.pytest_cache
+uploads
+alembic/versions/*.py

@@ -1,0 +1,9 @@
+{
+  "name": "health-nexus",
+  "private": true,
+  "scripts": {
+    "format": "npm run format:frontend",
+    "format:frontend": "cd frontend-nexus && npm run format",
+    "format:backend": "cd backend-nexus && python -m black . && npx prettier --write ."
+  }
+}
