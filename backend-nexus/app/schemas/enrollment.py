@@ -50,4 +50,28 @@ class EnrollmentDetailRead(BaseModel):
     expires_at: Optional[str] = None
     created_at: Optional[str] = None
 
+    class Config:
+        from_attributes = True
+
+class EnrollmentCreateRequest(BaseModel):
+    patient_user_id: int
+    user_tenant_plan_id: int
+
+
+class EnrollmentStatusRead(BaseModel):
+    id: int
+    status: EnrollmentStatus
+    activated_at: Optional[str] = None
+    cancelled_at: Optional[str] = None
+    expires_at: Optional[str] = None
+    updated_at: Optional[str] = None
+
+
+class EnrollmentOperationalStatus(BaseModel):
+    enrollment_id: int
+    status: EnrollmentStatus
+    isActive: bool
+    expires_at: Optional[str] = None
+    isExpired: bool
+    last_updated: Optional[str] = None
     model_config = ConfigDict(from_attributes=True)
