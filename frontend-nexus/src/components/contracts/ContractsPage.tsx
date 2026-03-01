@@ -2,10 +2,21 @@ import * as React from "react";
 import { toast } from "sonner";
 
 import type { Contract, ContractStatus } from "@/interfaces/contract";
+import { isApiError } from "@/lib/api-client";
 import { contractsService } from "@/services/contracts.service";
 import { useAuthStore } from "@/stores/auth.store";
-import { ContractDialog, type ContractDialogSubmitInput } from "@/components/contracts/ContractDialog";
-import { ActionsDropdown, type ActionItem } from "@/components/molecules/actions-dropdown";
+import {
+  ContractDialog,
+  type ContractDialogSubmitInput,
+} from "@/components/contracts/ContractDialog";
+import {
+  ContractPdfDocument,
+  type ReactPdfPrimitives,
+} from "@/components/contracts/ContractPdfDocument";
+import {
+  ActionsDropdown,
+  type ActionItem,
+} from "@/components/molecules/actions-dropdown";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -34,12 +45,23 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
+type ReactPdfModule = ReactPdfPrimitives & {
+  pdf: (document: React.ReactElement) => { toBlob: () => Promise<Blob> };
+};
+
+/**
+ * Sort newest updates first so admins always see most recently touched contracts first.
+ */
 function sortByUpdatedDesc(contracts: Contract[]): Contract[] {
   return [...contracts].sort(
-    (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
+    (a, b) =>
+      new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime(),
   );
 }
 
+/**
+ * Display-safe formatter for API date strings.
+ */
 function formatDateTime(value?: string | null): string {
   if (!value) return "-";
   const date = new Date(value);
@@ -71,32 +93,80 @@ function getStatusVariant(
   }
 }
 
-function getCurrentActiveContract(contracts: Contract[]): Contract | null {
-  const now = Date.now();
-
-  const activeContracts = contracts
-    .filter((contract) => {
-      if (contract.status !== "ACTIVE") return false;
-      if (!contract.activatedAt) return false;
-
-      const activatedAt = new Date(contract.activatedAt).getTime();
-      if (Number.isNaN(activatedAt) || activatedAt > now) return false;
-
-      if (!contract.expiresAt) return true;
-
-      const expiresAt = new Date(contract.expiresAt).getTime();
-      return !Number.isNaN(expiresAt) && expiresAt >= now;
-    })
-    .sort((a, b) => {
-      const aExpiry = a.expiresAt ? new Date(a.expiresAt).getTime() : Number.POSITIVE_INFINITY;
-      const bExpiry = b.expiresAt ? new Date(b.expiresAt).getTime() : Number.POSITIVE_INFINITY;
-      return bExpiry - aExpiry;
-    });
-
-  return activeContracts[0] ?? null;
+/**
+ * Activation requires both signatures per backend business rules.
+ */
+function hasBothSignatures(contract: Contract): boolean {
+  return Boolean(contract.doctor_signed_at && contract.hospital_signed_at);
 }
 
-export function ContractsPage() {
+/**
+ * Eligibility rule used for the top banner:
+ * ACTIVE + both signatures + "today" between start_date and end_date (inclusive).
+ */
+function isEligibleForDoctorBooking(
+  contract: Contract,
+  nowTimestamp = Date.now(),
+): boolean {
+  if (contract.status !== "ACTIVE") return false;
+  if (!hasBothSignatures(contract)) return false;
+
+  // Dates come from backend as strings, so we parse once and guard invalid values.
+  const startTimestamp = new Date(contract.start_date).getTime();
+  const endTimestamp = new Date(contract.end_date).getTime();
+
+  if (Number.isNaN(startTimestamp) || Number.isNaN(endTimestamp)) return false;
+  return nowTimestamp >= startTimestamp && nowTimestamp <= endTimestamp;
+}
+
+/**
+ * Utility exported for tests so signature flows can be mocked without brittle DOM hacks.
+ */
+export async function pickFileFromUser(
+  accept = "image/*,.png,.jpg,.jpeg,.webp",
+): Promise<File | null> {
+  return new Promise((resolve) => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = accept;
+
+    input.onchange = () => {
+      const file = input.files?.[0] ?? null;
+      resolve(file);
+    };
+
+    input.click();
+  });
+}
+
+/**
+ * Keep @react-pdf/renderer as a runtime import so the heavy PDF code is only
+ * loaded when the user explicitly downloads a PDF.
+ */
+async function loadReactPdfModule(): Promise<ReactPdfModule> {
+  // Use a direct module specifier so Vite can pre-bundle and resolve it correctly.
+  const loaded = (await import("@react-pdf/renderer")) as unknown as ReactPdfModule;
+  return loaded;
+}
+
+function downloadBlob(blob: Blob, filename: string): void {
+  const blobUrl = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = blobUrl;
+  anchor.download = filename;
+  anchor.click();
+  URL.revokeObjectURL(blobUrl);
+}
+
+interface ContractsPageProps {
+  /**
+   * Test seam: callers can inject a deterministic file picker in tests.
+   * Production route does not pass this prop, so default DOM-based picker is used.
+   */
+  pickFile?: () => Promise<File | null>;
+}
+
+export function ContractsPage({ pickFile = pickFileFromUser }: ContractsPageProps = {}) {
   const tenantIdFromStore = useAuthStore((state) => state.tenantId);
   const tenantId = React.useMemo(() => {
     const parsed = Number(tenantIdFromStore);
@@ -107,12 +177,21 @@ export function ContractsPage() {
   const [isLoading, setIsLoading] = React.useState(true);
   const [errorMessage, setErrorMessage] = React.useState<string | null>(null);
 
-  const [dialogMode, setDialogMode] = React.useState<"create" | "edit">("create");
+  const [dialogMode, setDialogMode] = React.useState<"create" | "edit">(
+    "create",
+  );
   const [isContractDialogOpen, setIsContractDialogOpen] = React.useState(false);
-  const [selectedContract, setSelectedContract] = React.useState<Contract | null>(null);
+  const [contractDialogError, setContractDialogError] = React.useState<string | null>(
+    null,
+  );
+  const [selectedContract, setSelectedContract] = React.useState<Contract | null>(
+    null,
+  );
   const [isDialogSubmitting, setIsDialogSubmitting] = React.useState(false);
 
-  const [terminateTarget, setTerminateTarget] = React.useState<Contract | null>(null);
+  const [terminateTarget, setTerminateTarget] = React.useState<Contract | null>(
+    null,
+  );
   const [terminateReason, setTerminateReason] = React.useState("");
   const [isTerminating, setIsTerminating] = React.useState(false);
 
@@ -134,69 +213,72 @@ export function ContractsPage() {
     void loadContracts();
   }, [loadContracts]);
 
-  const upsertContract = React.useCallback((contract: Contract) => {
-    setContracts((previous) => {
-      const exists = previous.some((item) => item.id === contract.id);
-      return sortByUpdatedDesc(
-        exists
-          ? previous.map((item) => (item.id === contract.id ? contract : item))
-          : [...previous, contract],
-      );
-    });
-  }, []);
-
   const handleCreateClick = () => {
     setDialogMode("create");
     setSelectedContract(null);
+    setContractDialogError(null);
     setIsContractDialogOpen(true);
   };
 
   const handleEditClick = (contract: Contract) => {
     setDialogMode("edit");
     setSelectedContract(contract);
+    setContractDialogError(null);
     setIsContractDialogOpen(true);
   };
 
   const handleContractSubmit = async (values: ContractDialogSubmitInput) => {
     setIsDialogSubmitting(true);
+    setContractDialogError(null);
 
     try {
       if (dialogMode === "create") {
-        const created = await contractsService.createContract(tenantId, values);
-        upsertContract(created);
+        await contractsService.createContract(tenantId, values);
         toast.success("Contract created.");
       } else {
         if (!selectedContract) return;
 
-        const updated = await contractsService.updateContract(selectedContract.id, values);
-        upsertContract(updated);
+        await contractsService.updateContract(selectedContract.id, {
+          salary: values.salary,
+          terms_content: values.terms_content,
+          start_date: values.start_date,
+          end_date: values.end_date,
+        });
         toast.success("Contract updated.");
       }
 
+      // We re-fetch after each mutation so UI always reflects backend-computed values/signatures/status.
+      await loadContracts();
       setIsContractDialogOpen(false);
       setSelectedContract(null);
     } catch (error) {
-      toast.error("Failed to save contract.", {
-        description: (error as Error).message,
-      });
+      // Show backend detail in-form (e.g. "Doctor not found or does not belong to this tenant").
+      const formErrorMessage = isApiError(error)
+        ? error.displayMessage
+        : ((error as Error).message ?? "Failed to save contract.");
+      setContractDialogError(formErrorMessage);
+
+      // Keep toast generic; detailed backend validation text is shown only inside the form.
+      toast.error(
+        dialogMode === "create"
+          ? "Failed to create contract."
+          : "Failed to update contract.",
+      );
     } finally {
       setIsDialogSubmitting(false);
     }
   };
 
-  const runTransition = React.useCallback(
-    async (id: string, nextStatus: ContractStatus, reason?: string) => {
-      const updated = await contractsService.transitionContract(id, nextStatus, reason);
-      upsertContract(updated);
-      return updated;
-    },
-    [upsertContract],
-  );
-
   const handleActivate = async (contract: Contract) => {
+    if (!hasBothSignatures(contract)) {
+      toast.error("Contract cannot be activated until both signatures are present.");
+      return;
+    }
+
     try {
-      await runTransition(contract.id, "ACTIVE");
-      toast.success(`Contract "${contract.name}" activated.`);
+      await contractsService.transitionContract(contract.id, "ACTIVE");
+      await loadContracts();
+      toast.success(`Contract #${contract.id} activated.`);
     } catch (error) {
       toast.error("Unable to activate contract.", {
         description: (error as Error).message,
@@ -206,11 +288,66 @@ export function ContractsPage() {
 
   const handleExpire = async (contract: Contract) => {
     try {
-      await runTransition(contract.id, "EXPIRED");
-      toast.success(`Contract "${contract.name}" expired.`);
+      await contractsService.transitionContract(contract.id, "EXPIRED");
+      await loadContracts();
+      toast.success(`Contract #${contract.id} expired.`);
     } catch (error) {
       toast.error("Unable to expire contract.", {
         description: (error as Error).message,
+      });
+    }
+  };
+
+  const handleSignDoctor = async (contract: Contract) => {
+    const file = await pickFile();
+    if (!file) return;
+
+    try {
+      await contractsService.signDoctor(contract.id, file);
+      await loadContracts();
+      toast.success(`Doctor signature uploaded for contract #${contract.id}.`);
+    } catch (error) {
+      toast.error("Unable to upload doctor signature.", {
+        description: (error as Error).message,
+      });
+    }
+  };
+
+  const handleSignHospital = async (contract: Contract) => {
+    const file = await pickFile();
+    if (!file) return;
+
+    try {
+      await contractsService.signHospital(contract.id, file);
+      await loadContracts();
+      toast.success(`Hospital signature uploaded for contract #${contract.id}.`);
+    } catch (error) {
+      toast.error("Unable to upload hospital signature.", {
+        description: (error as Error).message,
+      });
+    }
+  };
+
+  const handleDownloadPdf = async (contract: Contract) => {
+    try {
+      const reactPdf = await loadReactPdfModule();
+
+      const blob = await reactPdf
+        .pdf(
+          <ContractPdfDocument
+            contract={contract}
+            primitives={reactPdf as ReactPdfPrimitives}
+          />,
+        )
+        .toBlob();
+
+      downloadBlob(blob, `contract_${contract.id}_doctor_${contract.doctor_user_id}.pdf`);
+      toast.success(`Downloaded contract_${contract.id}_doctor_${contract.doctor_user_id}.pdf`);
+    } catch (error) {
+      toast.error("Unable to generate PDF.", {
+        description:
+          (error as Error).message ||
+          "Install @react-pdf/renderer and retry PDF generation.",
       });
     }
   };
@@ -237,8 +374,13 @@ export function ContractsPage() {
 
     setIsTerminating(true);
     try {
-      await runTransition(terminateTarget.id, "TERMINATED", trimmedReason);
-      toast.success(`Contract "${terminateTarget.name}" terminated.`);
+      await contractsService.transitionContract(
+        terminateTarget.id,
+        "TERMINATED",
+        trimmedReason,
+      );
+      await loadContracts();
+      toast.success(`Contract #${terminateTarget.id} terminated.`);
       closeTerminateDialog();
     } catch (error) {
       toast.error("Unable to terminate contract.", {
@@ -249,10 +391,14 @@ export function ContractsPage() {
     }
   };
 
-  const bookingEligibleContract = React.useMemo(
-    () => getCurrentActiveContract(contracts),
-    [contracts],
-  );
+  const eligibilitySummary = React.useMemo(() => {
+    const eligible = contracts.filter((contract) =>
+      isEligibleForDoctorBooking(contract),
+    ).length;
+    const notEligible = contracts.length - eligible;
+
+    return { eligible, notEligible };
+  }, [contracts]);
 
   const getActions = (contract: Contract): ActionItem[] => {
     const actions: ActionItem[] = [];
@@ -262,11 +408,27 @@ export function ContractsPage() {
         label: "Edit",
         onClick: () => handleEditClick(contract),
       });
+
+      actions.push({
+        label: "Sign Doctor",
+        onClick: () => {
+          void handleSignDoctor(contract);
+        },
+      });
+
+      actions.push({
+        label: "Sign Hospital",
+        onClick: () => {
+          void handleSignHospital(contract);
+        },
+      });
     }
 
     if (contract.status === "DRAFT") {
+      // We still show Activate for discoverability, but keep it disabled until both signatures exist.
       actions.push({
         label: "Activate",
+        disabled: !hasBothSignatures(contract),
         onClick: () => {
           void handleActivate(contract);
         },
@@ -290,6 +452,13 @@ export function ContractsPage() {
       });
     }
 
+    actions.push({
+      label: "Download PDF",
+      onClick: () => {
+        void handleDownloadPdf(contract);
+      },
+    });
+
     return actions;
   };
 
@@ -298,7 +467,9 @@ export function ContractsPage() {
       <div className="space-y-6 p-4 sm:p-6 lg:p-8">
         <h1 className="text-2xl font-bold sm:text-3xl">Contracts</h1>
         <Card>
-          <CardContent className="pt-6 text-muted-foreground">Loading contracts...</CardContent>
+          <CardContent className="pt-6 text-muted-foreground">
+            Loading contracts...
+          </CardContent>
         </Card>
       </div>
     );
@@ -309,28 +480,22 @@ export function ContractsPage() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold sm:text-3xl">Contracts</h1>
-          <p className="text-muted-foreground">Manage tenant contract lifecycle and status transitions.</p>
+          <p className="text-muted-foreground">
+            Manage doctor contracts, signatures, transitions, and exports.
+          </p>
         </div>
         <Button onClick={handleCreateClick}>New Contract</Button>
       </div>
 
-      <Card
-        className={
-          bookingEligibleContract
-            ? "border-success/40 bg-success/10"
-            : "border-destructive/40 bg-destructive/10"
-        }
-      >
+      <Card>
         <CardHeader>
           <CardTitle>
-            Booking eligibility: {bookingEligibleContract ? "Allowed" : "Blocked"}
+            Doctor booking eligibility: {eligibilitySummary.eligible} eligible / {" "}
+            {eligibilitySummary.notEligible} not eligible
           </CardTitle>
-          <CardDescription
-            className={bookingEligibleContract ? "text-success" : "text-destructive"}
-          >
-            {bookingEligibleContract
-              ? `Active contract until ${bookingEligibleContract.expiresAt ? formatDateTime(bookingEligibleContract.expiresAt) : "No expiry"}`
-              : "No active contract (booking will be blocked once backend checks contracts)."}
+          <CardDescription>
+            Eligible contracts must be ACTIVE, have doctor + hospital signatures,
+            and be within the configured start/end date range.
           </CardDescription>
         </CardHeader>
       </Card>
@@ -350,16 +515,21 @@ export function ContractsPage() {
         </CardHeader>
         <CardContent>
           {contracts.length === 0 ? (
-            <p className="py-8 text-center text-muted-foreground">No contracts yet.</p>
+            <p className="py-8 text-center text-muted-foreground">
+              No contracts yet.
+            </p>
           ) : (
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Name</TableHead>
+                    <TableHead>Doctor ID</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead>Activated</TableHead>
-                    <TableHead>Expires</TableHead>
+                    <TableHead>Salary</TableHead>
+                    <TableHead>Start</TableHead>
+                    <TableHead>End</TableHead>
+                    <TableHead>Doctor Signed</TableHead>
+                    <TableHead>Hospital Signed</TableHead>
                     <TableHead>Updated</TableHead>
                     <TableHead className="w-0" />
                   </TableRow>
@@ -370,20 +540,35 @@ export function ContractsPage() {
 
                     return (
                       <TableRow key={contract.id}>
-                        <TableCell className="font-medium">{contract.name}</TableCell>
+                        <TableCell className="font-medium">
+                          {contract.doctor_user_id}
+                        </TableCell>
                         <TableCell>
                           <Badge variant={getStatusVariant(contract.status)}>
                             {contract.status}
                           </Badge>
                         </TableCell>
                         <TableCell className="text-muted-foreground">
-                          {formatDateTime(contract.activatedAt)}
+                          {contract.salary}
                         </TableCell>
                         <TableCell className="text-muted-foreground">
-                          {contract.expiresAt ? formatDateTime(contract.expiresAt) : "No expiry"}
+                          {formatDateTime(contract.start_date)}
                         </TableCell>
                         <TableCell className="text-muted-foreground">
-                          {formatDateTime(contract.updatedAt)}
+                          {formatDateTime(contract.end_date)}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {contract.doctor_signed_at
+                            ? formatDateTime(contract.doctor_signed_at)
+                            : "No"}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {contract.hospital_signed_at
+                            ? formatDateTime(contract.hospital_signed_at)
+                            : "No"}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {formatDateTime(contract.updated_at)}
                         </TableCell>
                         <TableCell>
                           {actions.length > 0 ? (
@@ -409,24 +594,26 @@ export function ContractsPage() {
         mode={dialogMode}
         contract={selectedContract}
         isSubmitting={isDialogSubmitting}
+        submitError={contractDialogError}
         onOpenChange={(open) => {
           setIsContractDialogOpen(open);
           if (!open) {
             setSelectedContract(null);
+            setContractDialogError(null);
           }
         }}
         onSubmit={handleContractSubmit}
       />
 
-      <Dialog open={Boolean(terminateTarget)} onOpenChange={(open) => !open && closeTerminateDialog()}>
+      <Dialog
+        open={Boolean(terminateTarget)}
+        onOpenChange={(open) => !open && closeTerminateDialog()}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Terminate Contract</DialogTitle>
             <DialogDescription>
-              Provide a termination reason for
-              {" "}
-              <span className="font-medium">{terminateTarget?.name}</span>
-              .
+              Provide a termination reason for contract #{terminateTarget?.id}.
             </DialogDescription>
           </DialogHeader>
 

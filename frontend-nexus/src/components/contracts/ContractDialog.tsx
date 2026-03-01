@@ -19,29 +19,24 @@ import { Textarea } from "@/components/ui/textarea";
 
 const contractDialogSchema = z
   .object({
-    name: z.string().trim().min(2, "Name must be at least 2 characters."),
-    termsMetadata: z.string().optional(),
-    activatedAt: z.string().optional(),
-    expiresAt: z.string().optional(),
+    doctor_user_id: z.coerce
+      .number({ invalid_type_error: "Doctor ID is required." })
+      .int("Doctor ID must be an integer.")
+      .positive("Doctor ID must be greater than 0."),
+    salary: z.string().trim().min(1, "Salary is required."),
+    start_date: z.string().trim().min(1, "Start date is required."),
+    end_date: z.string().trim().min(1, "End date is required."),
+    terms_content: z.string().trim().min(1, "Terms content is required."),
   })
   .superRefine((values, context) => {
-    const activatedAt = values.activatedAt?.trim();
-    const expiresAt = values.expiresAt?.trim();
+    const start = new Date(values.start_date).getTime();
+    const end = new Date(values.end_date).getTime();
 
-    if (!activatedAt || !expiresAt) return;
-
-    const activatedAtTimestamp = new Date(activatedAt).getTime();
-    const expiresAtTimestamp = new Date(expiresAt).getTime();
-
-    if (
-      Number.isFinite(activatedAtTimestamp) &&
-      Number.isFinite(expiresAtTimestamp) &&
-      expiresAtTimestamp <= activatedAtTimestamp
-    ) {
+    if (Number.isFinite(start) && Number.isFinite(end) && end <= start) {
       context.addIssue({
         code: z.ZodIssueCode.custom,
-        path: ["expiresAt"],
-        message: "Expiry must be after activation date.",
+        path: ["end_date"],
+        message: "End date must be after start date.",
       });
     }
   });
@@ -49,10 +44,11 @@ const contractDialogSchema = z
 type ContractDialogFormValues = z.infer<typeof contractDialogSchema>;
 
 export interface ContractDialogSubmitInput {
-  name: string;
-  termsMetadata?: string | null;
-  activatedAt?: string | null;
-  expiresAt?: string | null;
+  doctor_user_id: number;
+  salary: string;
+  terms_content: string;
+  start_date: string;
+  end_date: string;
 }
 
 interface ContractDialogProps {
@@ -60,38 +56,40 @@ interface ContractDialogProps {
   mode: "create" | "edit";
   contract?: Contract | null;
   isSubmitting?: boolean;
+  /** Backend/API submit error shown at the bottom of the form for actionable feedback. */
+  submitError?: string | null;
   onOpenChange: (open: boolean) => void;
   onSubmit: (values: ContractDialogSubmitInput) => Promise<void> | void;
 }
 
-function toDateTimeLocal(value?: string | null): string {
-  if (!value) return "";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "";
-
-  const timezoneOffset = date.getTimezoneOffset() * 60 * 1000;
-  return new Date(date.getTime() - timezoneOffset).toISOString().slice(0, 16);
+/**
+ * We sanitize HTML preview locally before rendering with dangerouslySetInnerHTML.
+ * This is intentionally simple for preview purposes and removes script tags and inline event handlers.
+ */
+export function sanitizeTermsHtml(rawHtml: string): string {
+  return rawHtml
+    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "")
+    .replace(/\son\w+=("[^"]*"|'[^']*'|[^\s>]+)/gi, "")
+    .replace(/javascript:/gi, "");
 }
 
 function toInitialValues(contract?: Contract | null): ContractDialogFormValues {
   return {
-    name: contract?.name ?? "",
-    termsMetadata: contract?.termsMetadata ?? "",
-    activatedAt: toDateTimeLocal(contract?.activatedAt),
-    expiresAt: toDateTimeLocal(contract?.expiresAt),
+    doctor_user_id: contract?.doctor_user_id ?? 0,
+    salary: contract?.salary ?? "",
+    start_date: contract?.start_date ?? "",
+    end_date: contract?.end_date ?? "",
+    terms_content: contract?.terms_content ?? "",
   };
 }
 
 function toPayload(values: ContractDialogFormValues): ContractDialogSubmitInput {
-  const activatedAt = values.activatedAt?.trim();
-  const expiresAt = values.expiresAt?.trim();
-  const termsMetadata = values.termsMetadata?.trim();
-
   return {
-    name: values.name.trim(),
-    termsMetadata: termsMetadata ? termsMetadata : null,
-    activatedAt: activatedAt ? new Date(activatedAt).toISOString() : null,
-    expiresAt: expiresAt ? new Date(expiresAt).toISOString() : null,
+    doctor_user_id: values.doctor_user_id,
+    salary: values.salary.trim(),
+    terms_content: values.terms_content.trim(),
+    start_date: values.start_date,
+    end_date: values.end_date,
   };
 }
 
@@ -100,6 +98,7 @@ export function ContractDialog({
   mode,
   contract,
   isSubmitting = false,
+  submitError = null,
   onOpenChange,
   onSubmit,
 }: ContractDialogProps) {
@@ -115,9 +114,16 @@ export function ContractDialog({
 
   const {
     register,
+    watch,
     handleSubmit,
     formState: { errors },
   } = form;
+
+  const termsContentValue = watch("terms_content");
+  const previewHtml = React.useMemo(
+    () => sanitizeTermsHtml(termsContentValue ?? ""),
+    [termsContentValue],
+  );
 
   const handleFormSubmit = async (values: ContractDialogFormValues) => {
     await onSubmit(toPayload(values));
@@ -126,12 +132,12 @@ export function ContractDialog({
   const title = mode === "create" ? "New Contract" : "Edit Contract";
   const description =
     mode === "create"
-      ? "Create a contract draft for your tenant."
-      : "Update contract details.";
+      ? "Create a doctor contract draft for the tenant."
+      : "Update contract financial and term details.";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>{description}</DialogDescription>
@@ -143,58 +149,97 @@ export function ContractDialog({
           onSubmit={handleSubmit(handleFormSubmit)}
         >
           <div className="space-y-2">
-            <Label htmlFor="contract-name">Name</Label>
+            <Label htmlFor="contract-doctor-user-id">Doctor ID</Label>
             <Input
-              id="contract-name"
-              placeholder="e.g. Primary annual contract"
-              aria-invalid={Boolean(errors.name?.message)}
-              {...register("name")}
+              id="contract-doctor-user-id"
+              type="number"
+              placeholder="e.g. 42"
+              disabled={mode === "edit"}
+              aria-invalid={Boolean(errors.doctor_user_id?.message)}
+              {...register("doctor_user_id", { valueAsNumber: true })}
             />
-            {errors.name?.message ? (
-              <p className="text-xs text-destructive">{errors.name.message}</p>
+            {errors.doctor_user_id?.message ? (
+              <p className="text-xs text-destructive">{errors.doctor_user_id.message}</p>
+            ) : null}
+            {mode === "edit" ? (
+              <p className="text-xs text-muted-foreground">
+                Doctor assignment is immutable after contract creation.
+              </p>
             ) : null}
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="contract-activatedAt">Activated At</Label>
+            <Label htmlFor="contract-salary">Salary</Label>
             <Input
-              id="contract-activatedAt"
-              type="datetime-local"
-              aria-invalid={Boolean(errors.activatedAt?.message)}
-              {...register("activatedAt")}
+              id="contract-salary"
+              placeholder="e.g. 12000 USD/month"
+              aria-invalid={Boolean(errors.salary?.message)}
+              {...register("salary")}
             />
-            {errors.activatedAt?.message ? (
-              <p className="text-xs text-destructive">{errors.activatedAt.message}</p>
+            {errors.salary?.message ? (
+              <p className="text-xs text-destructive">{errors.salary.message}</p>
             ) : null}
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="contract-expiresAt">Expires At</Label>
-            <Input
-              id="contract-expiresAt"
-              type="datetime-local"
-              aria-invalid={Boolean(errors.expiresAt?.message)}
-              {...register("expiresAt")}
-            />
-            {errors.expiresAt?.message ? (
-              <p className="text-xs text-destructive">{errors.expiresAt.message}</p>
-            ) : null}
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="contract-start-date">Start Date</Label>
+              <Input
+                id="contract-start-date"
+                type="date"
+                aria-invalid={Boolean(errors.start_date?.message)}
+                {...register("start_date")}
+              />
+              {errors.start_date?.message ? (
+                <p className="text-xs text-destructive">{errors.start_date.message}</p>
+              ) : null}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="contract-end-date">End Date</Label>
+              <Input
+                id="contract-end-date"
+                type="date"
+                aria-invalid={Boolean(errors.end_date?.message)}
+                {...register("end_date")}
+              />
+              {errors.end_date?.message ? (
+                <p className="text-xs text-destructive">{errors.end_date.message}</p>
+              ) : null}
+            </div>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="contract-termsMetadata">Terms Metadata</Label>
+            <Label htmlFor="contract-terms-content">Terms (HTML)</Label>
             <Textarea
-              id="contract-termsMetadata"
-              rows={4}
-              placeholder="Optional free text or JSON"
-              aria-invalid={Boolean(errors.termsMetadata?.message)}
-              {...register("termsMetadata")}
+              id="contract-terms-content"
+              rows={8}
+              placeholder="<h3>Compensation</h3><p>Doctor receives ...</p>"
+              aria-invalid={Boolean(errors.terms_content?.message)}
+              {...register("terms_content")}
             />
-            {errors.termsMetadata?.message ? (
-              <p className="text-xs text-destructive">{errors.termsMetadata.message}</p>
+            {errors.terms_content?.message ? (
+              <p className="text-xs text-destructive">{errors.terms_content.message}</p>
             ) : null}
+          </div>
+
+          <div className="space-y-2 rounded-md border p-3">
+            <Label>Terms Preview (Sanitized)</Label>
+            <div className="prose prose-sm max-w-none">
+              {previewHtml ? (
+                <div dangerouslySetInnerHTML={{ __html: previewHtml }} />
+              ) : (
+                <p className="text-sm text-muted-foreground">Preview appears here.</p>
+              )}
+            </div>
           </div>
         </form>
+
+        {submitError ? (
+          <p className="text-sm text-destructive" role="alert">
+            {submitError}
+          </p>
+        ) : null}
 
         <DialogFooter>
           <Button

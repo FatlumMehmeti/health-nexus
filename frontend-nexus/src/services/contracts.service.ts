@@ -1,7 +1,13 @@
+import {
+  API_BASE_URL,
+  ApiError,
+  apiFetch,
+  getAccessToken,
+  type ValidationError,
+} from "@/lib/api-client";
 import type { Contract, ContractStatus } from "@/interfaces/contract";
 
-const STORAGE_KEY = "hn_contracts";
-
+// Transition matrix mirrors backend domain rules.
 const ALLOWED_TRANSITIONS: Record<ContractStatus, ContractStatus[]> = {
   DRAFT: ["ACTIVE", "TERMINATED"],
   ACTIVE: ["EXPIRED", "TERMINATED"],
@@ -9,248 +15,147 @@ const ALLOWED_TRANSITIONS: Record<ContractStatus, ContractStatus[]> = {
   TERMINATED: [],
 };
 
-function nowIso(): string {
-  return new Date().toISOString();
+/** Build a full API URL for direct fetch usage (multipart uploads). */
+function toApiUrl(path: string): string {
+  if (path.startsWith("http://") || path.startsWith("https://")) return path;
+  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+  return `${API_BASE_URL.replace(/\/+$/, "")}${normalizedPath}`;
 }
 
-function parseDate(value?: string | null): number | null {
-  if (!value) return null;
-  const timestamp = new Date(value).getTime();
-  return Number.isNaN(timestamp) ? null : timestamp;
-}
+/**
+ * Parse FastAPI-style error payloads for non-JSON and JSON responses alike.
+ * We keep this local to ensure multipart requests return the same error style as apiFetch.
+ */
+async function parseUploadError(
+  response: Response,
+): Promise<{ detail?: string | ValidationError[]; data?: unknown }> {
+  const contentType = response.headers.get("content-type") ?? "";
 
-function readContracts(): Contract[] {
-  if (typeof window === "undefined") return [];
-  const raw = window.localStorage.getItem(STORAGE_KEY);
-  if (!raw) return [];
+  if (contentType.toLowerCase().includes("application/json")) {
+    try {
+      const data = (await response.json()) as unknown;
+      const detail =
+        typeof data === "object" && data !== null && "detail" in data
+          ? (data as { detail?: string | ValidationError[] }).detail
+          : undefined;
+      return { detail, data };
+    } catch {
+      return { detail: undefined, data: undefined };
+    }
+  }
 
   try {
-    const parsed = JSON.parse(raw) as unknown;
-    return Array.isArray(parsed) ? (parsed as Contract[]) : [];
+    const text = await response.text();
+    return { detail: text || undefined, data: text || undefined };
   } catch {
-    return [];
+    return { detail: undefined, data: undefined };
   }
 }
 
-function writeContracts(contracts: Contract[]): void {
-  if (typeof window === "undefined") return;
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(contracts));
-}
+/**
+ * Multipart uploads cannot use apiFetch directly because apiFetch always sets JSON Content-Type.
+ * For FormData, the browser must set the multipart boundary automatically.
+ */
+async function uploadSignature(path: string, file: File): Promise<Contract> {
+  const formData = new FormData();
+  formData.append("file", file);
 
-function generateId(): string {
-  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
-    return crypto.randomUUID();
-  }
-  return `contract_${Math.random().toString(36).slice(2, 11)}`;
-}
+  // Reuse existing auth token from api-client so we rely on the same login/session flow.
+  const token = getAccessToken();
+  const headers: Record<string, string> = {};
+  if (token) headers.Authorization = `Bearer ${token}`;
 
-function sortByUpdatedDesc(contracts: Contract[]): Contract[] {
-  return [...contracts].sort(
-    (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
-  );
-}
+  const response = await fetch(toApiUrl(path), {
+    method: "POST",
+    headers,
+    body: formData,
+  });
 
-function validateDateOrder(
-  activatedAt?: string | null,
-  expiresAt?: string | null,
-): void {
-  const activatedTimestamp = parseDate(activatedAt);
-  const expiresTimestamp = parseDate(expiresAt);
-  if (
-    activatedTimestamp !== null &&
-    expiresTimestamp !== null &&
-    expiresTimestamp <= activatedTimestamp
-  ) {
-    throw new Error("Expiry must be after activation date.");
-  }
-}
-
-function seedTenantContractsIfNeeded(tenantId: number): Contract[] {
-  const contracts = readContracts();
-  if (contracts.some((contract) => contract.tenantId === tenantId)) {
-    return contracts;
+  if (!response.ok) {
+    const { detail, data } = await parseUploadError(response);
+    throw new ApiError(
+      `Request failed: ${response.status} ${response.statusText}`,
+      response.status,
+      detail,
+      data,
+    );
   }
 
-  const now = new Date();
-  const yesterday = new Date(now);
-  yesterday.setDate(now.getDate() - 1);
-
-  const inThirtyDays = new Date(now);
-  inThirtyDays.setDate(now.getDate() + 30);
-
-  const sixtyDaysAgo = new Date(now);
-  sixtyDaysAgo.setDate(now.getDate() - 60);
-
-  const tenDaysAgo = new Date(now);
-  tenDaysAgo.setDate(now.getDate() - 10);
-
-  const createdAt = nowIso();
-
-  const seeded: Contract[] = [
-    {
-      id: generateId(),
-      tenantId,
-      name: "Standard Renewal Draft",
-      status: "DRAFT",
-      activatedAt: null,
-      expiresAt: null,
-      termsMetadata: "{\"version\":1,\"notes\":\"Initial draft terms\"}",
-      terminatedReason: null,
-      createdAt,
-      updatedAt: createdAt,
-    },
-    {
-      id: generateId(),
-      tenantId,
-      name: "Primary Service Contract",
-      status: "ACTIVE",
-      activatedAt: yesterday.toISOString(),
-      expiresAt: inThirtyDays.toISOString(),
-      termsMetadata: "{\"coverage\":\"full\"}",
-      terminatedReason: null,
-      createdAt,
-      updatedAt: createdAt,
-    },
-    {
-      id: generateId(),
-      tenantId,
-      name: "Legacy Contract 2025",
-      status: "EXPIRED",
-      activatedAt: sixtyDaysAgo.toISOString(),
-      expiresAt: tenDaysAgo.toISOString(),
-      termsMetadata: "{\"coverage\":\"legacy\"}",
-      terminatedReason: null,
-      createdAt,
-      updatedAt: createdAt,
-    },
-  ];
-
-  const next = [...contracts, ...seeded];
-  writeContracts(next);
-  return next;
-}
-
-function findContractOrThrow(id: string, contracts: Contract[]): Contract {
-  const contract = contracts.find((item) => item.id === id);
-  if (!contract) {
-    throw new Error("Contract not found.");
-  }
-  return contract;
+  return (await response.json()) as Contract;
 }
 
 export const contractsService = {
-  async getContracts(tenantId: number): Promise<Contract[]> {
-    const contracts = seedTenantContractsIfNeeded(tenantId);
-    return sortByUpdatedDesc(
-      contracts.filter((contract) => contract.tenantId === tenantId),
-    );
+  /**
+   * Backend already returns snake_case fields; we keep them unchanged in the frontend contract type.
+   */
+  async getContracts(tenantId: number, doctorUserId?: number): Promise<Contract[]> {
+    const query =
+      typeof doctorUserId === "number"
+        ? `?doctor_user_id=${encodeURIComponent(String(doctorUserId))}`
+        : "";
+
+    return apiFetch<Contract[]>(`/api/tenants/${tenantId}/contracts${query}`, {
+      method: "GET",
+    });
   },
 
   async createContract(
     tenantId: number,
     input: {
-      name: string;
-      termsMetadata?: string | null;
-      activatedAt?: string | null;
-      expiresAt?: string | null;
+      doctor_user_id: number;
+      salary: string;
+      terms_content: string;
+      start_date: string;
+      end_date: string;
     },
   ): Promise<Contract> {
-    validateDateOrder(input.activatedAt, input.expiresAt);
-
-    const allContracts = seedTenantContractsIfNeeded(tenantId);
-    const timestamp = nowIso();
-    const created: Contract = {
-      id: generateId(),
-      tenantId,
-      name: input.name.trim(),
-      status: "DRAFT",
-      activatedAt: input.activatedAt ?? null,
-      expiresAt: input.expiresAt ?? null,
-      termsMetadata: input.termsMetadata ?? null,
-      terminatedReason: null,
-      createdAt: timestamp,
-      updatedAt: timestamp,
-    };
-
-    const next = [...allContracts, created];
-    writeContracts(next);
-    return created;
+    return apiFetch<Contract>(`/api/tenants/${tenantId}/contracts`, {
+      method: "POST",
+      body: input,
+    });
   },
 
   async updateContract(
-    id: string,
+    contractId: number | string,
     patch: Partial<
-      Pick<Contract, "name" | "termsMetadata" | "activatedAt" | "expiresAt">
+      Pick<Contract, "salary" | "terms_content" | "start_date" | "end_date">
     >,
   ): Promise<Contract> {
-    const allContracts = readContracts();
-    const existing = findContractOrThrow(id, allContracts);
-
-    const nextActivatedAt =
-      patch.activatedAt !== undefined ? patch.activatedAt : existing.activatedAt;
-    const nextExpiresAt =
-      patch.expiresAt !== undefined ? patch.expiresAt : existing.expiresAt;
-
-    validateDateOrder(nextActivatedAt, nextExpiresAt);
-
-    const updated: Contract = {
-      ...existing,
-      ...patch,
-      name: patch.name !== undefined ? patch.name.trim() : existing.name,
-      updatedAt: nowIso(),
-    };
-
-    const next = allContracts.map((contract) =>
-      contract.id === id ? updated : contract,
-    );
-
-    writeContracts(next);
-    return updated;
+    return apiFetch<Contract>(`/api/contracts/${contractId}`, {
+      method: "PATCH",
+      body: patch,
+    });
   },
 
   async transitionContract(
-    id: string,
+    contractId: number | string,
     nextStatus: ContractStatus,
     reason?: string,
   ): Promise<Contract> {
-    const allContracts = readContracts();
-    const existing = findContractOrThrow(id, allContracts);
-
-    const allowed = ALLOWED_TRANSITIONS[existing.status];
-    if (!allowed.includes(nextStatus)) {
-      throw new Error(
-        `Invalid transition from ${existing.status} to ${nextStatus}.`,
-      );
+    // Guard unknown client-side status values early; backend remains source of truth.
+    if (!(nextStatus in ALLOWED_TRANSITIONS)) {
+      throw new Error(`Unsupported status transition target: ${nextStatus}`);
     }
 
-    const now = nowIso();
-    const updated: Contract = {
-      ...existing,
-      status: nextStatus,
-      updatedAt: now,
-    };
-
-    if (nextStatus === "ACTIVE" && !existing.activatedAt) {
-      updated.activatedAt = now;
+    if (nextStatus === "TERMINATED" && !reason?.trim()) {
+      throw new Error("Termination reason is required.");
     }
 
-    if (nextStatus === "EXPIRED" && !existing.expiresAt) {
-      updated.expiresAt = now;
-    }
+    return apiFetch<Contract>(`/api/contracts/${contractId}/transition`, {
+      method: "POST",
+      body: {
+        // Backend transition endpoint expects snake_case body keys.
+        next_status: nextStatus,
+        ...(reason?.trim() ? { reason: reason.trim() } : {}),
+      },
+    });
+  },
 
-    if (nextStatus === "TERMINATED") {
-      const trimmedReason = reason?.trim();
-      if (!trimmedReason) {
-        throw new Error("Termination reason is required.");
-      }
-      updated.terminatedReason = trimmedReason;
-    }
+  async signDoctor(contractId: number | string, file: File): Promise<Contract> {
+    return uploadSignature(`/api/contracts/${contractId}/sign/doctor`, file);
+  },
 
-    const next = allContracts.map((contract) =>
-      contract.id === id ? updated : contract,
-    );
-
-    writeContracts(next);
-    return updated;
+  async signHospital(contractId: number | string, file: File): Promise<Contract> {
+    return uploadSignature(`/api/contracts/${contractId}/sign/hospital`, file);
   },
 };
