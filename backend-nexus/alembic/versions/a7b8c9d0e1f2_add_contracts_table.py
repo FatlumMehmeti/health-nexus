@@ -1,15 +1,15 @@
 """Add contracts table
 
-Revision ID: j4k5l6m7n8o9
-Revises: i3j4k5l6m7n8
+Revision ID: a7b8c9d0e1f2
+Revises: j4k5l6m7n8o9
 Create Date: 2026-02-28
 
 """
 from alembic import op
 import sqlalchemy as sa
 
-revision = "j4k5l6m7n8o9"
-down_revision = "i3j4k5l6m7n8"
+revision = "a7b8c9d0e1f2"
+down_revision = "j4k5l6m7n8o9"
 branch_labels = None
 depends_on = None
 

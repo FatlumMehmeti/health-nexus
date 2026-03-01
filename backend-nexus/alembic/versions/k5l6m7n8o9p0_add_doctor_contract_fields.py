@@ -1,7 +1,7 @@
 """Add doctor, salary, terms, signatures to contracts
 
 Revision ID: k5l6m7n8o9p0
-Revises: j4k5l6m7n8o9
+Revises: a7b8c9d0e1f2
 Create Date: 2026-02-28
 
 """
@@ -9,7 +9,7 @@ from alembic import op
 import sqlalchemy as sa
 
 revision = "k5l6m7n8o9p0"
-down_revision = "j4k5l6m7n8o9"
+down_revision = "a7b8c9d0e1f2"
 branch_labels = None
 depends_on = None
 

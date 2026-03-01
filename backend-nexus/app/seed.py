@@ -952,21 +952,6 @@ def seed_services(session, tenants_by_name, departments_by_name):
         existing.add((td.id, payload["name"]))
 
 
-
-def seed_tenant_managers(session, users_by_email, tenants_by_name):
-    """Link tenant.manager@seed.com to Bluestone Clinic."""
-    tm_user = users_by_email.get("tenant.manager@seed.com")
-    bluestone = tenants_by_name.get("Bluestone Clinic")
-    if not tm_user or not bluestone:
-        return
-    existing = session.query(TenantManager).filter(
-        TenantManager.user_id == tm_user.id,
-        TenantManager.tenant_id == bluestone.id,
-    ).first()
-    if not existing:
-        session.add(TenantManager(user_id=tm_user.id, tenant_id=bluestone.id))
-
-
 def seed_contracts(session, users_by_email, tenants_by_name):
     """Seed contracts for doctors. Bluestone Clinic (tenant 1) gets contracts."""
     now = datetime.now(timezone.utc)
