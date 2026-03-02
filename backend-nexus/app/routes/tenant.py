@@ -19,7 +19,7 @@ from app.models.role import Role
 from app.models.user import User
 
 from app.schemas.tenant_details import TenantDetailsRead, TenantDetailsUpdate
-from app.schemas.doctor import DoctorRead, DoctorCreateForTenant, DoctorUpdate
+from app.schemas.doctor import DoctorRead, DoctorReadWithName, DoctorCreateForTenant, DoctorUpdate
 from app.schemas.tenant_department import (
     TenantDepartmentRead,
     TenantDepartmentWithServicesRead,
@@ -330,15 +330,28 @@ def upsert_tenant_details(
     return details
 
 
-@router.get("/doctors", response_model=list[DoctorRead])
+@router.get("/doctors", response_model=list[DoctorReadWithName])
 def list_tenant_doctors(
     db: Session = Depends(get_db),
     auth: tuple = Depends(require_tenant_from_token),
 ):
-    """List current user's tenant doctors (tenant_id from JWT)."""
+    """List current user's tenant doctors with names (tenant_id from JWT)."""
     _, tenant_id = auth
     _assert_tenant_exists(db, tenant_id)
-    return db.query(Doctor).filter(Doctor.tenant_id == tenant_id).all()
+    rows = (
+        db.query(Doctor, User)
+        .join(User, Doctor.user_id == User.id)
+        .filter(Doctor.tenant_id == tenant_id)
+        .all()
+    )
+    return [
+        DoctorReadWithName(
+            **DoctorRead.model_validate(d).model_dump(),
+            first_name=u.first_name,
+            last_name=u.last_name,
+        )
+        for d, u in rows
+    ]
 
 
 @router.get("/departments", response_model=list[TenantDepartmentWithServicesRead])
