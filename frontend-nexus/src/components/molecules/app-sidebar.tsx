@@ -10,6 +10,7 @@ import {
   IconReport,
   IconBuildingStore,
   IconHistory,
+  IconUserCircle,
   IconSettings,
   IconStethoscope,
   type Icon,
@@ -61,6 +62,11 @@ const navMainAll: Array<{
     url: "/dashboard/audit-logs",
     icon: IconHistory,
     routeKey: "DASHBOARD_AUDIT_LOGS",
+  },
+  {
+    title: "Profile",
+    url: "/dashboard/profile",
+    icon: IconUserCircle,
   },
   
 ];

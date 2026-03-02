@@ -6,8 +6,8 @@
  * Used by /landing/$tenantSlug. Data from GET /api/tenants/by-slug/{slug}/landing.
  */
 import type { CSSProperties } from 'react'
-import { useState } from 'react'
-import { Link, useNavigate } from '@tanstack/react-router'
+import { useEffect, useState } from 'react'
+import { useNavigate } from '@tanstack/react-router'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -26,6 +26,7 @@ import { useAuthStore } from '@/stores/auth.store'
 import { tenantPlansService } from '@/services/tenant-plans.service'
 import { clientsService } from '@/services/clients.service'
 import { usersService } from '@/services/users.service'
+import { patientsService } from '@/services/patients.service'
 import { resolveMediaUrl } from '@/lib/media-url'
 import type { TenantLandingPageResponse } from '@/interfaces'
 
@@ -77,7 +78,7 @@ function getApiDetailCode(err: unknown): string | undefined {
 export function TenantLanding({ landingData }: TenantLandingProps) {
   const [activeTab, setActiveTab] = useState('home')
   const [selectedPlanId, setSelectedPlanId] = useState<number | null>(null)
-  const [isRegistered, setIsRegistered] = useState(false)
+  const [registeredOverride, setRegisteredOverride] = useState(false)
 
   const user = useAuthStore((s) => s.user)
   const role = useAuthStore((s) => s.role)
@@ -120,18 +121,38 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
     staleTime: 5 * 60_000,
   })
   const registerEmail = authEmail || meQuery.data?.email?.trim() || ''
+  const registrationStatusQuery = useQuery({
+    queryKey: ['tenant-patient-registration', tenantId, user?.id],
+    queryFn: () => patientsService.getMyTenantProfile(tenantId!),
+    enabled: !!tenantId && isAuthenticated,
+    retry: false,
+  })
+
+  useEffect(() => {
+    setRegisteredOverride(false)
+  }, [tenantId, isAuthenticated, user?.id])
+
+  const registrationStatusError = registrationStatusQuery.error
+  const isRegistrationStatusExpectedNotRegistered =
+    isApiError(registrationStatusError) &&
+    (registrationStatusError.status === 403 || registrationStatusError.status === 404)
+  const hasUnexpectedRegistrationStatusError =
+    registrationStatusQuery.isError && !isRegistrationStatusExpectedNotRegistered
+  const isRegistered = registeredOverride || registrationStatusQuery.isSuccess
+  const isRegistrationCheckPending =
+    isAuthenticated && !!tenantId && registrationStatusQuery.isLoading && !registeredOverride
 
   const registerMutation = useMutation({
     mutationFn: ({ tenantId, email }: { tenantId: number; email: string }) =>
       clientsService.registerAsPatient(tenantId, { email }),
     onSuccess: () => {
       toast.success('Registered')
-      setIsRegistered(true)
+      setRegisteredOverride(true)
     },
     onError: (err) => {
       if (isApiError(err) && err.status === 409 && getApiDetailCode(err) === 'EMAIL_ALREADY_REGISTERED') {
         toast.success('Already registered')
-        setIsRegistered(true)
+        setRegisteredOverride(true)
         return
       }
       if (isApiError(err) && err.status === 403) {
@@ -362,23 +383,57 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
 
                   {/* Register as patient CTA */}
                   {isAuthenticated && user ? (
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={
+                          isRegistered ||
+                          registerMutation.isPending ||
+                          meQuery.isLoading ||
+                          isRegistrationCheckPending
+                        }
+                        loading={registerMutation.isPending}
+                        onClick={handleRegisterAsPatient}
+                      >
+                        {isRegistered
+                          ? 'Registered'
+                          : isRegistrationCheckPending
+                            ? 'Checking...'
+                            : 'Register as patient'}
+                      </Button>
+                      {isRegistered ? (
+                        <>
+                          <p className="text-xs text-muted-foreground">
+                            You&apos;re registered. Add details in your Profile.
+                          </p>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => navigate({ to: '/dashboard/profile' })}
+                          >
+                            Go to Profile
+                          </Button>
+                        </>
+                      ) : null}
+                      {hasUnexpectedRegistrationStatusError ? (
+                        <p className="text-xs text-destructive">
+                          Unable to verify registration status right now.
+                        </p>
+                      ) : null}
+                    </div>
+                  ) : (
                     <Button
                       size="sm"
                       variant="outline"
-                      disabled={isRegistered || registerMutation.isPending || meQuery.isLoading}
-                      loading={registerMutation.isPending}
-                      onClick={handleRegisterAsPatient}
+                      onClick={() =>
+                        navigate({
+                          to: '/login',
+                          search: { reason: undefined, redirect: `/landing/${slug || tenant.id}` },
+                        })
+                      }
                     >
-                      {isRegistered ? 'Registered' : 'Register as patient'}
-                    </Button>
-                  ) : (
-                    <Button asChild size="sm" variant="outline">
-                      <Link
-                        to="/login"
-                        search={{ reason: undefined, redirect: `/landing/${slug || tenant.id}` }}
-                      >
-                        Sign in to register
-                      </Link>
+                      Sign in to register
                     </Button>
                   )}
                 </div>
