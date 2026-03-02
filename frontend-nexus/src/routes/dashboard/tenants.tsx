@@ -1,9 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { requireAuth } from "@/lib/guards/requireAuth";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { tenantsService } from "@/services/tenants.service";
 import { TenantStatus, type TenantRead } from "@/interfaces";
+import { ChevronLeft, ChevronRight, Search } from "lucide-react";
 import {
   STATUS_TABS,
   STATUS_ACTIONS,
@@ -30,6 +31,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+// Added for search input
+import { Input } from "@/components/ui/input";
 import {
   ActionsDropdown,
   type ActionItem,
@@ -49,16 +52,52 @@ function TenantsPage() {
   const [activeStatus, setActiveStatus] = useState<TenantStatus>(
     TenantStatus.PENDING,
   );
+  // State for pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  // State for search functionality
+  const [searchQuery, setSearchQuery] = useState("");
+  // Track page before search to restore when clearing search
+  const [pageBeforeSearch, setPageBeforeSearch] = useState(1);
 
   const {
-    data: tenants = [],
+    data: response = { items: [], total: 0, page: 1, page_size: 10 },
     isLoading,
     isError,
     error,
   } = useQuery({
-    queryKey: [...TENANTS_QUERY_KEY, activeStatus],
-    queryFn: () => tenantsService.list({ status: activeStatus }),
+    // Added currentPage and searchQuery to query key for proper caching
+    queryKey: [...TENANTS_QUERY_KEY, activeStatus, currentPage, searchQuery],
+    // Pass pagination and search params to API
+    queryFn: () =>
+      tenantsService.list({
+        status: activeStatus,
+        page: currentPage,
+        search: searchQuery || undefined,
+      }),
   });
+
+  const tenants = response.items;
+  // Calculate total pages for pagination controls
+  const totalPages = useMemo(
+    () => Math.ceil(response.total / response.page_size),
+    [response.total, response.page_size],
+  );
+
+  // Handle search input changes with smart page restoration
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newQuery = e.target.value;
+
+    if (!searchQuery && newQuery) {
+      // Starting a new search - remember current page and reset to page 1
+      setPageBeforeSearch(currentPage);
+      setCurrentPage(1);
+    } else if (searchQuery && !newQuery) {
+      // Clearing search - restore to the page before search
+      setCurrentPage(pageBeforeSearch);
+    }
+
+    setSearchQuery(newQuery);
+  };
 
   const updateStatusMutation = useMutation({
     mutationFn: ({
@@ -85,7 +124,11 @@ function TenantsPage() {
   });
 
   const getTenantActions = (tenant: TenantRead): ActionItem[] => {
-    const openConfirmDialog = (status: TenantStatus, label: string, isDestructive: boolean) => {
+    const openConfirmDialog = (
+      status: TenantStatus,
+      label: string,
+      isDestructive: boolean,
+    ) => {
       const doUpdate = () =>
         updateStatusMutation.mutate({ tenantId: tenant.id, status });
 
@@ -118,7 +161,8 @@ function TenantsPage() {
       ({ target, label, Icon, variant }) => ({
         label,
         icon: <Icon {...ICON_SIZE} />,
-        onClick: () => openConfirmDialog(target, label, variant === "destructive"),
+        onClick: () =>
+          openConfirmDialog(target, label, variant === "destructive"),
         variant,
         separatorBefore: true,
       }),
@@ -171,9 +215,26 @@ function TenantsPage() {
         <Button onClick={openCreateDialog}>Create tenant</Button>
       </div>
 
+      {/* Search input with icon for filtering tenant names */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          placeholder="Search by tenant name..."
+          value={searchQuery}
+          onChange={handleSearchChange}
+          className="pl-10"
+        />
+      </div>
+
       <Tabs
         value={activeStatus}
-        onValueChange={(value) => setActiveStatus(value as TenantStatus)}
+        // Reset pagination and search when switching status tabs
+        onValueChange={(value) => {
+          setActiveStatus(value as TenantStatus);
+          setCurrentPage(1);
+          setPageBeforeSearch(1);
+          setSearchQuery("");
+        }}
       >
         <TabsList variant="line">
           {STATUS_TABS.map((tab) => (
@@ -189,9 +250,7 @@ function TenantsPage() {
               <CardHeader>
                 <CardTitle>{tab.label} Tenants</CardTitle>
                 <CardDescription>
-                  {isLoading
-                    ? "Loading..."
-                    : `${tenants.length} tenant${tenants.length !== 1 ? "s" : ""} found`}
+                  {isLoading ? "Loading..." : ""}
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -211,64 +270,105 @@ function TenantsPage() {
                     No {tab.label.toLowerCase()} tenants found
                   </div>
                 ) : (
-                  <div className="overflow-x-auto">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>ID</TableHead>
-                          <TableHead>Name</TableHead>
-                          <TableHead>Email</TableHead>
-                          <TableHead>Licence</TableHead>
-                          <TableHead>Status</TableHead>
-                          <TableHead>Created</TableHead>
-                          <TableHead>Updated</TableHead>
-                          <TableHead className="w-0" />
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {tenants.map((tenant) => (
-                          <TableRow key={tenant.id}>
-                            <TableCell className="font-medium">
-                              {tenant.id}
-                            </TableCell>
-                            <TableCell>{tenant.name}</TableCell>
-                            <TableCell className="text-muted-foreground">
-                              {tenant.email}
-                            </TableCell>
-                            <TableCell className="font-mono text-sm">
-                              {tenant.licence_number}
-                            </TableCell>
-                            <TableCell>
-                              <Badge
-                                variant={getStatusBadgeVariant(tenant.status)}
-                              >
-                                {tenant.status}
-                              </Badge>
-                            </TableCell>
-                            <TableCell className="text-muted-foreground text-sm">
-                              {formatDate(tenant.created_at)}
-                            </TableCell>
-                            <TableCell className="text-muted-foreground text-sm">
-                              {formatDate(tenant.updated_at)}
-                            </TableCell>
-                            <TableCell>
-                              {(() => {
-                                const actions = getTenantActions(tenant);
-                                return actions.length > 0 ? (
-                                  <div className="flex justify-end">
-                                    <ActionsDropdown
-                                      actions={actions}
-                                      trigger="icon"
-                                      align="end"
-                                    />
-                                  </div>
-                                ) : null;
-                              })()}
-                            </TableCell>
+                  <div className="space-y-4">
+                    <div className="overflow-x-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>ID</TableHead>
+                            <TableHead>Name</TableHead>
+                            <TableHead>Email</TableHead>
+                            <TableHead>Licence</TableHead>
+                            <TableHead>Status</TableHead>
+                            <TableHead>Created</TableHead>
+                            <TableHead>Updated</TableHead>
+                            <TableHead className="w-0" />
                           </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
+                        </TableHeader>
+                        <TableBody>
+                          {tenants.map((tenant) => (
+                            <TableRow key={tenant.id}>
+                              <TableCell className="font-medium">
+                                {tenant.id}
+                              </TableCell>
+                              <TableCell>{tenant.name}</TableCell>
+                              <TableCell className="text-muted-foreground">
+                                {tenant.email}
+                              </TableCell>
+                              <TableCell className="font-mono text-sm">
+                                {tenant.licence_number}
+                              </TableCell>
+                              <TableCell>
+                                <Badge
+                                  variant={getStatusBadgeVariant(tenant.status)}
+                                >
+                                  {tenant.status}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="text-muted-foreground text-sm">
+                                {formatDate(tenant.created_at)}
+                              </TableCell>
+                              <TableCell className="text-muted-foreground text-sm">
+                                {formatDate(tenant.updated_at)}
+                              </TableCell>
+                              <TableCell>
+                                {(() => {
+                                  const actions = getTenantActions(tenant);
+                                  return actions.length > 0 ? (
+                                    <div className="flex justify-end">
+                                      <ActionsDropdown
+                                        actions={actions}
+                                        trigger="icon"
+                                        align="end"
+                                      />
+                                    </div>
+                                  ) : null;
+                                })()}
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+
+                    {/* Pagination controls - shows results count and Previous/Next buttons */}
+                    <div className="flex items-center justify-between border-t pt-4">
+                      <div className="text-sm text-muted-foreground">
+                        Showing {(currentPage - 1) * response.page_size + 1}-
+                        {Math.min(
+                          currentPage * response.page_size,
+                          response.total,
+                        )}{" "}
+                        of {response.total}
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            setCurrentPage((p) => Math.max(1, p - 1))
+                          }
+                          disabled={currentPage === 1 || isLoading}
+                        >
+                          <ChevronLeft className="h-4 w-4" />
+                          Previous
+                        </Button>
+                        <div className="flex items-center gap-1 px-2 text-sm">
+                          Page {currentPage} of {totalPages}
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            setCurrentPage((p) => Math.min(totalPages, p + 1))
+                          }
+                          disabled={currentPage === totalPages || isLoading}
+                        >
+                          Next
+                          <ChevronRight className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
                   </div>
                 )}
               </CardContent>

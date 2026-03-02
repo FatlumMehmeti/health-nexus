@@ -3,6 +3,7 @@ import type {
   TenantCreate,
   TenantRead,
   TenantStatus,
+  TenantListResponse,
   FontRead,
   BrandPaletteRead,
   DepartmentRead,
@@ -36,7 +37,9 @@ export const tenantsService = {
    * Get full landing page data for a tenant by slug (public). No auth.
    */
   getLandingBySlug: (slug: string) =>
-    api.get<TenantLandingPageResponse>(`/api/tenants/by-slug/${encodeURIComponent(slug)}/landing`),
+    api.get<TenantLandingPageResponse>(
+      `/api/tenants/by-slug/${encodeURIComponent(slug)}/landing`,
+    ),
 
   /**
    * Submit a tenant application to join the platform
@@ -47,12 +50,19 @@ export const tenantsService = {
     api.post<TenantRead>("/api/public/tenants", data),
 
   /**
-   * List tenants for superadmin dashboard with optional status filter
+   * List tenants for superadmin dashboard with optional status filter and pagination
    * @param status - Optional status filter (pending, approved, rejected, suspended, archived)
    * @param search - Optional search term for tenant name
-   * @returns Promise with array of tenants
+   * @param page - Page number (default 1)
+   * @param page_size - Items per page (default 10, max 100)
+   * @returns Promise with paginated tenants response
    */
-  list: (params?: { status?: TenantStatus; search?: string }) => {
+  list: (params?: {
+    status?: TenantStatus;
+    search?: string;
+    page?: number;
+    page_size?: number;
+  }) => {
     const queryParams = new URLSearchParams();
     if (params?.status) {
       queryParams.append("status", params.status);
@@ -60,8 +70,14 @@ export const tenantsService = {
     if (params?.search) {
       queryParams.append("search", params.search);
     }
+    if (params?.page) {
+      queryParams.append("page", String(params.page));
+    }
+    if (params?.page_size) {
+      queryParams.append("page_size", String(params.page_size));
+    }
     const queryString = queryParams.toString();
-    return api.get<TenantRead[]>(
+    return api.get<TenantListResponse>(
       `/api/superadmin/tenants${queryString ? `?${queryString}` : ""}`,
     );
   },
@@ -98,7 +114,10 @@ export const tenantsService = {
   listTenantDepartments: () =>
     api.get<TenantDepartmentWithServicesRead[]>("/api/tenants/departments"),
   replaceTenantDepartments: (data: TenantDepartmentsBulkRequest) =>
-    api.post<TenantDepartmentWithServicesRead[]>("/api/tenants/departments", data),
+    api.post<TenantDepartmentWithServicesRead[]>(
+      "/api/tenants/departments",
+      data,
+    ),
   listTenantProducts: () => api.get<ProductRead[]>("/api/tenants/products"),
   createTenantProduct: (data: ProductCreateForTenant) =>
     api.post<ProductRead>("/api/tenants/products", data),
@@ -112,8 +131,10 @@ export const tenantsService = {
     api.get<ServiceLandingItem[]>(
       `/api/services?tenant_department_id=${encodeURIComponent(String(tenantDepartmentId))}`,
     ),
-  createService: (data: ServiceCreateInput) => api.post<ServiceRead>("/api/services", data),
+  createService: (data: ServiceCreateInput) =>
+    api.post<ServiceRead>("/api/services", data),
   updateService: (serviceId: number, data: ServiceUpdateInput) =>
     api.put<ServiceRead>(`/api/services/${serviceId}`, data),
-  deleteService: (serviceId: number) => api.delete<void>(`/api/services/${serviceId}`),
+  deleteService: (serviceId: number) =>
+    api.delete<void>(`/api/services/${serviceId}`),
 };
