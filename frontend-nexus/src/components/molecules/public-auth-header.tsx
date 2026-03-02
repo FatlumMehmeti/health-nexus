@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { User } from "lucide-react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import {
@@ -34,11 +35,24 @@ export function PublicAuthHeader({
 
   const handleLogout = async () => {
     await logout();
-    navigate({ to: "/login", search: { reason: undefined, redirect: undefined }, replace: true });
+    navigate({
+      to: "/login",
+      search: { reason: undefined, redirect: undefined },
+      replace: true,
+    });
+  };
+  const handleProfile = () => {
+    navigate({
+      to: "/dashboard",
+      replace: true,
+    });
   };
 
-  const userInitial = (user?.email?.trim().charAt(0) || user?.fullName?.trim().charAt(0) || "U")
-    .toUpperCase();
+  const userInitial = (
+    user?.email?.trim().charAt(0) ||
+    user?.fullName?.trim().charAt(0) ||
+    "U"
+  ).toUpperCase();
   const showUserMenu = isAuthenticated && user;
 
   return (
@@ -54,13 +68,26 @@ export function PublicAuthHeader({
           containerClassName,
         )}
       >
-        <Link to="/" className="flex items-center gap-2 transition-opacity hover:opacity-90">
-          <img src="/images/logo.webp" alt="Health Nexus" className="h-9 w-9 rounded-lg object-contain" />
-          {showBrandName ? <span className="text-lg font-semibold tracking-tight">Health Nexus</span> : null}
+        <Link
+          to="/"
+          className="flex items-center gap-2 transition-opacity hover:opacity-90"
+        >
+          <img
+            src="/images/logo.webp"
+            alt="Health Nexus"
+            className="h-9 w-9 rounded-lg object-contain"
+          />
+          {showBrandName ? (
+            <span className="text-lg font-semibold tracking-tight">
+              Health Nexus
+            </span>
+          ) : null}
         </Link>
 
         <div className="flex items-center gap-2">
-          {rightSlot && (showRightSlotWhenAuthenticated || !showUserMenu) ? rightSlot : null}
+          {rightSlot && (showRightSlotWhenAuthenticated || !showUserMenu)
+            ? rightSlot
+            : null}
           {showUserMenu ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -81,13 +108,23 @@ export function PublicAuthHeader({
                   <span className="font-medium">{user.email}</span>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleProfile}>
+                    <span className="flex items-center gap-2">
+                      <User size={16} className="text-muted-foreground" />
+                      My Profile
+                    </span>
+                  </DropdownMenuItem>
+                <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleLogout}>
                   <span className="text-destructive">Log out</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (
-            <Link to="/login" search={{ reason: undefined, redirect: undefined }}>
+            <Link
+              to="/login"
+              search={{ reason: undefined, redirect: undefined }}
+            >
               <Button size="sm" variant="ghost" className="font-medium">
                 Sign in
               </Button>
