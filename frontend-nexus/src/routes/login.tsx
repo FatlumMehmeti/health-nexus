@@ -71,9 +71,6 @@ function LoginPage() {
       // Get updated state after login/ensureAuth
       const state = useAuthStore.getState()
       const { user, role, tenantId } = state
-      
-      // eslint-disable-next-line no-console
-      console.log('[Login onSubmit] After login:', { email: user?.email, role, tenantId })
 
       // If there's an explicit redirect param, use it
       if (redirectTo) {

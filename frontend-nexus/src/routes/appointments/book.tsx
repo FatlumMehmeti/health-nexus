@@ -54,9 +54,6 @@ function AppointmentBookingPage() {
   const [date, setDate] = useState<Date | undefined>(undefined)
   const formattedDate = date ? format(date, 'yyyy-MM-dd') : ''
   
-  // eslint-disable-next-line no-console
-  console.log('[Book] Component rendered. doctorId:', doctorId, 'tenantId:', tenantId, 'user:', user?.email)
-  
   const {
     data: availability,
     isLoading,
@@ -64,27 +61,17 @@ function AppointmentBookingPage() {
     error,
   } = useDoctorAvailability(doctorId, formattedDate)
   
-  // eslint-disable-next-line no-console
-  console.log('[Book] Availability query. formattedDate:', formattedDate, 'isLoading:', isLoading, 'isError:', isError, 'slots:', availability?.slots.length)
-  
   const bookAppointment = useBookAppointment()
 
   const handleSlotClick = (slotTime: string) => {
-    // eslint-disable-next-line no-console
-    console.log('[Book] Slot clicked. slotTime:', slotTime, 'date:', date, 'tenantId:', tenantId)
     
     if (!date || !tenantId) {
-      // eslint-disable-next-line no-console
-      console.warn('[Book] Missing date or tenantId. date:', date, 'tenantId:', tenantId)
       return
     }
 
     // Build a naive ISO datetime string matching the backend's format
     // (no timezone offset — the backend treats these as clinic-local times)
     const isoDatetime = `${formattedDate}T${slotTime}:00`
-    
-    // eslint-disable-next-line no-console
-    console.log('[Book] Booking appointment. datetime:', isoDatetime, 'doctorId:', doctorId)
 
     bookAppointment.mutate({
       tenant_id: tenantId,
@@ -94,8 +81,6 @@ function AppointmentBookingPage() {
   }
 
   const handleDateChange = (newDate: Date | undefined) => {
-    // eslint-disable-next-line no-console
-    console.log('[Book] Date changed. newDate:', newDate ? format(newDate, 'yyyy-MM-dd') : 'undefined')
     setDate(newDate)
   }
 
