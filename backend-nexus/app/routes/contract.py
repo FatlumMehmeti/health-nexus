@@ -147,9 +147,9 @@ def get_contract(
     db: Session = Depends(get_db),
     user: dict = Depends(get_current_user),
 ):
-    """Get contract by id. Tenant manager: own tenant only. Super admin: any."""
+    """Get contract by id. Tenant manager: own tenant only. Super admin: any. Doctor: own contract only."""
     contract = _get_contract_or_404(db, contract_id)
-    _require_contract_access(user, contract.tenant_id, db)
+    _require_contract_view_access(user, contract, db)
     return contract
 
 

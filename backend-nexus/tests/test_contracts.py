@@ -136,6 +136,33 @@ def test_list_contracts_tenant_manager(manager_client, db_session):
     assert c3.id not in ids
 
 
+def test_list_contracts_with_doctor_filter(manager_client, db_session):
+    """List contracts filtered by doctor_user_id."""
+    doc_user = User(first_name="D", last_name="D", email="d@filter.com", password="x")
+    db_session.add(doc_user)
+    db_session.flush()
+    db_session.add(Doctor(user_id=doc_user.id, tenant_id=manager_client.tenant_id))
+    db_session.commit()
+
+    c1 = Contract(
+        tenant_id=manager_client.tenant_id,
+        doctor_user_id=doc_user.id,
+        status=ContractStatus.DRAFT,
+    )
+    c2 = Contract(tenant_id=manager_client.tenant_id, doctor_user_id=None, status=ContractStatus.DRAFT)
+    db_session.add_all([c1, c2])
+    db_session.commit()
+
+    r = manager_client.get(
+        f"/api/tenants/{manager_client.tenant_id}/contracts",
+        params={"doctor_user_id": doc_user.id},
+    )
+    assert r.status_code == 200
+    ids = [x["id"] for x in r.json()]
+    assert c1.id in ids
+    assert c2.id not in ids
+
+
 def test_list_contracts_other_tenant_returns_403(manager_client, db_session):
     r = manager_client.get(f"/api/tenants/{manager_client.other_tenant_id}/contracts")
     assert r.status_code == 403
@@ -156,6 +183,12 @@ def test_get_contract_tenant_manager_own(manager_client, db_session):
     assert r.json()["id"] == c.id
 
 
+def test_get_contract_not_found_returns_404(manager_client):
+    r = manager_client.get("/api/contracts/99999")
+    assert r.status_code == 404
+    assert "not found" in r.json().get("detail", "").lower()
+
+
 def test_get_contract_tenant_manager_other_returns_403(manager_client, db_session):
     c = Contract(tenant_id=manager_client.other_tenant_id, status=ContractStatus.DRAFT)
     db_session.add(c)
@@ -174,6 +207,31 @@ def test_superadmin_can_get_any_contract(superadmin_client, db_session):
     assert r.status_code == 200
 
 
+def test_doctor_can_get_own_contract(manager_client, db_session):
+    """Doctor can view their own contract."""
+    doc_user = User(first_name="D", last_name="D", email="d@own.com", password="x")
+    db_session.add(doc_user)
+    db_session.flush()
+    db_session.add(Doctor(user_id=doc_user.id, tenant_id=manager_client.tenant_id))
+    db_session.commit()
+
+    c = Contract(
+        tenant_id=manager_client.tenant_id,
+        doctor_user_id=doc_user.id,
+        status=ContractStatus.DRAFT,
+    )
+    db_session.add(c)
+    db_session.commit()
+
+    app.dependency_overrides[get_current_user] = lambda: {"user_id": doc_user.id, "role": "DOCTOR"}
+    try:
+        r = manager_client.get(f"/api/contracts/{c.id}")
+    finally:
+        app.dependency_overrides.pop(get_current_user, None)
+    assert r.status_code == 200
+    assert r.json()["id"] == c.id
+
+
 def test_patch_contract_updates_metadata(manager_client, db_session):
     c = Contract(
         tenant_id=manager_client.tenant_id,
@@ -189,6 +247,35 @@ def test_patch_contract_updates_metadata(manager_client, db_session):
     )
     assert r.status_code == 200
     assert r.json()["terms_metadata"] == {"b": 2}
+
+
+def test_patch_contract_updates_salary_dates_terms(manager_client, db_session):
+    now = datetime.now(timezone.utc)
+    c = Contract(
+        tenant_id=manager_client.tenant_id,
+        status=ContractStatus.DRAFT,
+        salary=50000,
+        start_date=now,
+        end_date=now + timedelta(days=365),
+    )
+    db_session.add(c)
+    db_session.commit()
+
+    new_start = (now + timedelta(days=7)).isoformat().replace("+00:00", "Z")
+    new_end = (now + timedelta(days=400)).isoformat().replace("+00:00", "Z")
+    r = manager_client.patch(
+        f"/api/contracts/{c.id}",
+        json={
+            "salary": "90000",
+            "start_date": new_start,
+            "end_date": new_end,
+            "terms_content": "<p>Updated terms</p>",
+        },
+    )
+    assert r.status_code == 200
+    data = r.json()
+    assert float(data["salary"]) == 90000
+    assert "Updated terms" in data["terms_content"]
 
 
 # --- Transitions ---
@@ -239,6 +326,19 @@ def test_transition_draft_to_terminated_with_reason_success(manager_client, db_s
     assert r.json().get("terminated_reason") == "Cancelled by client"
 
 
+def test_transition_invalid_status_rejected(manager_client, db_session):
+    """Invalid status string fails validation (422 from Pydantic)."""
+    c = Contract(tenant_id=manager_client.tenant_id, status=ContractStatus.DRAFT)
+    db_session.add(c)
+    db_session.commit()
+
+    r = manager_client.post(
+        f"/api/contracts/{c.id}/transition",
+        json={"next_status": "INVALID_STATUS"},
+    )
+    assert r.status_code in (400, 422)
+
+
 def test_transition_invalid_draft_to_expired_rejected(manager_client, db_session):
     c = Contract(tenant_id=manager_client.tenant_id, status=ContractStatus.DRAFT)
     db_session.add(c)
@@ -269,6 +369,25 @@ def test_transition_active_to_expired_success(manager_client, db_session):
     )
     assert r.status_code == 200
     assert r.json()["status"] == "EXPIRED"
+
+
+def test_transition_active_to_terminated_with_reason_success(manager_client, db_session):
+    now = datetime.now(timezone.utc)
+    c = Contract(
+        tenant_id=manager_client.tenant_id,
+        status=ContractStatus.ACTIVE,
+        activated_at=now - timedelta(days=1),
+    )
+    db_session.add(c)
+    db_session.commit()
+
+    r = manager_client.post(
+        f"/api/contracts/{c.id}/transition",
+        json={"next_status": "TERMINATED", "reason": "Contract ended by mutual agreement"},
+    )
+    assert r.status_code == 200
+    assert r.json()["status"] == "TERMINATED"
+    assert r.json().get("terminated_reason") == "Contract ended by mutual agreement"
 
 
 def test_transition_active_to_terminated_requires_reason(manager_client, db_session):
@@ -426,6 +545,22 @@ def test_terms_content_sanitized(manager_client, db_session):
     assert "onerror" not in content.lower()
 
 
+def test_create_contract_doctor_from_other_tenant_returns_400(manager_client, db_session):
+    """Doctor must belong to the tenant."""
+    doc_user = User(first_name="D", last_name="D", email="d@other.com", password="x")
+    db_session.add(doc_user)
+    db_session.flush()
+    db_session.add(Doctor(user_id=doc_user.id, tenant_id=manager_client.other_tenant_id))
+    db_session.commit()
+
+    r = manager_client.post(
+        f"/api/tenants/{manager_client.tenant_id}/contracts",
+        json={"doctor_user_id": doc_user.id},
+    )
+    assert r.status_code == 400
+    assert "not found" in r.json().get("detail", "").lower()
+
+
 def test_create_contract_with_doctor(manager_client, db_session):
     """Create contract linked to a doctor."""
     doc_user = User(first_name="Doc", last_name="User", email="doc@test.com", password="hashed")
@@ -470,7 +605,6 @@ def test_sign_doctor_and_hospital(manager_client, db_session):
     db_session.commit()
 
     # Doctor signs with multipart image upload
-    from app.main import app
     prev = app.dependency_overrides.pop(get_current_user, None)
     app.dependency_overrides[get_current_user] = lambda: {"user_id": doc_user.id, "role": "DOCTOR"}
     try:
@@ -507,12 +641,76 @@ def test_sign_doctor_and_hospital(manager_client, db_session):
         or hosp_sig.startswith("data:image/")
     )
 
-    # Signature images served at /uploads/... (full URL in response)
-    path = sig.split("localhost:8000")[-1] if "localhost:8000" in sig else f"/api/contracts/{c.id}/signature/doctor"
-    r_sig = manager_client.get(path)
+    # Signature images: serve via /api/contracts/{id}/signature/doctor (auth-protected)
+    r_sig = manager_client.get(f"/api/contracts/{c.id}/signature/doctor")
     assert r_sig.status_code == 200
     assert r_sig.headers.get("content-type", "").startswith("image/")
     assert len(r_sig.content) == len(_MINIMAL_PNG)
+
+    # Doctor can also fetch their own signature
+    app.dependency_overrides[get_current_user] = lambda: {"user_id": doc_user.id, "role": "DOCTOR"}
+    try:
+        r_doc_sig = manager_client.get(f"/api/contracts/{c.id}/signature/doctor")
+    finally:
+        app.dependency_overrides.pop(get_current_user, None)
+    assert r_doc_sig.status_code == 200
+
+
+def test_sign_doctor_empty_file_rejected(manager_client, db_session):
+    doc_user = User(first_name="D", last_name="D", email="d@empty.com", password="x")
+    db_session.add(doc_user)
+    db_session.flush()
+    db_session.add(Doctor(user_id=doc_user.id, tenant_id=manager_client.tenant_id))
+    db_session.commit()
+    c = Contract(
+        tenant_id=manager_client.tenant_id,
+        doctor_user_id=doc_user.id,
+        status=ContractStatus.DRAFT,
+    )
+    db_session.add(c)
+    db_session.commit()
+
+    prev = app.dependency_overrides.pop(get_current_user, None)
+    app.dependency_overrides[get_current_user] = lambda: {"user_id": doc_user.id, "role": "DOCTOR"}
+    try:
+        r = manager_client.post(
+            f"/api/contracts/{c.id}/sign/doctor",
+            files={"signature": ("empty.png", b"", "image/png")},
+        )
+    finally:
+        app.dependency_overrides.pop(get_current_user, None)
+        if prev is not None:
+            app.dependency_overrides[get_current_user] = prev
+    assert r.status_code == 400
+
+
+def test_sign_doctor_wrong_content_type_rejected(manager_client, db_session):
+    doc_user = User(first_name="D", last_name="D", email="d@type.com", password="x")
+    db_session.add(doc_user)
+    db_session.flush()
+    db_session.add(Doctor(user_id=doc_user.id, tenant_id=manager_client.tenant_id))
+    db_session.commit()
+    c = Contract(
+        tenant_id=manager_client.tenant_id,
+        doctor_user_id=doc_user.id,
+        status=ContractStatus.DRAFT,
+    )
+    db_session.add(c)
+    db_session.commit()
+
+    prev = app.dependency_overrides.pop(get_current_user, None)
+    app.dependency_overrides[get_current_user] = lambda: {"user_id": doc_user.id, "role": "DOCTOR"}
+    try:
+        r = manager_client.post(
+            f"/api/contracts/{c.id}/sign/doctor",
+            files={"signature": ("doc.pdf", _MINIMAL_PNG, "application/pdf")},
+        )
+    finally:
+        app.dependency_overrides.pop(get_current_user, None)
+        if prev is not None:
+            app.dependency_overrides[get_current_user] = prev
+    assert r.status_code == 400
+    assert "png" in r.json().get("detail", "").lower() or "jpeg" in r.json().get("detail", "").lower()
 
 
 def test_sign_doctor_wrong_user_rejected(manager_client, db_session):
