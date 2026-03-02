@@ -3,13 +3,13 @@ import secrets
 from fastapi import APIRouter, Depends, status, HTTPException, Request
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
-from app.db import SessionLocal
+from app.db import get_db
 from app.models.tenant import Tenant, TenantStatus
 from app.models.user import User
 from app.models.patient import Patient
 from app.models.lead import Lead, LeadStatus
 from app.schemas.tenant import TenantCreate, TenantRead
-from app.schemas.lead import LeadCreate
+from app.schemas.lead import LeadCreate,PublicLeadCreate
 from app.schemas.patient import ClientRegistrationRequest, ClientRegistrationResponse
 from app.auth.auth_utils import hash_password, verify_token, TokenError
 
@@ -47,7 +47,7 @@ def get_authenticated_user_if_present(request: Request) -> dict | None:
 @router.post("", response_model=TenantRead, status_code=status.HTTP_201_CREATED)
 def create_tenant_application(payload: TenantCreate, db: Session = Depends(get_db)):
 
-    # If the email/licence_numer already exists in the database, tenant creation is not allowed.
+    # If the email/licence_number already exists in the database, tenant creation is not allowed.
     existing = db.query(Tenant).filter(
         (Tenant.email == payload.email) | (Tenant.licence_number == payload.licence_number)
     ).first()
@@ -68,13 +68,13 @@ def create_tenant_application(payload: TenantCreate, db: Session = Depends(get_d
 
 
 # Endpoint for potential tenants to submit a consultation request 
-# (e.g: to get more info about the product, ask for a demo etc) without applying for a tenant account.
+# (e.g: to get more info about what Nexus Health offers, ask for a demo etc), without applying to join the platform first.
 @router.post(
     "/consultation",
     status_code=status.HTTP_201_CREATED,
 )
 def create_public_lead(
-    payload: LeadCreate,  # you can rename schema later
+    payload: PublicLeadCreate,
     db: Session = Depends(get_db),
 ):
 

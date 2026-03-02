@@ -37,3 +37,4 @@ class ClientRegistrationResponse(BaseModel):
     user_id: int
     patient_id: int
     tenant_id: int
+    model_config = ConfigDict(from_attributes=True)

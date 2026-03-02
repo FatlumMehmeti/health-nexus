@@ -1,88 +1,75 @@
 """
-Simple CRUD test to verify database connection and basic operations
+Simple CRUD test to verify database connection and basic operations.
 """
-from app.db import SessionLocal
-from app.models import Role, User, Tenant, Membership, TenantSubscription
 from datetime import datetime, timedelta
+
+from app.db import SessionLocal
+from app.models import Role, Tenant, SubscriptionPlan, TenantSubscription
 
 
 def test_crud_operations():
     session = SessionLocal()
-    
+
     try:
-        print("\n========== CRUD TESTING ==========\n")
-        
         # TEST CREATE
-        print("1. Testing CREATE...")
         role = Role(name="Admin")
         session.add(role)
         session.commit()
-        print(f"✓ Created role: {role.name} (ID: {role.id})")
-        
+        assert role.id is not None
+
         # TEST READ
-        print("\n2. Testing READ...")
         fetched_role = session.query(Role).filter(Role.name == "Admin").first()
-        print(f"✓ Read role: {fetched_role.name} (ID: {fetched_role.id})")
-        print(f"  Created at: {fetched_role.created_at}")
-        
+        assert fetched_role is not None
+        assert fetched_role.name == "Admin"
+
         # TEST UPDATE
-        print("\n3. Testing UPDATE...")
         fetched_role.name = "SuperAdmin"
         session.commit()
         updated_role = session.query(Role).filter(Role.id == role.id).first()
-        print(f"✓ Updated role name to: {updated_role.name}")
-        print(f"  Updated at: {updated_role.updated_at}")
-        
+        assert updated_role is not None
+        assert updated_role.name == "SuperAdmin"
+
         # TEST CREATE with relationships
-        print("\n4. Testing CREATE with relationships...")
-        tenant = Tenant(logo="logo.png", moto="Health Nexus")
+        tenant = Tenant(
+            name="Health Nexus Clinic",
+            email="crud-tenant@example.com",
+            licence_number="CRUD-001",
+        )
         session.add(tenant)
         session.flush()
-        
-        membership = Membership(name="Pro Plan", price=99.99, duration=30)
-        session.add(membership)
+
+        subscription_plan = SubscriptionPlan(
+            name="Pro Plan",
+            price=99.99,
+            duration=30,
+        )
+        session.add(subscription_plan)
         session.flush()
-        
+
         subscription = TenantSubscription(
             tenant_id=tenant.id,
-            membership_plan_id=membership.id,
+            subscription_plan_id=subscription_plan.id,
+            status="ACTIVE",
             activated_at=datetime.utcnow(),
             expires_at=datetime.utcnow() + timedelta(days=30),
-            is_active=True
         )
         session.add(subscription)
         session.commit()
-        print(f"✓ Created tenant: {tenant.moto}")
-        print(f"✓ Created membership: {membership.name}")
-        print(f"✓ Created subscription for tenant {tenant.id}")
-        
+
         # TEST COMPLEX READ
-        print("\n5. Testing COMPLEX READ (relationships)...")
         fetched_subscription = session.query(TenantSubscription).filter(
             TenantSubscription.id == subscription.id
         ).first()
-        print(f"✓ Subscription ID: {fetched_subscription.id}")
-        print(f"  Tenant: {fetched_subscription.tenant.moto}")
-        print(f"  Plan: {fetched_subscription.membership.name}")
-        print(f"  Active: {fetched_subscription.is_active}")
-        
+        assert fetched_subscription is not None
+        assert fetched_subscription.tenant.name == "Health Nexus Clinic"
+        assert fetched_subscription.subscription_plan.name == "Pro Plan"
+        assert str(fetched_subscription.status) in {"SubscriptionStatus.ACTIVE", "ACTIVE"}
+
         # TEST DELETE
-        print("\n6. Testing DELETE...")
         session.delete(fetched_role)
         session.commit()
         deleted_check = session.query(Role).filter(Role.id == role.id).first()
-        print(f"✓ Deleted role (ID: {role.id})")
-        print(f"  Verification: {deleted_check is None}")
-        
-        print("\n========== ALL TESTS PASSED ✓ ==========\n")
-        
-    except Exception as e:
-        session.rollback()
-        print(f"\n✗ Error: {e}\n")
-        raise
+        assert deleted_check is None
+
     finally:
         session.close()
-
-
-if __name__ == "__main__":
-    test_crud_operations()
