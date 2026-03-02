@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
 
 from app.auth.auth_router import router as auth_router
+from app.routes.enrollment_me import router as enrollment_me_router
 from app.routes import (
     role_router,
     enrollment_router,
@@ -45,7 +46,8 @@ app.include_router(service_router, prefix="/api")
 app.include_router(auth_router, prefix="/api")
 app.include_router(public_tenant_router, prefix="/api/public")
 app.include_router(tenant_audit_log)
-app.include_router(enrollment_router, prefix="/api")
+app.include_router(enrollment_me_router, prefix="/api")
+app.include_router(enrollment_router, prefix="/api")    
 app.include_router(user_tenant_plan_router)
 
 

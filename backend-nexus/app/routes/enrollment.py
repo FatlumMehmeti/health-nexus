@@ -8,6 +8,8 @@ from sqlalchemy.orm import Session
 
 from app.auth.auth_utils import get_current_user
 from app.db import SessionLocal
+from app.models.enrollment import Enrollment
+
 from app.schemas.enrollment import (
     EnrollmentCreateRequest,
     EnrollmentStatusRead,
@@ -468,7 +470,88 @@ def transition_enrollment_endpoint(
     except EnrollmentServiceError as exc:
         return _error_response(exc)
 
+#@router.get(
+#    "/me/enrollments",
+#    response_model=list[EnrollmentStatusRead],
+#)
+#def list_my_enrollments(
+#    db: Session = Depends(get_db),
+#    user: Dict[str, Any] = Depends(get_current_user),
+#):
+#    """List all enrollments for the authenticated patient user."""
+#    patient_user_id = user["user_id"]  
 
+#    enrollments = (
+#        db.query(Enrollment)
+#        .filter(Enrollment.patient_user_id == patient_user_id)
+#        .all()
+#    )
+
+#    return [
+#        EnrollmentStatusRead(
+#            id=e.id,
+#            patient_user_id=e.patient_user_id,
+#            status=e.status.value,
+#            activated_at=e.activated_at.isoformat() if e.activated_at else None,
+#            cancelled_at=e.cancelled_at.isoformat() if e.cancelled_at else None,
+#            expires_at=e.expires_at.isoformat() if e.expires_at else None,
+#            updated_at=e.updated_at.isoformat() if e.updated_at else None,
+#        )
+#        for e in enrollments
+#    ]
+##@router.get(
+##    "/me/enrollments",
+##    response_model=list[EnrollmentStatusRead],
+##)
+##def list_my_enrollments(
+##    tenant_id: int,
+##    request: Request,
+##    db: Session = Depends(get_db),
+##    user: Dict[str, Any] = Depends(get_current_user),
+##):
+##    """
+##    List all enrollments for the authenticated patient user
+##    within the specified tenant.
+##    """
+##    actor = _actor_from_user_payload(user)
+
+##    try:
+##        _ensure_tenant_context_consistency(
+##            requested_tenant_id=tenant_id,
+##            user_payload=user,
+##            request=request,
+##        )
+
+##        enrollments = list_my_enrollments_scoped(
+##            db,
+##            actor=actor,
+##            expected_tenant_id=tenant_id,
+##        )
+
+##        return [
+##            EnrollmentStatusRead(
+##                id=e.id,
+##                patient_user_id=e.patient_user_id,
+##                status=e.status.value,
+##                activated_at=e.activated_at.isoformat()
+##                if e.activated_at
+##                else None,
+##                cancelled_at=e.cancelled_at.isoformat()
+##                if e.cancelled_at
+##                else None,
+##                expires_at=e.expires_at.isoformat()
+##                if e.expires_at
+##                else None,
+##                updated_at=e.updated_at.isoformat()
+##                if hasattr(e, "updated_at") and e.updated_at
+##                else None,
+##            )
+##            for e in enrollments
+##        ]
+
+##    except EnrollmentServiceError as exc:
+##        return _error_response(exc)
+    
 @router.get("/{enrollment_id}/status", response_model=EnrollmentOperationalStatus)
 def enrollment_operational_status_endpoint(
     tenant_id: int,

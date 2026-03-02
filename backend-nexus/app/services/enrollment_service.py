@@ -884,3 +884,32 @@ def get_enrollment_history_scoped(
         db,
         tenant_id=expected_tenant_id,
     )
+def list_my_enrollments_global(
+    db: Session,
+    *,
+    actor: ActorContext,
+) -> list[Enrollment]:
+    """
+    List all enrollments for the authenticated user
+    across all tenants.
+    """
+
+    if actor.user_id is None:
+        raise EnrollmentServiceError(
+            EnrollmentErrorCode.UNAUTHORIZED,
+            "User identity missing",
+            http_status=401,
+        )
+
+    if actor.role != "CLIENT":
+        raise EnrollmentServiceError(
+            EnrollmentErrorCode.FORBIDDEN,
+            "Only clients can access their enrollments",
+            http_status=403,
+        )
+
+    return (
+        db.query(Enrollment)
+        .filter(Enrollment.patient_user_id == actor.user_id)
+        .all()
+    )

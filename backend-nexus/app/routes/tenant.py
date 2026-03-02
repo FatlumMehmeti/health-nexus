@@ -5,7 +5,7 @@ from decimal import Decimal
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
-from app.auth.auth_utils import require_tenant_from_token
+from app.auth.auth_utils import require_tenant_from_token, get_current_user
 from app.db import get_db
 from app.models.tenant import Tenant, TenantStatus
 from app.models.tenant_details import TenantDetails

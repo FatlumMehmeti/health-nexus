@@ -10,6 +10,7 @@ export interface EnrollmentStatusApi {
   status: EnrollmentStatus
   patient_user_id: number
   user_tenant_plan_id: number
+  tenant_id: number
   activated_at: string | null
   cancelled_at: string | null
   expires_at: string | null
@@ -85,4 +86,6 @@ export const enrollmentsService = {
       `${ENROLLMENTS_BASE(tenantId)}/history`,
       { method: "GET" },
     ),
+  listMyEnrollments: () =>
+    apiFetch<EnrollmentStatusApi[]>(`/api/enrollments/me`, { method: "GET" }),
 };

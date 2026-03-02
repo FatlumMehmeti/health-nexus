@@ -269,7 +269,7 @@ function TenantEnrollmentsPanel() {
   });
 
   const tenantId = tenantQuery.data?.id;
-  // Query for listing enrollments of the tenant, optionally filtered by patient user ID (not implemented in UI yet)
+  // Query for listing enrollments of the tenant, optionally filtered by patient user ID 
   const enrollmentsQuery = useQuery({
     queryKey: ["tenant-manager", "enrollments", tenantId],
     queryFn: () => enrollmentsService.list(tenantId!),
