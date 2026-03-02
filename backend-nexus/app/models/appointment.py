@@ -28,6 +28,7 @@ class Appointment(Base, TimestampMixin):
         DateTime(timezone=True),
         nullable=True
     )
+    duration_minutes: Mapped[int] = mapped_column(nullable=False, default=30)
 
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
 

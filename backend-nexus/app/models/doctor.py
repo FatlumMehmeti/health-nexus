@@ -33,6 +33,11 @@ class Doctor(Base, TimestampMixin):
         nullable=False
     )
 
+    tenant_department_id: Mapped[int] = mapped_column(
+        ForeignKey("tenant_departments.id"),
+        nullable=False
+    )
+
     working_hours: Mapped[dict | None] = mapped_column(
         JSON,
         nullable=True
@@ -51,6 +56,10 @@ class Doctor(Base, TimestampMixin):
     
     tenant = relationship("Tenant", back_populates="doctors")
 
+    tenant_department = relationship(
+        "TenantDepartment",
+        back_populates="doctors"
+    )
     appointments = relationship(
         "Appointment",
         back_populates="doctor"

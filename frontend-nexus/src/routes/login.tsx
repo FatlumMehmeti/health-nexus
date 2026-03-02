@@ -90,12 +90,40 @@ function LoginPage() {
     setSubmitError(null);
     try {
       await login(values);
-      const defaultPath = getDefaultPostLoginPath(useAuthStore.getState().role);
-      const target =
-        redirectTo && redirectTo.startsWith("/") && !redirectTo.startsWith("//")
-          ? redirectTo
-          : defaultPath;
-      await navigate({ to: target, replace: true });
+
+      // Get updated state after login
+      const state = useAuthStore.getState();
+      const { role, tenantId } = state;
+
+      // If there's an explicit redirect param, use it
+      if (redirectTo && redirectTo.startsWith("/") && !redirectTo.startsWith("//")) {
+        await navigate({ to: redirectTo, replace: true });
+        return;
+      }
+
+      // Dashboard-capable roles use the standard path helper
+      if (can({ role: role ?? undefined }, "DASHBOARD_HOME")) {
+        await navigate({ to: "/dashboard", replace: true });
+        return;
+      }
+
+      // CLIENT users — check enrollment via backend
+      if (tenantId) {
+        try {
+          const { checkEnrollment } = await import("@/services/auth.service");
+          const isEnrolled = await checkEnrollment(tenantId);
+          if (isEnrolled) {
+            await navigate({ to: "/appointments/book", replace: true });
+          } else {
+            await navigate({ to: "/enrollment", replace: true });
+          }
+        } catch {
+          await navigate({ to: "/enrollment", replace: true });
+        }
+      } else {
+        // No tenant → go to tenant selector
+        await navigate({ to: "/tenants", replace: true });
+      }
     } catch (err) {
       if (err instanceof ApiError) {
         setSubmitError(err.displayMessage);

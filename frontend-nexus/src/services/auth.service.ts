@@ -1,3 +1,15 @@
+// Checks if the current user is enrolled (patient) for the current tenant
+export async function checkEnrollment(tenantId: string): Promise<boolean> {
+  try {
+    const { apiFetch } = await import('@/lib/api-client')
+    const res = await apiFetch(`/appointments/enrollment-status?tenant_id=${tenantId}`)
+    if (!(res instanceof Response) || !res.ok) return false
+    const data = await res.json()
+    return !!data.enrolled
+  } catch {
+    return false
+  }
+}
 /**
  * Auth service: login, current user, refresh, logout.
  * Uses shared client (Bearer token, 401 handler) from lib/api-client.

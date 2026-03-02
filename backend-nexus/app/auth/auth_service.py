@@ -16,7 +16,7 @@ from app.auth.auth_utils import (
     verify_refresh_token,
 )
 from app.db import SessionLocal
-from app.models import Role, Session, Tenant, User, Enrollment, TenantManager
+from app.models import Role, Session, Tenant, User, Enrollment, Patient, Doctor, TenantManager
 
 logger = logging.getLogger(__name__)
 
@@ -24,19 +24,30 @@ logger = logging.getLogger(__name__)
 ROLE_NAME_ALIASES = {"ADMIN": "SUPER_ADMIN"}
 
 
-def get_tenant_id_for_user(session, user: User) -> int | None:
-    """
-    Get the tenant_id for a user based on their role.
-    - For TENANT_MANAGER: returns the first managed tenant id
-    - For other roles: returns None
-    """
-    if user.role.name == "TENANT_MANAGER":
-        # Get the first managed tenant for the tenant manager
-        manager = session.execute(
-            select(TenantManager).where(TenantManager.user_id == user.id)
-        ).scalars().first()
-        if manager:
-            return manager.tenant_id
+def _resolve_user_tenant_id(session, user_id: int) -> int | None:
+    """Resolve a user's tenant_id from tenant-scoped profile tables (Patient, Doctor, TenantManager)."""
+    patient_tenant = session.execute(
+        select(Patient.tenant_id)
+        .where(Patient.user_id == user_id)
+        .order_by(Patient.tenant_id.asc())
+    ).scalar_one_or_none()
+    if patient_tenant is not None:
+        return int(patient_tenant)
+
+    doctor_tenant = session.execute(
+        select(Doctor.tenant_id).where(Doctor.user_id == user_id)
+    ).scalar_one_or_none()
+    if doctor_tenant is not None:
+        return int(doctor_tenant)
+
+    manager_tenant = session.execute(
+        select(TenantManager.tenant_id)
+        .where(TenantManager.user_id == user_id)
+        .order_by(TenantManager.tenant_id.asc())
+    ).scalar_one_or_none()
+    if manager_tenant is not None:
+        return int(manager_tenant)
+
     return None
 
 
@@ -62,8 +73,7 @@ def login_user(email: str, password: str) -> TokenResponse:
             raise HTTPException(
                 status_code=401, detail="Invalid email or password")
 
-        # Get tenant_id based on user role
-        tenant_id = get_tenant_id_for_user(session, user)
+        tenant_id = _resolve_user_tenant_id(session, user.id)
         payload = {
             "user_id": user.id,
             "email": user.email,
@@ -95,8 +105,8 @@ def login_user(email: str, password: str) -> TokenResponse:
         )
         session.add(db_session)
         session.commit()
-        logger.info("auth.login_success user_id=%s email=%s role=%s",
-                    user.id, user.email, user.role.name)
+        logger.info("auth.login_success user_id=%s email=%s role=%s tenant_id=%s",
+                    user.id, user.email, user.role.name, tenant_id)
         return TokenResponse(access_token=token, refresh_token=refresh_token, token_type="bearer")
     except HTTPException:
         raise
@@ -150,9 +160,7 @@ def refresh_access_token(refresh_token: str) -> TokenResponse:
             raise HTTPException(
                 status_code=401, detail="Invalid refresh token")
 
-        # Get tenant_id based on user role
-        tenant_id = get_tenant_id_for_user(session, user)
-
+        tenant_id = _resolve_user_tenant_id(session, user.id)
         new_payload = {"user_id": user.id,
                        "email": user.email, "role": user.role.name}
         if tenant_id is not None:

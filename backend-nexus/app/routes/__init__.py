@@ -10,6 +10,11 @@ from .tenant_audit_log import router as tenant_audit_log
 from .enrollment import router as enrollment_router
 from .user_tenant_plan import router as user_tenant_plan_router
 from .public_tenant import router as public_tenant_router
+from .appointment import router as appointment_router
+from .doctor_appointment import router as doctor_appointment_router
+from .patient_appointment import router as patient_appointment_router
+from .appointment_status_history import router as appointment_status_history_router
+from .notification import router as notification_router
 
 __all__ = [
     "role_router",
@@ -21,8 +26,12 @@ __all__ = [
     "brand_router",
     "service_router",
     "tenant_audit_log",
+    "enrollment_router",
     "user_tenant_plan_router",
     "public_tenant_router",
- "enrollment_router",
-
+    "appointment_router",
+    "doctor_appointment_router",
+    "patient_appointment_router",
+    "appointment_status_history_router",
+    "notification_router",
 ]

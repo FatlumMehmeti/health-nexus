@@ -28,6 +28,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar"
 import { useAuthStore } from "@/stores/auth.store"
+import { useUnreadCount } from "@/services/notifications.queries"
 
 export type NavUserInfo = {
   name: string
@@ -43,6 +44,7 @@ export function NavUser({
   const { isMobile } = useSidebar()
   const navigate = useNavigate()
   const logout = useAuthStore((s) => s.logout)
+  const { data: unreadCount = 0 } = useUnreadCount()
 
   const handleLogout = async () => {
     await logout()
@@ -112,6 +114,11 @@ export function NavUser({
               <DropdownMenuItem>
                 <IconNotification />
                 Notifications
+                {unreadCount > 0 && (
+                  <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1.5 text-[10px] font-bold text-destructive-foreground">
+                    {unreadCount > 99 ? "99+" : unreadCount}
+                  </span>
+                )}
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />

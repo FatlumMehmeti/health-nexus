@@ -1,6 +1,6 @@
 # app/models/report.py
 
-from sqlalchemy import ForeignKey, ForeignKeyConstraint, Text, TIMESTAMP
+from sqlalchemy import ForeignKey, ForeignKeyConstraint, Text, TIMESTAMP, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
