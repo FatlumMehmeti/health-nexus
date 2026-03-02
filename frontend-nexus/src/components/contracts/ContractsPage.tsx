@@ -1,9 +1,12 @@
 import * as React from "react";
+import { RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 
+import { useQuery } from "@tanstack/react-query";
 import type { Contract, ContractStatus } from "@/interfaces/contract";
 import { isApiError } from "@/lib/api-client";
 import { contractsService } from "@/services/contracts.service";
+import { getCurrentTenantWithFallback } from "@/routes/dashboard/tenant/utils";
 import { useAuthStore } from "@/stores/auth.store";
 import {
   ContractDialog,
@@ -13,6 +16,7 @@ import {
   ContractPdfDocument,
   type ReactPdfPrimitives,
 } from "@/components/contracts/ContractPdfDocument";
+import { SignatureModal } from "@/components/contracts/SignatureModal";
 import {
   ActionsDropdown,
   type ActionItem,
@@ -120,26 +124,6 @@ function isEligibleForDoctorBooking(
 }
 
 /**
- * Utility exported for tests so signature flows can be mocked without brittle DOM hacks.
- */
-export async function pickFileFromUser(
-  accept = "image/*,.png,.jpg,.jpeg,.webp",
-): Promise<File | null> {
-  return new Promise((resolve) => {
-    const input = document.createElement("input");
-    input.type = "file";
-    input.accept = accept;
-
-    input.onchange = () => {
-      const file = input.files?.[0] ?? null;
-      resolve(file);
-    };
-
-    input.click();
-  });
-}
-
-/**
  * Keep @react-pdf/renderer as a runtime import so the heavy PDF code is only
  * loaded when the user explicitly downloads a PDF.
  */
@@ -160,18 +144,29 @@ function downloadBlob(blob: Blob, filename: string): void {
 
 interface ContractsPageProps {
   /**
-   * Test seam: callers can inject a deterministic file picker in tests.
-   * Production route does not pass this prop, so default DOM-based picker is used.
+   * Test seam: when provided, Sign Doctor/Hospital use this instead of opening the signature modal.
+   * Lets tests bypass the canvas UI and supply a mock file directly.
    */
-  pickFile?: () => Promise<File | null>;
+  bypassSignatureModal?: () => Promise<File | null>;
+  /**
+   * Test seam: when provided, bypass tenant fetch and use this tenant ID directly.
+   */
+  tenantIdProp?: number;
 }
 
-export function ContractsPage({ pickFile = pickFileFromUser }: ContractsPageProps = {}) {
+export function ContractsPage({
+  bypassSignatureModal,
+  tenantIdProp,
+}: ContractsPageProps = {}) {
   const tenantIdFromStore = useAuthStore((state) => state.tenantId);
-  const tenantId = React.useMemo(() => {
-    const parsed = Number(tenantIdFromStore);
-    return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
-  }, [tenantIdFromStore]);
+  const currentUserId = useAuthStore((state) => state.user?.id);
+
+  const tenantQuery = useQuery({
+    queryKey: ["tenant-manager", "current"],
+    queryFn: () => getCurrentTenantWithFallback(tenantIdFromStore),
+    enabled: tenantIdProp == null,
+  });
+  const tenantId = tenantIdProp ?? tenantQuery.data?.id;
 
   const [contracts, setContracts] = React.useState<Contract[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
@@ -195,7 +190,14 @@ export function ContractsPage({ pickFile = pickFileFromUser }: ContractsPageProp
   const [terminateReason, setTerminateReason] = React.useState("");
   const [isTerminating, setIsTerminating] = React.useState(false);
 
+  const [signatureTarget, setSignatureTarget] = React.useState<{
+    contract: Contract;
+    role: "doctor" | "hospital";
+  } | null>(null);
+  const [isSigning, setIsSigning] = React.useState(false);
+
   const loadContracts = React.useCallback(async () => {
+    if (tenantId == null) return;
     setIsLoading(true);
     setErrorMessage(null);
 
@@ -228,12 +230,16 @@ export function ContractsPage({ pickFile = pickFileFromUser }: ContractsPageProp
   };
 
   const handleContractSubmit = async (values: ContractDialogSubmitInput) => {
+    if (dialogMode === "create" && tenantId == null) {
+      toast.error("Tenant context not available. Please refresh the page.");
+      return;
+    }
     setIsDialogSubmitting(true);
     setContractDialogError(null);
 
     try {
       if (dialogMode === "create") {
-        await contractsService.createContract(tenantId, values);
+        await contractsService.createContract(tenantId!, values);
         toast.success("Contract created.");
       } else {
         if (!selectedContract) return;
@@ -298,33 +304,75 @@ export function ContractsPage({ pickFile = pickFileFromUser }: ContractsPageProp
     }
   };
 
-  const handleSignDoctor = async (contract: Contract) => {
-    const file = await pickFile();
-    if (!file) return;
-
-    try {
-      await contractsService.signDoctor(contract.id, file);
-      await loadContracts();
-      toast.success(`Doctor signature uploaded for contract #${contract.id}.`);
-    } catch (error) {
-      toast.error("Unable to upload doctor signature.", {
-        description: (error as Error).message,
-      });
+  const openSignDoctorModal = async (contract: Contract) => {
+    if (bypassSignatureModal) {
+      const file = await bypassSignatureModal();
+      if (file) {
+        setIsSigning(true);
+        try {
+          await contractsService.signDoctor(contract.id, file);
+          toast.success(`Doctor signature uploaded for contract #${contract.id}.`);
+          await loadContracts();
+        } catch (error) {
+          toast.error("Unable to upload doctor signature.", {
+            description: (error as Error).message,
+          });
+        } finally {
+          setIsSigning(false);
+        }
+      }
+      return;
     }
+    setSignatureTarget({ contract, role: "doctor" });
   };
 
-  const handleSignHospital = async (contract: Contract) => {
-    const file = await pickFile();
-    if (!file) return;
+  const openSignHospitalModal = async (contract: Contract) => {
+    if (bypassSignatureModal) {
+      const file = await bypassSignatureModal();
+      if (file) {
+        setIsSigning(true);
+        try {
+          await contractsService.signHospital(contract.id, file);
+          toast.success(`Hospital signature uploaded for contract #${contract.id}.`);
+          await loadContracts();
+        } catch (error) {
+          toast.error("Unable to upload hospital signature.", {
+            description: (error as Error).message,
+          });
+        } finally {
+          setIsSigning(false);
+        }
+      }
+      return;
+    }
+    setSignatureTarget({ contract, role: "hospital" });
+  };
 
+  const handleSignatureConfirm = async (file: File): Promise<void> => {
+    if (!signatureTarget) return;
+
+    setIsSigning(true);
     try {
-      await contractsService.signHospital(contract.id, file);
+      if (signatureTarget.role === "doctor") {
+        await contractsService.signDoctor(signatureTarget.contract.id, file);
+        toast.success(
+          `Doctor signature uploaded for contract #${signatureTarget.contract.id}.`,
+        );
+      } else {
+        await contractsService.signHospital(signatureTarget.contract.id, file);
+        toast.success(
+          `Hospital signature uploaded for contract #${signatureTarget.contract.id}.`,
+        );
+      }
       await loadContracts();
-      toast.success(`Hospital signature uploaded for contract #${contract.id}.`);
+      setSignatureTarget(null);
     } catch (error) {
-      toast.error("Unable to upload hospital signature.", {
+      toast.error("Unable to upload signature.", {
         description: (error as Error).message,
       });
+      throw error;
+    } finally {
+      setIsSigning(false);
     }
   };
 
@@ -400,6 +448,18 @@ export function ContractsPage({ pickFile = pickFileFromUser }: ContractsPageProp
     return { eligible, notEligible };
   }, [contracts]);
 
+  const handleCopyDoctorSignLink = (contract: Contract) => {
+    if (contract.doctor_signed_at) {
+      toast.info("Doctor has already signed this contract.");
+      return;
+    }
+    const url = `${window.location.origin}/dashboard/contract-sign-doctor/${contract.id}`;
+    void navigator.clipboard.writeText(url).then(
+      () => toast.success("Link copied. Send it to the doctor to sign."),
+      () => toast.error("Failed to copy link."),
+    );
+  };
+
   const getActions = (contract: Contract): ActionItem[] => {
     const actions: ActionItem[] = [];
 
@@ -409,19 +469,29 @@ export function ContractsPage({ pickFile = pickFileFromUser }: ContractsPageProp
         onClick: () => handleEditClick(contract),
       });
 
-      actions.push({
-        label: "Sign Doctor",
-        onClick: () => {
-          void handleSignDoctor(contract);
-        },
-      });
+      const isCurrentUserDoctor =
+        currentUserId != null &&
+        String(contract.doctor_user_id) === currentUserId;
+      if (isCurrentUserDoctor && !contract.doctor_signed_at) {
+        actions.push({
+          label: "Sign Doctor",
+          onClick: () => void openSignDoctorModal(contract),
+        });
+      }
 
-      actions.push({
-        label: "Sign Hospital",
-        onClick: () => {
-          void handleSignHospital(contract);
-        },
-      });
+      if (!contract.doctor_signed_at) {
+        actions.push({
+          label: "Copy link for doctor to sign",
+          onClick: () => handleCopyDoctorSignLink(contract),
+        });
+      }
+
+      if (!contract.hospital_signed_at) {
+        actions.push({
+          label: "Sign Hospital",
+          onClick: () => void openSignHospitalModal(contract),
+        });
+      }
     }
 
     if (contract.status === "DRAFT") {
@@ -462,6 +532,35 @@ export function ContractsPage({ pickFile = pickFileFromUser }: ContractsPageProp
     return actions;
   };
 
+  if (tenantIdProp == null) {
+    if (tenantQuery.isLoading || (tenantId == null && !tenantQuery.isError)) {
+      return (
+        <div className="space-y-6 p-4 sm:p-6 lg:p-8">
+          <h1 className="text-2xl font-bold sm:text-3xl">Contracts</h1>
+          <Card>
+            <CardContent className="pt-6 text-muted-foreground">
+              Loading tenant context...
+            </CardContent>
+          </Card>
+        </div>
+      );
+    }
+
+    if (tenantQuery.isError || tenantId == null) {
+      return (
+        <div className="space-y-6 p-4 sm:p-6 lg:p-8">
+          <h1 className="text-2xl font-bold sm:text-3xl">Contracts</h1>
+          <Card>
+            <CardContent className="pt-6 text-destructive">
+              Failed to load tenant context. You may not be authorized as a
+              tenant manager, or no tenant is assigned to your account.
+            </CardContent>
+          </Card>
+        </div>
+      );
+    }
+  }
+
   if (isLoading) {
     return (
       <div className="space-y-6 p-4 sm:p-6 lg:p-8">
@@ -484,7 +583,19 @@ export function ContractsPage({ pickFile = pickFileFromUser }: ContractsPageProp
             Manage doctor contracts, signatures, transitions, and exports.
           </p>
         </div>
-        <Button onClick={handleCreateClick}>New Contract</Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => void loadContracts().then(() => toast.success("Contracts refreshed."))}
+            disabled={isLoading}
+            title="Refresh"
+          >
+            <RefreshCw className={`size-4 ${isLoading ? "animate-spin" : ""}`} />
+            <span className="sr-only">Refresh</span>
+          </Button>
+          <Button onClick={handleCreateClick}>New Contract</Button>
+        </div>
       </div>
 
       <Card>
@@ -603,6 +714,23 @@ export function ContractsPage({ pickFile = pickFileFromUser }: ContractsPageProp
           }
         }}
         onSubmit={handleContractSubmit}
+      />
+
+      <SignatureModal
+        open={Boolean(signatureTarget)}
+        onOpenChange={(open) => !open && setSignatureTarget(null)}
+        title={
+          signatureTarget?.role === "doctor"
+            ? "Sign as Doctor"
+            : "Sign as Hospital"
+        }
+        description={
+          signatureTarget?.role === "doctor"
+            ? "Draw the doctor's signature below, then click Save. Only the assigned doctor can sign."
+            : "Draw the hospital/tenant manager signature below, then click Save."
+        }
+        onConfirm={handleSignatureConfirm}
+        isSubmitting={isSigning}
       />
 
       <Dialog

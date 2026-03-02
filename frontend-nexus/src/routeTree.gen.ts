@@ -30,6 +30,7 @@ import { Route as DashboardLandingPagesIndexRouteImport } from './routes/dashboa
 import { Route as DashboardAuditLogsIndexRouteImport } from './routes/dashboard/audit-logs/index'
 import { Route as DashboardTenantDoctorsManagerRouteImport } from './routes/dashboard/tenant/doctors-manager'
 import { Route as DashboardTenantSectionRouteImport } from './routes/dashboard/tenant.$section'
+import { Route as DashboardOntractSignDoctorContractIdRouteImport } from './routes/dashboard/ontract-sign-doctor.$contractId'
 import { Route as DashboardLandingPagesPageIdRouteImport } from './routes/dashboard/landing-pages/$pageId'
 import { Route as DashboardTenantContractsRouteRouteImport } from './routes/dashboard/tenant/contracts/route'
 import { Route as DashboardTenantContractsIndexRouteImport } from './routes/dashboard/tenant/contracts/index'
@@ -142,6 +143,12 @@ const DashboardTenantSectionRoute = DashboardTenantSectionRouteImport.update({
   path: '/$section',
   getParentRoute: () => DashboardTenantRoute,
 } as any)
+const DashboardOntractSignDoctorContractIdRoute =
+  DashboardOntractSignDoctorContractIdRouteImport.update({
+    id: '/ontract-sign-doctor/$contractId',
+    path: '/ontract-sign-doctor/$contractId',
+    getParentRoute: () => DashboardRouteRoute,
+  } as any)
 const DashboardLandingPagesPageIdRoute =
   DashboardLandingPagesPageIdRouteImport.update({
     id: '/$pageId',
@@ -181,6 +188,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/': typeof DashboardIndexRoute
   '/dashboard/tenant/contracts': typeof DashboardTenantContractsRouteRouteWithChildren
   '/dashboard/landing-pages/$pageId': typeof DashboardLandingPagesPageIdRoute
+  '/dashboard/ontract-sign-doctor/$contractId': typeof DashboardOntractSignDoctorContractIdRoute
   '/dashboard/tenant/$section': typeof DashboardTenantSectionRoute
   '/dashboard/tenant/doctors-manager': typeof DashboardTenantDoctorsManagerRoute
   '/dashboard/audit-logs/': typeof DashboardAuditLogsIndexRoute
@@ -204,6 +212,7 @@ export interface FileRoutesByTo {
   '/landing/$tenantSlug': typeof LandingTenantSlugRoute
   '/dashboard': typeof DashboardIndexRoute
   '/dashboard/landing-pages/$pageId': typeof DashboardLandingPagesPageIdRoute
+  '/dashboard/ontract-sign-doctor/$contractId': typeof DashboardOntractSignDoctorContractIdRoute
   '/dashboard/tenant/$section': typeof DashboardTenantSectionRoute
   '/dashboard/tenant/doctors-manager': typeof DashboardTenantDoctorsManagerRoute
   '/dashboard/audit-logs': typeof DashboardAuditLogsIndexRoute
@@ -231,6 +240,7 @@ export interface FileRoutesById {
   '/dashboard/': typeof DashboardIndexRoute
   '/dashboard/tenant/contracts': typeof DashboardTenantContractsRouteRouteWithChildren
   '/dashboard/landing-pages/$pageId': typeof DashboardLandingPagesPageIdRoute
+  '/dashboard/ontract-sign-doctor/$contractId': typeof DashboardOntractSignDoctorContractIdRoute
   '/dashboard/tenant/$section': typeof DashboardTenantSectionRoute
   '/dashboard/tenant/doctors-manager': typeof DashboardTenantDoctorsManagerRoute
   '/dashboard/audit-logs/': typeof DashboardAuditLogsIndexRoute
@@ -259,6 +269,7 @@ export interface FileRouteTypes {
     | '/dashboard/'
     | '/dashboard/tenant/contracts'
     | '/dashboard/landing-pages/$pageId'
+    | '/dashboard/ontract-sign-doctor/$contractId'
     | '/dashboard/tenant/$section'
     | '/dashboard/tenant/doctors-manager'
     | '/dashboard/audit-logs/'
@@ -282,6 +293,7 @@ export interface FileRouteTypes {
     | '/landing/$tenantSlug'
     | '/dashboard'
     | '/dashboard/landing-pages/$pageId'
+    | '/dashboard/ontract-sign-doctor/$contractId'
     | '/dashboard/tenant/$section'
     | '/dashboard/tenant/doctors-manager'
     | '/dashboard/audit-logs'
@@ -308,6 +320,7 @@ export interface FileRouteTypes {
     | '/dashboard/'
     | '/dashboard/tenant/contracts'
     | '/dashboard/landing-pages/$pageId'
+    | '/dashboard/ontract-sign-doctor/$contractId'
     | '/dashboard/tenant/$section'
     | '/dashboard/tenant/doctors-manager'
     | '/dashboard/audit-logs/'
@@ -474,6 +487,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardTenantSectionRouteImport
       parentRoute: typeof DashboardTenantRoute
     }
+    '/dashboard/ontract-sign-doctor/$contractId': {
+      id: '/dashboard/ontract-sign-doctor/$contractId'
+      path: '/ontract-sign-doctor/$contractId'
+      fullPath: '/dashboard/ontract-sign-doctor/$contractId'
+      preLoaderRoute: typeof DashboardOntractSignDoctorContractIdRouteImport
+      parentRoute: typeof DashboardRouteRoute
+    }
     '/dashboard/landing-pages/$pageId': {
       id: '/dashboard/landing-pages/$pageId'
       path: '/$pageId'
@@ -555,6 +575,7 @@ interface DashboardRouteRouteChildren {
   DashboardTenantRoute: typeof DashboardTenantRouteWithChildren
   DashboardTenantsRoute: typeof DashboardTenantsRoute
   DashboardIndexRoute: typeof DashboardIndexRoute
+  DashboardOntractSignDoctorContractIdRoute: typeof DashboardOntractSignDoctorContractIdRoute
   DashboardAuditLogsIndexRoute: typeof DashboardAuditLogsIndexRoute
 }
 
@@ -568,6 +589,8 @@ const DashboardRouteRouteChildren: DashboardRouteRouteChildren = {
   DashboardTenantRoute: DashboardTenantRouteWithChildren,
   DashboardTenantsRoute: DashboardTenantsRoute,
   DashboardIndexRoute: DashboardIndexRoute,
+  DashboardOntractSignDoctorContractIdRoute:
+    DashboardOntractSignDoctorContractIdRoute,
   DashboardAuditLogsIndexRoute: DashboardAuditLogsIndexRoute,
 }
 

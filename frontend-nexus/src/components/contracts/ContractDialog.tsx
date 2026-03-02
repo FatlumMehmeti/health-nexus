@@ -1,9 +1,12 @@
 import * as React from "react";
 import { z } from "zod";
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useQuery } from "@tanstack/react-query";
 
 import type { Contract } from "@/interfaces/contract";
+import { tenantsService } from "@/services/tenants.service";
+import { isApiError } from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -13,9 +16,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { FormSelect } from "@/components/atoms/form-select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { HtmlTermsEditor } from "@/components/contracts/HtmlTermsEditor";
 
 const contractDialogSchema = z
   .object({
@@ -62,17 +66,6 @@ interface ContractDialogProps {
   onSubmit: (values: ContractDialogSubmitInput) => Promise<void> | void;
 }
 
-/**
- * We sanitize HTML preview locally before rendering with dangerouslySetInnerHTML.
- * This is intentionally simple for preview purposes and removes script tags and inline event handlers.
- */
-export function sanitizeTermsHtml(rawHtml: string): string {
-  return rawHtml
-    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "")
-    .replace(/\son\w+=("[^"]*"|'[^']*'|[^\s>]+)/gi, "")
-    .replace(/javascript:/gi, "");
-}
-
 function toInitialValues(contract?: Contract | null): ContractDialogFormValues {
   return {
     doctor_user_id: contract?.doctor_user_id ?? 0,
@@ -116,13 +109,30 @@ export function ContractDialog({
     register,
     watch,
     handleSubmit,
+    setValue,
+    control,
     formState: { errors },
   } = form;
 
+  const doctorsQuery = useQuery({
+    queryKey: ["tenant-doctors"],
+    queryFn: async () => {
+      try {
+        return await tenantsService.listTenantDoctors();
+      } catch (err) {
+        if (isApiError(err) && err.status === 404) return [];
+        throw err;
+      }
+    },
+    enabled: open && mode === "create",
+  });
+  const doctors = doctorsQuery.data ?? [];
+
   const termsContentValue = watch("terms_content");
-  const previewHtml = React.useMemo(
-    () => sanitizeTermsHtml(termsContentValue ?? ""),
-    [termsContentValue],
+
+  const handleTermsChange = React.useCallback(
+    (html: string) => setValue("terms_content", html, { shouldValidate: true }),
+    [setValue],
   );
 
   const handleFormSubmit = async (values: ContractDialogFormValues) => {
@@ -149,23 +159,48 @@ export function ContractDialog({
           onSubmit={handleSubmit(handleFormSubmit)}
         >
           <div className="space-y-2">
-            <Label htmlFor="contract-doctor-user-id">Doctor ID</Label>
-            <Input
-              id="contract-doctor-user-id"
-              type="number"
-              placeholder="e.g. 42"
-              disabled={mode === "edit"}
-              aria-invalid={Boolean(errors.doctor_user_id?.message)}
-              {...register("doctor_user_id", { valueAsNumber: true })}
-            />
-            {errors.doctor_user_id?.message ? (
-              <p className="text-xs text-destructive">{errors.doctor_user_id.message}</p>
-            ) : null}
             {mode === "edit" ? (
-              <p className="text-xs text-muted-foreground">
-                Doctor assignment is immutable after contract creation.
-              </p>
-            ) : null}
+              <>
+                <Label htmlFor="contract-doctor">Doctor</Label>
+                <Input
+                  id="contract-doctor"
+                  value={contract?.doctor_name ?? `Doctor ID ${contract?.doctor_user_id ?? ""}`}
+                  disabled
+                  readOnly
+                  className="bg-muted"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Doctor assignment is immutable after contract creation.
+                </p>
+              </>
+            ) : (
+              <Controller
+                name="doctor_user_id"
+                control={control}
+                render={({ field }) => (
+                  <FormSelect
+                    id="contract-doctor"
+                    label="Doctor"
+                    options={doctors.map((d) => ({
+                      value: String(d.user_id),
+                      label:
+                        [d.first_name, d.last_name].filter(Boolean).join(" ") ||
+                        `Doctor #${d.user_id}` + (d.specialization ? ` (${d.specialization})` : ""),
+                    }))}
+                    value={field.value ? String(field.value) : ""}
+                    onValueChange={(v) => field.onChange(v ? Number(v) : 0)}
+                    placeholder="Select a doctor"
+                    disabled={doctorsQuery.isLoading}
+                    error={errors.doctor_user_id?.message}
+                    helperText={
+                      doctors.length === 0 && !doctorsQuery.isLoading
+                        ? "No doctors assigned to this tenant yet. Add doctors in My Tenant → Doctors first."
+                        : undefined
+                    }
+                  />
+                )}
+              />
+            )}
           </div>
 
           <div className="space-y-2">
@@ -210,28 +245,16 @@ export function ContractDialog({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="contract-terms-content">Terms (HTML)</Label>
-            <Textarea
-              id="contract-terms-content"
-              rows={8}
-              placeholder="<h3>Compensation</h3><p>Doctor receives ...</p>"
-              aria-invalid={Boolean(errors.terms_content?.message)}
-              {...register("terms_content")}
+            <Label htmlFor="contract-terms-content">Terms (rich text)</Label>
+            <HtmlTermsEditor
+              value={termsContentValue ?? ""}
+              onChange={handleTermsChange}
+              placeholder="Write contract terms (e.g. compensation, responsibilities)..."
+              className={errors.terms_content ? "border-destructive" : undefined}
             />
             {errors.terms_content?.message ? (
               <p className="text-xs text-destructive">{errors.terms_content.message}</p>
             ) : null}
-          </div>
-
-          <div className="space-y-2 rounded-md border p-3">
-            <Label>Terms Preview (Sanitized)</Label>
-            <div className="prose prose-sm max-w-none">
-              {previewHtml ? (
-                <div dangerouslySetInnerHTML={{ __html: previewHtml }} />
-              ) : (
-                <p className="text-sm text-muted-foreground">Preview appears here.</p>
-              )}
-            </div>
           </div>
         </form>
 
@@ -250,14 +273,13 @@ export function ContractDialog({
           >
             Cancel
           </Button>
-          <Button type="submit" form="contract-form" disabled={isSubmitting}>
-            {isSubmitting
-              ? mode === "create"
-                ? "Creating..."
-                : "Saving..."
-              : mode === "create"
-                ? "Create"
-                : "Save"}
+          <Button
+            type="submit"
+            form="contract-form"
+            disabled={isSubmitting}
+            loading={isSubmitting}
+          >
+            {mode === "create" ? "Create" : "Save"}
           </Button>
         </DialogFooter>
       </DialogContent>
