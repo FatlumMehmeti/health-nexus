@@ -8,12 +8,34 @@ from app.models import Tenant, TenantStatus, UserTenantPlan, Role, User, TenantM
 from app.auth.auth_utils import hash_password
 
 
+def _make_get_db_override(session):
+    """Return a get_db-style generator that yields the test session (so app never uses SessionLocal)."""
+
+    def overridden_get_db():
+        yield session
+
+    return overridden_get_db
+
+
 @pytest.fixture
 def prd05_client(db_session):
-    """TestClient with DB session for PRD-05 tests. Override in submodules if you need extra setup."""
+    """TestClient with DB session for PRD-05 tests. Overrides app get_db to use fixture db_session."""
     from fastapi.testclient import TestClient
     from app.main import app
-    yield TestClient(app)
+    from app.db import get_db as app_get_db
+    from app.routes.public_tenant import get_db as public_tenant_get_db
+    from app.routes.enrollment import get_db as enrollment_get_db
+
+    override = _make_get_db_override(db_session)
+    app.dependency_overrides[app_get_db] = override
+    app.dependency_overrides[public_tenant_get_db] = override
+    app.dependency_overrides[enrollment_get_db] = override
+    try:
+        yield TestClient(app)
+    finally:
+        app.dependency_overrides.pop(app_get_db, None)
+        app.dependency_overrides.pop(public_tenant_get_db, None)
+        app.dependency_overrides.pop(enrollment_get_db, None)
 
 
 @pytest.fixture
