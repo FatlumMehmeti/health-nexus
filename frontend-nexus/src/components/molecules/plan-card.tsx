@@ -139,19 +139,8 @@ export function PlanCard({
                 ? "dark:bg-blue-600 dark:hover:bg-blue-700 dark:text-white bg-blue-500 hover:bg-blue-600 text-white"
                 : "dark:bg-zinc-800 dark:hover:bg-zinc-700 dark:text-white bg-gray-800 hover:bg-gray-900 text-white"
         }`}
-        title={
-          !canFitStats ? "Plan is too small for your current usage" : undefined
-        }
       >
-        {isCurrentPlan
-          ? "Current Plan"
-          : !canFitStats
-            ? "Plan Too Small"
-            : isChanging
-              ? "Updating..."
-              : price === 0
-                ? "Get Started"
-                : "Choose Plan"}
+        {isChanging ? "Updating..." : "Choose Plan"}
       </Button>
     </div>
   );

@@ -133,11 +133,17 @@ def change_subscription_plan(
 ):
     """
     Change subscription plan for the tenant manager's organization.
-    Validates that the new plan can accommodate existing resources.
-    (blocks downgrades when resources exceed new plan limits)
+    Validates that:
+    - Downgrades (lower price) are not allowed
+    - New plan can accommodate existing resources
     """
     tenant_id = get_tenant_id_from_user(db, current_user)
     current_subscription = get_active_subscription(db, tenant_id)
+    
+    # Get the current plan
+    current_plan = db.query(SubscriptionPlan).filter(
+        SubscriptionPlan.id == current_subscription.subscription_plan_id
+    ).first()
     
     # Get the new plan
     new_plan = db.query(SubscriptionPlan).filter(
@@ -148,6 +154,16 @@ def change_subscription_plan(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Subscription plan with ID {request.new_plan_id} not found"
+        )
+    
+    # Prevent downgrades: check if new plan price is lower than current plan
+    current_price = float(current_plan.price)
+    new_price = float(new_plan.price)
+    
+    if new_price < current_price:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Cannot downgrade from {current_plan.name} (${current_price:.2f}) to {new_plan.name} (${new_price:.2f}). Plan downgrades are not allowed mid-cycle. Please wait until your billing cycle ends."
         )
     
     # Get current resource counts
