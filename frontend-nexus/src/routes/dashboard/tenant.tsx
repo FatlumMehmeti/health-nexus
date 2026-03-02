@@ -39,6 +39,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Table,
   TableBody,
@@ -48,6 +49,10 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import {
+  enrollmentsService,
+  EnrollmentStatus,
+} from "@/services/enrollments.service";
 
 export const Route = createFileRoute("/dashboard/tenant")({
   beforeLoad: requireAuth({ routeKey: "DASHBOARD_TENANT" }),
@@ -114,6 +119,7 @@ export const TENANT_SECTION_KEYS = [
   "products",
   "plans",
   "settings",
+  "enrollments",
 ] as const;
 
 export type TenantSectionKey = (typeof TENANT_SECTION_KEYS)[number];
@@ -232,11 +238,312 @@ export function TenantManagerPageContent({
         {activeSection === "plans" && (
           <TenantPlansPanel />
         )}
+        {activeSection === "enrollments" && (
+          <TenantEnrollmentsPanel />
+        )}
 
         {activeSection === "settings" && <TenantDetailsEditor onSaved={notifyDataChanged} />}
       </div>
     </div>
   );
+}
+
+const STATUS_TABS = [
+  { value: "ACTIVE", label: "Approved" },
+  { value: "PENDING", label: "Pending" },
+  { value: "CANCELLED", label: "Cancelled" },
+  { value: "EXPIRED", label: "Expired" },
+  { value: "HISTORY", label: "Enrollment History" },
+];
+
+export type TenantStatus = EnrollmentStatus | "HISTORY";
+// Utility component for displaying enrollments details in a label-value format
+function TenantEnrollmentsPanel() {
+  const queryClient = useQueryClient();
+
+  const [activeStatus, setActiveStatus] = useState<TenantStatus>("ACTIVE");
+  // Query for current tenant to get tenant ID for subsequent queries
+  const tenantQuery = useQuery({
+    queryKey: QUERY_KEYS.current,
+    queryFn: () => tenantsService.getCurrentTenant(),
+  });
+
+  const tenantId = tenantQuery.data?.id;
+  // Query for listing enrollments of the tenant, optionally filtered by patient user ID 
+  const enrollmentsQuery = useQuery({
+    queryKey: ["tenant-manager", "enrollments", tenantId],
+    queryFn: () => enrollmentsService.list(tenantId!),
+    enabled: !!tenantId,
+  });
+  // Mutation for enrollment status transitions (approve/cancel)
+  const transitionMutation = useMutation({
+    mutationFn: ({
+      enrollmentId,
+      target,
+      reason,
+    }: {
+      enrollmentId: number;
+      target: EnrollmentStatus;
+      reason?: string;
+    }) =>
+      enrollmentsService.transition(tenantId!, enrollmentId, target, reason),
+
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["tenant-manager", "enrollments", tenantId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["enrollment-history", tenantId],
+      });
+    },
+  });
+  // History query for enrollment status changes
+  const historyQuery = useQuery({
+    queryKey: ["enrollment-history", tenantId],
+    queryFn: () => enrollmentsService.getHistory(tenantId!),
+    enabled: !!tenantId && activeStatus === "HISTORY",
+  });
+  // Handler for enrollment status transitions (approve/cancel)
+  const handleTransition = (
+    enrollmentId: number,
+    target: EnrollmentStatus,
+  ) => {
+    const reason = window.prompt("Reason for transition?");
+    transitionMutation.mutate({
+      enrollmentId,
+      target,
+      reason: reason || undefined,
+    });
+  };
+  // Format date utility
+  const formatDate = (dateString: string | null) => {
+    if (!dateString) return "—";
+    return new Date(dateString).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+  // Map enrollment status to badge variant
+  const getEnrollmentStatusVariant = (
+    status: string,
+  ): "success" | "warning" | "destructive" | "expired" | "default" => {
+    switch (status) {
+      case "ACTIVE":
+        return "success";
+      case "PENDING":
+        return "warning";
+      case "CANCELLED":
+        return "destructive";
+      case "EXPIRED":
+        return "expired";
+      default:
+        return "default";
+    }
+  };
+  // Define possible actions based on current status
+  const isLoading = enrollmentsQuery.isLoading || tenantQuery.isLoading || (activeStatus === "HISTORY" && historyQuery.isLoading);
+  const isError = enrollmentsQuery.isError || (activeStatus === "HISTORY" && historyQuery.isError);
+  const error = enrollmentsQuery.error || historyQuery.error;
+  // Action buttons for each enrollment based on status
+  const allEnrollments = enrollmentsQuery.data ?? [];
+  const filteredEnrollments = allEnrollments.filter((e) => e.status === activeStatus);
+  const historyItems = historyQuery.data ?? [];
+return (
+  <Card>
+    <CardHeader>
+      <CardTitle>Enrollments</CardTitle>
+      <CardDescription>
+        View and manage tenant enrollments, statuses, and full history.
+      </CardDescription>
+    </CardHeader>
+
+    <CardContent>
+      <Tabs
+        value={activeStatus}
+        onValueChange={(value) => setActiveStatus(value as TenantStatus)}
+        className="mb-6"
+      >
+        {/*Status Tabs*/}
+        <TabsList variant="line" className="mb-4">
+          {STATUS_TABS.map((tab) => (
+            <TabsTrigger key={tab.value} value={tab.value}>
+              {tab.label}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+      </Tabs>
+
+      {isLoading ? (
+        <div className="space-y-2">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <Skeleton key={i} className="h-16 w-full" />
+          ))}
+        </div>
+      ) : isError ? (
+        <div className="py-8 text-center text-destructive">
+          Error loading data: {(error as Error)?.message || "Unknown error"}
+        </div>
+      ) : activeStatus === "HISTORY" ? (
+        historyItems.length === 0 ? (
+          <div className="py-12 text-center text-muted-foreground">
+            No history found for this tenant.
+          </div>
+        ) : (
+          <div className="overflow-x-auto rounded-md border">
+            {/* History Table */}
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Enrollment ID</TableHead>
+                  <TableHead>Change</TableHead>
+                  <TableHead>Changed By (Role)</TableHead>
+                  <TableHead>Reason</TableHead>
+                  <TableHead>Date</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {historyItems.map((item) => (
+                  <TableRow key={item.id}>
+                    <TableCell className="font-medium">
+                      {item.enrollment_id}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <Badge
+                          variant={getEnrollmentStatusVariant(item.old_status)}
+                          className="opacity-70 scale-90"
+                        >
+                          {item.old_status}
+                        </Badge>
+                        <span className="text-muted-foreground">→</span>
+                        <Badge
+                          variant={getEnrollmentStatusVariant(item.new_status)}
+                        >
+                          {item.new_status}
+                        </Badge>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      {item.changed_by ? (
+                        <div className="text-sm">
+                          ID: {item.changed_by}
+                          <div className="text-xs text-muted-foreground">
+                            {item.changed_by_role}
+                          </div>
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground italic tracking-wider text-sm">
+                          System
+                        </span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground max-w-[200px] truncate">
+                      {item.reason || "—"}
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {formatDate(item.changed_at)}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )
+      ) : filteredEnrollments.length === 0 ? (
+        <div className="py-12 text-center text-muted-foreground">
+          No {activeStatus.toLowerCase()} enrollments found.
+        </div>
+      ) : (
+        <div className="overflow-x-auto rounded-md border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>ID</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Patient ID</TableHead>
+                <TableHead>Activated</TableHead>
+                <TableHead>Expires / Cancelled</TableHead>
+                <TableHead>Updated</TableHead>
+              </TableRow>
+            </TableHeader>
+
+            <TableBody>
+              {filteredEnrollments.map((enrollment) => (
+                <TableRow key={enrollment.id}>
+                  {/* Enrollmetn Id */}
+                  <TableCell className="font-medium">{enrollment.id}</TableCell>
+
+                  {/* Enrollmetn Status */}
+                  <TableCell>
+                    <Badge
+                      variant={getEnrollmentStatusVariant(enrollment.status)}
+                    >
+                      {enrollment.status}
+                    </Badge>
+                  </TableCell>
+
+                  {/* Enrollmetn Patient ID */}
+                  <TableCell className="text-muted-foreground text-sm">
+                    {enrollment.patient_user_id}
+                  </TableCell>
+
+                  {/* Enrollmetn Activated At */}
+                  <TableCell className="text-muted-foreground text-sm">
+                    {formatDate(enrollment.activated_at)}
+                  </TableCell>
+
+                  {/* Enrollmetn Expires / Cancelled At */}
+                  <TableCell className="text-muted-foreground text-sm">
+                    {enrollment.status === "CANCELLED"
+                      ? formatDate(enrollment.cancelled_at)
+                      : formatDate(enrollment.expires_at)}
+                  </TableCell>
+
+                  {/* Enrollmetn Updated At */}
+                  <TableCell className="text-muted-foreground text-sm">
+                    {formatDate(enrollment.updated_at)}
+                  </TableCell>
+
+                  {/* Action buttons - Approve / Cancel an enrollment */}
+                  {/*<TableCell className="space-x-3">
+                    {enrollment.status !== "ACTIVE" &&
+                      enrollment.status !== "CANCELLED" && (
+                        <button
+                          className="text-primary hover:text-primary/80 transition-colors text-sm font-medium disabled:opacity-50"
+                          onClick={() =>
+                            handleTransition(enrollment.id, "ACTIVE")
+                          }
+                          disabled={transitionMutation.isPending}
+                        >
+                          Approve
+                        </button>
+                      )}
+
+                    {enrollment.status !== "CANCELLED" &&
+                      enrollment.status !== "EXPIRED" && (
+                        <button
+                          className="text-destructive hover:text-destructive/80 transition-colors text-sm font-medium disabled:opacity-50"
+                          onClick={() =>
+                            handleTransition(enrollment.id, "CANCELLED")
+                          }
+                          disabled={transitionMutation.isPending}
+                        >
+                          Cancel
+                        </button>
+                      )}
+                  </TableCell>*/}
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      )}
+    </CardContent>
+  </Card>
+);
 }
 
 function TenantPlansPanel() {
@@ -619,7 +926,7 @@ function TenantPlansPanel() {
     </Card>
   );
 }
-
+//settings page
 function TenantDetailsEditor({ onSaved }: { onSaved: () => void }) {
   const queryClient = useQueryClient();
 

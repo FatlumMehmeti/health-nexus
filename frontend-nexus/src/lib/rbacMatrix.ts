@@ -37,8 +37,6 @@ const rbacMatrix: Record<RouteKey, Role[]> = {
     "TENANT_MANAGER",
     "DOCTOR",
     "SALES",
-    "CLIENT",
-    
   ],
   DASHBOARD_DATA: ["SUPER_ADMIN", "TENANT_MANAGER"],
   DASHBOARD_FORMS: ["SUPER_ADMIN", "TENANT_MANAGER", "DOCTOR",],

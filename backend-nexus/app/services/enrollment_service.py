@@ -20,6 +20,7 @@ from app.repositories import (
     get_enrollment_by_id,
     get_enrollment_by_tenant_and_patient,
     list_enrollments_by_tenant,
+    list_enrollment_status_history
 )
 
 
@@ -738,6 +739,7 @@ def list_enrollments_scoped(
     tenant_id: int,
     actor: ActorContext,
     patient_user_id: Optional[int] = None,
+    status: Optional[EnrollmentStatus] = None,
 ) -> list[Enrollment]:
     """
     List enrollments within a tenant, applying role-based and tenant-scoped
@@ -784,6 +786,8 @@ def list_enrollments_scoped(
             http_status=403,
             details={"role": role},
         )
+    if status is not None:
+        query = query.filter(Enrollment.status == status)
 
     enrollments = list_enrollments_by_tenant(
         db,
@@ -864,3 +868,48 @@ def get_operational_status(
         "isExpired": is_expired,
         "last_updated": enrollment.updated_at.isoformat() if hasattr(enrollment, "updated_at") and enrollment.updated_at else None,
     }
+def get_enrollment_history_scoped(
+    db: Session,
+    *,
+    actor: ActorContext,
+    expected_tenant_id: int,
+) -> list[EnrollmentStatusHistory]:
+    """
+    Retrieve all enrollment status history records scoped to a tenant.
+
+    Returns every history entry for every enrollment that belongs to
+    the given tenant, ordered by most recent change first.
+    """
+    return list_enrollment_status_history(
+        db,
+        tenant_id=expected_tenant_id,
+    )
+def list_my_enrollments_global(
+    db: Session,
+    *,
+    actor: ActorContext,
+) -> list[Enrollment]:
+    """
+    List all enrollments for the authenticated user
+    across all tenants.
+    """
+
+    if actor.user_id is None:
+        raise EnrollmentServiceError(
+            EnrollmentErrorCode.UNAUTHORIZED,
+            "User identity missing",
+            http_status=401,
+        )
+
+    if actor.role != "CLIENT":
+        raise EnrollmentServiceError(
+            EnrollmentErrorCode.FORBIDDEN,
+            "Only clients can access their enrollments",
+            http_status=403,
+        )
+
+    return (
+        db.query(Enrollment)
+        .filter(Enrollment.patient_user_id == actor.user_id)
+        .all()
+    )

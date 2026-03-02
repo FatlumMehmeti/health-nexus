@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from app.auth.auth_utils import get_current_user, require_tenant_from_token
+from app.auth.auth_utils import require_tenant_from_token
 from app.db import get_db
 from app.models.patient import Patient
 from app.models.tenant import Tenant, TenantStatus
