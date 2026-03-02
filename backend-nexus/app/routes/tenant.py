@@ -5,8 +5,9 @@ from decimal import Decimal
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
-from app.auth.auth_utils import require_tenant_from_token
+from app.auth.auth_utils import get_current_user, require_tenant_from_token
 from app.db import get_db
+from app.models.patient import Patient
 from app.models.tenant import Tenant, TenantStatus
 from app.models.tenant_details import TenantDetails
 from app.models.department import Department
@@ -20,6 +21,7 @@ from app.models.user import User
 
 from app.schemas.tenant_details import TenantDetailsRead, TenantDetailsUpdate
 from app.schemas.doctor import DoctorRead, DoctorCreateForTenant, DoctorUpdate
+from app.schemas.patient_schema import PatientMeResponse, PatientMeUpdateRequest
 from app.schemas.tenant_department import (
     TenantDepartmentRead,
     TenantDepartmentWithServicesRead,
@@ -39,6 +41,7 @@ from app.schemas.landing import (
     TenantPublicCard,
 )
 from app.models.user_tenant_plan import UserTenantPlan
+from app.routes.public_tenant import _TENANT_NOT_ACTIVE_DETAIL
 
 router = APIRouter(prefix="/tenants", tags=["Tenants"])
 
@@ -273,6 +276,92 @@ def _assert_tenant_exists(db: Session, tenant_id: int) -> None:
     if not db.query(Tenant).filter(Tenant.id == tenant_id).first():
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Tenant not found")
+
+
+def _get_current_user_id_or_401(current_user: dict) -> int:
+    user_id = current_user.get("user_id")
+    if user_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired token",
+        )
+    try:
+        return int(user_id)
+    except (TypeError, ValueError):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired token",
+        )
+
+
+def _get_tenant_or_404(db: Session, tenant_id: int) -> Tenant:
+    tenant = db.query(Tenant).filter(Tenant.id == tenant_id).first()
+    if not tenant:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Tenant not found",
+        )
+    return tenant
+
+
+def _assert_tenant_approved_or_403(tenant: Tenant) -> None:
+    if tenant.status != TenantStatus.approved:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=_TENANT_NOT_ACTIVE_DETAIL,
+        )
+
+
+@router.get("/{tenant_id}/patients/me", response_model=PatientMeResponse)
+def get_patient_me_for_tenant(
+    tenant_id: int,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    user_id = _get_current_user_id_or_401(current_user)
+    tenant = _get_tenant_or_404(db, tenant_id)
+    _assert_tenant_approved_or_403(tenant)
+
+    patient = db.query(Patient).filter(
+        Patient.tenant_id == tenant_id,
+        Patient.user_id == user_id,
+    ).first()
+    if not patient:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Patient not found",
+        )
+    return patient
+
+
+@router.patch("/{tenant_id}/patients/me", response_model=PatientMeResponse)
+def patch_patient_me_for_tenant(
+    tenant_id: int,
+    payload: PatientMeUpdateRequest,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    user_id = _get_current_user_id_or_401(current_user)
+    tenant = _get_tenant_or_404(db, tenant_id)
+    _assert_tenant_approved_or_403(tenant)
+
+    patient = db.query(Patient).filter(
+        Patient.tenant_id == tenant_id,
+        Patient.user_id == user_id,
+    ).first()
+    if not patient:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Patient not found",
+        )
+
+    data = payload.model_dump(exclude_unset=True)
+    for field, value in data.items():
+        setattr(patient, field, value)
+
+    db.commit()
+    db.refresh(patient)
+    return patient
 
 
 # ─── Tenant management (tenant_id from JWT token) ───
