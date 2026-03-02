@@ -1,63 +1,21 @@
-export const QUERY_KEYS = {
-  current: ["tenant-manager", "current"] as const,
-  details: ["tenant-manager", "details"] as const,
-  doctors: ["tenant-manager", "doctors"] as const,
-  departments: ["tenant-manager", "departments"] as const,
-  products: ["tenant-manager", "products"] as const,
-  fonts: ["tenant-manager", "fonts"] as const,
-  brands: ["tenant-manager", "brands"] as const,
-  departmentCatalog: ["tenant-manager", "department-catalog"] as const,
-};
+import { Outlet, createFileRoute, useRouterState } from "@tanstack/react-router";
+import { requireAuth } from "@/lib/guards/requireAuth";
+import {
+  TenantManagerPageContent,
+  normalizeTenantSection,
+} from "@/routes/dashboard/tenant/index";
 
-export const TENANT_SECTION_KEYS = [
-  "departments-services",
-  "doctors",
-  "products",
-  "plans",
-  "settings",
-] as const;
+export const Route = createFileRoute("/dashboard/tenant")({
+  beforeLoad: requireAuth({ routeKey: "DASHBOARD_TENANT" }),
+  component: TenantManagerPage,
+});
 
-export type TenantSectionKey = (typeof TENANT_SECTION_KEYS)[number];
-
-export interface TenantDetailsFormState {
-  logo: string;
-  image: string;
-  moto: string;
-  title: string;
-  about_text: string;
-  brand_id: number | null;
-  font_id: number | null;
+function TenantManagerPage() {
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
+  if (pathname !== "/dashboard/tenant") {
+    return <Outlet />;
+  }
+  return <TenantManagerPageContent activeSection="departments-services" />;
 }
 
-export interface DepartmentDraft {
-  local_id: string;
-  id?: number;
-  department_id: number | null;
-  department_name: string;
-  phone_number: string;
-  email: string;
-  location: string;
-  isEditing: boolean;
-}
-
-export interface ProductFormState {
-  name: string;
-  description: string;
-  price: string;
-  stock_quantity: string;
-  is_available: boolean;
-}
-
-export interface ServiceFormState {
-  name: string;
-  price: string;
-  description: string;
-  is_active: boolean;
-}
-
-export interface DepartmentFormModalState {
-  department_id: number | null;
-  phone_number: string;
-  email: string;
-  location: string;
-}
+export { TenantManagerPageContent, normalizeTenantSection };
