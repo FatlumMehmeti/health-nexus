@@ -1,6 +1,8 @@
 import { jest } from "@jest/globals";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import React from "react";
 
 import * as ContractsPageModule from "@/components/contracts/ContractsPage";
 import type { Contract } from "@/interfaces/contract";
@@ -16,6 +18,22 @@ jest.mock("sonner", () => ({
 
 function setTenantContext(tenantId: string) {
   useAuthStore.setState((state) => ({ ...state, tenantId }));
+}
+
+function setUserAsDoctor(doctorUserId: number) {
+  useAuthStore.setState((state) => ({
+    ...state,
+    user: { id: String(doctorUserId), email: `doc${doctorUserId}@test.com` },
+  }));
+}
+
+function renderContractsPage(props: React.ComponentProps<typeof ContractsPageModule.ContractsPage>) {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <ContractsPageModule.ContractsPage {...props} />
+    </QueryClientProvider>,
+  );
 }
 
 function makeContract(overrides: Partial<Contract>): Contract {
@@ -57,13 +75,11 @@ describe("ContractsPage", () => {
     const transitionSpy = jest.spyOn(contractsService, "transitionContract");
 
     const user = userEvent.setup();
-    render(
-      <ContractsPageModule.ContractsPage
-        pickFile={async () =>
-          new File(["signature"], "signature.png", { type: "image/png" })
-        }
-      />,
-    );
+    renderContractsPage({
+      tenantIdProp: 1,
+      bypassSignatureModal: async () =>
+        new File(["signature"], "signature.png", { type: "image/png" }),
+    });
 
     await screen.findByText("Doctor booking eligibility: 0 eligible / 1 not eligible");
 
@@ -87,6 +103,7 @@ describe("ContractsPage", () => {
   });
 
   it("after doctor + hospital signatures, Activate appears enabled and ACTIVE updates eligibility banner", async () => {
+    setUserAsDoctor(501);
     const draftUnsigned = makeContract({
       id: 201,
       doctor_user_id: 501,
@@ -134,13 +151,11 @@ describe("ContractsPage", () => {
       .mockResolvedValue(activeEligible);
 
     const user = userEvent.setup();
-    render(
-      <ContractsPageModule.ContractsPage
-        pickFile={async () =>
-          new File(["signature"], "signature.png", { type: "image/png" })
-        }
-      />,
-    );
+    renderContractsPage({
+      tenantIdProp: 1,
+      bypassSignatureModal: async () =>
+        new File(["signature"], "signature.png", { type: "image/png" }),
+    });
 
     await screen.findByText("Doctor booking eligibility: 0 eligible / 1 not eligible");
 
