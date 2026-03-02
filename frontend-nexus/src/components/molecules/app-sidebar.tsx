@@ -10,9 +10,11 @@ import {
   IconReport,
   IconBuildingStore,
   IconHistory,
+  IconUserCircle,
   IconSettings,
   IconStethoscope,
   type Icon,
+  IconUser,
 } from "@tabler/icons-react";
 
 import { NavMain } from "./nav-main";
@@ -30,6 +32,7 @@ import {
 import { useAuthStore } from "@/stores/auth.store";
 import { can, type UserWithRole } from "@/lib/rbac";
 import type { RouteKey } from "@/lib/rbacMatrix";
+import { icons } from "lucide-react";
 
 /** Nav item with optional routeKey for RBAC; items without routeKey are shown to all authenticated users. */
 const navMainAll: Array<{
@@ -61,6 +64,11 @@ const navMainAll: Array<{
     url: "/dashboard/audit-logs",
     icon: IconHistory,
     routeKey: "DASHBOARD_AUDIT_LOGS",
+  },
+  {
+    title: "Profile",
+    url: "/dashboard/profile",
+    icon: IconUserCircle,
   },
   
 ];
@@ -115,9 +123,36 @@ const tenantManagerDocuments = [
     icon: IconReport,
   },
   {
+    title: "Enrollments",
+    url: "/dashboard/tenant/enrollments",
+    icon: IconHistory,
+  },
+  {
     title: "Settings",
     url: "/dashboard/tenant/settings",
     icon: IconSettings,
+  },
+] as const;
+const clientsDocuments = [
+  // {
+  //   title: "Profile",
+  //   url: "/dashboard/client/profile",
+  //   icon: IconUser,
+  // },
+  {
+    title: "Enrollments",
+    url: "/dashboard/client/enrollments",
+    icon: IconHistory,
+  },
+  {
+    title: "Settings",
+    url: "/dashboard/client/settings",
+    icon: IconSettings,
+  },
+  {
+    title: "Tenants",
+    url: "/tenants",
+    icon: IconBuildingStore,
   },
 ] as const;
 
@@ -134,10 +169,14 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const documentItems = React.useMemo(() => {
     if (role === "SUPER_ADMIN") return [...superAdminDocuments];
     if (role === "TENANT_MANAGER") return [...tenantManagerDocuments];
+    if (role === "CLIENT") return [...clientsDocuments];
     return [];
   }, [role]);
-  const documentsLabel = role === "TENANT_MANAGER" ? "My Tenant" : "Documents";
-  const sidebarUser = React.useMemo(() => {
+const documentsLabel = React.useMemo(() => {
+  if (role === "TENANT_MANAGER") return "My Tenant";
+  if (role === "CLIENT") return "Your Profile & Enrollments"; 
+  return "Documents"; 
+}, [role]);  const sidebarUser = React.useMemo(() => {
     if (!user) return null;
     return {
       name: user.fullName ?? user.email ?? "User",

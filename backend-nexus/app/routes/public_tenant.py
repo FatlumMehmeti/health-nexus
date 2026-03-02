@@ -3,7 +3,7 @@ import secrets
 from fastapi import APIRouter, Depends, status, HTTPException, Request
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
-from app.db import get_db
+from app.db import get_db as app_get_db
 from app.models.tenant import Tenant, TenantStatus
 from app.models.user import User
 from app.models.patient import Patient
@@ -22,11 +22,7 @@ _TENANT_NOT_ACTIVE_DETAIL = {
 }
 
 def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+    yield from app_get_db()
 
 
 def get_authenticated_user_if_present(request: Request) -> dict | None:
