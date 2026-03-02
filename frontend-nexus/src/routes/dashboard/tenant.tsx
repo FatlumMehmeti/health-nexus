@@ -259,6 +259,14 @@ function TenantPlansPanel() {
     enabled: !!tenantId,
   });
 
+  // Fetch tenant-specific pricing bounds (50%-200% of subscription base price)
+  const boundsQuery = useQuery({
+    queryKey: ["tenant-manager", "pricing-bounds", tenantId],
+    queryFn: () => tenantPlansService.pricingBounds(tenantId!),
+    enabled: !!tenantId,
+  });
+  const bounds = boundsQuery.data ?? null;
+
   const [formState, setFormState] = useState({
     name: "",
     description: "",
@@ -268,6 +276,15 @@ function TenantPlansPanel() {
   });
   const [editingPlanId, setEditingPlanId] = useState<number | null>(null);
   const [deletingPlanId, setDeletingPlanId] = useState<number | null>(null);
+
+  // Real-time price validation helper
+  const priceNum = Number(formState.price);
+  const priceOutOfRange =
+    bounds?.min_price != null &&
+    bounds?.max_price != null &&
+    formState.price !== "" &&
+    priceNum > 0 &&
+    (priceNum < bounds.min_price || priceNum > bounds.max_price);
 
   const resetForm = () => {
     setFormState({
@@ -288,7 +305,10 @@ function TenantPlansPanel() {
       queryClient.invalidateQueries({ queryKey: ["tenant-manager", "plans"] });
       resetForm();
     },
-    onError: (err) => toast.error(isApiError(err) ? err.message : "Failed to create plan"),
+    onError: (err) => {
+      const msg = isApiError(err) ? err.displayMessage : "Failed to create plan";
+      toast.error(msg);
+    },
   });
 
   const updateMutation = useMutation({
@@ -299,7 +319,10 @@ function TenantPlansPanel() {
       queryClient.invalidateQueries({ queryKey: ["tenant-manager", "plans"] });
       resetForm();
     },
-    onError: (err) => toast.error(isApiError(err) ? err.message : "Failed to update plan"),
+    onError: (err) => {
+      const msg = isApiError(err) ? err.displayMessage : "Failed to update plan";
+      toast.error(msg);
+    },
   });
 
   const deleteMutation = useMutation({
@@ -327,6 +350,17 @@ function TenantPlansPanel() {
     const price = Number(formState.price);
     if (!formState.name.trim() || price <= 0) {
       toast.error("Plan name and a valid price > 0 are required");
+      return;
+    }
+    // Client-side pricing-bounds guard
+    if (
+      bounds?.min_price != null &&
+      bounds?.max_price != null &&
+      (price < bounds.min_price || price > bounds.max_price)
+    ) {
+      toast.error(
+        `Price must be between €${bounds.min_price.toFixed(2)} and €${bounds.max_price.toFixed(2)} for your subscription tier.`,
+      );
       return;
     }
     const payload = {
@@ -396,7 +430,20 @@ function TenantPlansPanel() {
                 placeholder="0"
                 value={formState.price}
                 onChange={(e) => setFormState((s) => ({ ...s, price: e.target.value }))}
+                className={priceOutOfRange ? "border-destructive focus-visible:ring-destructive" : ""}
               />
+              {bounds?.min_price != null && bounds?.max_price != null ? (
+                <p
+                  className={`text-xs ${
+                    priceOutOfRange ? "text-destructive font-medium" : "text-muted-foreground"
+                  }`}
+                >
+                  Allowed range: €{bounds.min_price.toFixed(2)} – €{bounds.max_price.toFixed(2)}
+                  {bounds.base_price != null && (
+                    <span className="ml-1">(50%–200% of €{bounds.base_price.toFixed(2)} base)</span>
+                  )}
+                </p>
+              ) : null}
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="plan-max-apt">Max appointments</Label>
