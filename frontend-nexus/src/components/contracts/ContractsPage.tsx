@@ -8,6 +8,7 @@ import { isApiError } from "@/lib/api-client";
 import { contractsService } from "@/services/contracts.service";
 import { getCurrentTenantWithFallback } from "@/routes/dashboard/tenant/utils";
 import { useAuthStore } from "@/stores/auth.store";
+import { useDialogStore } from "@/stores/use-dialog-store";
 import {
   ContractDialog,
   type ContractDialogSubmitInput,
@@ -29,14 +30,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -48,6 +41,31 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+
+/** Small self-contained component for the terminate reason textarea,
+ * used as `content` inside the global dialog. */
+function TerminateReasonContent({
+  onReasonChange,
+}: {
+  onReasonChange: (value: string) => void;
+}) {
+  const [reason, setReason] = React.useState("");
+  return (
+    <div className="space-y-2">
+      <Label htmlFor="terminate-reason">Reason</Label>
+      <Textarea
+        id="terminate-reason"
+        rows={4}
+        placeholder="Termination reason"
+        value={reason}
+        onChange={(e) => {
+          setReason(e.target.value);
+          onReasonChange(e.target.value);
+        }}
+      />
+    </div>
+  );
+}
 
 type ReactPdfModule = ReactPdfPrimitives & {
   pdf: (document: React.ReactElement) => { toBlob: () => Promise<Blob> };
@@ -168,27 +186,17 @@ export function ContractsPage({
   });
   const tenantId = tenantIdProp ?? tenantQuery.data?.id;
 
+  const { open: openDialog, close: closeDialog } = useDialogStore();
+
   const [contracts, setContracts] = React.useState<Contract[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [errorMessage, setErrorMessage] = React.useState<string | null>(null);
 
-  const [dialogMode, setDialogMode] = React.useState<"create" | "edit">(
-    "create",
-  );
+  const [dialogMode, setDialogMode] = React.useState<"create" | "edit">("create");
   const [isContractDialogOpen, setIsContractDialogOpen] = React.useState(false);
-  const [contractDialogError, setContractDialogError] = React.useState<string | null>(
-    null,
-  );
-  const [selectedContract, setSelectedContract] = React.useState<Contract | null>(
-    null,
-  );
+  const [contractDialogError, setContractDialogError] = React.useState<string | null>(null);
+  const [selectedContract, setSelectedContract] = React.useState<Contract | null>(null);
   const [isDialogSubmitting, setIsDialogSubmitting] = React.useState(false);
-
-  const [terminateTarget, setTerminateTarget] = React.useState<Contract | null>(
-    null,
-  );
-  const [terminateReason, setTerminateReason] = React.useState("");
-  const [isTerminating, setIsTerminating] = React.useState(false);
 
   const [signatureTarget, setSignatureTarget] = React.useState<{
     contract: Contract;
@@ -401,42 +409,47 @@ export function ContractsPage({
   };
 
   const openTerminateDialog = (contract: Contract) => {
-    setTerminateTarget(contract);
-    setTerminateReason("");
-  };
-
-  const closeTerminateDialog = () => {
-    if (isTerminating) return;
-    setTerminateTarget(null);
-    setTerminateReason("");
-  };
-
-  const handleTerminateConfirm = async () => {
-    if (!terminateTarget) return;
-
-    const trimmedReason = terminateReason.trim();
-    if (!trimmedReason) {
-      toast.error("Termination reason is required.");
-      return;
-    }
-
-    setIsTerminating(true);
-    try {
-      await contractsService.transitionContract(
-        terminateTarget.id,
-        "TERMINATED",
-        trimmedReason,
-      );
-      await loadContracts();
-      toast.success(`Contract #${terminateTarget.id} terminated.`);
-      closeTerminateDialog();
-    } catch (error) {
-      toast.error("Unable to terminate contract.", {
-        description: (error as Error).message,
-      });
-    } finally {
-      setIsTerminating(false);
-    }
+    let reason = "";
+    openDialog({
+      title: "Terminate Contract",
+      content: (
+        <>
+          <p className="text-muted-foreground text-sm">
+            Provide a termination reason for contract #{contract.id}.
+          </p>
+          <TerminateReasonContent onReasonChange={(v) => { reason = v; }} />
+        </>
+      ),
+      footer: (
+        <>
+          <Button variant="outline" onClick={closeDialog}>
+            Cancel
+          </Button>
+          <Button
+            variant="destructive"
+            onClick={async () => {
+              const trimmed = reason.trim();
+              if (!trimmed) {
+                toast.error("Termination reason is required.");
+                return;
+              }
+              try {
+                await contractsService.transitionContract(contract.id, "TERMINATED", trimmed);
+                await loadContracts();
+                toast.success(`Contract #${contract.id} terminated.`);
+                closeDialog();
+              } catch (error) {
+                toast.error("Unable to terminate contract.", {
+                  description: (error as Error).message,
+                });
+              }
+            }}
+          >
+            Terminate
+          </Button>
+        </>
+      ),
+    });
   };
 
   const eligibilitySummary = React.useMemo(() => {
@@ -732,50 +745,6 @@ export function ContractsPage({
         onConfirm={handleSignatureConfirm}
         isSubmitting={isSigning}
       />
-
-      <Dialog
-        open={Boolean(terminateTarget)}
-        onOpenChange={(open) => !open && closeTerminateDialog()}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Terminate Contract</DialogTitle>
-            <DialogDescription>
-              Provide a termination reason for contract #{terminateTarget?.id}.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-2">
-            <Label htmlFor="terminate-reason">Reason</Label>
-            <Textarea
-              id="terminate-reason"
-              rows={4}
-              placeholder="Termination reason"
-              value={terminateReason}
-              onChange={(event) => setTerminateReason(event.target.value)}
-            />
-          </div>
-
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={closeTerminateDialog}
-              disabled={isTerminating}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={() => {
-                void handleTerminateConfirm();
-              }}
-              disabled={isTerminating || !terminateReason.trim()}
-            >
-              {isTerminating ? "Terminating..." : "Terminate"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { isApiError } from "@/lib/api-client";
 import { tenantPlansService, type TenantPlanApi } from "@/services/tenant-plans.service";
 import { useAuthStore } from "@/stores/auth.store";
+import { useDialogStore } from "@/stores/use-dialog-store";
 import { getCurrentTenantWithFallback } from "./utils";
 import { QUERY_KEYS } from "./constants";
 import {
@@ -18,14 +19,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
   Table,
   TableBody,
   TableCell,
@@ -37,6 +30,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export function TenantPlansPanel() {
+  const { open: openDialog, close: closeDialog } = useDialogStore();
   const queryClient = useQueryClient();
   const tenantIdFromStore = useAuthStore((state) => state.tenantId);
   const tenantQuery = useQuery({
@@ -65,7 +59,6 @@ export function TenantPlansPanel() {
     max_consultations: "",
   });
   const [editingPlanId, setEditingPlanId] = useState<number | null>(null);
-  const [deletingPlanId, setDeletingPlanId] = useState<number | null>(null);
 
   const resetForm = () => {
     setFormState({
@@ -109,11 +102,35 @@ export function TenantPlansPanel() {
     mutationFn: (id: number) => tenantPlansService.delete(id),
     onSuccess: () => {
       toast.success("Plan deleted");
-      setDeletingPlanId(null);
+      closeDialog();
       queryClient.invalidateQueries({ queryKey: ["tenant-manager", "plans"] });
     },
     onError: (err) => toast.error(isApiError(err) ? err.message : "Failed to delete plan"),
   });
+
+  const confirmDeletePlan = (planId: number) => {
+    openDialog({
+      title: "Delete plan",
+      content: (
+        <p className="text-muted-foreground text-sm">
+          Are you sure you want to delete this plan? This action cannot be undone.
+        </p>
+      ),
+      footer: (
+        <>
+          <Button variant="outline" onClick={closeDialog}>
+            Cancel
+          </Button>
+          <Button
+            variant="destructive"
+            onClick={() => deleteMutation.mutate(planId)}
+          >
+            Delete
+          </Button>
+        </>
+      ),
+    });
+  };
 
   const toggleMutation = useMutation({
     mutationFn: ({ id, is_active }: { id: number; is_active: boolean }) =>
@@ -288,7 +305,7 @@ export function TenantPlansPanel() {
                     size="icon-sm"
                     title="Delete"
                     className="text-destructive hover:text-destructive"
-                    onClick={() => setDeletingPlanId(plan.id)}
+                    onClick={() => confirmDeletePlan(plan.id)}
                   >
                     <IconTrash className="h-3.5 w-3.5" />
                   </Button>
@@ -297,38 +314,6 @@ export function TenantPlansPanel() {
             </div>
           </>
         )}
-
-        <Dialog
-          open={deletingPlanId != null}
-          onOpenChange={(open) => {
-            if (!open) setDeletingPlanId(null);
-          }}
-        >
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Delete plan</DialogTitle>
-              <DialogDescription>
-                Are you sure you want to delete this plan? This action cannot be
-                undone.
-              </DialogDescription>
-            </DialogHeader>
-            <DialogFooter className="gap-2 sm:gap-0">
-              <Button variant="outline" onClick={() => setDeletingPlanId(null)}>
-                Cancel
-              </Button>
-              <Button
-                variant="destructive"
-                disabled={deleteMutation.isPending}
-                onClick={() => {
-                  if (deletingPlanId != null)
-                    deleteMutation.mutate(deletingPlanId);
-                }}
-              >
-                {deleteMutation.isPending ? "Deleting…" : "Delete"}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
 
         {plans.length > 0 && (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

@@ -1,17 +1,9 @@
-import { createFileRoute } from '@tanstack/react-router'
-
-export const Route = createFileRoute('/dashboard/tenant/doctors-manager')({
-  component: RouteComponent,
-})
-
-function RouteComponent() {
-  return <div>Hello "/dashboard/tenant/doctors-manager"!</div>
-}
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { isApiError } from "@/lib/api-client";
 import { tenantsService } from "@/services/tenants.service";
+import { useDialogStore } from "@/stores/use-dialog-store";
 import { FormSelect } from "@/components/atoms/form-select";
 import type {
   DoctorAssignableRead,
@@ -58,9 +50,9 @@ interface DoctorsManagerProps {
 
 export function DoctorsManager({ tenantId, onSaved }: DoctorsManagerProps) {
   const queryClient = useQueryClient();
+  const { open: openDialog, close: closeDialog } = useDialogStore();
   const [doctorDialogOpen, setDoctorDialogOpen] = useState(false);
   const [editingDoctor, setEditingDoctor] = useState<DoctorRead | null>(null);
-  const [deletingDoctor, setDeletingDoctor] = useState<DoctorRead | null>(null);
 
   const doctorsQuery = useQuery({
     queryKey: QUERY_KEYS.doctors,
@@ -126,7 +118,7 @@ export function DoctorsManager({ tenantId, onSaved }: DoctorsManagerProps) {
       toast.success("Doctor removed");
       void queryClient.invalidateQueries({ queryKey: QUERY_KEYS.doctors });
       onSaved?.();
-      setDeletingDoctor(null);
+      closeDialog();
     },
     onError: (err) => {
       toast.error(
@@ -134,6 +126,38 @@ export function DoctorsManager({ tenantId, onSaved }: DoctorsManagerProps) {
       );
     },
   });
+
+  const confirmRemoveDoctor = (doctor: DoctorRead) => {
+    const name =
+      [doctor.first_name, doctor.last_name].filter(Boolean).join(" ") ||
+      `Doctor #${doctor.user_id}`;
+    openDialog({
+      title: "Remove doctor",
+      content: (
+        <p className="text-muted-foreground text-sm">
+          Remove {name} from this tenant? This cannot be undone.
+        </p>
+      ),
+      footer: (
+        <>
+          <Button
+            variant="outline"
+            disabled={deleteMutation.isPending}
+            onClick={closeDialog}
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="destructive"
+            onClick={() => deleteMutation.mutate(doctor.user_id)}
+            disabled={deleteMutation.isPending}
+          >
+            Remove
+          </Button>
+        </>
+      ),
+    });
+  };
 
   return (
     <>
@@ -215,7 +239,7 @@ export function DoctorsManager({ tenantId, onSaved }: DoctorsManagerProps) {
                             <RowIconActionButton
                               mode="delete"
                               label="Remove doctor"
-                              onClick={() => setDeletingDoctor(doctor)}
+                              onClick={() => confirmRemoveDoctor(doctor)}
                             />
                           </RowActions>
                         </TableCell>
@@ -248,47 +272,6 @@ export function DoctorsManager({ tenantId, onSaved }: DoctorsManagerProps) {
           updateMutation.mutate({ userId, data })
         }
       />
-
-      <Dialog
-        open={!!deletingDoctor}
-        onOpenChange={(open) => {
-          if (!open) setDeletingDoctor(null);
-        }}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Remove doctor</DialogTitle>
-            <DialogDescription>
-              Remove{" "}
-              {deletingDoctor
-                ? [deletingDoctor.first_name, deletingDoctor.last_name]
-                    .filter(Boolean)
-                    .join(" ") || `Doctor #${deletingDoctor.user_id}`
-                : ""}{" "}
-              from this tenant? This cannot be undone.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setDeletingDoctor(null)}
-              disabled={deleteMutation.isPending}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={() => {
-                if (deletingDoctor)
-                  deleteMutation.mutate(deletingDoctor.user_id);
-              }}
-              disabled={deleteMutation.isPending}
-            >
-              Remove
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </>
   );
 }

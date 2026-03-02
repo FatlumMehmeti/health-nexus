@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { isApiError } from "@/lib/api-client";
 import { tenantsService } from "@/services/tenants.service";
+import { useDialogStore } from "@/stores/use-dialog-store";
 import type {
   ServiceLandingItem,
   ServiceUpdateInput,
@@ -55,6 +56,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 export function TenantDepartmentsManager({ onSaved }: { onSaved: () => void }) {
   const queryClient = useQueryClient();
+  const { open: openDialog, close: closeDialog } = useDialogStore();
 
   const catalogQuery = useQuery({
     queryKey: QUERY_KEYS.departmentCatalog,
@@ -79,8 +81,6 @@ export function TenantDepartmentsManager({ onSaved }: { onSaved: () => void }) {
     emptyDepartmentForm(),
   );
   const [editingDepartmentLocalId, setEditingDepartmentLocalId] = useState<string | null>(null);
-  const [pendingDepartmentRemoval, setPendingDepartmentRemoval] =
-    useState<DepartmentDraft | null>(null);
 
   useEffect(() => {
     if (!tenantDepartmentsQuery.data) return;
@@ -184,10 +184,37 @@ export function TenantDepartmentsManager({ onSaved }: { onSaved: () => void }) {
     setDepartmentFormOpen(false);
   };
 
-  const confirmRemoveRow = (localId: string) => {
-    const nextRows = rows.filter((row) => row.local_id !== localId);
-    if (!persistRows(nextRows)) return;
-    setPendingDepartmentRemoval(null);
+  const confirmRemoveDepartment = (row: DepartmentDraft) => {
+    const deptName = row.department_name || "selected department";
+    openDialog({
+      title: "Remove Department?",
+      content: (
+        <p className="text-muted-foreground text-sm">
+          Remove "{deptName}" from the list? This action saves immediately.
+        </p>
+      ),
+      footer: (
+        <>
+          <Button
+            variant="outline"
+            disabled={saveMutation.isPending}
+            onClick={closeDialog}
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="destructive"
+            loading={saveMutation.isPending}
+            onClick={() => {
+              const nextRows = rows.filter((r) => r.local_id !== row.local_id);
+              if (persistRows(nextRows)) closeDialog();
+            }}
+          >
+            Yes, remove
+          </Button>
+        </>
+      ),
+    });
   };
 
   const loadError = catalogQuery.error ?? tenantDepartmentsQuery.error;
@@ -286,7 +313,7 @@ export function TenantDepartmentsManager({ onSaved }: { onSaved: () => void }) {
                                 mode="delete"
                                 label="Remove department"
                                 disabled={saveMutation.isPending}
-                                onClick={() => setPendingDepartmentRemoval(row)}
+                                onClick={() => confirmRemoveDepartment(row)}
                               />
                             </RowActions>
                           </TableCell>
@@ -411,47 +438,6 @@ export function TenantDepartmentsManager({ onSaved }: { onSaved: () => void }) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      <Dialog
-        open={!!pendingDepartmentRemoval}
-        onOpenChange={(open) => {
-          if (!open) setPendingDepartmentRemoval(null);
-        }}
-      >
-        <DialogContent className="max-h-[85vh] w-[calc(100vw-2rem)] max-w-md overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Remove Department?</DialogTitle>
-            <DialogDescription>
-              {pendingDepartmentRemoval
-                ? `Remove "${pendingDepartmentRemoval.department_name || "selected department"}" from the list?`
-                : "Remove this department from the list?"}
-            </DialogDescription>
-          </DialogHeader>
-          <p className="text-sm text-muted-foreground">
-            This action saves immediately.
-          </p>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              disabled={saveMutation.isPending}
-              onClick={() => setPendingDepartmentRemoval(null)}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              loading={saveMutation.isPending}
-              onClick={() =>
-                pendingDepartmentRemoval
-                  ? confirmRemoveRow(pendingDepartmentRemoval.local_id)
-                  : undefined
-              }
-            >
-              Yes, remove
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </>
   );
 }
@@ -470,17 +456,16 @@ function ServicesModal({
   onChanged: () => void;
 }) {
   const queryClient = useQueryClient();
+  const { open: openDialog, close: closeDialog } = useDialogStore();
   const [mode, setMode] = useState<"create" | "edit" | null>(null);
   const [editingServiceId, setEditingServiceId] = useState<number | null>(null);
   const [form, setForm] = useState<ServiceFormState>(emptyServiceForm());
-  const [pendingServiceDelete, setPendingServiceDelete] = useState<ServiceLandingItem | null>(null);
 
   useEffect(() => {
     if (!open) {
       setMode(null);
       setEditingServiceId(null);
       setForm(emptyServiceForm());
-      setPendingServiceDelete(null);
     }
   }, [open]);
 
@@ -543,7 +528,7 @@ function ServicesModal({
         });
       }
       onChanged();
-      setPendingServiceDelete(null);
+      closeDialog();
     },
     onError: (err) => {
       toast.error("Failed to delete service", {
@@ -551,6 +536,31 @@ function ServicesModal({
       });
     },
   });
+
+  const confirmDeleteService = (service: ServiceLandingItem) => {
+    openDialog({
+      title: "Delete Service?",
+      content: (
+        <p className="text-muted-foreground text-sm">
+          Are you sure you want to delete "{service.name}"? This action cannot be undone.
+        </p>
+      ),
+      footer: (
+        <>
+          <Button variant="outline" onClick={closeDialog}>
+            Cancel
+          </Button>
+          <Button
+            variant="destructive"
+            loading={deleteMutation.isPending}
+            onClick={() => deleteMutation.mutate(service.id)}
+          >
+            Yes, delete
+          </Button>
+        </>
+      ),
+    });
+  };
 
   const startCreate = () => {
     setMode("create");
@@ -682,7 +692,7 @@ function ServicesModal({
                           <RowIconActionButton
                             mode="delete"
                             label="Delete service"
-                            onClick={() => setPendingServiceDelete(service)}
+                            onClick={() => confirmDeleteService(service)}
                           />
                         </RowActions>
                       </TableCell>
@@ -762,43 +772,6 @@ function ServicesModal({
             </Button>
             <Button onClick={submit} loading={isSubmitting}>
               {mode === "create" ? "Create service" : "Save service"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog
-        open={!!pendingServiceDelete}
-        onOpenChange={(open) => {
-          if (!open) setPendingServiceDelete(null);
-        }}
-      >
-        <DialogContent className="max-h-[85vh] w-[calc(100vw-2rem)] max-w-md overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Delete Service?</DialogTitle>
-            <DialogDescription>
-              {pendingServiceDelete
-                ? `Are you sure you want to delete "${pendingServiceDelete.name}"?`
-                : "Are you sure you want to delete this service?"}
-            </DialogDescription>
-          </DialogHeader>
-          <p className="text-sm text-muted-foreground">
-            This action cannot be undone.
-          </p>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setPendingServiceDelete(null)}>
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              loading={deleteMutation.isPending}
-              onClick={() => {
-                if (pendingServiceDelete) {
-                  deleteMutation.mutate(pendingServiceDelete.id);
-                }
-              }}
-            >
-              Yes, delete
             </Button>
           </DialogFooter>
         </DialogContent>

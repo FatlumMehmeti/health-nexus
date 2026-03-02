@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { isApiError } from "@/lib/api-client";
 import { tenantsService } from "@/services/tenants.service";
+import { useDialogStore } from "@/stores/use-dialog-store";
 import type {
   ProductCreateForTenant,
   ProductRead,
@@ -48,10 +49,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 export function ProductsManager({ onSaved }: { onSaved: () => void }) {
   const queryClient = useQueryClient();
+  const { open: openDialog, close: closeDialog } = useDialogStore();
   const [form, setForm] = useState<ProductFormState>(emptyProductForm());
   const [mode, setMode] = useState<"create" | "edit" | null>(null);
   const [editingProductId, setEditingProductId] = useState<number | null>(null);
-  const [pendingProductDelete, setPendingProductDelete] = useState<ProductRead | null>(null);
 
   const productsQuery = useQuery({
     queryKey: QUERY_KEYS.products,
@@ -106,7 +107,7 @@ export function ProductsManager({ onSaved }: { onSaved: () => void }) {
     mutationFn: (productId: number) => tenantsService.deleteTenantProduct(productId),
     onSuccess: () => {
       toast.success("Product deleted");
-      setPendingProductDelete(null);
+      closeDialog();
       void queryClient.invalidateQueries({ queryKey: QUERY_KEYS.products });
       onSaved();
     },
@@ -116,6 +117,30 @@ export function ProductsManager({ onSaved }: { onSaved: () => void }) {
       });
     },
   });
+
+  const confirmDeleteProduct = (product: ProductRead) => {
+    openDialog({
+      title: "Delete Product?",
+      content: (
+        <p className="text-muted-foreground text-sm">
+          Are you sure you want to delete "{product.name}"? This action cannot be undone.
+        </p>
+      ),
+      footer: (
+        <>
+          <Button variant="outline" onClick={closeDialog}>
+            Cancel
+          </Button>
+          <Button
+            variant="destructive"
+            onClick={() => deleteMutation.mutate(product.product_id)}
+          >
+            Yes, delete
+          </Button>
+        </>
+      ),
+    });
+  };
 
   const openCreateModal = () => {
     setMode("create");
@@ -237,7 +262,7 @@ export function ProductsManager({ onSaved }: { onSaved: () => void }) {
                       <RowIconActionButton
                         mode="delete"
                         label="Delete product"
-                        onClick={() => setPendingProductDelete(product)}
+                        onClick={() => confirmDeleteProduct(product)}
                       />
                     </RowActions>
                   </TableCell>
@@ -327,40 +352,6 @@ export function ProductsManager({ onSaved }: { onSaved: () => void }) {
         </DialogContent>
       </Dialog>
 
-      <Dialog
-        open={!!pendingProductDelete}
-        onOpenChange={(open) => {
-          if (!open) setPendingProductDelete(null);
-        }}
-      >
-        <DialogContent className="max-h-[85vh] w-[calc(100vw-2rem)] max-w-md overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Delete Product?</DialogTitle>
-            <DialogDescription>
-              {pendingProductDelete
-                ? `Are you sure you want to delete "${pendingProductDelete.name}"?`
-                : "Are you sure you want to delete this product?"}
-            </DialogDescription>
-          </DialogHeader>
-          <p className="text-sm text-muted-foreground">This action cannot be undone.</p>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setPendingProductDelete(null)}>
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              loading={deleteMutation.isPending}
-              onClick={() => {
-                if (pendingProductDelete) {
-                  deleteMutation.mutate(pendingProductDelete.product_id);
-                }
-              }}
-            >
-              Yes, delete
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </Card>
   );
 }
