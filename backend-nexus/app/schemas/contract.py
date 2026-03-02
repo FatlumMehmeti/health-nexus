@@ -36,6 +36,8 @@ class ContractCreate(ContractBase):
 class ContractRead(ContractBase):
     id: int
     tenant_id: int
+    tenant_name: Optional[str] = None
+    doctor_name: Optional[str] = None
     status: str
     terminated_reason: Optional[str] = None
     doctor_signed_at: Optional[datetime] = None
