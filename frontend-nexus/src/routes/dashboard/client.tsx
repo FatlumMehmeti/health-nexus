@@ -224,7 +224,7 @@ function formatDate(dateString: string | null) {
 
 function getEnrollmentStatusVariant(
   status: string,
-): "success" | "warning" | "destructive" | "secondary" | "default" {
+): "success" | "warning" | "destructive" | "expired" | "default" {
   switch (status) {
     case "ACTIVE":
       return "success";
@@ -233,7 +233,7 @@ function getEnrollmentStatusVariant(
     case "CANCELLED":
       return "destructive";
     case "EXPIRED":
-      return "secondary";
+      return "expired";
     default:
       return "default";
   }

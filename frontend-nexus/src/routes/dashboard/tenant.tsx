@@ -329,7 +329,7 @@ function TenantEnrollmentsPanel() {
   // Map enrollment status to badge variant
   const getEnrollmentStatusVariant = (
     status: string,
-  ): "success" | "warning" | "destructive" | "secondary" | "default" => {
+  ): "success" | "warning" | "destructive" | "expired" | "default" => {
     switch (status) {
       case "ACTIVE":
         return "success";
@@ -338,7 +338,7 @@ function TenantEnrollmentsPanel() {
       case "CANCELLED":
         return "destructive";
       case "EXPIRED":
-        return "secondary";
+        return "expired";
       default:
         return "default";
     }
