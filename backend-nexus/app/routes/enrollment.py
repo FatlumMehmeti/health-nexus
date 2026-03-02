@@ -190,6 +190,8 @@ def create_enrollment_endpoint(
         return EnrollmentStatusRead(
             id=enrollment.id,
             patient_user_id=enrollment.patient_user_id,
+            user_tenant_plan_id=enrollment.user_tenant_plan_id,
+            tenant_id=enrollment.tenant_id,
             status=enrollment.status.value
             if isinstance(enrollment.status, EnrollmentStatus)
             else str(enrollment.status),
@@ -287,6 +289,8 @@ def get_enrollment_endpoint(
         return EnrollmentStatusRead(
             id=enrollment.id,
             patient_user_id=enrollment.patient_user_id,
+            user_tenant_plan_id=enrollment.user_tenant_plan_id,
+            tenant_id=enrollment.tenant_id,
             status=enrollment.status.value
             if isinstance(enrollment.status, EnrollmentStatus)
             else str(enrollment.status),
@@ -353,6 +357,8 @@ def list_enrollments_endpoint(
                 if isinstance(e.status, EnrollmentStatus)
                 else str(e.status),
                 patient_user_id=e.patient_user_id,
+                user_tenant_plan_id=e.user_tenant_plan_id,
+                tenant_id=e.tenant_id,
                 activated_at=e.activated_at.isoformat()
                 if e.activated_at
                 else None,
@@ -451,6 +457,8 @@ def transition_enrollment_endpoint(
         return EnrollmentStatusRead(
             id=enrollment.id,
             patient_user_id=enrollment.patient_user_id,
+            user_tenant_plan_id=enrollment.user_tenant_plan_id,
+            tenant_id=enrollment.tenant_id,
             status=enrollment.status.value
             if isinstance(enrollment.status, EnrollmentStatus)
             else str(enrollment.status),

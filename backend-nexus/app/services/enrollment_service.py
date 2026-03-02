@@ -786,14 +786,13 @@ def list_enrollments_scoped(
             http_status=403,
             details={"role": role},
         )
-    if status is not None:
-        query = query.filter(Enrollment.status == status)
-
     enrollments = list_enrollments_by_tenant(
         db,
         tenant_id=tenant_id,
         patient_user_id=patient_user_id,
     )
+    if status is not None:
+        enrollments = [e for e in enrollments if e.status == status]
     return list(enrollments)
 
 
