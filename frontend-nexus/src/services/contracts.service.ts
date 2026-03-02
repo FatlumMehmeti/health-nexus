@@ -58,7 +58,7 @@ async function parseUploadError(
  */
 async function uploadSignature(path: string, file: File): Promise<Contract> {
   const formData = new FormData();
-  formData.append("file", file);
+  formData.append("signature", file);
 
   // Reuse existing auth token from api-client so we rely on the same login/session flow.
   const token = getAccessToken();
@@ -88,6 +88,12 @@ export const contractsService = {
   /**
    * Backend already returns snake_case fields; we keep them unchanged in the frontend contract type.
    */
+  async getContract(contractId: number | string): Promise<Contract> {
+    return apiFetch<Contract>(`/api/contracts/${contractId}`, {
+      method: "GET",
+    });
+  },
+
   async getContracts(tenantId: number, doctorUserId?: number): Promise<Contract[]> {
     const query =
       typeof doctorUserId === "number"

@@ -5,7 +5,9 @@ export interface Contract {
   id: number;
   // Keep backend snake_case field names so service + UI map 1:1 with API payloads.
   tenant_id: number;
+  tenant_name?: string | null;
   doctor_user_id: number;
+  doctor_name?: string | null;
   status: ContractStatus;
   salary: string;
   terms_content: string;
