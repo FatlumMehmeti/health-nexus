@@ -1,15 +1,6 @@
-import enum
-from sqlalchemy import String, Enum, ForeignKey
+from sqlalchemy import String, ForeignKey, Integer
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from .base import Base, TimestampMixin
-
-
-class FontKey(enum.Enum):
-    f1 = "f1"
-    f2 = "f2"
-    f3 = "f3"
-    f4 = "f4"
-    f5 = "f5"
 
 
 class TenantDetails(Base, TimestampMixin):
@@ -19,16 +10,15 @@ class TenantDetails(Base, TimestampMixin):
 
     # Branding fields
     logo: Mapped[str] = mapped_column(String(255), nullable=True)
+    image: Mapped[str] = mapped_column(String(255), nullable=True)  # hero/cover image for public listing
     moto: Mapped[str] = mapped_column(String(255), nullable=True)
-    brand_color_primary: Mapped[str] = mapped_column(String(7), nullable=True)  # Hex color
-    brand_color_secondary: Mapped[str] = mapped_column(String(7), nullable=True)  # Hex color
-    
+    brand_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("brand_palettes.id"), nullable=True)
+
     # Content fields
     title: Mapped[str] = mapped_column(String(255), nullable=True)
-    slogan: Mapped[str] = mapped_column(String(255), nullable=True)
     about_text: Mapped[str] = mapped_column(String(1000), nullable=True)
-    
-    # Font selection
-    font_key: Mapped[FontKey] = mapped_column(Enum(FontKey), nullable=True)
+    font_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("fonts.id"), nullable=True)
 
     tenant = relationship("Tenant", back_populates="details")
+    brand = relationship("BrandPalette", foreign_keys=[brand_id])
+    font = relationship("Font")

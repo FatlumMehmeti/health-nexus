@@ -1,4 +1,6 @@
-from fastapi import APIRouter, Depends
+from typing import Annotated
+
+from fastapi import APIRouter, Body, Depends
 
 from app.auth.auth_schema import (
     LoginRequest,
@@ -11,7 +13,7 @@ from app.auth.auth_service import login_user, logout_user, refresh_access_token,
 from app.auth.auth_utils import require_permission, require_role
 
 # Router for authentication endpoints
-router = APIRouter(prefix="/auth", tags=["auth"])
+router = APIRouter(prefix="/auth", tags=["Auth"])
 
 # Signup endpoint - creates a global user account
 @router.post("/signup", response_model=SignupResponse, status_code=201)
@@ -21,7 +23,19 @@ def signup(body: SignupRequest) -> SignupResponse:
 
 # Login endpoint - returns JWT token
 @router.post("/login", response_model=TokenResponse)
-def login(body: LoginRequest) -> TokenResponse:
+def login(
+    body: Annotated[
+        LoginRequest,
+        Body(
+            examples=[
+                {
+                    "email": "super.admin@seed.com",
+                    "password": "Team2026@",
+                }
+            ],
+        ),
+    ],
+) -> TokenResponse:
     return login_user(body.email, body.password)
 
 

@@ -3,6 +3,7 @@ from pathlib import Path
 
 import pytest
 from dotenv import load_dotenv
+from sqlalchemy import MetaData
 
 from app.models.base import Base
 from app.db import engine, SessionLocal
@@ -24,18 +25,26 @@ else:
 import app.models  # noqa: F401
 
 
+def _drop_all_tables():
+    """Drop all tables in DB, including migration-created tables not in Base.metadata."""
+    meta = MetaData()
+    meta.reflect(bind=engine)
+    meta.drop_all(bind=engine)
+
+
 @pytest.fixture(scope="function", autouse=True)
 def reset_database():
     """
     Run before each test: drop all tables then create all tables for a clean DB.
+    Uses reflect+drop_all to clear migration-created tables (e.g. consultation_requests).
     After the test: dispose engine connections so no sessions stay open.
     """
-    Base.metadata.drop_all(bind=engine)
+    _drop_all_tables()
     Base.metadata.create_all(bind=engine)
-    try:
-        yield
-    finally:
-        engine.dispose()
+
+    yield
+
+    engine.dispose()
 
 
 @pytest.fixture(scope="function")

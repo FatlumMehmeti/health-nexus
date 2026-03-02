@@ -1,3 +1,7 @@
+from passlib.context import CryptContext
+from jose import JWTError, jwt
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from fastapi import Depends, HTTPException, Request
 import logging
 import secrets
 from datetime import datetime, timedelta, timezone
@@ -5,10 +9,6 @@ from typing import Any, Dict, Optional
 
 logger = logging.getLogger(__name__)
 
-from fastapi import Depends, HTTPException, Request
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from jose import JWTError, jwt
-from passlib.context import CryptContext
 
 security = HTTPBearer()
 
@@ -18,16 +18,27 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 30
 REFRESH_TOKEN_EXPIRE_DAYS = 7
 
 # Role -> list of permission identifiers (for documentation / tooling)
+# Matches DB role names: SUPER_ADMIN, TENANT_MANAGER, DOCTOR, SALES, CLIENT
 ROLE_PERMISSIONS: Dict[str, list[str]] = {
-    "admin": ["auth:me"],
+    "super_admin": ["auth:me", "auth:admin"],
+    "tenant_manager": ["auth:me"],
     "doctor": ["auth:me"],
-    "sales": [],
+    "sales": ["auth:me"],
+    "client": ["auth:me"],
 }
 
 # Centralized RBAC: (method, route_id) -> allowed roles (lowercase)
+# auth:me: any authenticated user can read their own profile
 PERMISSIONS_MATRIX: Dict[tuple[str, str], set[str]] = {
     ("GET", "auth:admin"): {"admin", "super_admin"},
-    ("GET", "auth:me"): {"admin", "doctor"},
+    ("GET", "auth:me"): {
+        "admin",
+        "super_admin",
+        "tenant_manager",
+        "doctor",
+        "sales",
+        "client",
+    },
 }
 
 # Create pwd_context using CryptContext for bcrypt hashing
@@ -112,7 +123,8 @@ def verify_token(token: str) -> Dict[str, Any]:
     - the token has expired
     """
     try:
-        payload: Dict[str, Any] = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        payload: Dict[str, Any] = jwt.decode(
+            token, SECRET_KEY, algorithms=[ALGORITHM])
         if payload.get("token_type") == "refresh":
             raise TokenError("Invalid token type")
         return payload
@@ -130,7 +142,8 @@ def verify_refresh_token(token: str) -> Dict[str, Any]:
     - jti is missing
     """
     try:
-        payload: Dict[str, Any] = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        payload: Dict[str, Any] = jwt.decode(
+            token, SECRET_KEY, algorithms=[ALGORITHM])
         if payload.get("token_type") != "refresh":
             raise TokenError("Invalid token type")
         if "jti" not in payload:
@@ -172,7 +185,8 @@ def require_role(role: str):
             user_role_str = ""
         user_role_normalized = user_role_str.strip().upper()
         if user_role_normalized != required_role:
-            raise HTTPException(status_code=403, detail="Insufficient permissions")
+            raise HTTPException(
+                status_code=403, detail="Insufficient permissions")
         return user
 
     return dependency
@@ -192,15 +206,19 @@ def require_permission(route_id: str, method: Optional[str] = None):
         if allowed_roles is None:
             logger.warning(
                 "auth.rbac_denied missing_matrix method=%s route_id=%s user_id=%s role=%s",
-                effective_method, route_id, user.get("user_id"), user.get("role"),
+                effective_method, route_id, user.get(
+                    "user_id"), user.get("role"),
             )
-            raise HTTPException(status_code=403, detail="Insufficient permissions")
+            raise HTTPException(
+                status_code=403, detail="Insufficient permissions")
         if normalize_role(user.get("role")) not in allowed_roles:
             logger.warning(
                 "auth.rbac_denied role_not_allowed method=%s route_id=%s user_id=%s role=%s",
-                effective_method, route_id, user.get("user_id"), user.get("role"),
+                effective_method, route_id, user.get(
+                    "user_id"), user.get("role"),
             )
-            raise HTTPException(status_code=403, detail="Insufficient permissions")
+            raise HTTPException(
+                status_code=403, detail="Insufficient permissions")
         return user
 
     return dependency
@@ -252,14 +270,16 @@ def require_tenant_access(tenant_id: int | None = None, header_name: str = "X-Te
         if tenant_id is not None:
             effective_tenant_id = tenant_id
         else:
-            effective_tenant_id = get_tenant_id_from_request(request, header_name)
+            effective_tenant_id = get_tenant_id_from_request(
+                request, header_name)
 
         user_tenant_raw = user.get("tenant_id")
         if user_tenant_raw is None:
             raise HTTPException(status_code=403, detail="Tenant access denied")
         try:
             user_tenant_id = (
-                int(user_tenant_raw) if not isinstance(user_tenant_raw, int) else user_tenant_raw
+                int(user_tenant_raw) if not isinstance(
+                    user_tenant_raw, int) else user_tenant_raw
             )
         except (ValueError, TypeError):
             raise HTTPException(status_code=403, detail="Tenant access denied")
@@ -269,3 +289,22 @@ def require_tenant_access(tenant_id: int | None = None, header_name: str = "X-Te
         return user
 
     return dependency
+
+
+def require_tenant_from_token(
+    user: Dict[str, Any] = Depends(get_current_user),
+) -> tuple:
+    """
+    Requires tenant manager: user must have tenant_id in JWT.
+    Returns (user, tenant_id).
+    """
+    user_tenant_raw = user.get("tenant_id")
+    if user_tenant_raw is None:
+        raise HTTPException(
+            status_code=403, detail="Tenant access denied: no tenant assigned")
+    try:
+        tenant_id = int(user_tenant_raw) if not isinstance(
+            user_tenant_raw, int) else user_tenant_raw
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=403, detail="Tenant access denied")
+    return user, tenant_id
