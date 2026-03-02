@@ -32,6 +32,7 @@ class Tenant(Base, TimestampMixin):
     enrollments = relationship(
         "Enrollment",
         back_populates="tenant",
+        overlaps="patient",
         cascade="all, delete-orphan"
     )
     user_tenant_plans = relationship(
@@ -54,6 +55,12 @@ class Tenant(Base, TimestampMixin):
         cascade="all, delete-orphan"
     )
 
+    patients = relationship(
+        "Patient",
+        back_populates="tenant",
+        cascade="all, delete-orphan"
+    )
+
     managers = relationship(
         "TenantManager",
         back_populates="tenant",
@@ -69,12 +76,14 @@ class Tenant(Base, TimestampMixin):
     carts = relationship(
         "Cart",
         back_populates="tenant",
+        overlaps="patient,carts",
         cascade="all, delete-orphan"
     )
 
     orders = relationship(
         "Order",
         back_populates="tenant",
+        overlaps="patient,orders",
         cascade="all, delete-orphan"
     )
 

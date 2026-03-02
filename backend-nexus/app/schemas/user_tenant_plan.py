@@ -24,8 +24,17 @@ class UserTenantPlanCreate(UserTenantPlanBase):
     pass
 
 
-class UserTenantPlanRead(UserTenantPlanBase):
+class UserTenantPlanRead(BaseModel):
     id: int
+    tenant_id: int
+    name: str
+    description: Optional[str] = None
+    # Allow price >= 0 so free plans (price=0) serialise without error
+    price: Decimal = Field(..., ge=0, le=100000)
+    duration: Optional[int] = Field(None, gt=0)
+    max_appointments: Optional[int] = Field(None, gt=0)
+    max_consultations: Optional[int] = Field(None, gt=0)
+    is_active: Optional[bool] = True
 
     model_config = ConfigDict(from_attributes=True)
 

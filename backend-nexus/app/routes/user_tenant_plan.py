@@ -29,10 +29,14 @@ router = APIRouter(
 
 
 def verify_tenant_manager(db: Session, user_id: int, tenant_id: int):
-    manager = db.query(TenantManager).filter(
-        TenantManager.user_id == user_id,
-        TenantManager.tenant_id == tenant_id,
-    ).first()
+    manager = (
+        db.query(TenantManager)
+        .filter(
+            TenantManager.user_id == user_id,
+            TenantManager.tenant_id == tenant_id,
+        )
+        .first()
+    )
 
     if not manager:
         raise HTTPException(
@@ -48,7 +52,10 @@ def enforce_tenant_pricing_rules(db: Session, tenant_id: int, price: Decimal):
     """
     active_subscription = (
         db.query(TenantSubscription)
-        .join(SubscriptionPlan, TenantSubscription.subscription_plan_id == SubscriptionPlan.id)
+        .join(
+            SubscriptionPlan,
+            TenantSubscription.subscription_plan_id == SubscriptionPlan.id,
+        )
         .filter(
             TenantSubscription.tenant_id == tenant_id,
             TenantSubscription.status == SubscriptionStatus.ACTIVE,
@@ -77,6 +84,54 @@ def enforce_tenant_pricing_rules(db: Session, tenant_id: int, price: Decimal):
         )
 
 
+# see pricing bounds as a tenant manager
+@router.get("/pricing-bounds")
+def get_pricing_bounds(
+    tenant_id: int,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """
+    Return the allowed price range for plans in this tenant, derived from the
+    active subscription's base price (50%–200%).  Returns null bounds if no
+    active paid subscription exists (i.e. only global schema limits apply).
+    """
+    user_id = current_user.get("user_id")
+    verify_tenant_manager(db, user_id, tenant_id)
+
+    active_subscription = (
+        db.query(TenantSubscription)
+        .join(
+            SubscriptionPlan,
+            TenantSubscription.subscription_plan_id == SubscriptionPlan.id,
+        )
+        .filter(
+            TenantSubscription.tenant_id == tenant_id,
+            TenantSubscription.status == SubscriptionStatus.ACTIVE,
+        )
+        .order_by(TenantSubscription.activated_at.desc(), TenantSubscription.id.desc())
+        .first()
+    )
+
+    if (
+        not active_subscription
+        or active_subscription.subscription_plan is None
+        or Decimal(str(active_subscription.subscription_plan.price or 0)) <= 0
+    ):
+        return {"min_price": None, "max_price": None, "base_price": None}
+
+    base_price = Decimal(str(active_subscription.subscription_plan.price))
+    min_allowed = (base_price * Decimal("0.50")).quantize(Decimal("0.01"))
+    max_allowed = (base_price * Decimal("2.00")).quantize(Decimal("0.01"))
+
+    return {
+        "min_price": float(min_allowed),
+        "max_price": float(max_allowed),
+        "base_price": float(base_price),
+    }
+
+
+# create a plan in your tenant as a tenant manager
 @router.post("/", response_model=UserTenantPlanRead)
 def create_plan(
     plan: UserTenantPlanCreate,
@@ -105,6 +160,32 @@ def create_plan(
     return db_plan
 
 
+# see your enrollment in a tenant as an authenticated user with a patient profile
+@router.get("/my-enrollment", response_model=EnrollmentRead)
+def get_my_enrollment(
+    tenant_id: int,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """Return the current user's enrollment for a given tenant (if any)."""
+    user_id = current_user.get("user_id")
+
+    enrollment = (
+        db.query(Enrollment)
+        .filter(
+            Enrollment.tenant_id == tenant_id,
+            Enrollment.patient_user_id == user_id,
+        )
+        .first()
+    )
+
+    if not enrollment:
+        raise HTTPException(status_code=404, detail="No enrollment found")
+
+    return enrollment
+
+
+# enroll in a plan as an authenticated user with a patient profile (auto-creates patient if needed)
 @router.post("/enroll", response_model=EnrollmentRead)
 def enroll_in_plan(
     tenant_id: int,
@@ -112,33 +193,57 @@ def enroll_in_plan(
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user),
 ):
-    """Allow any authenticated user (with a patient profile) to subscribe to a plan."""
+    """Allow only patient/client users to subscribe to a plan."""
     user_id = current_user.get("user_id")
+    role = str(current_user.get("role") or "").strip().upper()
+
+    if role not in {"CLIENT", "PATIENT"}:
+        raise HTTPException(
+            status_code=403,
+            detail="Only patient users can enroll in plans",
+        )
 
     # Verify the plan exists and belongs to the tenant and is active
-    plan = db.query(UserTenantPlan).filter(
-        UserTenantPlan.id == plan_id,
-        UserTenantPlan.tenant_id == tenant_id,
-        UserTenantPlan.is_active == True,
-    ).first()
+    plan = (
+        db.query(UserTenantPlan)
+        .filter(
+            UserTenantPlan.id == plan_id,
+            UserTenantPlan.tenant_id == tenant_id,
+            UserTenantPlan.is_active == True,
+        )
+        .first()
+    )
     if not plan:
-        raise HTTPException(
-            status_code=404, detail="Plan not found or not active")
+        raise HTTPException(status_code=404, detail="Plan not found or not active")
 
-    # Ensure the user has a patient profile (auto-create if missing)
-    patient = db.query(Patient).filter(Patient.user_id == user_id).first()
+    # Patient model uses a composite PK (tenant_id, user_id) since commit 7a35d1a.
+    # We must query and create patients with both tenant_id and user_id to satisfy
+    # the FK constraint fk_enrollments_patient_tenant_user on the enrollments table.
+    patient = (
+        db.query(Patient)
+        .filter(
+            Patient.tenant_id == tenant_id,
+            Patient.user_id == user_id,
+        )
+        .first()
+    )
     if not patient:
-        patient = Patient(user_id=user_id)
+        # Auto-create a tenant-scoped patient profile so the enrollment FK is valid
+        patient = Patient(tenant_id=tenant_id, user_id=user_id)
         db.add(patient)
         db.flush()
 
     # Check for existing enrollment for this tenant (unique per patient+tenant)
-    existing = db.query(Enrollment).filter(
-        Enrollment.tenant_id == tenant_id,
-        Enrollment.patient_user_id == user_id,
-    ).first()
+    existing = (
+        db.query(Enrollment)
+        .filter(
+            Enrollment.tenant_id == tenant_id,
+            Enrollment.patient_user_id == user_id,
+        )
+        .first()
+    )
     if existing:
-        # Update existing enrollment to the new plan
+        # Re-activate / switch to the new plan instead of creating a duplicate
         existing.user_tenant_plan_id = plan_id
         existing.status = EnrollmentStatusModel.ACTIVE
         existing.activated_at = datetime.now(timezone.utc)
@@ -147,6 +252,7 @@ def enroll_in_plan(
         db.refresh(existing)
         return existing
 
+    # Create a brand-new enrollment for this user + tenant + plan
     enrollment = Enrollment(
         tenant_id=tenant_id,
         patient_user_id=user_id,
@@ -161,6 +267,41 @@ def enroll_in_plan(
     return enrollment
 
 
+# cancel your enrollment in a tenant
+@router.post("/cancel-enrollment", response_model=EnrollmentRead)
+def cancel_enrollment(
+    tenant_id: int,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """Cancel the current user's active enrollment for a given tenant."""
+    user_id = current_user.get("user_id")
+
+    enrollment = (
+        db.query(Enrollment)
+        .filter(
+            Enrollment.tenant_id == tenant_id,
+            Enrollment.patient_user_id == user_id,
+            Enrollment.status.in_(
+                [
+                    EnrollmentStatusModel.ACTIVE,
+                    EnrollmentStatusModel.PENDING,
+                ]
+            ),
+        )
+        .first()
+    )
+    if not enrollment:
+        raise HTTPException(status_code=404, detail="No active enrollment found")
+
+    enrollment.status = EnrollmentStatusModel.CANCELLED
+    enrollment.cancelled_at = datetime.now(timezone.utc)
+    db.commit()
+    db.refresh(enrollment)
+    return enrollment
+
+
+# update a plan in your tenant as a tenant manager
 @router.put("/{plan_id}", response_model=UserTenantPlanRead)
 def update_plan(
     plan_id: int,
@@ -170,8 +311,7 @@ def update_plan(
 ):
     user_id = current_user.get("user_id")
 
-    db_plan = db.query(UserTenantPlan).filter(
-        UserTenantPlan.id == plan_id).first()
+    db_plan = db.query(UserTenantPlan).filter(UserTenantPlan.id == plan_id).first()
 
     if not db_plan:
         raise HTTPException(404, "Plan not found")
@@ -201,6 +341,7 @@ def update_plan(
     return db_plan
 
 
+# get a plan by id in your tenant as a tenant manager
 @router.get("/{plan_id}", response_model=UserTenantPlanRead)
 def get_plan(
     plan_id: int,
@@ -209,8 +350,7 @@ def get_plan(
 ):
     user_id = current_user.get("user_id")
 
-    db_plan = db.query(UserTenantPlan).filter(
-        UserTenantPlan.id == plan_id).first()
+    db_plan = db.query(UserTenantPlan).filter(UserTenantPlan.id == plan_id).first()
 
     if not db_plan:
         raise HTTPException(status_code=404, detail="Plan not found")
@@ -232,7 +372,30 @@ def get_plans_by_tenant(
     return db.query(UserTenantPlan).filter(UserTenantPlan.tenant_id == tenant_id).all()
 
 
-@router.get("/tenant/{tenant_id}/enrollments", response_model=List[EnrollmentDetailRead])
+# public endpoint to get active plans for a tenant without auth (for marketplace/catalog browsing)
+@router.get(
+    "/public/tenant/{tenant_id}",
+    response_model=List[UserTenantPlanRead],
+)
+def get_active_public_plans_by_tenant(
+    tenant_id: int,
+    db: Session = Depends(get_db),
+):
+    """Public catalog endpoint: returns active plans for a tenant without auth."""
+    return (
+        db.query(UserTenantPlan)
+        .filter(
+            UserTenantPlan.tenant_id == tenant_id,
+            UserTenantPlan.is_active == True,
+        )
+        .all()
+    )
+
+
+# get all enrollments in a tenant as a tenant manager (for admin dashboard) - includes patient user info and plan info
+@router.get(
+    "/tenant/{tenant_id}/enrollments", response_model=List[EnrollmentDetailRead]
+)
 def get_tenant_enrollments(
     tenant_id: int,
     db: Session = Depends(get_db),
@@ -275,6 +438,7 @@ def get_tenant_enrollments(
     return result
 
 
+# delete a plan in your tenant as a tenant manager (only if no active enrollments are using it)
 @router.delete("/{plan_id}")
 def delete_plan(
     plan_id: int,
@@ -283,8 +447,7 @@ def delete_plan(
 ):
     user_id = current_user.get("user_id")
 
-    db_plan = db.query(UserTenantPlan).filter(
-        UserTenantPlan.id == plan_id).first()
+    db_plan = db.query(UserTenantPlan).filter(UserTenantPlan.id == plan_id).first()
 
     if not db_plan:
         raise HTTPException(

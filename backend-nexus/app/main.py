@@ -1,9 +1,11 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
+
 from app.auth.auth_router import router as auth_router
 from app.routes import (
     role_router,
+    enrollment_router,
     tenant_router,
     superadmin_tenant_router,
     department_router,
@@ -16,7 +18,11 @@ from app.routes import (
     public_tenant_router,
 )
 
-app = FastAPI(title="Healthcare SaaS API", version="0.1.0")
+app = FastAPI(
+    title="Healthcare SaaS API",
+    version="0.1.0",
+    swagger_ui_parameters={"persistAuthorization": True},
+)
 
 # CORS configuration for development - allows frontend on various ports
 app.add_middleware(
@@ -39,6 +45,7 @@ app.include_router(service_router, prefix="/api")
 app.include_router(auth_router, prefix="/api")
 app.include_router(public_tenant_router, prefix="/api/public")
 app.include_router(tenant_audit_log)
+app.include_router(enrollment_router, prefix="/api")
 app.include_router(user_tenant_plan_router)
 
 

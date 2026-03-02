@@ -6,9 +6,9 @@
  * Used by /landing/$tenantSlug. Data from GET /api/tenants/by-slug/{slug}/landing.
  */
 import type { CSSProperties } from 'react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
@@ -68,11 +68,37 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
   const [activeTab, setActiveTab] = useState('home')
   const [selectedPlanId, setSelectedPlanId] = useState<number | null>(null)
 
+  const user = useAuthStore((s) => s.user)
+  const role = useAuthStore((s) => s.role)
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
+
+  const tenantId = landingData?.tenant?.id
+
+  const queryClient = useQueryClient()
+
+  // Hydrate the selected plan from the user's existing enrollment.
+  // Only sync on initial fetch — not on every render — so the user
+  // can click "Change plan" without it snapping back immediately.
+  const { data: enrollmentData } = useQuery({
+    queryKey: ['my-enrollment', tenantId],
+    queryFn: () => tenantPlansService.myEnrollment(tenantId!),
+    enabled: !!tenantId && isAuthenticated,
+    retry: false,
+  })
+
+  useEffect(() => {
+    if (enrollmentData?.user_tenant_plan_id && enrollmentData.status === 'ACTIVE') {
+      setSelectedPlanId(enrollmentData.user_tenant_plan_id)
+    }
+  }, [enrollmentData])
+
   const enrollMutation = useMutation({
     mutationFn: ({ tenantId, planId }: { tenantId: number; planId: number }) =>
       tenantPlansService.enroll(tenantId, planId),
     onSuccess: (_data, variables) => {
       setSelectedPlanId(variables.planId)
+      // Invalidate the cached enrollment so next hydration uses the new plan
+      queryClient.invalidateQueries({ queryKey: ['my-enrollment', tenantId] })
       toast.success('Successfully subscribed!', { description: 'Your plan has been selected.' })
     },
     onError: (err) => {
@@ -80,9 +106,19 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
     },
   })
 
-  const user = useAuthStore((s) => s.user)
-  const role = useAuthStore((s) => s.role)
-  const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
+  // Cancel enrollment so tenant manager sees "no active plan"
+  const cancelMutation = useMutation({
+    mutationFn: (tid: number) => tenantPlansService.cancelEnrollment(tid),
+    onSuccess: () => {
+      setSelectedPlanId(null)
+      queryClient.invalidateQueries({ queryKey: ['my-enrollment', tenantId] })
+      toast.success('Plan cancelled', { description: 'You can pick a new plan below.' })
+    },
+    onError: (err) => {
+      toast.error(isApiError(err) ? err.message : 'Failed to cancel. Please try again.')
+    },
+  })
+
   const logout = useAuthStore((s) => s.logout)
   const navigate = useNavigate()
   const canOpenTenantDashboard = can({ role }, 'DASHBOARD_TENANT')
@@ -111,7 +147,7 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
   }
 
   const { tenant, details, departments, products } = landingData
-  const plans = landingData.plans ?? []
+  const plans = (landingData.plans ?? []).filter((p) => p.is_active !== false)
   const title = details?.title ?? tenant.name
   const subtitle = details?.slogan ?? 'Welcome to our landing page.'
   const logo = resolveMediaUrl(details?.logo)
@@ -493,9 +529,12 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => setSelectedPlanId(null)}
+                      disabled={cancelMutation.isPending}
+                      onClick={() => {
+                        if (tenantId) cancelMutation.mutate(tenantId)
+                      }}
                     >
-                      Change plan
+                      {cancelMutation.isPending ? 'Cancelling…' : 'Change plan'}
                     </Button>
                   </div>
                 )
@@ -518,7 +557,7 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
                       <div className="flex items-start justify-between gap-3">
                         <h3 className="text-sm font-semibold sm:text-base">{plan.name}</h3>
                         <span className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
-                          Active
+                          Available
                         </span>
                       </div>
 
