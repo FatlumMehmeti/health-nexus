@@ -25,7 +25,8 @@ export const usersService = {
 }
 
 export interface UserRead {
-  user_id: string | number
+  id: string | number
+  user_id?: string | number
   email: string
   first_name?: string | null
   last_name?: string | null

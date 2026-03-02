@@ -43,7 +43,7 @@ export function PublicAuthHeader({
   };
   const handleProfile = () => {
     navigate({
-      to: "/dashboard",
+      to: "/dashboard/profile",
       replace: true,
     });
   };

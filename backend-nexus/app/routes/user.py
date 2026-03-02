@@ -66,6 +66,12 @@ def patch_me(
         raise HTTPException(status_code=404, detail="User not found")
 
     data = payload.model_dump(exclude_unset=True)
+    if "role_id" in data:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Updating role is not allowed for this endpoint",
+        )
+
     password = data.pop("password", None)
     if password is not None:
         user.password = hash_password(password)
