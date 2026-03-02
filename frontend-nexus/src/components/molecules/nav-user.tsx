@@ -50,7 +50,6 @@ export function NavUser({ user }: { user: NavUserInfo | null | undefined }) {
 
   const handleOpenPlans = () => {
     dialogStore.open({
-      title: "Nexus Health Plans",
       content: <SubscriptionPlansModal onClose={() => dialogStore.close()} />,
       showCloseButton: true,
     });
@@ -114,7 +113,7 @@ export function NavUser({ user }: { user: NavUserInfo | null | undefined }) {
               </DropdownMenuItem>
               <DropdownMenuItem onClick={handleOpenPlans}>
                 <IconCreditCard />
-                Explore Nexus Plans
+                Health Nexus Plans
               </DropdownMenuItem>
               <DropdownMenuItem>
                 <IconNotification />

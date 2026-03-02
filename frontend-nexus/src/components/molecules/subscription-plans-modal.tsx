@@ -138,7 +138,7 @@ export function SubscriptionPlansModal({
     <div className="w-full space-y-6 py-6">
       {/* Title */}
       <h1 className="text-4xl font-bold text-center mb-4 dark:text-white text-gray-900">
-        Choose Your Nexus Plan
+        Choose Your Health Nexus Plan
       </h1>
 
       {/* Thin stats summary line */}
@@ -157,6 +157,46 @@ export function SubscriptionPlansModal({
             {stats.departments_used} department
             {stats.departments_used !== 1 ? "s" : ""}
           </span>
+        </div>
+      )}
+
+      {/* Billing cycle dates for current subscription */}
+      {currentSubscription && currentSubscription.activated_at && (
+        <div className="mx-auto max-w-2xl bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg p-4">
+          <div className="grid grid-cols-2 gap-6 text-center">
+            <div>
+              <p className="text-xs font-semibold uppercase text-slate-600 dark:text-slate-400 mb-1">
+                Activated
+              </p>
+              <p className="text-sm font-medium text-slate-900 dark:text-white">
+                {new Date(currentSubscription.activated_at).toLocaleDateString(
+                  "en-US",
+                  {
+                    year: "numeric",
+                    month: "short",
+                    day: "numeric",
+                  }
+                )}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs font-semibold uppercase text-slate-600 dark:text-slate-400 mb-1">
+                Expires
+              </p>
+              <p className="text-sm font-medium text-slate-900 dark:text-white">
+                {currentSubscription.expires_at
+                  ? new Date(currentSubscription.expires_at).toLocaleDateString(
+                      "en-US",
+                      {
+                        year: "numeric",
+                        month: "short",
+                        day: "numeric",
+                      }
+                    )
+                  : "N/A"}
+              </p>
+            </div>
+          </div>
         </div>
       )}
 
