@@ -43,3 +43,9 @@ class DoctorRead(DoctorBase):
 
     class Config:
         from_attributes = True
+
+
+class DoctorReadWithName(DoctorRead):
+    """Doctor with user name for dropdowns (e.g. contract doctor selection)."""
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None

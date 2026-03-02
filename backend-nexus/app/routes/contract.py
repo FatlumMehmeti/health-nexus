@@ -6,7 +6,7 @@ import base64
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
 from fastapi.responses import FileResponse, Response
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app.auth.auth_utils import get_current_user, normalize_role
 from app.db import get_db
@@ -59,14 +59,32 @@ def _require_contract_access(user: dict, tenant_id: int, db: Session) -> None:
     )
 
 
-def _get_contract_or_404(db: Session, contract_id: int) -> Contract:
-    contract = db.query(Contract).filter(Contract.id == contract_id).first()
+def _get_contract_or_404(db: Session, contract_id: int, with_relations: bool = False) -> Contract:
+    q = db.query(Contract).filter(Contract.id == contract_id)
+    if with_relations:
+        q = q.options(
+            joinedload(Contract.tenant),
+            joinedload(Contract.doctor).joinedload(Doctor.user),
+        )
+    contract = q.first()
     if not contract:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Contract not found",
         )
     return contract
+
+
+def _contract_to_read(contract: Contract) -> ContractRead:
+    """Build ContractRead with tenant_name and doctor_name from relations."""
+    base = ContractRead.model_validate(contract)
+    tenant_name = contract.tenant.name if contract.tenant else None
+    doctor_name = None
+    if contract.doctor and contract.doctor.user:
+        u = contract.doctor.user
+        parts = [u.first_name or "", u.last_name or ""]
+        doctor_name = " ".join(parts).strip() or None
+    return base.model_copy(update={"tenant_name": tenant_name, "doctor_name": doctor_name})
 
 
 def _require_contract_view_access(user: dict, contract: Contract, db: Session) -> None:
@@ -92,11 +110,18 @@ def list_contracts(
 ):
     """List contracts for a tenant. Optionally filter by doctor. Tenant manager: own tenant only. Super admin: any."""
     _require_contract_access(user, tenant_id, db)
-    q = db.query(Contract).filter(Contract.tenant_id == tenant_id)
+    q = (
+        db.query(Contract)
+        .filter(Contract.tenant_id == tenant_id)
+        .options(
+            joinedload(Contract.tenant),
+            joinedload(Contract.doctor).joinedload(Doctor.user),
+        )
+    )
     if doctor_user_id is not None:
         q = q.filter(Contract.doctor_user_id == doctor_user_id)
     contracts = q.order_by(Contract.id.desc()).all()
-    return contracts
+    return [_contract_to_read(c) for c in contracts]
 
 
 # POST /tenants/{tenant_id}/contracts
@@ -137,7 +162,8 @@ def create_contract(
     db.add(contract)
     db.commit()
     db.refresh(contract)
-    return contract
+    c = _get_contract_or_404(db, contract.id, with_relations=True)
+    return _contract_to_read(c)
 
 
 # GET /contracts/{contract_id}
@@ -148,9 +174,9 @@ def get_contract(
     user: dict = Depends(get_current_user),
 ):
     """Get contract by id. Tenant manager: own tenant only. Super admin: any. Doctor: own contract only."""
-    contract = _get_contract_or_404(db, contract_id)
+    contract = _get_contract_or_404(db, contract_id, with_relations=True)
     _require_contract_view_access(user, contract, db)
-    return contract
+    return _contract_to_read(contract)
 
 
 # PATCH /contracts/{contract_id}
@@ -184,7 +210,8 @@ def update_contract(
 
     db.commit()
     db.refresh(contract)
-    return contract
+    c = _get_contract_or_404(db, contract.id, with_relations=True)
+    return _contract_to_read(c)
 
 
 # POST /contracts/{contract_id}/transition
@@ -235,7 +262,8 @@ def transition_contract_status(
 
     db.commit()
     db.refresh(contract)
-    return contract
+    c = _get_contract_or_404(db, contract.id, with_relations=True)
+    return _contract_to_read(c)
 
 
 # POST /contracts/{contract_id}/sign/doctor
@@ -278,7 +306,8 @@ async def sign_contract_doctor(
     contract.doctor_signed_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(contract)
-    return contract
+    c = _get_contract_or_404(db, contract.id, with_relations=True)
+    return _contract_to_read(c)
 
 
 # POST /contracts/{contract_id}/sign/hospital
@@ -312,7 +341,8 @@ async def sign_contract_hospital(
     contract.hospital_signed_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(contract)
-    return contract
+    c = _get_contract_or_404(db, contract.id, with_relations=True)
+    return _contract_to_read(c)
 
 
 _EXT_TO_MEDIA = {".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".webp": "image/webp"}
