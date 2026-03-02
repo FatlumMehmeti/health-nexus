@@ -164,9 +164,13 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     if (role === "SUPER_ADMIN") return [...superAdminDocuments];
     if (role === "TENANT_MANAGER") return [...tenantManagerDocuments];
     if (role === "CLIENT") return [...clientsDocuments];
+    return [];
   }, [role]);
-  const documentsLabel = role === "TENANT_MANAGER" ? "My Tenant" : "Documents";
-  const sidebarUser = React.useMemo(() => {
+const documentsLabel = React.useMemo(() => {
+  if (role === "TENANT_MANAGER") return "My Tenant";
+  if (role === "CLIENT") return "Your Profile & Enrollments"; 
+  return "Documents"; 
+}, [role]);  const sidebarUser = React.useMemo(() => {
     if (!user) return null;
     return {
       name: user.fullName ?? user.email ?? "User",
