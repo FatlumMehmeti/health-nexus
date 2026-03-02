@@ -167,7 +167,13 @@ function LoginPage() {
             </Button>
           </form>
 
-          <div className="text-sm text-muted-foreground">
+          <div className="space-y-1 text-sm text-muted-foreground">
+            <p>
+              Don&apos;t have an account?{' '}
+              <Link to="/signup" className="underline underline-offset-4">
+                Register
+              </Link>
+            </p>
             <Link to="/" className="underline underline-offset-4">
               Back to home
             </Link>
