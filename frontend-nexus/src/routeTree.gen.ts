@@ -19,7 +19,6 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as DashboardIndexRouteImport } from './routes/dashboard/index'
 import { Route as LandingTenantSlugRouteImport } from './routes/landing/$tenantSlug'
 import { Route as DashboardTenantsRouteImport } from './routes/dashboard/tenants'
-import { Route as DashboardTenantRouteImport } from './routes/dashboard/tenant'
 import { Route as DashboardRolesRouteImport } from './routes/dashboard/roles'
 import { Route as DashboardGlobalStateRouteImport } from './routes/dashboard/global-state'
 import { Route as DashboardFormsRouteImport } from './routes/dashboard/forms'
@@ -28,6 +27,7 @@ import { Route as DashboardDataRouteImport } from './routes/dashboard/data'
 import { Route as DashboardLandingPagesRouteRouteImport } from './routes/dashboard/landing-pages/route'
 import { Route as DashboardLandingPagesIndexRouteImport } from './routes/dashboard/landing-pages/index'
 import { Route as DashboardAuditLogsIndexRouteImport } from './routes/dashboard/audit-logs/index'
+import { Route as DashboardTenantDoctorsManagerRouteImport } from './routes/dashboard/tenant/doctors-manager'
 import { Route as DashboardTenantSectionRouteImport } from './routes/dashboard/tenant.$section'
 import { Route as DashboardLandingPagesPageIdRouteImport } from './routes/dashboard/landing-pages/$pageId'
 import { Route as DashboardTenantContractsRouteRouteImport } from './routes/dashboard/tenant/contracts/route'
@@ -83,11 +83,6 @@ const DashboardTenantsRoute = DashboardTenantsRouteImport.update({
   path: '/tenants',
   getParentRoute: () => DashboardRouteRoute,
 } as any)
-const DashboardTenantRoute = DashboardTenantRouteImport.update({
-  id: '/tenant',
-  path: '/tenant',
-  getParentRoute: () => DashboardRouteRoute,
-} as any)
 const DashboardRolesRoute = DashboardRolesRouteImport.update({
   id: '/roles',
   path: '/roles',
@@ -130,10 +125,16 @@ const DashboardAuditLogsIndexRoute = DashboardAuditLogsIndexRouteImport.update({
   path: '/audit-logs/',
   getParentRoute: () => DashboardRouteRoute,
 } as any)
+const DashboardTenantDoctorsManagerRoute =
+  DashboardTenantDoctorsManagerRouteImport.update({
+    id: '/tenant/doctors-manager',
+    path: '/tenant/doctors-manager',
+    getParentRoute: () => DashboardRouteRoute,
+  } as any)
 const DashboardTenantSectionRoute = DashboardTenantSectionRouteImport.update({
-  id: '/$section',
-  path: '/$section',
-  getParentRoute: () => DashboardTenantRoute,
+  id: '/tenant/$section',
+  path: '/tenant/$section',
+  getParentRoute: () => DashboardRouteRoute,
 } as any)
 const DashboardLandingPagesPageIdRoute =
   DashboardLandingPagesPageIdRouteImport.update({
@@ -143,9 +144,9 @@ const DashboardLandingPagesPageIdRoute =
   } as any)
 const DashboardTenantContractsRouteRoute =
   DashboardTenantContractsRouteRouteImport.update({
-    id: '/contracts',
-    path: '/contracts',
-    getParentRoute: () => DashboardTenantRoute,
+    id: '/tenant/contracts',
+    path: '/tenant/contracts',
+    getParentRoute: () => DashboardRouteRoute,
   } as any)
 const DashboardTenantContractsIndexRoute =
   DashboardTenantContractsIndexRouteImport.update({
@@ -168,13 +169,13 @@ export interface FileRoutesByFullPath {
   '/dashboard/forms': typeof DashboardFormsRoute
   '/dashboard/global-state': typeof DashboardGlobalStateRoute
   '/dashboard/roles': typeof DashboardRolesRoute
-  '/dashboard/tenant': typeof DashboardTenantRouteWithChildren
   '/dashboard/tenants': typeof DashboardTenantsRoute
   '/landing/$tenantSlug': typeof LandingTenantSlugRoute
   '/dashboard/': typeof DashboardIndexRoute
   '/dashboard/tenant/contracts': typeof DashboardTenantContractsRouteRouteWithChildren
   '/dashboard/landing-pages/$pageId': typeof DashboardLandingPagesPageIdRoute
   '/dashboard/tenant/$section': typeof DashboardTenantSectionRoute
+  '/dashboard/tenant/doctors-manager': typeof DashboardTenantDoctorsManagerRoute
   '/dashboard/audit-logs/': typeof DashboardAuditLogsIndexRoute
   '/dashboard/landing-pages/': typeof DashboardLandingPagesIndexRoute
   '/dashboard/tenant/contracts/': typeof DashboardTenantContractsIndexRoute
@@ -191,12 +192,12 @@ export interface FileRoutesByTo {
   '/dashboard/forms': typeof DashboardFormsRoute
   '/dashboard/global-state': typeof DashboardGlobalStateRoute
   '/dashboard/roles': typeof DashboardRolesRoute
-  '/dashboard/tenant': typeof DashboardTenantRouteWithChildren
   '/dashboard/tenants': typeof DashboardTenantsRoute
   '/landing/$tenantSlug': typeof LandingTenantSlugRoute
   '/dashboard': typeof DashboardIndexRoute
   '/dashboard/landing-pages/$pageId': typeof DashboardLandingPagesPageIdRoute
   '/dashboard/tenant/$section': typeof DashboardTenantSectionRoute
+  '/dashboard/tenant/doctors-manager': typeof DashboardTenantDoctorsManagerRoute
   '/dashboard/audit-logs': typeof DashboardAuditLogsIndexRoute
   '/dashboard/landing-pages': typeof DashboardLandingPagesIndexRoute
   '/dashboard/tenant/contracts': typeof DashboardTenantContractsIndexRoute
@@ -216,13 +217,13 @@ export interface FileRoutesById {
   '/dashboard/forms': typeof DashboardFormsRoute
   '/dashboard/global-state': typeof DashboardGlobalStateRoute
   '/dashboard/roles': typeof DashboardRolesRoute
-  '/dashboard/tenant': typeof DashboardTenantRouteWithChildren
   '/dashboard/tenants': typeof DashboardTenantsRoute
   '/landing/$tenantSlug': typeof LandingTenantSlugRoute
   '/dashboard/': typeof DashboardIndexRoute
   '/dashboard/tenant/contracts': typeof DashboardTenantContractsRouteRouteWithChildren
   '/dashboard/landing-pages/$pageId': typeof DashboardLandingPagesPageIdRoute
   '/dashboard/tenant/$section': typeof DashboardTenantSectionRoute
+  '/dashboard/tenant/doctors-manager': typeof DashboardTenantDoctorsManagerRoute
   '/dashboard/audit-logs/': typeof DashboardAuditLogsIndexRoute
   '/dashboard/landing-pages/': typeof DashboardLandingPagesIndexRoute
   '/dashboard/tenant/contracts/': typeof DashboardTenantContractsIndexRoute
@@ -243,13 +244,13 @@ export interface FileRouteTypes {
     | '/dashboard/forms'
     | '/dashboard/global-state'
     | '/dashboard/roles'
-    | '/dashboard/tenant'
     | '/dashboard/tenants'
     | '/landing/$tenantSlug'
     | '/dashboard/'
     | '/dashboard/tenant/contracts'
     | '/dashboard/landing-pages/$pageId'
     | '/dashboard/tenant/$section'
+    | '/dashboard/tenant/doctors-manager'
     | '/dashboard/audit-logs/'
     | '/dashboard/landing-pages/'
     | '/dashboard/tenant/contracts/'
@@ -266,12 +267,12 @@ export interface FileRouteTypes {
     | '/dashboard/forms'
     | '/dashboard/global-state'
     | '/dashboard/roles'
-    | '/dashboard/tenant'
     | '/dashboard/tenants'
     | '/landing/$tenantSlug'
     | '/dashboard'
     | '/dashboard/landing-pages/$pageId'
     | '/dashboard/tenant/$section'
+    | '/dashboard/tenant/doctors-manager'
     | '/dashboard/audit-logs'
     | '/dashboard/landing-pages'
     | '/dashboard/tenant/contracts'
@@ -290,13 +291,13 @@ export interface FileRouteTypes {
     | '/dashboard/forms'
     | '/dashboard/global-state'
     | '/dashboard/roles'
-    | '/dashboard/tenant'
     | '/dashboard/tenants'
     | '/landing/$tenantSlug'
     | '/dashboard/'
     | '/dashboard/tenant/contracts'
     | '/dashboard/landing-pages/$pageId'
     | '/dashboard/tenant/$section'
+    | '/dashboard/tenant/doctors-manager'
     | '/dashboard/audit-logs/'
     | '/dashboard/landing-pages/'
     | '/dashboard/tenant/contracts/'
@@ -384,13 +385,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardTenantsRouteImport
       parentRoute: typeof DashboardRouteRoute
     }
-    '/dashboard/tenant': {
-      id: '/dashboard/tenant'
-      path: '/tenant'
-      fullPath: '/dashboard/tenant'
-      preLoaderRoute: typeof DashboardTenantRouteImport
-      parentRoute: typeof DashboardRouteRoute
-    }
     '/dashboard/roles': {
       id: '/dashboard/roles'
       path: '/roles'
@@ -447,12 +441,19 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardAuditLogsIndexRouteImport
       parentRoute: typeof DashboardRouteRoute
     }
+    '/dashboard/tenant/doctors-manager': {
+      id: '/dashboard/tenant/doctors-manager'
+      path: '/tenant/doctors-manager'
+      fullPath: '/dashboard/tenant/doctors-manager'
+      preLoaderRoute: typeof DashboardTenantDoctorsManagerRouteImport
+      parentRoute: typeof DashboardRouteRoute
+    }
     '/dashboard/tenant/$section': {
       id: '/dashboard/tenant/$section'
-      path: '/$section'
+      path: '/tenant/$section'
       fullPath: '/dashboard/tenant/$section'
       preLoaderRoute: typeof DashboardTenantSectionRouteImport
-      parentRoute: typeof DashboardTenantRoute
+      parentRoute: typeof DashboardRouteRoute
     }
     '/dashboard/landing-pages/$pageId': {
       id: '/dashboard/landing-pages/$pageId'
@@ -463,10 +464,10 @@ declare module '@tanstack/react-router' {
     }
     '/dashboard/tenant/contracts': {
       id: '/dashboard/tenant/contracts'
-      path: '/contracts'
+      path: '/tenant/contracts'
       fullPath: '/dashboard/tenant/contracts'
       preLoaderRoute: typeof DashboardTenantContractsRouteRouteImport
-      parentRoute: typeof DashboardTenantRoute
+      parentRoute: typeof DashboardRouteRoute
     }
     '/dashboard/tenant/contracts/': {
       id: '/dashboard/tenant/contracts/'
@@ -508,21 +509,6 @@ const DashboardTenantContractsRouteRouteWithChildren =
     DashboardTenantContractsRouteRouteChildren,
   )
 
-interface DashboardTenantRouteChildren {
-  DashboardTenantContractsRouteRoute: typeof DashboardTenantContractsRouteRouteWithChildren
-  DashboardTenantSectionRoute: typeof DashboardTenantSectionRoute
-}
-
-const DashboardTenantRouteChildren: DashboardTenantRouteChildren = {
-  DashboardTenantContractsRouteRoute:
-    DashboardTenantContractsRouteRouteWithChildren,
-  DashboardTenantSectionRoute: DashboardTenantSectionRoute,
-}
-
-const DashboardTenantRouteWithChildren = DashboardTenantRoute._addFileChildren(
-  DashboardTenantRouteChildren,
-)
-
 interface DashboardRouteRouteChildren {
   DashboardLandingPagesRouteRoute: typeof DashboardLandingPagesRouteRouteWithChildren
   DashboardDataRoute: typeof DashboardDataRoute
@@ -530,9 +516,11 @@ interface DashboardRouteRouteChildren {
   DashboardFormsRoute: typeof DashboardFormsRoute
   DashboardGlobalStateRoute: typeof DashboardGlobalStateRoute
   DashboardRolesRoute: typeof DashboardRolesRoute
-  DashboardTenantRoute: typeof DashboardTenantRouteWithChildren
   DashboardTenantsRoute: typeof DashboardTenantsRoute
   DashboardIndexRoute: typeof DashboardIndexRoute
+  DashboardTenantContractsRouteRoute: typeof DashboardTenantContractsRouteRouteWithChildren
+  DashboardTenantSectionRoute: typeof DashboardTenantSectionRoute
+  DashboardTenantDoctorsManagerRoute: typeof DashboardTenantDoctorsManagerRoute
   DashboardAuditLogsIndexRoute: typeof DashboardAuditLogsIndexRoute
 }
 
@@ -543,9 +531,12 @@ const DashboardRouteRouteChildren: DashboardRouteRouteChildren = {
   DashboardFormsRoute: DashboardFormsRoute,
   DashboardGlobalStateRoute: DashboardGlobalStateRoute,
   DashboardRolesRoute: DashboardRolesRoute,
-  DashboardTenantRoute: DashboardTenantRouteWithChildren,
   DashboardTenantsRoute: DashboardTenantsRoute,
   DashboardIndexRoute: DashboardIndexRoute,
+  DashboardTenantContractsRouteRoute:
+    DashboardTenantContractsRouteRouteWithChildren,
+  DashboardTenantSectionRoute: DashboardTenantSectionRoute,
+  DashboardTenantDoctorsManagerRoute: DashboardTenantDoctorsManagerRoute,
   DashboardAuditLogsIndexRoute: DashboardAuditLogsIndexRoute,
 }
 

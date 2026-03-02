@@ -12,6 +12,9 @@ import type {
   TenantDetailsRead,
   TenantDetailsUpdate,
   DoctorRead,
+  DoctorCreateForTenant,
+  DoctorUpdate,
+  DoctorAssignableRead,
   TenantDepartmentWithServicesRead,
   TenantDepartmentsBulkRequest,
   ProductRead,
@@ -95,6 +98,16 @@ export const tenantsService = {
   updateTenantDetails: (data: TenantDetailsUpdate) =>
     api.put<TenantDetailsRead>("/api/tenants/details", data),
   listTenantDoctors: () => api.get<DoctorRead[]>("/api/tenants/doctors"),
+  listAssignableDoctors: (excludeTenantId: number) =>
+    api.get<DoctorAssignableRead[]>(
+      `/api/users/doctors?exclude_tenant_id=${encodeURIComponent(String(excludeTenantId))}`,
+    ),
+  createTenantDoctor: (data: DoctorCreateForTenant) =>
+    api.post<DoctorRead>("/api/tenants/doctors", data),
+  updateTenantDoctor: (userId: number, data: DoctorUpdate) =>
+    api.put<DoctorRead>(`/api/tenants/doctors/${userId}`, data),
+  deleteTenantDoctor: (userId: number) =>
+    api.delete<void>(`/api/tenants/doctors/${userId}`),
   listTenantDepartments: () =>
     api.get<TenantDepartmentWithServicesRead[]>("/api/tenants/departments"),
   replaceTenantDepartments: (data: TenantDepartmentsBulkRequest) =>
