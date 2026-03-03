@@ -5,25 +5,11 @@ from pydantic import BaseModel
 from app.models import TenantSubscription, TenantManager, SubscriptionPlan, Doctor, Enrollment, TenantDepartment
 from app.models.tenant_subscription import SubscriptionStatus
 from app.models.enrollment import EnrollmentStatus
-from app.schemas.tenant_subscription import TenantSubscriptionRead
+from app.schemas.tenant_subscription import TenantSubscriptionRead, ChangePlanRequest, SubscriptionStatsRead
 from app.db import get_db
 from sqlalchemy.orm import Session
 from app.auth.auth_utils import get_current_user
 from datetime import datetime, timezone, timedelta
-
-
-class ChangePlanRequest(BaseModel):
-    """Request to change subscription plan"""
-    new_plan_id: int
-
-
-class SubscriptionStatsRead(BaseModel):
-    """Response with resource usage stats and current plan info"""
-    doctors_used: int
-    patients_used: int
-    departments_used: int
-    current_plan_id: int
-    current_plan_name: str
 
 
 router = APIRouter(prefix="/subscription_plan", tags=["Nexus Health Subscription Plans"])

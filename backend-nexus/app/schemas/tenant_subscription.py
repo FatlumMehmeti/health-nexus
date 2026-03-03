@@ -2,6 +2,18 @@ from pydantic import BaseModel, ConfigDict
 from datetime import datetime
 from typing import Optional
 
+class ChangePlanRequest(BaseModel):
+    """Request to change subscription plan"""
+    new_plan_id: int
+
+
+class SubscriptionStatsRead(BaseModel):
+    """Response with resource usage stats and current plan info"""
+    doctors_used: int
+    patients_used: int
+    departments_used: int
+    current_plan_id: int
+    current_plan_name: str
 
 class TenantSubscriptionBase(BaseModel):
     tenant_id: int
