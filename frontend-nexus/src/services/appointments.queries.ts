@@ -1,5 +1,12 @@
 import { useQuery } from '@tanstack/react-query'
-import { getDoctorAvailability } from './appointments.service'
+import { getDoctorAvailability, getTenantDoctors } from './appointments.service'
+
+export function useTenantDoctors() {
+  return useQuery({
+    queryKey: ['tenant-doctors'],
+    queryFn: getTenantDoctors,
+  })
+}
 
 export function useDoctorAvailability(doctorId: string, date: string) {
   return useQuery({

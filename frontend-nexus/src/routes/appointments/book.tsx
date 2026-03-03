@@ -1,10 +1,11 @@
-import { createFileRoute, redirect, useNavigate, Link } from '@tanstack/react-router'
+import { createFileRoute, redirect, Link } from '@tanstack/react-router'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useAuthStore } from '@/stores/auth.store'
 import { checkEnrollment } from '@/services/auth.service'
-import { useState } from 'react'
-import { useDoctorAvailability } from '@/services/appointments.queries'
+import { useState, useEffect } from 'react'
+import { useDoctorAvailability, useTenantDoctors } from '@/services/appointments.queries'
 import { useBookAppointment } from '@/services/appointments.mutations'
 import { format } from 'date-fns'
 import { Calendar } from '@/components/ui/calendar'
@@ -18,12 +19,6 @@ export const Route = createFileRoute('/appointments/book')({
 
     // Re-read state after ensureAuth (it may have updated)
     const state = useAuthStore.getState()
-
-    // Hardcode bypass for seeded enrolled user: client.user@seed.com with tenantId 1
-    if (state.user?.email === 'client.user@seed.com') {
-      if (!state.tenantId) useAuthStore.setState({ tenantId: '1' })
-      return
-    }
 
     if (!state.user) {
       throw redirect({ to: '/login', search: { reason: undefined, redirect: '/appointments/book' } })
@@ -48,11 +43,19 @@ export const Route = createFileRoute('/appointments/book')({
 })
 
 function AppointmentBookingPage() {
-  // Hardcoded doctorId for demo (from seed data: doctor.one@seed.com is user_id=3)
-  const doctorId = '3'
-  const { tenantId, user } = useAuthStore()
+  const { tenantId } = useAuthStore()
+  const [doctorId, setDoctorId] = useState<string>('')
   const [date, setDate] = useState<Date | undefined>(undefined)
   const formattedDate = date ? format(date, 'yyyy-MM-dd') : ''
+
+  const { data: doctors, isLoading: doctorsLoading } = useTenantDoctors()
+
+  // Auto-select the first available doctor when the list loads
+  useEffect(() => {
+    if (doctors && doctors.length > 0 && !doctorId) {
+      setDoctorId(doctors[0].id)
+    }
+  }, [doctors, doctorId])
   
   const {
     data: availability,
@@ -119,6 +122,34 @@ function AppointmentBookingPage() {
 
       {/* Main Content */}
       <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
+
+        {/* Doctor Selector */}
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle className="text-lg font-semibold text-foreground">Select Doctor</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {doctorsLoading ? (
+              <p className="text-sm text-muted-foreground">Loading doctors...</p>
+            ) : doctors && doctors.length > 0 ? (
+              <Select value={doctorId} onValueChange={setDoctorId}>
+                <SelectTrigger className="w-full sm:w-80">
+                  <SelectValue placeholder="Choose a doctor" />
+                </SelectTrigger>
+                <SelectContent>
+                  {doctors.map((doc) => (
+                    <SelectItem key={doc.id} value={doc.id}>
+                      {doc.name}{doc.specialization ? ` — ${doc.specialization}` : ''}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : (
+              <p className="text-sm text-destructive">No doctors available for your clinic.</p>
+            )}
+          </CardContent>
+        </Card>
+
         <div className="grid gap-6 md:grid-cols-5">
           {/* Calendar Section */}
           <div className="md:col-span-2">

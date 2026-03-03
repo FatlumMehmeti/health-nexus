@@ -9,6 +9,16 @@ export interface DoctorAvailabilityResponse {
   slots: DoctorAvailabilitySlot[]
 }
 
+export interface TenantDoctor {
+  id: string
+  name: string
+  specialization: string | null
+}
+
+export async function getTenantDoctors(): Promise<TenantDoctor[]> {
+  return apiFetch<TenantDoctor[]>('/appointments/tenant-doctors', { method: 'GET' })
+}
+
 export async function getDoctorAvailability(doctorId: string, date: string): Promise<DoctorAvailabilityResponse> {
   // Backend returns array of ISO datetimes
   const datetimes = await apiFetch<string[]>(

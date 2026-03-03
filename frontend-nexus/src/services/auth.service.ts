@@ -1,10 +1,11 @@
-// Checks if the current user is enrolled (patient) for the current tenant
+// Checks if the current user is enrolled (patient) for the current tenant.
+// FIX: apiFetch() already parses JSON and returns the data object directly —
+// the old code treated it as a raw Response (res.ok / res.json()), which always
+// evaluated to false and redirected every patient to /enrollment.
 export async function checkEnrollment(tenantId: string): Promise<boolean> {
   try {
     const { apiFetch } = await import('@/lib/api-client')
-    const res = await apiFetch(`/appointments/enrollment-status?tenant_id=${tenantId}`)
-    if (!(res instanceof Response) || !res.ok) return false
-    const data = await res.json()
+    const data = await apiFetch<{ enrolled: boolean }>(`/appointments/enrollment-status?tenant_id=${tenantId}`)
     return !!data.enrolled
   } catch {
     return false

@@ -838,30 +838,43 @@ SEED_TENANT_DEPARTMENTS = [
 ]
 
 # user_email, tenant_name, specialization, licence_number, education, working_hours (optional)
+# working_hours keys must match strftime("%A").lower() → "monday", "tuesday", etc.
+_WEEKDAY_HOURS = {
+    "monday": ["09:00", "17:00"],
+    "tuesday": ["09:00", "17:00"],
+    "wednesday": ["09:00", "17:00"],
+    "thursday": ["09:00", "17:00"],
+    "friday": ["09:00", "17:00"],
+}
+
 SEED_DOCTORS = [
     {
         "user_email": "doctor.one@seed.com",
         "tenant_name": "Bluestone Clinic",
         "specialization": "General Practice",
         "licence_number": "MD-BLU-001",
+        "working_hours": _WEEKDAY_HOURS,
     },
     {
         "user_email": "doctor.two@seed.com",
         "tenant_name": "Bluestone Clinic",
         "specialization": "Cardiology",
         "licence_number": "MD-BLU-002",
+        "working_hours": _WEEKDAY_HOURS,
     },
     {
         "user_email": "doctor.three@seed.com",
         "tenant_name": "Riverside Health Partners",
         "specialization": "General Practice",
         "licence_number": "MD-RIV-001",
+        "working_hours": _WEEKDAY_HOURS,
     },
     {
         "user_email": "doctor.four@seed.com",
         "tenant_name": "Riverside Health Partners",
         "specialization": "Pediatrics",
         "licence_number": "MD-RIV-002",
+        "working_hours": _WEEKDAY_HOURS,
     },
     # Apex Medical Group - full example
     {
@@ -871,11 +884,11 @@ SEED_DOCTORS = [
         "licence_number": "MD-APX-001",
         "education": "MD, Harvard Medical School; Residency at Johns Hopkins",
         "working_hours": {
-            "mon": {"start": "08:00", "end": "17:00"},
-            "tue": {"start": "08:00", "end": "17:00"},
-            "wed": {"start": "08:00", "end": "17:00"},
-            "thu": {"start": "08:00", "end": "17:00"},
-            "fri": {"start": "08:00", "end": "15:00"},
+            "monday": ["08:00", "17:00"],
+            "tuesday": ["08:00", "17:00"],
+            "wednesday": ["08:00", "17:00"],
+            "thursday": ["08:00", "17:00"],
+            "friday": ["08:00", "15:00"],
         },
     },
     {
@@ -885,9 +898,9 @@ SEED_DOCTORS = [
         "licence_number": "MD-APX-002",
         "education": "MD, Stanford; Dermatology fellowship at Mayo Clinic",
         "working_hours": {
-            "mon": {"start": "09:00", "end": "16:00"},
-            "wed": {"start": "09:00", "end": "16:00"},
-            "fri": {"start": "09:00", "end": "14:00"},
+            "monday": ["09:00", "16:00"],
+            "wednesday": ["09:00", "16:00"],
+            "friday": ["09:00", "14:00"],
         },
     },
 ]
@@ -1300,6 +1313,7 @@ def seed_patients(session, users_by_email):
         patient.birthdate = payload["birthdate"]
         patient.gender = payload["gender"]
         patient.blood_type = payload["blood_type"]
+    session.flush()
 
 
 def seed_user_tenant_plans(session):
@@ -1337,6 +1351,7 @@ def seed_user_tenant_plans(session):
         plan.max_appointments = payload["max_appointments"]
         plan.max_consultations = payload["max_consultations"]
         plan.is_active = payload["is_active"]
+    session.flush()
 
 
 def seed_enrollments(session, users_by_email):
@@ -1578,6 +1593,7 @@ def _get_tenant_department(
 
 
 def seed_doctors(session, users_by_email, tenants_by_name):
+    departments_by_name = {d.name: d for d in session.query(Department).all()}
     existing_doctor_user_ids = {d.user_id for d in session.query(Doctor).all()}
     for payload in SEED_DOCTORS:
         user = users_by_email.get(payload["user_email"])
@@ -1586,10 +1602,29 @@ def seed_doctors(session, users_by_email, tenants_by_name):
             continue
         if user.id in existing_doctor_user_ids:
             continue
+        # Look up tenant_department via specialization → department name
+        dept = departments_by_name.get(payload.get("specialization"))
+        td = None
+        if dept:
+            td = (
+                session.query(TenantDepartment)
+                .filter(
+                    TenantDepartment.tenant_id == tenant.id,
+                    TenantDepartment.department_id == dept.id,
+                )
+                .first()
+            )
+        if not td:
+            print(
+                f"  [seed_doctors] Skip {payload['user_email']}: "
+                f"no TenantDepartment for {payload['tenant_name']}/{payload.get('specialization')}"
+            )
+            continue
         session.add(
             Doctor(
                 user_id=user.id,
                 tenant_id=tenant.id,
+                tenant_department_id=td.id,
                 specialization=payload.get("specialization"),
                 licence_number=payload.get("licence_number"),
                 education=payload.get("education"),

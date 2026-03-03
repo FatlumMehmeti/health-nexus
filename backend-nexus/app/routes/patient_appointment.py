@@ -9,6 +9,7 @@ from app.models.appointment import Appointment, AppointmentStatus
 from app.models.doctor import Doctor
 from app.models.enrollment import Enrollment, EnrollmentStatus
 from app.models.patient import Patient
+from app.models.user import User
 from app.schemas.appointment import AppointmentCreate
 from app.routes.appointment import (
     _ensure_not_past,
@@ -90,6 +91,32 @@ def check_enrollment_status(
         return {"enrolled": False, "reason": "enrollment_expired"}
 
     return {"enrolled": True}
+
+
+@router.get("/tenant-doctors", response_model=list[dict])
+def list_tenant_doctors(
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """Return active doctors in the current user's tenant (derived from JWT)."""
+    tenant_id = current_user.get("tenant_id")
+    if tenant_id is None:
+        raise HTTPException(400, "No tenant_id in token")
+
+    doctors = (
+        db.query(Doctor)
+        .join(User, Doctor.user_id == User.id)
+        .filter(Doctor.tenant_id == tenant_id, Doctor.is_active == True)
+        .all()
+    )
+    return [
+        {
+            "id": str(d.user_id),
+            "name": f"Dr. {d.user.first_name} {d.user.last_name}",
+            "specialization": d.specialization,
+        }
+        for d in doctors
+    ]
 
 
 @router.post("/book", response_model=dict)
