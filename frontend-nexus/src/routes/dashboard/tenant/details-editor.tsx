@@ -26,6 +26,7 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { TenantDetailsFormState } from "./constants";
 
+
 interface TenantDetailsEditorProps {
   onSaved: () => void;
 }
@@ -54,16 +55,42 @@ export function TenantDetailsEditor({ onSaved }: TenantDetailsEditorProps) {
   });
 
   const [form, setForm] = useState<TenantDetailsFormState>(emptyDetailsForm());
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [heroFile, setHeroFile] = useState<File | null>(null);
+  const [logoPreviewUrl, setLogoPreviewUrl] = useState<string | null>(null);
+  const [heroPreviewUrl, setHeroPreviewUrl] = useState<string | null>(null);
 
   useEffect(() => {
     if (detailsQuery.data === undefined) return;
     setForm(mapDetailsToForm(detailsQuery.data));
+    setLogoFile(null);
+    setHeroFile(null);
   }, [detailsQuery.data]);
 
-  const selectedFont =
-    fontsQuery.data?.find((f) => f.id === form.font_id) ?? null;
+  useEffect(() => {
+    if (!logoFile) {
+      setLogoPreviewUrl(null);
+      return;
+    }
+    const objectUrl = URL.createObjectURL(logoFile);
+    setLogoPreviewUrl(objectUrl);
+    return () => URL.revokeObjectURL(objectUrl);
+  }, [logoFile]);
+
+  useEffect(() => {
+    if (!heroFile) {
+      setHeroPreviewUrl(null);
+      return;
+    }
+    const objectUrl = URL.createObjectURL(heroFile);
+    setHeroPreviewUrl(objectUrl);
+    return () => URL.revokeObjectURL(objectUrl);
+  }, [heroFile]);
+
   const selectedBrand =
     brandsQuery.data?.find((b) => b.id === form.brand_id) ?? null;
+  const selectedFont =
+    fontsQuery.data?.find((f) => f.id === form.font_id) ?? null;
 
   const saveMutation = useMutation({
     mutationFn: (payload: Parameters<typeof tenantsService.updateTenantDetails>[0]) =>
@@ -87,11 +114,15 @@ export function TenantDetailsEditor({ onSaved }: TenantDetailsEditorProps) {
 
   const handleSave = () => {
     const payload = diffTenantDetailsPayload(form, detailsQuery.data ?? null);
-    if (Object.keys(payload).length === 0) {
+    if (Object.keys(payload).length === 0 && !logoFile && !heroFile) {
       toast.info("No changes to save");
       return;
     }
-    saveMutation.mutate(payload);
+    saveMutation.mutate({
+      ...payload,
+      ...(logoFile ? { logo_file: logoFile } : {}),
+      ...(heroFile ? { image_file: heroFile } : {}),
+    });
   };
 
   return (
@@ -118,24 +149,24 @@ export function TenantDetailsEditor({ onSaved }: TenantDetailsEditorProps) {
               <div className="space-y-3 lg:sticky lg:top-24 lg:self-start">
                 <Label>About Preview</Label>
                 <TenantBrandPreview
-                  title={form.title}
-                  moto={form.moto}
-                  aboutText={form.about_text}
-                  logo={form.logo}
-                  image={form.image}
-                  backgroundColor={selectedBrand?.brand_color_background}
-                  foregroundColor={selectedBrand?.brand_color_foreground}
-                  borderColor={selectedBrand?.brand_color_muted}
-                  accentColor={
-                    selectedBrand?.brand_color_secondary ??
-                    selectedBrand?.brand_color_primary
-                  }
-                  headerFontFamily={selectedFont?.header_font_family}
-                  bodyFontFamily={selectedFont?.body_font_family}
-                  fallbackTitle="Landing section title"
-                  fallbackMoto="Moto preview"
-                  fallbackAbout="Your about text preview will appear here."
-                  emptyHeroLabel="Hero image preview"
+                  form={{
+                    title: form.title,
+                    moto: form.moto,
+                    aboutText: form.about_text,
+                    logo: logoPreviewUrl ?? form.logo,
+                    image: heroPreviewUrl ?? form.image,
+                  }}
+                  brand={{
+                    backgroundColor: selectedBrand?.brand_color_background,
+                    foregroundColor: selectedBrand?.brand_color_foreground,
+                    borderColor: selectedBrand?.brand_color_muted,
+                    accentColor:
+                      selectedBrand?.brand_color_secondary ??
+                      selectedBrand?.brand_color_primary,
+                    headerFontFamily: selectedFont?.header_font_family,
+                    bodyFontFamily: selectedFont?.body_font_family,
+                  }}
+                  showReadMore={false}
                 />
                 <p className="text-xs text-muted-foreground">
                   Live preview updates as you type using the selected font and
@@ -146,26 +177,34 @@ export function TenantDetailsEditor({ onSaved }: TenantDetailsEditorProps) {
               <div className="space-y-6">
                 <div className="grid gap-4 md:grid-cols-2">
                   <Field>
-                    <Label htmlFor="tenant-logo">Logo URL</Label>
+                    <Label htmlFor="tenant-logo-file">Logo Image</Label>
                     <Input
-                      id="tenant-logo"
-                      value={form.logo}
-                      onChange={(e) =>
-                        setForm((s) => ({ ...s, logo: e.target.value }))
-                      }
-                      placeholder="https://..."
+                      id="tenant-logo-file"
+                      type="file"
+                      accept="image/png,image/jpeg,image/jpg,image/webp"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0] ?? null;
+                        setLogoFile(file);
+                      }}
                     />
+                    <p className="text-xs text-muted-foreground">
+                      PNG, JPG, or WebP up to 5MB.
+                    </p>
                   </Field>
                   <Field>
-                    <Label htmlFor="tenant-image">Hero Image URL</Label>
+                    <Label htmlFor="tenant-image-file">Hero Image</Label>
                     <Input
-                      id="tenant-image"
-                      value={form.image}
-                      onChange={(e) =>
-                        setForm((s) => ({ ...s, image: e.target.value }))
-                      }
-                      placeholder="https://..."
+                      id="tenant-image-file"
+                      type="file"
+                      accept="image/png,image/jpeg,image/jpg,image/webp"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0] ?? null;
+                        setHeroFile(file);
+                      }}
                     />
+                    <p className="text-xs text-muted-foreground">
+                      PNG, JPG, or WebP up to 5MB.
+                    </p>
                   </Field>
                   <Field>
                     <Label htmlFor="tenant-moto">Moto</Label>
@@ -310,9 +349,11 @@ export function TenantDetailsEditor({ onSaved }: TenantDetailsEditorProps) {
                 <div className="flex justify-end gap-2">
                   <Button
                     variant="outline"
-                    onClick={() =>
-                      setForm(mapDetailsToForm(detailsQuery.data ?? null))
-                    }
+                    onClick={() => {
+                      setForm(mapDetailsToForm(detailsQuery.data ?? null));
+                      setLogoFile(null);
+                      setHeroFile(null);
+                    }}
                   >
                     Reset
                   </Button>

@@ -159,8 +159,15 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
     >
       <div className="pointer-events-none fixed inset-0 -z-10">
         <div
-          className="absolute inset-0 bg-linear-to-b from-primary/5 via-background to-background"
-          style={brand.background ? { backgroundColor: brand.background } : undefined}
+          className="
+            absolute inset-0 
+            bg-gradient-to-br 
+            from-[#1d2333] via-[#1c2130] to-[#375483] 
+            brightness-50 
+            -rotate-6 
+            scale-200
+            z-[-1]
+          "
         />
       </div>
 

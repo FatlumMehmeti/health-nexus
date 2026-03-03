@@ -99,6 +99,14 @@ export interface TenantDetailsUpdate {
   font_key?: string | null;
 }
 
+/** Multipart update payload for tenant details, supports file upload for logo/hero image. */
+export interface TenantDetailsMultipartUpdate extends TenantDetailsUpdate {
+  logo_file?: File | null;
+  image_file?: File | null;
+  clear_logo?: boolean;
+  clear_image?: boolean;
+}
+
 /** Read-only doctors list on tenant manager page (includes name for dropdowns) */
 export interface DoctorRead {
   user_id: number;

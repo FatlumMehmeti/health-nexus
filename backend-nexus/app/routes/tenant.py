@@ -2,7 +2,7 @@
 
 from decimal import Decimal
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
 from sqlalchemy.orm import Session
 
 from app.auth.auth_utils import require_tenant_from_token
@@ -18,7 +18,7 @@ from app.models.doctor import Doctor
 from app.models.role import Role
 from app.models.user import User
 
-from app.schemas.tenant_details import TenantDetailsRead, TenantDetailsUpdate
+from app.schemas.tenant_details import TenantDetailsRead
 from app.schemas.doctor import DoctorRead, DoctorCreateForTenant, DoctorUpdate
 from app.schemas.tenant_department import (
     TenantDepartmentRead,
@@ -39,6 +39,7 @@ from app.schemas.landing import (
     TenantPublicCard,
 )
 from app.models.user_tenant_plan import UserTenantPlan
+from app.lib.storage import save_tenant_brand_asset
 
 router = APIRouter(prefix="/tenants", tags=["Tenants"])
 
@@ -308,23 +309,86 @@ def get_tenant_details(
 
 
 @router.put("/details", response_model=TenantDetailsRead)
-def upsert_tenant_details(
-    payload: TenantDetailsUpdate,
+async def upsert_tenant_details(
+    logo: UploadFile | None = File(default=None),
+    image: UploadFile | None = File(default=None),
+    logo_url: str | None = Form(default=None),
+    image_url: str | None = Form(default=None),
+    clear_logo: bool = Form(default=False),
+    clear_image: bool = Form(default=False),
+    moto: str | None = Form(default=None),
+    brand_id: int | None = Form(default=None),
+    font_id: int | None = Form(default=None),
+    title: str | None = Form(default=None),
+    about_text: str | None = Form(default=None),
     db: Session = Depends(get_db),
     auth: tuple = Depends(require_tenant_from_token),
 ):
     """Upsert current user's tenant details (tenant_id from JWT)."""
+    allowed_image_types = {"image/png", "image/jpeg", "image/jpg", "image/webp"}
+    max_image_size_bytes = 5 * 1024 * 1024  # 5MB
+
     _, tenant_id = auth
     _assert_tenant_exists(db, tenant_id)
     details = db.query(TenantDetails).filter(
         TenantDetails.tenant_id == tenant_id).first()
-    data = payload.model_dump(exclude_unset=True)
+
     if details is None:
-        details = TenantDetails(tenant_id=tenant_id, **data)
+        details = TenantDetails(tenant_id=tenant_id)
         db.add(details)
-    else:
-        for k, v in data.items():
-            setattr(details, k, v)
+
+    if logo_url is not None:
+        details.logo = logo_url
+    if image_url is not None:
+        details.image = image_url
+    if clear_logo:
+        details.logo = None
+    if clear_image:
+        details.image = None
+
+    if moto is not None:
+        details.moto = moto
+    if brand_id is not None:
+        details.brand_id = brand_id
+    if font_id is not None:
+        details.font_id = font_id
+    if title is not None:
+        details.title = title
+    if about_text is not None:
+        details.about_text = about_text
+
+    if logo is not None:
+        logo_content = await logo.read()
+        if not logo_content:
+            raise HTTPException(status_code=400, detail="Logo image is empty")
+        if len(logo_content) > max_image_size_bytes:
+            raise HTTPException(status_code=400, detail="Logo image must be under 5MB")
+        logo_content_type = (logo.content_type or "").lower()
+        if logo_content_type not in allowed_image_types:
+            raise HTTPException(status_code=400, detail="Logo image type is not supported")
+        details.logo = save_tenant_brand_asset(
+            tenant_id=tenant_id,
+            kind="logo",
+            content=logo_content,
+            content_type=logo_content_type,
+        )
+
+    if image is not None:
+        image_content = await image.read()
+        if not image_content:
+            raise HTTPException(status_code=400, detail="Hero image is empty")
+        if len(image_content) > max_image_size_bytes:
+            raise HTTPException(status_code=400, detail="Hero image must be under 5MB")
+        image_content_type = (image.content_type or "").lower()
+        if image_content_type not in allowed_image_types:
+            raise HTTPException(status_code=400, detail="Hero image type is not supported")
+        details.image = save_tenant_brand_asset(
+            tenant_id=tenant_id,
+            kind="hero",
+            content=image_content,
+            content_type=image_content_type,
+        )
+
     db.commit()
     db.refresh(details)
     return details

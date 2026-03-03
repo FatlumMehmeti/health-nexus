@@ -130,7 +130,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     if (role === "DOCTOR" && user?.id) {
       baseItems.push({
         title: "My Contract",
-        url: `/dashboard/ontract-sign-doctor/${user.id}`,
+        url: `/dashboard/contract-sign-doctor/${user.id}`,
         icon: IconFileDescription,
       });
     }

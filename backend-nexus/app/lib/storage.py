@@ -11,6 +11,7 @@ SignerRole = Literal["doctor", "hospital"]
 
 # Subfolder for contract signatures
 SIGNATURES_SUBDIR = "signatures"
+TENANT_BRANDING_SUBDIR = "tenant-branding"
 
 
 def _ext_from_content_type(content_type: str) -> str:
@@ -43,6 +44,23 @@ def save_signature(contract_id: int, role: SignerRole, content: bytes, content_t
 
     # Return relative path for DB (no leading slash)
     return f"{SIGNATURES_SUBDIR}/{name}"
+
+
+def save_tenant_brand_asset(tenant_id: int, kind: Literal["logo", "hero"], content: bytes, content_type: str) -> str:
+    """
+    Save tenant branding asset image (logo/hero) and return public URL path mounted by FastAPI.
+    Example return: /uploads/tenant-branding/tenant_1_logo_xxxx.png
+    """
+    root = Path(get_storage_root())
+    subdir = root / TENANT_BRANDING_SUBDIR
+    subdir.mkdir(parents=True, exist_ok=True)
+
+    ext = _ext_from_content_type(content_type)
+    name = f"tenant_{tenant_id}_{kind}_{uuid.uuid4().hex[:8]}.{ext}"
+    path = subdir / name
+    path.write_bytes(content)
+
+    return f"/uploads/{TENANT_BRANDING_SUBDIR}/{name}"
 
 
 def get_stored_file(storage_path: str) -> Path | None:

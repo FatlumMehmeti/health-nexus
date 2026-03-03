@@ -23,7 +23,7 @@ import { requireAuth } from "@/lib/guards/requireAuth";
 import { CheckIcon } from "lucide-react";
 
 export const Route = createFileRoute(
-  "/dashboard/ontract-sign-doctor/$contractId",
+  "/dashboard/contract-sign-doctor/$contractId",
 )({
   beforeLoad: requireAuth(),
   component: ContractSignDoctorPage,

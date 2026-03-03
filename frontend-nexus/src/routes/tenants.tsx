@@ -61,20 +61,22 @@ function TenantSelectorPage() {
                     className="flex flex-col focus-visible:outline-none"
                   >
                     <TenantBrandPreview
-                      className="h-full cursor-pointer transition hover:-translate-y-0.5 hover:border-primary/60 hover:shadow-md"
-                      title={tenant.name}
-                      moto={tenant.moto}
-                      aboutText={tenant.about_text}
-                      logo={tenant.logo}
-                      image={tenant.image}
-                      backgroundColor={tenant.brand_color_background}
-                      foregroundColor={tenant.brand_color_foreground}
-                      borderColor={tenant.brand_color_muted}
-                      accentColor={tenant.brand_color_secondary ?? tenant.brand_color_primary}
-                      fallbackTitle={tenant.name}
-                      fallbackMoto={tenant.name}
-                      fallbackAbout="Continue to branded landing for this tenant."
-                      emptyHeroLabel="No hero image"
+                      className="h-[420px] cursor-pointer transition hover:-translate-y-0.5 hover:border-primary/60 hover:shadow-md"
+                      clampAboutText
+                      form={{
+                        title: tenant.name,
+                        moto: tenant.moto,
+                        aboutText: tenant.about_text,
+                        logo: tenant.logo,
+                        image: tenant.image,
+                      }}
+                      brand={{
+                        backgroundColor: tenant.brand_color_background,
+                        foregroundColor: tenant.brand_color_foreground,
+                        borderColor: tenant.brand_color_muted,
+                        accentColor:
+                          tenant.brand_color_secondary ?? tenant.brand_color_primary,
+                      }}
                     />
                   </Link>
                 );
