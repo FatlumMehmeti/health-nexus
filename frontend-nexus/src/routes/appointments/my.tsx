@@ -16,9 +16,9 @@ export const Route = createFileRoute('/appointments/my')({
     if (!state.user) {
       throw redirect({ to: '/login', search: { reason: undefined, redirect: '/appointments/my' } })
     }
-    // Seed-user shortcut
+    // Seed-user shortcut: client.user belongs to tenant 2 (Riverside Health Partners)
     if (state.user.email === 'client.user@seed.com' && !state.tenantId) {
-      useAuthStore.setState({ tenantId: '1' })
+      useAuthStore.setState({ tenantId: '2' })
     }
   },
   component: MyAppointmentsPage,
@@ -26,18 +26,43 @@ export const Route = createFileRoute('/appointments/my')({
 
 type FilterStatus = 'ALL' | AppointmentStatus
 
+const PAGE_SIZE = 3
+
 function toNaiveDate(iso: string): Date {
   return new Date(iso.replace(/Z$/, '').replace(/[+-]\d{2}:\d{2}$/, ''))
+}
+
+function Pagination({ total, page, onPageChange }: { total: number; page: number; onPageChange: (p: number) => void }) {
+  const totalPages = Math.ceil(total / PAGE_SIZE)
+  if (totalPages <= 1) return null
+  return (
+    <div className="flex items-center justify-center gap-2 pt-4">
+      <Button variant="outline" size="sm" disabled={page === 1} onClick={() => onPageChange(page - 1)}>Previous</Button>
+      <span className="text-sm text-muted-foreground">{page} / {totalPages}</span>
+      <Button variant="outline" size="sm" disabled={page === totalPages} onClick={() => onPageChange(page + 1)}>Next</Button>
+    </div>
+  )
 }
 
 function MyAppointmentsPage() {
   const { data: appointments = [], isLoading, isError, error } = usePatientAppointments()
   const [filter, setFilter] = useState<FilterStatus>('ALL')
+  const [page, setPage] = useState(1)
 
   const filtered = useMemo(() => {
     if (filter === 'ALL') return appointments
     return appointments.filter((a) => a.status === filter)
   }, [appointments, filter])
+
+  const paginated = useMemo(
+    () => filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
+    [filtered, page],
+  )
+
+  const handleFilterChange = (f: FilterStatus) => {
+    setFilter(f)
+    setPage(1)
+  }
 
   const filters: FilterStatus[] = ['ALL', 'REQUESTED', 'CONFIRMED', 'COMPLETED', 'CANCELLED']
 
@@ -81,7 +106,7 @@ function MyAppointmentsPage() {
           {filters.map((f) => (
             <button
               key={f}
-              onClick={() => setFilter(f)}
+              onClick={() => handleFilterChange(f)}
               className={`rounded-full px-3 py-1 text-xs font-medium transition-colors border ${
                 filter === f
                   ? 'bg-primary text-primary-foreground border-primary'
@@ -117,9 +142,10 @@ function MyAppointmentsPage() {
           </Card>
         ) : (
           <div className="space-y-3">
-            {filtered.map((appt) => (
+            {paginated.map((appt) => (
               <AppointmentRow key={appt.id} appointment={appt} />
             ))}
+            <Pagination total={filtered.length} page={page} onPageChange={setPage} />
           </div>
         )}
       </div>

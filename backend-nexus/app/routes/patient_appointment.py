@@ -114,6 +114,7 @@ def list_tenant_doctors(
             "id": str(d.user_id),
             "name": f"Dr. {d.user.first_name} {d.user.last_name}",
             "specialization": d.specialization,
+            "department_id": str(d.tenant_department_id),
         }
         for d in doctors
     ]

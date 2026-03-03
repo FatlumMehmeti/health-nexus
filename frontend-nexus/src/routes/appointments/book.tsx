@@ -56,6 +56,9 @@ function AppointmentBookingPage() {
       setDoctorId(doctors[0].id)
     }
   }, [doctors, doctorId])
+
+  // Look up the full doctor object for the currently selected doctorId
+  const selectedDoctor = doctors?.find((d) => d.id === doctorId)
   
   const {
     data: availability,
@@ -79,6 +82,7 @@ function AppointmentBookingPage() {
     bookAppointment.mutate({
       tenant_id: tenantId,
       doctor_id: doctorId,
+      department_id: selectedDoctor?.department_id,
       appointment_datetime: isoDatetime,
     })
   }

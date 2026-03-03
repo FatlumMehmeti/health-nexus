@@ -16,7 +16,7 @@ function toNaiveDate(iso: string): Date {
   return new Date(iso.replace(/Z$/, '').replace(/[+-]\d{2}:\d{2}$/, ''))
 }
 
-const PAGE_SIZE = 5
+const PAGE_SIZE = 3
 
 function Pagination({ total, page, onPageChange }: { total: number; page: number; onPageChange: (p: number) => void }) {
   const totalPages = Math.ceil(total / PAGE_SIZE)

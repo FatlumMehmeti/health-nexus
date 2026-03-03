@@ -447,8 +447,8 @@ SEED_USER_TENANT_PLANS = [
         "description": "Starter plan",
         "price": 0,
         "duration": 30,
-        "max_appointments": 2,
-        "max_consultations": 2,
+        "max_appointments": 10,
+        "max_consultations": 10,
         "is_active": True,
     },
     {
@@ -467,8 +467,8 @@ SEED_USER_TENANT_PLANS = [
         "description": "Starter plan",
         "price": 0,
         "duration": 30,
-        "max_appointments": 2,
-        "max_consultations": 2,
+        "max_appointments": 10,
+        "max_consultations": 10,
         "is_active": True,
     },
     {
@@ -477,8 +477,8 @@ SEED_USER_TENANT_PLANS = [
         "description": "Starter plan",
         "price": 0,
         "duration": 30,
-        "max_appointments": 2,
-        "max_consultations": 2,
+        "max_appointments": 10,
+        "max_consultations": 10,
         "is_active": True,
     },
 ]

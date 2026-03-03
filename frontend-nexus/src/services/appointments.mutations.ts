@@ -46,6 +46,8 @@ export function useBookAppointment() {
     onSuccess: (result) => {
       toast.success('Appointment booked successfully!')
       queryClient.invalidateQueries({ queryKey: ['doctor-availability'] })
+      queryClient.invalidateQueries({ queryKey: ['patient-appointments'] })
+      queryClient.invalidateQueries({ queryKey: ['doctor-appointments'] })
       window.location.assign(`/appointments/confirmation?appointmentId=${result.id}`)
     },
     onError: (error: any) => {

@@ -13,6 +13,7 @@ export interface TenantDoctor {
   id: string
   name: string
   specialization: string | null
+  department_id: string
 }
 
 export async function getTenantDoctors(): Promise<TenantDoctor[]> {
