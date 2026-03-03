@@ -46,10 +46,9 @@ export default function DoctorAppointmentsPage() {
 
   if (isLoading) return <div className="p-8">Loading...</div>
   if (isError) return <div className="p-8 text-red-500">{(error as Error)?.message || 'Error loading appointments'}</div>
-  if (!data || data.length === 0) return <div className="p-8">No appointments found.</div>
 
-  const requested = data.filter((a) => a.status === 'REQUESTED')
-  const confirmed = data.filter((a) => a.status === 'CONFIRMED')
+  const requested = data?.filter((a) => a.status === 'REQUESTED') ?? []
+  const confirmed = data?.filter((a) => a.status === 'CONFIRMED') ?? []
 
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-4 py-10">

@@ -103,6 +103,11 @@ function LoginPage() {
 
       // Dashboard-capable roles use the standard path helper
       if (can({ role: role ?? undefined }, "DASHBOARD_HOME")) {
+        // Doctors land directly on their appointments management page
+        if (role === 'DOCTOR') {
+          await navigate({ to: '/dashboard/appointments', replace: true })
+          return
+        }
         await navigate({ to: "/dashboard", replace: true });
         return;
       }
