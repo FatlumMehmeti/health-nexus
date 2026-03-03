@@ -2,7 +2,7 @@
 
 from decimal import Decimal
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
 from sqlalchemy.orm import Session
 
 from app.auth.auth_utils import require_tenant_from_token
@@ -18,7 +18,7 @@ from app.models.doctor import Doctor
 from app.models.role import Role
 from app.models.user import User
 
-from app.schemas.tenant_details import TenantDetailsRead, TenantDetailsUpdate
+from app.schemas.tenant_details import TenantDetailsRead
 from app.schemas.doctor import DoctorRead, DoctorCreateForTenant, DoctorUpdate
 from app.schemas.tenant_department import (
     TenantDepartmentRead,
@@ -35,8 +35,11 @@ from app.schemas.landing import (
     ServiceLandingItem,
     DoctorLandingItem,
     ProductLandingItem,
+    PlanLandingItem,
     TenantPublicCard,
 )
+from app.models.user_tenant_plan import UserTenantPlan
+from app.lib.storage import save_tenant_brand_asset
 
 router = APIRouter(prefix="/tenants", tags=["Tenants"])
 
@@ -52,7 +55,8 @@ def list_active_tenants(db: Session = Depends(get_db)):
     )
     result = []
     for t in tenants:
-        details = db.query(TenantDetails).filter(TenantDetails.tenant_id == t.id).first()
+        details = db.query(TenantDetails).filter(
+            TenantDetails.tenant_id == t.id).first()
         brand = details.brand if details else None
         result.append(
             TenantPublicCard(
@@ -80,13 +84,16 @@ def get_tenant_landing_by_slug(slug: str, db: Session = Depends(get_db)):
     if not tenant:
         raise HTTPException(status_code=404, detail="Tenant not found")
     if tenant.status != TenantStatus.approved:
-        raise HTTPException(status_code=403, detail="Landing page is only available for approved tenants")
+        raise HTTPException(
+            status_code=403, detail="Landing page is only available for approved tenants")
 
     tenant_id = tenant.id
-    details = db.query(TenantDetails).filter(TenantDetails.tenant_id == tenant_id).first()
+    details = db.query(TenantDetails).filter(
+        TenantDetails.tenant_id == tenant_id).first()
     details_read = None
     if details:
-        font = db.query(Font).filter(Font.id == details.font_id).first() if details.font_id else None
+        font = db.query(Font).filter(
+            Font.id == details.font_id).first() if details.font_id else None
         brand = details.brand if details.brand_id else None
         details_read = TenantDetailsLandingRead(
             tenant_id=details.tenant_id,
@@ -106,10 +113,12 @@ def get_tenant_landing_by_slug(slug: str, db: Session = Depends(get_db)):
             font_body_family=font.body_font_family if font else None,
         )
 
-    tenant_deps = db.query(TenantDepartment).filter(TenantDepartment.tenant_id == tenant_id).all()
+    tenant_deps = db.query(TenantDepartment).filter(
+        TenantDepartment.tenant_id == tenant_id).all()
     departments: list[DepartmentLandingItem] = []
     for td in tenant_deps:
-        dept = db.query(Department).filter(Department.id == td.department_id).first()
+        dept = db.query(Department).filter(
+            Department.id == td.department_id).first()
         services = (
             db.query(Service)
             .filter(
@@ -125,7 +134,8 @@ def get_tenant_landing_by_slug(slug: str, db: Session = Depends(get_db)):
                 phone_number=td.phone_number,
                 email=td.email,
                 location=td.location,
-                services=[ServiceLandingItem.model_validate(s) for s in services],
+                services=[ServiceLandingItem.model_validate(
+                    s) for s in services],
             )
         )
 
@@ -156,20 +166,30 @@ def get_tenant_landing_by_slug(slug: str, db: Session = Depends(get_db)):
         .all()
     )
 
+    plans = (
+        db.query(UserTenantPlan)
+        .filter(UserTenantPlan.tenant_id == tenant_id, UserTenantPlan.is_active == True)
+        .order_by(UserTenantPlan.price)
+        .all()
+    )
+
     return TenantLandingPageResponse(
         tenant=TenantLandingRead.model_validate(tenant),
         details=details_read,
         departments=departments,
         doctors=doctors,
         products=[ProductLandingItem.model_validate(p) for p in products],
+        plans=[PlanLandingItem.model_validate(p) for p in plans],
     )
 
 
 def _list_tenant_departments(db: Session, tenant_id: int) -> list:
-    tenant_deps = db.query(TenantDepartment).filter(TenantDepartment.tenant_id == tenant_id).all()
+    tenant_deps = db.query(TenantDepartment).filter(
+        TenantDepartment.tenant_id == tenant_id).all()
     result = []
     for td in tenant_deps:
-        dept = db.query(Department).filter(Department.id == td.department_id).first()
+        dept = db.query(Department).filter(
+            Department.id == td.department_id).first()
         services = (
             db.query(Service)
             .filter(Service.tenant_departments_id == td.id, Service.is_active == True)
@@ -179,7 +199,8 @@ def _list_tenant_departments(db: Session, tenant_id: int) -> list:
             TenantDepartmentWithServicesRead(
                 **TenantDepartmentRead.model_validate(td).model_dump(),
                 department_name=dept.name if dept else "",
-                services=[ServiceLandingItem.model_validate(s) for s in services],
+                services=[ServiceLandingItem.model_validate(
+                    s) for s in services],
             )
         )
     return result
@@ -195,7 +216,8 @@ def _bulk_set_tenant_departments(db: Session, tenant_id: int, payload: BulkDepar
                 detail=f"Duplicate department_id {item.department_id} in payload",
             )
         seen_dept_ids.add(item.department_id)
-        dept = db.query(Department).filter(Department.id == item.department_id).first()
+        dept = db.query(Department).filter(
+            Department.id == item.department_id).first()
         if not dept:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -231,13 +253,16 @@ def _bulk_set_tenant_departments(db: Session, tenant_id: int, payload: BulkDepar
             db.add(td)
             db.flush()
 
-        dept = db.query(Department).filter(Department.id == td.department_id).first()
-        services = db.query(Service).filter(Service.tenant_departments_id == td.id, Service.is_active == True).all()
+        dept = db.query(Department).filter(
+            Department.id == td.department_id).first()
+        services = db.query(Service).filter(
+            Service.tenant_departments_id == td.id, Service.is_active == True).all()
         result.append(
             TenantDepartmentWithServicesRead(
                 **TenantDepartmentRead.model_validate(td).model_dump(),
                 department_name=dept.name if dept else "",
-                services=[ServiceLandingItem.model_validate(s) for s in services],
+                services=[ServiceLandingItem.model_validate(
+                    s) for s in services],
             )
         )
 
@@ -247,7 +272,8 @@ def _bulk_set_tenant_departments(db: Session, tenant_id: int, payload: BulkDepar
 
 def _assert_tenant_exists(db: Session, tenant_id: int) -> None:
     if not db.query(Tenant).filter(Tenant.id == tenant_id).first():
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tenant not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Tenant not found")
 
 
 # ─── Tenant management (tenant_id from JWT token) ───
@@ -261,8 +287,10 @@ def get_current_tenant(
     _, tenant_id = auth
     tenant = db.query(Tenant).filter(Tenant.id == tenant_id).first()
     if not tenant:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tenant not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Tenant not found")
     return TenantLandingRead.model_validate(tenant)
+
 
 @router.get("/details", response_model=TenantDetailsRead)
 def get_tenant_details(
@@ -272,29 +300,95 @@ def get_tenant_details(
     """Get current user's tenant details (tenant_id from JWT)."""
     _, tenant_id = auth
     _assert_tenant_exists(db, tenant_id)
-    details = db.query(TenantDetails).filter(TenantDetails.tenant_id == tenant_id).first()
+    details = db.query(TenantDetails).filter(
+        TenantDetails.tenant_id == tenant_id).first()
     if not details:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tenant details not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail="Tenant details not found")
     return details
 
 
 @router.put("/details", response_model=TenantDetailsRead)
-def upsert_tenant_details(
-    payload: TenantDetailsUpdate,
+async def upsert_tenant_details(
+    logo: UploadFile | None = File(default=None),
+    image: UploadFile | None = File(default=None),
+    logo_url: str | None = Form(default=None),
+    image_url: str | None = Form(default=None),
+    clear_logo: bool = Form(default=False),
+    clear_image: bool = Form(default=False),
+    moto: str | None = Form(default=None),
+    brand_id: int | None = Form(default=None),
+    font_id: int | None = Form(default=None),
+    title: str | None = Form(default=None),
+    about_text: str | None = Form(default=None),
     db: Session = Depends(get_db),
     auth: tuple = Depends(require_tenant_from_token),
 ):
     """Upsert current user's tenant details (tenant_id from JWT)."""
+    allowed_image_types = {"image/png", "image/jpeg", "image/jpg", "image/webp"}
+    max_image_size_bytes = 5 * 1024 * 1024  # 5MB
+
     _, tenant_id = auth
     _assert_tenant_exists(db, tenant_id)
-    details = db.query(TenantDetails).filter(TenantDetails.tenant_id == tenant_id).first()
-    data = payload.model_dump(exclude_unset=True)
+    details = db.query(TenantDetails).filter(
+        TenantDetails.tenant_id == tenant_id).first()
+
     if details is None:
-        details = TenantDetails(tenant_id=tenant_id, **data)
+        details = TenantDetails(tenant_id=tenant_id)
         db.add(details)
-    else:
-        for k, v in data.items():
-            setattr(details, k, v)
+
+    if logo_url is not None:
+        details.logo = logo_url
+    if image_url is not None:
+        details.image = image_url
+    if clear_logo:
+        details.logo = None
+    if clear_image:
+        details.image = None
+
+    if moto is not None:
+        details.moto = moto
+    if brand_id is not None:
+        details.brand_id = brand_id
+    if font_id is not None:
+        details.font_id = font_id
+    if title is not None:
+        details.title = title
+    if about_text is not None:
+        details.about_text = about_text
+
+    if logo is not None:
+        logo_content = await logo.read()
+        if not logo_content:
+            raise HTTPException(status_code=400, detail="Logo image is empty")
+        if len(logo_content) > max_image_size_bytes:
+            raise HTTPException(status_code=400, detail="Logo image must be under 5MB")
+        logo_content_type = (logo.content_type or "").lower()
+        if logo_content_type not in allowed_image_types:
+            raise HTTPException(status_code=400, detail="Logo image type is not supported")
+        details.logo = save_tenant_brand_asset(
+            tenant_id=tenant_id,
+            kind="logo",
+            content=logo_content,
+            content_type=logo_content_type,
+        )
+
+    if image is not None:
+        image_content = await image.read()
+        if not image_content:
+            raise HTTPException(status_code=400, detail="Hero image is empty")
+        if len(image_content) > max_image_size_bytes:
+            raise HTTPException(status_code=400, detail="Hero image must be under 5MB")
+        image_content_type = (image.content_type or "").lower()
+        if image_content_type not in allowed_image_types:
+            raise HTTPException(status_code=400, detail="Hero image type is not supported")
+        details.image = save_tenant_brand_asset(
+            tenant_id=tenant_id,
+            kind="hero",
+            content=image_content,
+            content_type=image_content_type,
+        )
+
     db.commit()
     db.refresh(details)
     return details
@@ -384,7 +478,8 @@ def update_tenant_product(
         Product.tenant_id == tenant_id,
     ).first()
     if not product:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Product not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Product not found")
     data = payload.model_dump(exclude_unset=True)
     for k, v in data.items():
         setattr(product, k, v)
@@ -408,7 +503,8 @@ def delete_tenant_product(
         Product.tenant_id == tenant_id,
     ).first()
     if not product:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Product not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Product not found")
     db.delete(product)
     db.commit()
 
@@ -424,16 +520,20 @@ def create_tenant_doctor(
     _assert_tenant_exists(db, tenant_id)
     doctor_role = db.query(Role).filter(Role.name == "DOCTOR").first()
     if not doctor_role:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="DOCTOR role not found")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="DOCTOR role not found")
     user = db.query(User).filter(
         User.id == payload.user_id,
         User.role_id == doctor_role.id,
     ).first()
     if not user:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found or not a doctor")
-    existing = db.query(Doctor).filter(Doctor.user_id == payload.user_id).first()
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail="User not found or not a doctor")
+    existing = db.query(Doctor).filter(
+        Doctor.user_id == payload.user_id).first()
     if existing:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Doctor already assigned to a tenant")
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT,
+                            detail="Doctor already assigned to a tenant")
     doctor = Doctor(
         user_id=payload.user_id,
         tenant_id=tenant_id,
@@ -463,7 +563,8 @@ def update_tenant_doctor(
         Doctor.tenant_id == tenant_id,
     ).first()
     if not doctor:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Doctor not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Doctor not found")
     data = payload.model_dump(exclude_unset=True)
     for k, v in data.items():
         setattr(doctor, k, v)
@@ -485,7 +586,8 @@ def delete_tenant_doctor(
         Doctor.tenant_id == tenant_id,
     ).first()
     if not doctor:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Doctor not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Doctor not found")
     db.delete(doctor)
     db.commit()
 
@@ -503,20 +605,23 @@ def delete_tenant_department(
         TenantDepartment.tenant_id == tenant_id,
     ).first()
     if not td:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tenant department not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail="Tenant department not found")
     db.delete(td)
     db.commit()
 
 
 @router.get("/services", response_model=list[ServiceRead])
 def list_tenant_services(
-    tenant_department_id: int | None = Query(default=None, description="Filter by tenant department"),
+    tenant_department_id: int | None = Query(
+        default=None, description="Filter by tenant department"),
     db: Session = Depends(get_db),
     auth: tuple = Depends(require_tenant_from_token),
 ):
     """List services for current user's tenant. Optional tenant_department_id to filter by department."""
     _, tenant_id = auth
-    q = db.query(Service).filter(Service.tenant_id == tenant_id, Service.is_active == True)
+    q = db.query(Service).filter(Service.tenant_id ==
+                                 tenant_id, Service.is_active == True)
     if tenant_department_id is not None:
         q = q.filter(Service.tenant_departments_id == tenant_department_id)
     services = q.order_by(Service.name).all()
@@ -536,7 +641,8 @@ def get_tenant_service(
         Service.tenant_id == tenant_id,
     ).first()
     if not service:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Service not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Service not found")
     return ServiceRead.model_validate(service)
 
 
@@ -553,7 +659,8 @@ def create_tenant_service(
         TenantDepartment.tenant_id == tenant_id,
     ).first()
     if not td:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tenant department not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail="Tenant department not found")
     existing = db.query(Service).filter(
         Service.tenant_departments_id == payload.tenant_department_id,
         Service.name == payload.name,
@@ -591,7 +698,8 @@ def update_tenant_service(
         Service.tenant_id == tenant_id,
     ).first()
     if not service:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Service not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Service not found")
     data = payload.model_dump(exclude_unset=True)
     for k, v in data.items():
         setattr(service, k, v)
@@ -615,6 +723,7 @@ def delete_tenant_service(
         Service.tenant_id == tenant_id,
     ).first()
     if not service:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Service not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Service not found")
     db.delete(service)
     db.commit()

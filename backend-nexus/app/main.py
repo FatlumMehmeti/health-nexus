@@ -1,9 +1,15 @@
+from pathlib import Path
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
+from fastapi.staticfiles import StaticFiles
+
+from app.config import get_storage_root
 from app.auth.auth_router import router as auth_router
 from app.routes import (
     role_router,
+    enrollment_router,
     tenant_router,
     superadmin_tenant_router,
     department_router,
@@ -14,11 +20,19 @@ from app.routes import (
     tenant_audit_log,
     user_tenant_plan_router,
     public_tenant_router,
-    subscription_plan_router,
-    tenant_subscription_router,
+    contract_router,
 )
 
-app = FastAPI(title="Healthcare SaaS API", version="0.1.0")
+app = FastAPI(
+    title="Healthcare SaaS API",
+    version="0.1.0",
+    swagger_ui_parameters={"persistAuthorization": True},
+)
+
+# Serve uploaded files at /uploads/ (e.g. /uploads/signatures/contract_1_doctor_xxx.png)
+_uploads_dir = Path(get_storage_root())
+_uploads_dir.mkdir(parents=True, exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=str(_uploads_dir)), name="uploads")
 
 # CORS configuration for development - allows frontend on various ports
 app.add_middleware(
@@ -41,9 +55,9 @@ app.include_router(service_router, prefix="/api")
 app.include_router(auth_router, prefix="/api")
 app.include_router(public_tenant_router, prefix="/api/public")
 app.include_router(tenant_audit_log)
+app.include_router(enrollment_router, prefix="/api")
 app.include_router(user_tenant_plan_router)
-app.include_router(subscription_plan_router, prefix="/api")
-app.include_router(tenant_subscription_router, prefix="/api")
+app.include_router(contract_router)
 
 
 @app.get("/")

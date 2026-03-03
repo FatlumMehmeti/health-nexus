@@ -1,7 +1,13 @@
 import os
+import tempfile
 from pathlib import Path
 
 import pytest
+
+# Set STORAGE_ROOT before app import (pytest loads conftest before tests)
+# Use a persistent temp dir so both app mount and save_signature use the same path
+if "STORAGE_ROOT" not in os.environ:
+    os.environ["STORAGE_ROOT"] = tempfile.mkdtemp()
 from dotenv import load_dotenv
 from sqlalchemy import MetaData
 

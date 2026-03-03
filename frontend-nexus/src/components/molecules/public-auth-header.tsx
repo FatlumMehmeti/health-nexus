@@ -28,9 +28,11 @@ export function PublicAuthHeader({
   containerClassName,
 }: PublicAuthHeaderProps) {
   const user = useAuthStore((s) => s.user);
+  const role = useAuthStore((s) => s.role);
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const logout = useAuthStore((s) => s.logout);
   const navigate = useNavigate();
+  const canGoToDashboard = role != null && role !== "CLIENT";
 
   const handleLogout = async () => {
     await logout();
@@ -81,6 +83,11 @@ export function PublicAuthHeader({
                   <span className="font-medium">{user.email}</span>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
+                {canGoToDashboard ? (
+                  <DropdownMenuItem onClick={() => navigate({ to: "/dashboard" })}>
+                    Go to dashboard
+                  </DropdownMenuItem>
+                ) : null}
                 <DropdownMenuItem onClick={handleLogout}>
                   <span className="text-destructive">Log out</span>
                 </DropdownMenuItem>

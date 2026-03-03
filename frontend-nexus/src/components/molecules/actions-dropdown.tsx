@@ -16,6 +16,8 @@ export type ActionItem = {
   onClick: () => void;
   variant?: "default" | "destructive";
   separatorBefore?: boolean;
+  /** Optional disabled state for actions gated by business rules (e.g. missing signatures). */
+  disabled?: boolean;
 };
 
 export type ActionsDropdownProps = {
@@ -66,6 +68,7 @@ export function ActionsDropdown({
             {action.separatorBefore && index > 0 && <DropdownMenuSeparator />}
             <DropdownMenuItem
               variant={action.variant}
+              disabled={action.disabled}
               onClick={action.onClick}
             >
               {action.icon}

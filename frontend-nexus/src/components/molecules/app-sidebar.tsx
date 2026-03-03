@@ -45,12 +45,6 @@ const navMainAll: Array<{
     routeKey: "DASHBOARD_HOME",
   },
   {
-    title: "My Tenant",
-    url: "/dashboard/tenant",
-    icon: IconSettings,
-    routeKey: "DASHBOARD_TENANT",
-  },
-  {
     title: "Tenants",
     url: "/dashboard/tenants",
     icon: IconBuildingStore,
@@ -115,6 +109,11 @@ const tenantManagerDocuments = [
     icon: IconReport,
   },
   {
+    title: "Contracts",
+    url: "/dashboard/tenant/contracts",
+    icon: IconFileDescription,
+  },
+  {
     title: "Settings",
     url: "/dashboard/tenant/settings",
     icon: IconSettings,
@@ -124,19 +123,25 @@ const tenantManagerDocuments = [
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { user, role } = useAuthStore();
   const userWithRole: UserWithRole = { role };
-  const navMain = React.useMemo(
-    () =>
-      navMainAll.filter(
-        (item) => !item.routeKey || can(userWithRole, item.routeKey),
-      ),
-    [role],
-  );
+  const navMain = React.useMemo(() => {
+    const baseItems = navMainAll.filter(
+      (item) => !item.routeKey || can(userWithRole, item.routeKey),
+    );
+    if (role === "DOCTOR" && user?.id) {
+      baseItems.push({
+        title: "My Contract",
+        url: `/dashboard/contract-sign-doctor/${user.id}`,
+        icon: IconFileDescription,
+      });
+    }
+    return baseItems;
+  }, [role, user?.id, userWithRole]);
   const documentItems = React.useMemo(() => {
     if (role === "SUPER_ADMIN") return [...superAdminDocuments];
     if (role === "TENANT_MANAGER") return [...tenantManagerDocuments];
     return [];
   }, [role]);
-  const documentsLabel = role === "TENANT_MANAGER" ? "My Tenant" : "Documents";
+  const documentsLabel = role === "TENANT_MANAGER" ? "Management" : "Documents";
   const sidebarUser = React.useMemo(() => {
     if (!user) return null;
     return {
@@ -165,7 +170,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarHeader>
       <SidebarContent>
         <NavMain items={navMain} />
-        <NavMain items={documentItems} label={documentsLabel} />
+        {documentItems.length > 0 ? (
+          <NavMain items={documentItems} label={documentsLabel} />
+        ) : null}
       </SidebarContent>
       <SidebarFooter>
         <NavUser user={sidebarUser} />

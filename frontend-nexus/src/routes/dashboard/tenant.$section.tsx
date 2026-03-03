@@ -3,7 +3,7 @@ import { requireAuth } from "@/lib/guards/requireAuth";
 import {
   normalizeTenantSection,
   TenantManagerPageContent,
-} from "@/routes/dashboard/tenant";
+} from "@/routes/dashboard/tenant/index";
 
 export const Route = createFileRoute("/dashboard/tenant/$section")({
   beforeLoad: requireAuth({ routeKey: "DASHBOARD_TENANT" }),

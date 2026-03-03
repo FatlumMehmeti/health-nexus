@@ -1,4 +1,4 @@
-import { api } from "@/lib/api-client";
+import { API_BASE_URL, ApiError, api, getAccessToken, type ValidationError } from "@/lib/api-client";
 import type {
   TenantCreate,
   TenantRead,
@@ -12,7 +12,11 @@ import type {
   TenantCurrentRead,
   TenantDetailsRead,
   TenantDetailsUpdate,
+  TenantDetailsMultipartUpdate,
   DoctorRead,
+  DoctorCreateForTenant,
+  DoctorUpdate,
+  DoctorAssignableRead,
   TenantDepartmentWithServicesRead,
   TenantDepartmentsBulkRequest,
   ProductRead,
@@ -23,6 +27,77 @@ import type {
   ServiceCreateInput,
   ServiceUpdateInput,
 } from "@/interfaces";
+
+async function parseUploadError(
+  response: Response,
+): Promise<{ detail?: string | ValidationError[]; data?: unknown }> {
+  const contentType = response.headers.get("content-type") ?? "";
+  if (contentType.toLowerCase().includes("application/json")) {
+    try {
+      const data = (await response.json()) as unknown;
+      const detail =
+        typeof data === "object" && data !== null && "detail" in data
+          ? (data as { detail?: string | ValidationError[] }).detail
+          : undefined;
+      return { detail, data };
+    } catch {
+      return { detail: undefined, data: undefined };
+    }
+  }
+
+  try {
+    const text = await response.text();
+    return { detail: text || undefined, data: text || undefined };
+  } catch {
+    return { detail: undefined, data: undefined };
+  }
+}
+
+async function updateTenantDetailsMultipart(
+  data: TenantDetailsMultipartUpdate,
+): Promise<TenantDetailsRead> {
+  const formData = new FormData();
+
+  if (data.logo_file) formData.append("logo", data.logo_file);
+  if (data.image_file) formData.append("image", data.image_file);
+  if (data.logo !== undefined) formData.append("logo_url", data.logo ?? "");
+  if (data.image !== undefined) formData.append("image_url", data.image ?? "");
+  if (data.clear_logo) formData.append("clear_logo", "true");
+  if (data.clear_image) formData.append("clear_image", "true");
+
+  if (data.moto !== undefined) formData.append("moto", data.moto ?? "");
+  if (data.title !== undefined) formData.append("title", data.title ?? "");
+  if (data.about_text !== undefined) formData.append("about_text", data.about_text ?? "");
+  if (data.brand_id !== undefined && data.brand_id !== null) {
+    formData.append("brand_id", String(data.brand_id));
+  }
+  if (data.font_id !== undefined && data.font_id !== null) {
+    formData.append("font_id", String(data.font_id));
+  }
+
+  const token = getAccessToken();
+  const headers: Record<string, string> = {};
+  if (token) headers.Authorization = `Bearer ${token}`;
+
+  const url = `${API_BASE_URL.replace(/\/+$/, "")}/api/tenants/details`;
+  const response = await fetch(url, {
+    method: "PUT",
+    headers,
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const { detail, data: errorData } = await parseUploadError(response);
+    throw new ApiError(
+      `Request failed: ${response.status} ${response.statusText}`,
+      response.status,
+      detail,
+      errorData,
+    );
+  }
+
+  return (await response.json()) as TenantDetailsRead;
+}
 
 /**
  * Tenant service for public and superadmin tenant operations
@@ -108,9 +183,19 @@ export const tenantsService = {
   // Tenant manager (JWT-scoped) endpoints
   getCurrentTenant: () => api.get<TenantCurrentRead>("/api/tenants/current"),
   getTenantDetails: () => api.get<TenantDetailsRead>("/api/tenants/details"),
-  updateTenantDetails: (data: TenantDetailsUpdate) =>
-    api.put<TenantDetailsRead>("/api/tenants/details", data),
+  updateTenantDetails: (data: TenantDetailsMultipartUpdate | TenantDetailsUpdate) =>
+    updateTenantDetailsMultipart(data),
   listTenantDoctors: () => api.get<DoctorRead[]>("/api/tenants/doctors"),
+  listAssignableDoctors: (excludeTenantId: number) =>
+    api.get<DoctorAssignableRead[]>(
+      `/api/users/doctors?exclude_tenant_id=${encodeURIComponent(String(excludeTenantId))}`,
+    ),
+  createTenantDoctor: (data: DoctorCreateForTenant) =>
+    api.post<DoctorRead>("/api/tenants/doctors", data),
+  updateTenantDoctor: (userId: number, data: DoctorUpdate) =>
+    api.put<DoctorRead>(`/api/tenants/doctors/${userId}`, data),
+  deleteTenantDoctor: (userId: number) =>
+    api.delete<void>(`/api/tenants/doctors/${userId}`),
   listTenantDepartments: () =>
     api.get<TenantDepartmentWithServicesRead[]>("/api/tenants/departments"),
   replaceTenantDepartments: (data: TenantDepartmentsBulkRequest) =>

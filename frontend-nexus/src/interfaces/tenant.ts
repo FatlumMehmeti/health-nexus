@@ -107,9 +107,19 @@ export interface TenantDetailsUpdate {
   font_key?: string | null;
 }
 
-/** Read-only doctors list on tenant manager page */
+/** Multipart update payload for tenant details, supports file upload for logo/hero image. */
+export interface TenantDetailsMultipartUpdate extends TenantDetailsUpdate {
+  logo_file?: File | null;
+  image_file?: File | null;
+  clear_logo?: boolean;
+  clear_image?: boolean;
+}
+
+/** Read-only doctors list on tenant manager page (includes name for dropdowns) */
 export interface DoctorRead {
   user_id: number;
+  first_name?: string | null;
+  last_name?: string | null;
   specialization?: string | null;
   education?: string | null;
   licence_number?: string | null;
@@ -117,6 +127,33 @@ export interface DoctorRead {
   working_hours?: Record<string, unknown> | null;
   is_active: boolean;
   created_at: string;
+}
+
+/** Payload to assign/add a doctor to tenant */
+export interface DoctorCreateForTenant {
+  user_id: number;
+  specialization?: string | null;
+  education?: string | null;
+  licence_number?: string | null;
+  working_hours?: Record<string, unknown> | null;
+}
+
+/** Payload to update a doctor */
+export interface DoctorUpdate {
+  specialization?: string | null;
+  education?: string | null;
+  licence_number?: string | null;
+  working_hours?: Record<string, unknown> | null;
+  is_active?: boolean | null;
+}
+
+/** User with DOCTOR role for add-doctor dropdown (from GET /api/users/doctors) */
+export interface DoctorAssignableRead {
+  id: number;
+  first_name: string | null;
+  last_name: string | null;
+  email: string;
+  assigned_tenant_id: number | null;
 }
 
 export interface TenantDepartmentBulkItem {

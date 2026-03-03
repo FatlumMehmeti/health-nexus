@@ -152,9 +152,18 @@ function AuditLogsPage() {
                                     : log.new_value}
                                 </div>
                               </div>
-                            )}
-                          </div>
-                        </TableCell>
+                            </div>
+                          )}
+                        </div>
+                      </TableCell>
+
+                      <TableCell className="text-sm">
+                        {log.performed_by_role && (
+                          <Badge variant="outline">
+                            {log.performed_by_role}
+                          </Badge>
+                        )}
+                      </TableCell>
 
                         <TableCell className="text-sm">
                           {log.performed_by_role && (

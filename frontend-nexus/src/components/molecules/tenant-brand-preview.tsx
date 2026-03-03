@@ -2,24 +2,30 @@ import type { CSSProperties } from "react";
 import { resolveMediaUrl } from "@/lib/media-url";
 import { cn } from "@/lib/utils";
 
-export interface TenantBrandPreviewProps {
+export interface TenantBrandPreviewForm {
   title?: string | null;
   moto?: string | null;
   aboutText?: string | null;
   logo?: string | null;
   image?: string | null;
+}
+
+export interface TenantBrandPreviewBrand {
   backgroundColor?: string | null;
   foregroundColor?: string | null;
   borderColor?: string | null;
   accentColor?: string | null;
   headerFontFamily?: string | null;
   bodyFontFamily?: string | null;
+}
+
+export interface TenantBrandPreviewProps {
+  form?: TenantBrandPreviewForm;
+  brand?: TenantBrandPreviewBrand;
+  showReadMore?: boolean;
+  clampAboutText?: boolean;
   className?: string;
   heroClassName?: string;
-  fallbackTitle?: string;
-  fallbackMoto?: string;
-  fallbackAbout?: string;
-  emptyHeroLabel?: string;
 }
 
 function getInitials(value: string): string {
@@ -32,60 +38,57 @@ function getInitials(value: string): string {
 }
 
 export function TenantBrandPreview({
-  title,
-  moto,
-  aboutText,
-  logo,
-  image,
-  backgroundColor,
-  foregroundColor,
-  borderColor,
-  accentColor,
-  headerFontFamily,
-  bodyFontFamily,
+  form,
+  brand,
+  showReadMore = true,
+  clampAboutText = false,
   className,
   heroClassName,
-  fallbackTitle = "Landing section title",
-  fallbackMoto = "Moto preview",
-  fallbackAbout = "Your about text preview will appear here.",
-  emptyHeroLabel = "Hero image preview",
 }: TenantBrandPreviewProps) {
-  const resolvedTitle = title?.trim() || fallbackTitle;
-  const resolvedMoto = moto?.trim() || fallbackMoto;
-  const resolvedAbout = aboutText?.trim() || fallbackAbout;
-  const logoUrl = resolveMediaUrl(logo);
-  const heroUrl = resolveMediaUrl(image);
+  const resolvedTitle = form?.title?.trim() || "Landing section title";
+  const resolvedMoto = form?.moto?.trim() || "Moto preview";
+  const resolvedAbout =
+    form?.aboutText?.trim() || "Your about text preview will appear here.";
+  const logoUrl = resolveMediaUrl(form?.logo);
+  const heroUrl = resolveMediaUrl(form?.image);
 
   const cardStyle: CSSProperties = {
-    ...(backgroundColor && backgroundColor !== "transparent"
-      ? { backgroundColor }
+    ...(brand?.backgroundColor && brand.backgroundColor !== "transparent"
+      ? { backgroundColor: brand.backgroundColor }
       : undefined),
-    ...(foregroundColor ? { color: foregroundColor } : undefined),
-    ...(borderColor ? { borderColor } : undefined),
-    ...(bodyFontFamily ? { fontFamily: bodyFontFamily } : undefined),
-  };
-
-  const titleStyle: CSSProperties = {
-    ...(headerFontFamily ? { fontFamily: headerFontFamily } : undefined),
+    ...(brand?.foregroundColor ? { color: brand.foregroundColor } : undefined),
+    ...(brand?.borderColor ? { borderColor: brand.borderColor } : undefined),
+    ...(brand?.bodyFontFamily ? { fontFamily: brand.bodyFontFamily } : undefined),
   };
 
   const accentStyle: CSSProperties = {
-    ...(accentColor ? { color: accentColor } : undefined),
+    ...(brand?.accentColor ? { color: brand.accentColor } : undefined),
+  };
+
+  const titleStyle: CSSProperties = {
+    ...(brand?.headerFontFamily ? { fontFamily: brand.headerFontFamily } : undefined),
   };
 
   return (
-    <div className={cn("overflow-hidden rounded-lg border shadow-sm", className)} style={cardStyle}>
-      <div className={cn("relative h-32 w-full bg-muted/40", heroClassName)}>
+    <div
+      className={cn("flex h-full flex-col overflow-hidden rounded-lg border shadow-sm", className)}
+      style={cardStyle}
+    >
+      <div className={cn("relative h-48 w-full shrink-0 bg-muted/40", heroClassName)}>
         {heroUrl ? (
-          <img src={heroUrl} alt={resolvedTitle} className="h-full w-full object-cover" />
+          <img
+            src={heroUrl}
+            alt={resolvedTitle}
+            className="h-full w-full object-cover"
+          />
         ) : (
           <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-            {emptyHeroLabel}
+            Hero image preview
           </div>
         )}
       </div>
-      <div className="p-4">
-        <div className="flex items-start gap-3">
+      <div className="flex min-h-0 flex-1 flex-col p-4">
+        <div className="flex shrink-0 items-start gap-3">
           {logoUrl ? (
             <img
               src={logoUrl}
@@ -98,7 +101,10 @@ export function TenantBrandPreview({
             </div>
           )}
           <div className="min-w-0">
-            <p className="truncate text-xs font-semibold uppercase tracking-[0.18em]" style={accentStyle}>
+            <p
+              className="truncate text-xs font-semibold uppercase tracking-[0.18em]"
+              style={accentStyle}
+            >
               {resolvedMoto}
             </p>
             <h3 className="mt-1 text-lg font-semibold" style={titleStyle}>
@@ -106,7 +112,23 @@ export function TenantBrandPreview({
             </h3>
           </div>
         </div>
-        <p className="mt-3 text-sm leading-6 opacity-90">{resolvedAbout}</p>
+        <div className="mt-3 flex min-h-0 flex-1 flex-col">
+          <p className={cn("text-sm leading-6 opacity-90", clampAboutText && "line-clamp-4")}>
+            {resolvedAbout}
+          </p>
+          {showReadMore ? (
+            <button
+              type="button"
+              className={cn(
+                "mt-auto self-start pt-2 text-left text-xs font-semibold hover:underline",
+                !brand?.accentColor && "text-primary"
+              )}
+              style={accentStyle}
+            >
+              Read more
+            </button>
+          ) : null}
+        </div>
       </div>
     </div>
   );

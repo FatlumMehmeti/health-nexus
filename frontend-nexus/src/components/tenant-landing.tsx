@@ -8,6 +8,8 @@
 import type { CSSProperties } from 'react'
 import { useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
+import { useMutation, useQuery } from '@tanstack/react-query'
+import { toast } from 'sonner'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import {
@@ -19,7 +21,9 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { can } from '@/lib/rbac'
+import { isApiError } from '@/lib/api-client'
 import { useAuthStore } from '@/stores/auth.store'
+import { tenantPlansService } from '@/services/tenant-plans.service'
 import { resolveMediaUrl } from '@/lib/media-url'
 import type { TenantLandingPageResponse } from '@/interfaces'
 
@@ -62,9 +66,39 @@ function formatCurrency(value: number): string {
 
 export function TenantLanding({ landingData }: TenantLandingProps) {
   const [activeTab, setActiveTab] = useState('home')
+  const [selectedPlanId, setSelectedPlanId] = useState<number | null>(null)
+
   const user = useAuthStore((s) => s.user)
   const role = useAuthStore((s) => s.role)
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
+
+  const tenantId = landingData?.tenant?.id
+
+  // Hydrate the selected plan from the user's existing enrollment
+  useQuery({
+    queryKey: ['my-enrollment', tenantId],
+    queryFn: () => tenantPlansService.myEnrollment(tenantId!),
+    enabled: !!tenantId && isAuthenticated,
+    retry: false,
+    select: (data) => {
+      if (data?.user_tenant_plan_id && data.status === 'ACTIVE') {
+        setSelectedPlanId(data.user_tenant_plan_id)
+      }
+      return data
+    },
+  })
+
+  const enrollMutation = useMutation({
+    mutationFn: ({ tenantId, planId }: { tenantId: number; planId: number }) =>
+      tenantPlansService.enroll(tenantId, planId),
+    onSuccess: (_data, variables) => {
+      setSelectedPlanId(variables.planId)
+      toast.success('Successfully subscribed!', { description: 'Your plan has been selected.' })
+    },
+    onError: (err) => {
+      toast.error(isApiError(err) ? err.message : 'Failed to subscribe. Please try again.')
+    },
+  })
   const logout = useAuthStore((s) => s.logout)
   const navigate = useNavigate()
   const canOpenTenantDashboard = can({ role }, 'DASHBOARD_TENANT')
@@ -93,6 +127,7 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
   }
 
   const { tenant, details, departments, products } = landingData
+  const plans = landingData.plans ?? []
   const title = details?.title ?? tenant.name
   const subtitle = details?.slogan ?? 'Welcome to our landing page.'
   const logo = resolveMediaUrl(details?.logo)
@@ -124,8 +159,15 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
     >
       <div className="pointer-events-none fixed inset-0 -z-10">
         <div
-          className="absolute inset-0 bg-linear-to-b from-primary/5 via-background to-background"
-          style={brand.background ? { backgroundColor: brand.background } : undefined}
+          className="
+            absolute inset-0 
+            bg-gradient-to-br 
+            from-[#1d2333] via-[#1c2130] to-[#375483] 
+            brightness-50 
+            -rotate-6 
+            scale-200
+            z-[-1]
+          "
         />
       </div>
 
@@ -437,14 +479,130 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
           </TabsContent>
 
           <TabsContent value="plans" className="mt-0 flex-1">
-            <section className="mx-auto max-w-3xl space-y-3 text-center">
-              <h2 className="text-xl font-semibold tracking-tight sm:text-2xl">
-                Plans – coming soon
-              </h2>
-              <p className="text-sm text-muted-foreground sm:text-base">
-                Future area for pricing plans, memberships, or insurance coverage details for this
-                tenant.
-              </p>
+            <section className="mx-auto max-w-5xl space-y-4">
+              <div className="space-y-1">
+                <h2 className="text-xl font-semibold tracking-tight sm:text-2xl">
+                  Plans &amp; memberships
+                </h2>
+                <p className="text-sm text-muted-foreground sm:text-base">
+                  {plans.length > 0
+                    ? 'Explore tenant-specific pricing and coverage limits for care packages.'
+                    : 'No plans available yet.'}
+                </p>
+              </div>
+
+              {selectedPlanId && (() => {
+                const selected = plans.find((p) => p.id === selectedPlanId)
+                if (!selected) return null
+                return (
+                  <div
+                    className="flex items-center justify-between rounded-xl border-2 p-4"
+                    style={{ borderColor: brand.primary ?? undefined, backgroundColor: `${brand.primary ?? '#2563eb'}10` }}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div
+                        className="flex h-8 w-8 items-center justify-center rounded-full text-white text-sm font-bold"
+                        style={{ backgroundColor: brand.primary ?? '#2563eb' }}
+                      >
+                        ✓
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold">{selected.name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          €{Number(selected.price).toFixed(2)}{selected.duration ? ` / ${selected.duration} days` : ''}
+                        </p>
+                      </div>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setSelectedPlanId(null)}
+                    >
+                      Change plan
+                    </Button>
+                  </div>
+                )
+              })()}
+
+              {plans.length > 0 ? (
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                  {plans.map((plan) => {
+                    const isSelected = selectedPlanId === plan.id
+                    return (
+                    <article
+                      key={plan.id}
+                      className={`flex h-full flex-col rounded-xl border p-5 shadow-sm transition-all ${
+                        isSelected
+                          ? 'ring-2 bg-card/80'
+                          : 'bg-card/60'
+                      }`}
+                      style={isSelected ? { borderColor: brand.primary ?? undefined, outlineColor: brand.primary ?? undefined } : undefined}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <h3 className="text-sm font-semibold sm:text-base">{plan.name}</h3>
+                        <span className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+                          Active
+                        </span>
+                      </div>
+
+                      <p className="mt-3 text-2xl font-bold tracking-tight">
+                        €{Number(plan.price).toFixed(2)}
+                      </p>
+                      {plan.duration && (
+                        <p className="text-xs text-muted-foreground">
+                          {plan.duration} day{plan.duration !== 1 ? 's' : ''} duration
+                        </p>
+                      )}
+
+                      <p className="mt-3 flex-1 text-sm text-muted-foreground">
+                        {plan.description || 'No description provided.'}
+                      </p>
+
+                      <div className="mt-4 space-y-2 border-t pt-3">
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-muted-foreground">Appointments</span>
+                          <span className="font-medium">
+                            {plan.max_appointments != null ? plan.max_appointments : 'Unlimited'}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-muted-foreground">Consultations</span>
+                          <span className="font-medium">
+                            {plan.max_consultations != null ? plan.max_consultations : 'Unlimited'}
+                          </span>
+                        </div>
+                      </div>
+
+                      <Button
+                        size="sm"
+                        className="mt-4 w-full"
+                        variant={isSelected ? 'outline' : 'default'}
+                        disabled={isSelected || enrollMutation.isPending}
+                        style={
+                          isSelected
+                            ? { borderColor: brand.primary ?? undefined, color: brand.primary ?? undefined }
+                            : brand.primary
+                              ? { backgroundColor: brand.primary, borderColor: brand.primary }
+                              : undefined
+                        }
+                        onClick={() => {
+                          if (!isAuthenticated) {
+                            toast.error('Please log in to subscribe to a plan.')
+                            return
+                          }
+                          enrollMutation.mutate({ tenantId: tenant.id, planId: plan.id })
+                        }}
+                      >
+                        {isSelected ? 'You have selected this plan' : enrollMutation.isPending ? 'Subscribing…' : 'Subscribe to this plan'}
+                      </Button>
+                    </article>
+                  )})}
+                </div>
+              ) : (
+                <div className="rounded-xl border bg-card/60 p-6 text-center text-sm text-muted-foreground">
+                  No plans configured yet.
+                </div>
+              )}
             </section>
           </TabsContent>
         </div>

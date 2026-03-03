@@ -7,10 +7,10 @@ from .font import router as font_router
 from .brand import router as brand_router
 from .service import router as service_router
 from .tenant_audit_log import router as tenant_audit_log
+from .enrollment import router as enrollment_router
 from .user_tenant_plan import router as user_tenant_plan_router
 from .public_tenant import router as public_tenant_router
-from .subscription_plan import router as subscription_plan_router
-from .tenant_subscription import router as tenant_subscription_router
+from .contract import router as contract_router
 
 __all__ = [
     "role_router",
@@ -24,6 +24,6 @@ __all__ = [
     "tenant_audit_log",
     "user_tenant_plan_router",
     "public_tenant_router",
-    "subscription_plan_router",
-    "tenant_subscription_router",
+    "enrollment_router",
+    "contract_router",
 ]
