@@ -386,7 +386,6 @@ export function TenantPlansPanel() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>User ID</TableHead>
                       <TableHead>Name</TableHead>
                       <TableHead>Email</TableHead>
                       <TableHead>Plan</TableHead>
@@ -397,9 +396,6 @@ export function TenantPlansPanel() {
                   <TableBody>
                     {(enrollmentsQuery.data ?? []).map((enrollment) => (
                       <TableRow key={enrollment.id}>
-                        <TableCell className="font-mono text-xs">
-                          {enrollment.patient_user_id}
-                        </TableCell>
                         <TableCell>
                           {enrollment.patient_first_name ||
                           enrollment.patient_last_name

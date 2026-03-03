@@ -130,7 +130,7 @@ export function DoctorsManager({ tenantId, onSaved }: DoctorsManagerProps) {
   const confirmRemoveDoctor = (doctor: DoctorRead) => {
     const name =
       [doctor.first_name, doctor.last_name].filter(Boolean).join(" ") ||
-      `Doctor #${doctor.user_id}`;
+      "Doctor";
     openDialog({
       title: "Remove doctor",
       content: (
@@ -210,7 +210,7 @@ export function DoctorsManager({ tenantId, onSaved }: DoctorsManagerProps) {
                         <TableCell>
                           {[doctor.first_name, doctor.last_name]
                             .filter(Boolean)
-                            .join(" ") || `Doctor #${doctor.user_id}`}
+                            .join(" ") || "Doctor"}
                         </TableCell>
                         <TableCell>{doctor.specialization || "-"}</TableCell>
                         <TableCell className="font-mono text-xs">
@@ -355,7 +355,7 @@ function DoctorDialog({
     label:
       [d.first_name, d.last_name].filter(Boolean).join(" ") ||
       d.email ||
-      `Doctor #${d.id}`,
+      "Doctor",
   }));
 
   return (
@@ -380,7 +380,7 @@ function DoctorDialog({
                   doctor
                     ? [doctor.first_name, doctor.last_name]
                         .filter(Boolean)
-                        .join(" ") || `Doctor #${doctor.user_id}`
+                        .join(" ") || "Doctor"
                     : ""
                 }
                 disabled

@@ -38,10 +38,7 @@ export function stripHtmlToPlainText(html: string): string {
 
 function formatSalary(value: string | number | undefined | null): string {
   if (value == null || value === "") return "-";
-  const s = String(value).trim();
-  if (!s) return "-";
-  const num = Number.parseFloat(s.replace(/,/g, ""));
-  return Number.isFinite(num) ? `${num.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} EUR` : s;
+  return `€${String(value)}`;
 }
 
 /** Unique key counter for PDF HTML renderer */
@@ -59,29 +56,63 @@ function renderHtmlToPdf(
   const { Text, View } = primitives;
   if (!html?.trim()) return [];
 
-  const doc = typeof document !== "undefined"
-    ? new DOMParser().parseFromString(html, "text/html")
-    : null;
+  const doc =
+    typeof document !== "undefined"
+      ? new DOMParser().parseFromString(html, "text/html")
+      : null;
   if (!doc?.body) {
-    return [<Text key={`f-${_htmlKey++}`} style={baseStyle}>{stripHtmlToPlainText(html) || "-"}</Text>];
+    return [
+      <Text key={`f-${_htmlKey++}`} style={baseStyle}>
+        {stripHtmlToPlainText(html) || "-"}
+      </Text>,
+    ];
   }
 
   const walk = (el: ChildNode): React.ReactNode[] => {
     if (el.nodeType === Node.TEXT_NODE) {
       const t = (el as Text).textContent?.trim();
-      return t ? [<Text key={`t-${_htmlKey++}`} style={baseStyle}>{t} </Text>] : [];
+      return t
+        ? [
+            <Text key={`t-${_htmlKey++}`} style={baseStyle}>
+              {t}{" "}
+            </Text>,
+          ]
+        : [];
     }
     if (el.nodeType !== Node.ELEMENT_NODE) return [];
     const tag = (el as Element).tagName.toLowerCase();
     const children = Array.from(el.childNodes).flatMap((c) => walk(c));
     const getStyle = (): Record<string, unknown> => {
-      if (tag === "strong" || tag === "b") return { ...baseStyle, fontWeight: 700 };
-      if (tag === "em" || tag === "i") return { ...baseStyle, fontStyle: "italic" };
+      if (tag === "strong" || tag === "b")
+        return { ...baseStyle, fontWeight: 700 };
+      if (tag === "em" || tag === "i")
+        return { ...baseStyle, fontStyle: "italic" };
       if (tag === "u") return { ...baseStyle, textDecoration: "underline" };
       if (tag === "s") return { ...baseStyle, textDecoration: "line-through" };
-      if (tag === "h2") return { ...baseStyle, fontSize: 14, fontWeight: 700, marginTop: 8, marginBottom: 4 };
-      if (tag === "h3") return { ...baseStyle, fontSize: 12, fontWeight: 700, marginTop: 6, marginBottom: 2 };
-      if (tag === "h4") return { ...baseStyle, fontSize: 11, fontWeight: 700, marginTop: 4, marginBottom: 2 };
+      if (tag === "h2")
+        return {
+          ...baseStyle,
+          fontSize: 14,
+          fontWeight: 700,
+          marginTop: 8,
+          marginBottom: 4,
+        };
+      if (tag === "h3")
+        return {
+          ...baseStyle,
+          fontSize: 12,
+          fontWeight: 700,
+          marginTop: 6,
+          marginBottom: 2,
+        };
+      if (tag === "h4")
+        return {
+          ...baseStyle,
+          fontSize: 11,
+          fontWeight: 700,
+          marginTop: 4,
+          marginBottom: 2,
+        };
       const style = (el as HTMLElement).style;
       if (style?.fontSize) {
         const m = style.fontSize.match(/^(\d+(?:\.\d+)?)px$/);
@@ -89,24 +120,72 @@ function renderHtmlToPdf(
       }
       return { ...baseStyle };
     };
-    if (tag === "br") return [<Text key={`br-${_htmlKey++}`} style={baseStyle}>{"\n"}</Text>];
+    if (tag === "br")
+      return [
+        <Text key={`br-${_htmlKey++}`} style={baseStyle}>
+          {"\n"}
+        </Text>,
+      ];
     if (tag === "p" || tag === "div") {
-      return [<View key={`${tag}-${_htmlKey++}`} style={{ flexDirection: "row", flexWrap: "wrap", marginBottom: 6 }}>{children.length ? children : [<Text key={`p-${_htmlKey++}`}> </Text>]}</View>];
+      return [
+        <View
+          key={`${tag}-${_htmlKey++}`}
+          style={{ flexDirection: "row", flexWrap: "wrap", marginBottom: 6 }}
+        >
+          {children.length
+            ? children
+            : [<Text key={`p-${_htmlKey++}`}> </Text>]}
+        </View>,
+      ];
     }
     if (tag === "ul" || tag === "ol") {
-      return [<View key={`${tag}-${_htmlKey++}`} style={{ marginBottom: 6, marginLeft: 8 }}>{children}</View>];
+      return [
+        <View
+          key={`${tag}-${_htmlKey++}`}
+          style={{ marginBottom: 6, marginLeft: 8 }}
+        >
+          {children}
+        </View>,
+      ];
     }
     if (tag === "li") {
-      return [<View key={`li-${_htmlKey++}`} style={{ flexDirection: "row", flexWrap: "wrap", marginBottom: 2, marginLeft: 8 }}><Text style={getStyle()}>• </Text>{children}</View>];
+      return [
+        <View
+          key={`li-${_htmlKey++}`}
+          style={{
+            flexDirection: "row",
+            flexWrap: "wrap",
+            marginBottom: 2,
+            marginLeft: 8,
+          }}
+        >
+          <Text style={getStyle()}>• </Text>
+          {children}
+        </View>,
+      ];
     }
-    if (["strong", "b", "em", "i", "u", "s", "span", "h2", "h3", "h4"].includes(tag)) {
-      return [<Text key={`${tag}-${_htmlKey++}`} style={getStyle()}>{children}</Text>];
+    if (
+      ["strong", "b", "em", "i", "u", "s", "span", "h2", "h3", "h4"].includes(
+        tag,
+      )
+    ) {
+      return [
+        <Text key={`${tag}-${_htmlKey++}`} style={getStyle()}>
+          {children}
+        </Text>,
+      ];
     }
     return children;
   };
 
   const result = Array.from(doc.body.childNodes).flatMap((n) => walk(n));
-  return result.length ? result : [<Text key={`e-${_htmlKey++}`} style={baseStyle}>-</Text>];
+  return result.length
+    ? result
+    : [
+        <Text key={`e-${_htmlKey++}`} style={baseStyle}>
+          -
+        </Text>,
+      ];
 }
 
 /**
@@ -152,8 +231,8 @@ export function ContractPdfDocument({
           backgroundColor: "#ffffff",
         },
         header: {
-          marginBottom: 20,
-          paddingBottom: 16,
+          paddingBottom: 10,
+          marginBottom: 10,
           borderBottomWidth: 2,
           borderBottomColor: "#1f2937",
         },
@@ -246,9 +325,6 @@ export function ContractPdfDocument({
       <Page size="A4" style={styles.page}>
         <View style={styles.header}>
           <Text style={styles.title}>Doctor Contract</Text>
-          <Text style={styles.subtitle}>
-            Contract #{contract.id} · {contract.status} · Salary: {formatSalary(contract.salary)}
-          </Text>
         </View>
 
         <View style={styles.section}>
@@ -259,11 +335,13 @@ export function ContractPdfDocument({
           </View>
           <View style={styles.row}>
             <Text style={styles.rowLabel}>Doctor:</Text>
-            <Text>{contract.doctor_name || `ID ${contract.doctor_user_id}`}</Text>
+            <Text>
+              {contract.doctor_name || "Assigned doctor"}
+            </Text>
           </View>
           <View style={styles.row}>
             <Text style={styles.rowLabel}>Salary:</Text>
-            <Text>{contract.salary}</Text>
+            <Text>{formatSalary(contract.salary)}</Text>
           </View>
           <View style={styles.row}>
             <Text style={styles.rowLabel}>Start Date:</Text>

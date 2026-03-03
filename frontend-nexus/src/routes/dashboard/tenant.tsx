@@ -1,21 +1,15 @@
-import { Outlet, createFileRoute, useRouterState } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 import { requireAuth } from "@/lib/guards/requireAuth";
-import {
-  TenantManagerPageContent,
-  normalizeTenantSection,
-} from "@/routes/dashboard/tenant/index";
 
 export const Route = createFileRoute("/dashboard/tenant")({
   beforeLoad: requireAuth({ routeKey: "DASHBOARD_TENANT" }),
-  component: TenantManagerPage,
+  loader: ({ location }) => {
+    // Redirect only for the bare parent URL, not for child section routes.
+    if (location.pathname === "/dashboard/tenant") {
+      throw redirect({
+        to: "/dashboard/tenant/$section",
+        params: { section: "departments-services" },
+      });
+    }
+  },
 });
-
-function TenantManagerPage() {
-  const pathname = useRouterState({ select: (state) => state.location.pathname });
-  if (pathname !== "/dashboard/tenant") {
-    return <Outlet />;
-  }
-  return <TenantManagerPageContent activeSection="departments-services" />;
-}
-
-export { TenantManagerPageContent, normalizeTenantSection };

@@ -98,6 +98,11 @@ function formatDateTime(value?: string | null): string {
   });
 }
 
+function formatEuro(value?: string | number | null): string {
+  if (value == null || value === "") return "-";
+  return `€${String(value)}`;
+}
+
 function getStatusVariant(
   status: ContractStatus,
 ): React.ComponentProps<typeof Badge>["variant"] {
@@ -397,8 +402,8 @@ export function ContractsPage({
         )
         .toBlob();
 
-      downloadBlob(blob, `contract_${contract.id}_doctor_${contract.doctor_user_id}.pdf`);
-      toast.success(`Downloaded contract_${contract.id}_doctor_${contract.doctor_user_id}.pdf`);
+      downloadBlob(blob, `contract_${contract.id}.pdf`);
+      toast.success(`Downloaded contract_${contract.id}.pdf`);
     } catch (error) {
       toast.error("Unable to generate PDF.", {
         description:
@@ -647,7 +652,7 @@ export function ContractsPage({
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Doctor ID</TableHead>
+                    <TableHead>Doctor Name</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Salary</TableHead>
                     <TableHead>Start</TableHead>
@@ -664,8 +669,8 @@ export function ContractsPage({
 
                     return (
                       <TableRow key={contract.id}>
-                        <TableCell className="font-medium">
-                          {contract.doctor_user_id}
+                        <TableCell className="text-muted-foreground">
+                          {contract.doctor_name ?? "Assigned doctor"}
                         </TableCell>
                         <TableCell>
                           <Badge variant={getStatusVariant(contract.status)}>
@@ -673,7 +678,7 @@ export function ContractsPage({
                           </Badge>
                         </TableCell>
                         <TableCell className="text-muted-foreground">
-                          {contract.salary}
+                          {formatEuro(contract.salary)}
                         </TableCell>
                         <TableCell className="text-muted-foreground">
                           {formatDateTime(contract.start_date)}

@@ -148,11 +148,6 @@ function AuditLogsPage() {
                             {log.performed_by_role}
                           </Badge>
                         )}
-                        {log.performed_by_user_id && (
-                          <div className="text-xs text-muted-foreground">
-                            User #{log.performed_by_user_id}
-                          </div>
-                        )}
                       </TableCell>
 
                       <TableCell className="max-w-[200px] text-sm text-muted-foreground">

@@ -24,9 +24,9 @@ import { HtmlTermsEditor } from "@/components/contracts/HtmlTermsEditor";
 const contractDialogSchema = z
   .object({
     doctor_user_id: z.coerce
-      .number({ invalid_type_error: "Doctor ID is required." })
-      .int("Doctor ID must be an integer.")
-      .positive("Doctor ID must be greater than 0."),
+      .number({ invalid_type_error: "Doctor is required." })
+      .int("Doctor must be valid.")
+      .positive("Doctor is required."),
     salary: z.string().trim().min(1, "Salary is required."),
     start_date: z.string().trim().min(1, "Start date is required."),
     end_date: z.string().trim().min(1, "End date is required."),
@@ -164,7 +164,7 @@ export function ContractDialog({
                 <Label htmlFor="contract-doctor">Doctor</Label>
                 <Input
                   id="contract-doctor"
-                  value={contract?.doctor_name ?? `Doctor ID ${contract?.doctor_user_id ?? ""}`}
+                  value={contract?.doctor_name ?? "Assigned doctor"}
                   disabled
                   readOnly
                   className="bg-muted"
@@ -185,7 +185,7 @@ export function ContractDialog({
                       value: String(d.user_id),
                       label:
                         [d.first_name, d.last_name].filter(Boolean).join(" ") ||
-                        `Doctor #${d.user_id}` + (d.specialization ? ` (${d.specialization})` : ""),
+                        ("Doctor" + (d.specialization ? ` (${d.specialization})` : "")),
                     }))}
                     value={field.value ? String(field.value) : ""}
                     onValueChange={(v) => field.onChange(v ? Number(v) : 0)}
