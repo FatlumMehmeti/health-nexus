@@ -2,6 +2,7 @@ from .base import Base
 from .role import Role
 from .user import User
 from .enrollment import Enrollment
+from .enrollment import EnrollmentStatus
 from .user_tenant_plan import UserTenantPlan
 from .tenant import Tenant, TenantStatus
 from .tenant_audit_log import TenantAuditLog
@@ -21,6 +22,7 @@ from .lead import Lead
 from .lead_status_history import LeadStatusHistory
 from .consultation_booking import ConsultationBooking, ConsultationStatus
 from .appointment import Appointment
+from .appointment import AppointmentStatus
 from .appointment_status_history import AppointmentStatusHistory
 from .report import Report
 from .recommendation import Recommendation
@@ -33,6 +35,7 @@ from .payment import Payment
 from .enrollment_status_history import EnrollmentStatusHistory
 from .audit_event import AuditEvent
 from .offer_delivery import OfferDelivery
+from .notification import Notification, NotificationType
 
 # Backward compatibility alias for legacy imports.
 UserTenantMembership = Enrollment
@@ -62,15 +65,19 @@ __all__ = [
     "LeadStatusHistory",
     "ConsultationBooking",
     "Appointment",
+    "AppointmentStatus",
     "AppointmentStatusHistory",
     "Report",
     "Recommendation",
     "Enrollment",
     "UserTenantMembership",
+    "EnrollmentStatus",
     "EnrollmentStatusHistory",
     "AuditEvent",
     "UserTenantPlan",
     "OfferDelivery",
+    "Notification",
+    "NotificationType",
     "SubscriptionPlan",
     "TenantSubscription",
     "ConsultationStatus",

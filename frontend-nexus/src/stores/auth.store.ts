@@ -170,6 +170,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         })
         return true
       } catch (err) {
+        // eslint-disable-next-line no-console
+        console.error('[ensureAuth] Error:', err instanceof ApiError ? `${err.status} - ${err.message}` : err);
+        
         /** Backend may return 403 for /auth/me for some roles; token is still valid so we derive user/role from JWT. */
         if (err instanceof ApiError && err.status === 403) {
           const payload = decodeJwtPayload(token)
@@ -184,8 +187,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
               },
               token,
               role,
-              tenantId:
-                tenantIdRaw !== undefined && tenantIdRaw !== null ? String(tenantIdRaw) : undefined,
+              tenantId: tenantIdRaw !== undefined && tenantIdRaw !== null ? String(tenantIdRaw) : undefined,
               isAuthenticated: true,
               error: null,
               authErrorReason: null,

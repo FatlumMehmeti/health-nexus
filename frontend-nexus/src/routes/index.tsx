@@ -63,6 +63,15 @@ function LandingPage() {
                 Join the Platform
               </Button>
             </Link>
+            <Link to="/appointments/book" preload={false}>
+              <Button
+                size="lg"
+                className="min-w-[180px] shadow-md transition-all hover:shadow-lg bg-primary text-primary-foreground border-2 border-primary/70 ring-2 ring-primary/10 hover:bg-primary/90 hover:ring-primary/20 focus:ring-4 focus:ring-primary/30"
+                style={{ boxShadow: '0 4px 24px 0 rgba(80, 72, 229, 0.10)' }}
+              >
+                Book Appointment
+              </Button>
+            </Link>
           </div>
         </section>
       </main>

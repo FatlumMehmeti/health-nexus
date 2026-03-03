@@ -11,6 +11,8 @@ import {
   IconBuildingStore,
   IconHistory,
   IconUserCircle,
+  IconCalendarCheck,
+  IconSearch,
   IconSettings,
   IconStethoscope,
   type Icon,
@@ -19,6 +21,7 @@ import {
 
 import { NavMain } from "./nav-main";
 import { NavUser } from "./nav-user";
+import { NotificationBell } from "@/components/NotificationBell";
 import { Link } from "@tanstack/react-router";
 import {
   Sidebar,
@@ -69,6 +72,12 @@ const navMainAll: Array<{
     title: "Profile",
     url: "/dashboard/profile",
     icon: IconUserCircle,
+  },
+  {
+    title: "Appointments",
+    url: "/dashboard/appointments",
+    icon: IconCalendarCheck,
+    routeKey: "DASHBOARD_DOCTOR_APPOINTMENTS",
   },
   
 ];
@@ -190,15 +199,18 @@ const documentsLabel = React.useMemo(() => {
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton
-              asChild
-              className="data-[slot=sidebar-menu-button]:p-1.5!"
-            >
-              <Link to="/">
-                <IconInnerShadowTop className="size-5!" />
-                <span className="text-base font-semibold">Health Nexus</span>
-              </Link>
-            </SidebarMenuButton>
+            <div className="flex items-center justify-between w-full">
+              <SidebarMenuButton
+                asChild
+                className="data-[slot=sidebar-menu-button]:p-1.5!"
+              >
+                <Link to="/">
+                  <IconInnerShadowTop className="size-5!" />
+                  <span className="text-base font-semibold">Health Nexus</span>
+                </Link>
+              </SidebarMenuButton>
+              {user && <NotificationBell />}
+            </div>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>
