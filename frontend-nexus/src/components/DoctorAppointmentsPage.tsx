@@ -66,7 +66,7 @@ export default function DoctorAppointmentsPage() {
               return (
                 <Card key={appt.id} className="border-border">
                   <CardHeader className="flex flex-row items-center justify-between">
-                    <CardTitle>Patient #{appt.patient_user_id}</CardTitle>
+                    <CardTitle>{appt.patient_name}</CardTitle>
                     <StatusBadge status={appt.status} />
                   </CardHeader>
                   <CardContent className="flex flex-col gap-2">
@@ -120,7 +120,7 @@ export default function DoctorAppointmentsPage() {
               return (
                 <Card key={appt.id}>
                   <CardHeader className="flex flex-row items-center justify-between">
-                    <CardTitle>Patient #{appt.patient_user_id}</CardTitle>
+                    <CardTitle>{appt.patient_name}</CardTitle>
                     <StatusBadge status={appt.status} />
                   </CardHeader>
                   <CardContent className="flex flex-col gap-2">
