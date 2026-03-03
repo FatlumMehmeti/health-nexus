@@ -143,25 +143,25 @@ const tenantManagerDocuments = [
   },
 ] as const;
 const clientsDocuments = [
-  // {
-  //   title: "Profile",
-  //   url: "/dashboard/client/profile",
-  //   icon: IconUser,
-  // },
   {
     title: "Enrollments",
     url: "/dashboard/client/enrollments",
     icon: IconHistory,
   },
   {
-    title: "Settings",
-    url: "/dashboard/client/settings",
-    icon: IconSettings,
+    title: "My Appointments",
+    url: "/appointments/my",
+    icon: IconCalendarCheck,
   },
   {
     title: "Tenants",
     url: "/tenants",
     icon: IconBuildingStore,
+  },
+  {
+    title: "Settings",
+    url: "/dashboard/client/settings",
+    icon: IconSettings,
   },
 ] as const;
 
@@ -183,7 +183,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   }, [role]);
 const documentsLabel = React.useMemo(() => {
   if (role === "TENANT_MANAGER") return "My Tenant";
-  if (role === "CLIENT") return "Your Profile & Enrollments"; 
+  if (role === "CLIENT") return "Account & Services"; 
   return "Documents"; 
 }, [role]);  const sidebarUser = React.useMemo(() => {
     if (!user) return null;

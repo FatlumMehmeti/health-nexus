@@ -1,9 +1,24 @@
-import { createFileRoute, Link, redirect } from '@tanstack/react-router'
+import {
+  createFileRoute,
+  Link,
+  redirect,
+  useNavigate,
+} from "@tanstack/react-router";
+
 import { useAuthStore } from '@/stores/auth.store'
 import { usePatientAppointments, type PatientAppointment } from '@/services/appointments.patient'
 import { StatusBadge, type AppointmentStatus } from '@/components/StatusBadge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { User } from "lucide-react";
 import { format } from 'date-fns'
 import { useState, useMemo } from 'react'
 import { NotificationBell } from '@/components/NotificationBell'
@@ -49,6 +64,35 @@ function MyAppointmentsPage() {
   const [filter, setFilter] = useState<FilterStatus>('ALL')
   const [page, setPage] = useState(1)
 
+   const user = useAuthStore((s) => s.user);
+   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+   const logout = useAuthStore((s) => s.logout);
+  const navigate = useNavigate();
+  
+  const handleLogout = async () => {
+    await logout();
+    navigate({
+      to: "/login",
+      search: { reason: undefined, redirect: undefined },
+      replace: true,
+    });
+  };
+
+  const handleProfile = () => {
+    navigate({
+      to: "/dashboard/profile",
+      replace: true,
+    });
+  };
+
+  const userInitial = (
+    user?.email?.trim().charAt(0) ||
+    user?.fullName?.trim().charAt(0) ||
+    "U"
+  ).toUpperCase();
+
+  const showUserMenu = isAuthenticated && user;
+
   const filtered = useMemo(() => {
     if (filter === 'ALL') return appointments
     return appointments.filter((a) => a.status === filter)
@@ -72,7 +116,7 @@ function MyAppointmentsPage() {
   return (
     <div className="w-full">
       {/* Page Header */}
-      <div className="border-b bg-linear-to-r from-primary/5 to-transparent py-6 px-4 sm:px-6 lg:px-8">
+      {/*<div className="border-b bg-linear-to-r from-primary/5 to-transparent py-6 px-4 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-3xl flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold tracking-tight text-foreground">My Appointments</h1>
@@ -95,6 +139,72 @@ function MyAppointmentsPage() {
             >
               Sign Out
             </Button>
+                
+
+
+          </div>
+        </div>
+      </div>*/}
+      <div className="border-b bg-linear-to-r from-primary/5 to-transparent py-6 px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-3xl flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight text-foreground">
+              My Appointments
+            </h1>
+            <p className="mt-2 text-sm text-muted-foreground">
+              View and manage your booked appointments
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <NotificationBell />
+            <Link to="/appointments/book">
+              <Button variant="default" size="sm">
+                Book New
+              </Button>
+            </Link>
+
+            {showUserMenu ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="default"
+                    size="icon-sm"
+                    className="rounded-full text-xs font-semibold"
+                    aria-label="Open account menu"
+                    title={user?.email}
+                  >
+                    {userInitial}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="min-w-40">
+                  <DropdownMenuLabel className="text-xs sm:text-sm">
+                    Signed in as
+                    <br />
+                    <span className="font-medium">{user?.email}</span>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleProfile}>
+                    <span className="flex items-center gap-2">
+                      <User size={16} className="text-muted-foreground" />
+                      My Profile
+                    </span>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleLogout}>
+                    <span className="text-destructive">Log out</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <Link
+                to="/login"
+                search={{ reason: undefined, redirect: undefined }}
+              >
+                <Button size="sm" variant="ghost" className="font-medium">
+                  Sign in
+                </Button>
+              </Link>
+            )}
           </div>
         </div>
       </div>
@@ -109,12 +219,12 @@ function MyAppointmentsPage() {
               onClick={() => handleFilterChange(f)}
               className={`rounded-full px-3 py-1 text-xs font-medium transition-colors border ${
                 filter === f
-                  ? 'bg-primary text-primary-foreground border-primary'
-                  : 'bg-muted/50 text-muted-foreground border-border hover:bg-muted'
+                  ? "bg-primary text-primary-foreground border-primary"
+                  : "bg-muted/50 text-muted-foreground border-border hover:bg-muted"
               }`}
             >
-              {f === 'ALL' ? 'All' : f.charAt(0) + f.slice(1).toLowerCase()}
-              {f === 'ALL' && ` (${appointments.length})`}
+              {f === "ALL" ? "All" : f.charAt(0) + f.slice(1).toLowerCase()}
+              {f === "ALL" && ` (${appointments.length})`}
             </button>
           ))}
         </div>
@@ -124,16 +234,27 @@ function MyAppointmentsPage() {
           <Card>
             <CardContent className="py-12 text-center">
               <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-muted">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-7 w-7 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-7 w-7 text-muted-foreground"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={1.5}
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                  />
                 </svg>
               </div>
               <p className="text-muted-foreground mb-4">
-                {filter === 'ALL'
+                {filter === "ALL"
                   ? "You haven't booked any appointments yet."
                   : `No ${filter.toLowerCase()} appointments found.`}
               </p>
-              {filter === 'ALL' && (
+              {filter === "ALL" && (
                 <Link to="/appointments/book">
                   <Button>Book an Appointment</Button>
                 </Link>
@@ -145,12 +266,16 @@ function MyAppointmentsPage() {
             {paginated.map((appt) => (
               <AppointmentRow key={appt.id} appointment={appt} />
             ))}
-            <Pagination total={filtered.length} page={page} onPageChange={setPage} />
+            <Pagination
+              total={filtered.length}
+              page={page}
+              onPageChange={setPage}
+            />
           </div>
         )}
       </div>
     </div>
-  )
+  );
 }
 
 function AppointmentRow({ appointment }: { appointment: PatientAppointment }) {
