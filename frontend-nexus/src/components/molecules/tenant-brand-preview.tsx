@@ -1,6 +1,7 @@
 import type { CSSProperties } from "react";
 import { resolveMediaUrl } from "@/lib/media-url";
 import { cn } from "@/lib/utils";
+import { RichTextDisplay } from "@/components/atoms/rich-text-display";
 
 export interface TenantBrandPreviewProps {
   title?: string | null;
@@ -117,9 +118,11 @@ export function TenantBrandPreview({
           </div>
         </div>
         <div className="mt-3 flex min-h-0 flex-1 flex-col">
-          <p className="text-sm leading-6 opacity-90 line-clamp-4">
-            {resolvedAbout}
-          </p>
+          <RichTextDisplay
+            html={resolvedAbout}
+            fallback={fallbackAbout}
+            className="text-sm leading-6 opacity-90 line-clamp-4"
+          />
           <button
             type="button"
             className={cn(

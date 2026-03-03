@@ -59,7 +59,7 @@ describe("ContractsPage", () => {
     const user = userEvent.setup();
     render(
       <ContractsPageModule.ContractsPage
-        pickFile={async () =>
+        bypassSignatureModal={async () =>
           new File(["signature"], "signature.png", { type: "image/png" })
         }
       />,
@@ -136,7 +136,7 @@ describe("ContractsPage", () => {
     const user = userEvent.setup();
     render(
       <ContractsPageModule.ContractsPage
-        pickFile={async () =>
+        bypassSignatureModal={async () =>
           new File(["signature"], "signature.png", { type: "image/png" })
         }
       />,

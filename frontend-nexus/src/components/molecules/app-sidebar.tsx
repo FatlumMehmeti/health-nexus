@@ -45,12 +45,6 @@ const navMainAll: Array<{
     routeKey: "DASHBOARD_HOME",
   },
   {
-    title: "My Tenant",
-    url: "/dashboard/tenant",
-    icon: IconSettings,
-    routeKey: "DASHBOARD_TENANT",
-  },
-  {
     title: "Tenants",
     url: "/dashboard/tenants",
     icon: IconBuildingStore,

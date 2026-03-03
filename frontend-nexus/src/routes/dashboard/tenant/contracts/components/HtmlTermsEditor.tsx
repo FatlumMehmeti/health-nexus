@@ -44,6 +44,8 @@ export function HtmlTermsEditor({
     extensions: [
       StarterKit.configure({
         heading: { levels: [2, 3, 4] },
+        bulletList: { keepMarks: true, keepAttributes: false },
+        orderedList: { keepMarks: true, keepAttributes: false },
       }),
       Placeholder.configure({ placeholder }),
       Underline,
@@ -60,10 +62,7 @@ export function HtmlTermsEditor({
     },
     editorProps: {
       attributes: {
-        class: cn(
-          "prose prose-sm max-w-none focus:outline-none min-w-0",
-          "px-3 py-2 min-h-[8rem]",
-        ),
+        class: "focus:outline-none min-w-0",
       },
     },
   });
@@ -232,7 +231,9 @@ export function HtmlTermsEditor({
           <ListOrderedIcon className="size-4" />
         </Toggle>
       </div>
-      <EditorContent editor={editor} />
+      <div className="rich-text-editor-content px-3 py-2" style={{ minHeight: "8rem" }}>
+        <EditorContent editor={editor} />
+      </div>
     </div>
   );
 }

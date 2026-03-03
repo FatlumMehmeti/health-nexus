@@ -3,9 +3,11 @@ import { z } from "zod";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery } from "@tanstack/react-query";
+import { toast } from "sonner";
 
 import type { Contract } from "@/interfaces/contract";
 import { tenantsService } from "@/services/tenants.service";
+import { contractsService } from "@/services/contracts.service";
 import { isApiError } from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
 import {
@@ -19,7 +21,7 @@ import {
 import { FormSelect } from "@/components/atoms/form-select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { HtmlTermsEditor } from "@/components/contracts/HtmlTermsEditor";
+import { HtmlTermsEditor } from "./HtmlTermsEditor";
 
 const contractDialogSchema = z
   .object({
@@ -56,14 +58,9 @@ export interface ContractDialogSubmitInput {
 }
 
 interface ContractDialogProps {
-  open: boolean;
-  mode: "create" | "edit";
-  contract?: Contract | null;
-  isSubmitting?: boolean;
-  /** Backend/API submit error shown at the bottom of the form for actionable feedback. */
-  submitError?: string | null;
-  onOpenChange: (open: boolean) => void;
-  onSubmit: (values: ContractDialogSubmitInput) => Promise<void> | void;
+  tenantId: number | undefined;
+  /** Callback invoked after successful create/update to refresh the contracts list */
+  onSuccess?: () => void | Promise<void>;
 }
 
 function toInitialValues(contract?: Contract | null): ContractDialogFormValues {
@@ -76,7 +73,9 @@ function toInitialValues(contract?: Contract | null): ContractDialogFormValues {
   };
 }
 
-function toPayload(values: ContractDialogFormValues): ContractDialogSubmitInput {
+function toPayload(
+  values: ContractDialogFormValues,
+): ContractDialogSubmitInput {
   return {
     doctor_user_id: values.doctor_user_id,
     salary: values.salary.trim(),
@@ -86,19 +85,42 @@ function toPayload(values: ContractDialogFormValues): ContractDialogSubmitInput 
   };
 }
 
-export function ContractDialog({
-  open,
-  mode,
-  contract,
-  isSubmitting = false,
-  submitError = null,
-  onOpenChange,
-  onSubmit,
-}: ContractDialogProps) {
+export interface ContractDialogHandle {
+  openCreate: () => void;
+  openEdit: (contract: Contract) => void;
+}
+
+export const ContractDialog = React.forwardRef<
+  ContractDialogHandle,
+  ContractDialogProps
+>(({ tenantId, onSuccess }, ref) => {
+  const [open, setOpen] = React.useState(false);
+  const [mode, setMode] = React.useState<"create" | "edit">("create");
+  const [contract, setContract] = React.useState<Contract | null>(null);
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const [submitError, setSubmitError] = React.useState<string | null>(null);
+
   const form = useForm<ContractDialogFormValues>({
     resolver: zodResolver(contractDialogSchema),
-    defaultValues: toInitialValues(contract),
+    defaultValues: toInitialValues(null),
   });
+
+  React.useImperativeHandle(ref, () => ({
+    openCreate: () => {
+      setMode("create");
+      setContract(null);
+      setSubmitError(null);
+      form.reset(toInitialValues(null));
+      setOpen(true);
+    },
+    openEdit: (contractToEdit: Contract) => {
+      setMode("edit");
+      setContract(contractToEdit);
+      setSubmitError(null);
+      form.reset(toInitialValues(contractToEdit));
+      setOpen(true);
+    },
+  }));
 
   React.useEffect(() => {
     if (!open) return;
@@ -136,7 +158,48 @@ export function ContractDialog({
   );
 
   const handleFormSubmit = async (values: ContractDialogFormValues) => {
-    await onSubmit(toPayload(values));
+    if (mode === "create" && tenantId == null) {
+      toast.error("Tenant context not available. Please refresh the page.");
+      return;
+    }
+
+    setIsSubmitting(true);
+    setSubmitError(null);
+
+    try {
+      const payload = toPayload(values);
+
+      if (mode === "create") {
+        await contractsService.createContract(tenantId!, payload);
+        toast.success("Contract created.");
+      } else {
+        if (!contract) return;
+        await contractsService.updateContract(contract.id, {
+          salary: payload.salary,
+          terms_content: payload.terms_content,
+          start_date: payload.start_date,
+          end_date: payload.end_date,
+        });
+        toast.success("Contract updated.");
+      }
+
+      setOpen(false);
+      setContract(null);
+      await onSuccess?.();
+    } catch (error) {
+      const formErrorMessage = isApiError(error)
+        ? error.displayMessage
+        : ((error as Error).message ?? "Failed to save contract.");
+      setSubmitError(formErrorMessage);
+
+      toast.error(
+        mode === "create"
+          ? "Failed to create contract."
+          : "Failed to update contract.",
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const title = mode === "create" ? "New Contract" : "Edit Contract";
@@ -145,8 +208,16 @@ export function ContractDialog({
       ? "Create a doctor contract draft for the tenant."
       : "Update contract financial and term details.";
 
+  const handleOpenChange = (newOpen: boolean) => {
+    setOpen(newOpen);
+    if (!newOpen) {
+      setContract(null);
+      setSubmitError(null);
+    }
+  };
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
@@ -164,7 +235,10 @@ export function ContractDialog({
                 <Label htmlFor="contract-doctor">Doctor</Label>
                 <Input
                   id="contract-doctor"
-                  value={contract?.doctor_name ?? `Doctor ID ${contract?.doctor_user_id ?? ""}`}
+                  value={
+                    contract?.doctor_name ??
+                    `Doctor ID ${contract?.doctor_user_id ?? ""}`
+                  }
                   disabled
                   readOnly
                   className="bg-muted"
@@ -185,7 +259,8 @@ export function ContractDialog({
                       value: String(d.user_id),
                       label:
                         [d.first_name, d.last_name].filter(Boolean).join(" ") ||
-                        `Doctor #${d.user_id}` + (d.specialization ? ` (${d.specialization})` : ""),
+                        `Doctor #${d.user_id}` +
+                          (d.specialization ? ` (${d.specialization})` : ""),
                     }))}
                     value={field.value ? String(field.value) : ""}
                     onValueChange={(v) => field.onChange(v ? Number(v) : 0)}
@@ -212,7 +287,9 @@ export function ContractDialog({
               {...register("salary")}
             />
             {errors.salary?.message ? (
-              <p className="text-xs text-destructive">{errors.salary.message}</p>
+              <p className="text-xs text-destructive">
+                {errors.salary.message}
+              </p>
             ) : null}
           </div>
 
@@ -226,7 +303,9 @@ export function ContractDialog({
                 {...register("start_date")}
               />
               {errors.start_date?.message ? (
-                <p className="text-xs text-destructive">{errors.start_date.message}</p>
+                <p className="text-xs text-destructive">
+                  {errors.start_date.message}
+                </p>
               ) : null}
             </div>
 
@@ -239,7 +318,9 @@ export function ContractDialog({
                 {...register("end_date")}
               />
               {errors.end_date?.message ? (
-                <p className="text-xs text-destructive">{errors.end_date.message}</p>
+                <p className="text-xs text-destructive">
+                  {errors.end_date.message}
+                </p>
               ) : null}
             </div>
           </div>
@@ -250,10 +331,14 @@ export function ContractDialog({
               value={termsContentValue ?? ""}
               onChange={handleTermsChange}
               placeholder="Write contract terms (e.g. compensation, responsibilities)..."
-              className={errors.terms_content ? "border-destructive" : undefined}
+              className={
+                errors.terms_content ? "border-destructive" : undefined
+              }
             />
             {errors.terms_content?.message ? (
-              <p className="text-xs text-destructive">{errors.terms_content.message}</p>
+              <p className="text-xs text-destructive">
+                {errors.terms_content.message}
+              </p>
             ) : null}
           </div>
         </form>
@@ -268,7 +353,7 @@ export function ContractDialog({
           <Button
             type="button"
             variant="outline"
-            onClick={() => onOpenChange(false)}
+            onClick={() => handleOpenChange(false)}
             disabled={isSubmitting}
           >
             Cancel
@@ -285,4 +370,6 @@ export function ContractDialog({
       </DialogContent>
     </Dialog>
   );
-}
+});
+
+ContractDialog.displayName = "ContractDialog";

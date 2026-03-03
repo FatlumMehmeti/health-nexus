@@ -189,7 +189,7 @@ function ContractSignDoctorPage() {
               Terms
             </h3>
             <div
-              className="prose prose-sm max-w-none rounded-lg border bg-muted/30 p-4"
+              className="rich-text-content rounded-lg border bg-muted/30 p-4"
               dangerouslySetInnerHTML={{ __html: contract.terms_content || "<p class='text-muted-foreground'>No terms specified.</p>" }}
             />
           </div>
