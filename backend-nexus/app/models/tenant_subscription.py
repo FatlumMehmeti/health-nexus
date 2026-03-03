@@ -7,10 +7,8 @@ from .base import Base, TimestampMixin
 
 
 class SubscriptionStatus(str, enum.Enum):
-    DRAFT = "DRAFT"
     ACTIVE = "ACTIVE"
     EXPIRED = "EXPIRED"
-    TERMINATED = "TERMINATED"
 
 
 class TenantSubscription(Base, TimestampMixin):
@@ -30,7 +28,7 @@ class TenantSubscription(Base, TimestampMixin):
 
     status: Mapped[SubscriptionStatus] = mapped_column(
         Enum(SubscriptionStatus, name="subscription_status"),
-        default=SubscriptionStatus.DRAFT,
+        default=SubscriptionStatus.ACTIVE,
         nullable=False
     )
 
@@ -44,17 +42,12 @@ class TenantSubscription(Base, TimestampMixin):
         nullable=True
     )
 
-    approved_by: Mapped[int | None] = mapped_column(
-        ForeignKey("users.id"),
-        nullable=True
-    )
-
-    approved_at: Mapped[datetime | None] = mapped_column(
+    cancelled_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True),
         nullable=True
     )
-
-    terminated_reason: Mapped[str | None] = mapped_column(
+    
+    cancellation_reason: Mapped[str | None] = mapped_column(
         Text,
         nullable=True
     )

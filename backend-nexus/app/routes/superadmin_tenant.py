@@ -4,34 +4,29 @@
 from fastapi import APIRouter, HTTPException, Depends, status, Query
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta, timezone
-from app.db import SessionLocal
+from typing import Dict, Any
+from app.db import SessionLocal, get_db
+from app.auth.auth_utils import require_permission
 from app.models.tenant import Tenant, TenantStatus
 from app.models.subscription_plan import SubscriptionPlan
 from app.models.tenant_subscription import TenantSubscription, SubscriptionStatus
-from app.schemas.tenant import TenantRead, TenantStatusUpdate
+from app.schemas.tenant import TenantRead, TenantStatusUpdate, TenantListResponse
 from app.services.audit_service import create_audit_log
 from app.models.tenant_audit_log import TenantAuditEventType
 
 router = APIRouter(prefix="/tenants", tags=["Super Admin - Tenant Management"])
 
-
-# Temporary DB dependency (we can later move this to app/db.py cleanly)
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
-
 # Endpoint to list tenants for the Super Admin dashboard.
 # Supports optional filtering by status and search (name).
-# Defaults to returning all tenants ordered by newest first.
-@router.get("", response_model=list[TenantRead])
+# Supports pagination with default page size of 10.
+@router.get("", response_model=TenantListResponse)
 def list_tenants(
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=10, ge=1, le=100),
     status_filter: TenantStatus | None = Query(default=None, alias="status"),
     search: str | None = None,
     db: Session = Depends(get_db),
+    user: Dict[str, Any] = Depends(require_permission("auth:admin")),
 ):
     query = db.query(Tenant)
 
@@ -42,12 +37,28 @@ def list_tenants(
         query = query.filter(Tenant.name.ilike(f"%{search}%"))
 
     query = query.order_by(Tenant.id.desc())
+    
+    # Get total count before pagination
+    total = query.count()
+    
+    # Apply pagination
+    offset = (page - 1) * page_size
+    items = query.offset(offset).limit(page_size).all()
 
-    return query.all()
+    return TenantListResponse(
+        items=items,
+        total=total,
+        page=page,
+        page_size=page_size,
+    )
 
 # Gets tenant details for the Super Admin dashboard tenant details page.
 @router.get("/{tenant_id}", response_model=TenantRead)
-def get_tenant(tenant_id: int, db: Session = Depends(get_db)):
+def get_tenant(
+    tenant_id: int,
+    db: Session = Depends(get_db),
+    user: Dict[str, Any] = Depends(require_permission("auth:admin")),
+):
     tenant = db.query(Tenant).filter(Tenant.id == tenant_id).first()
 
     if not tenant:
@@ -65,6 +76,7 @@ def update_tenant_status(
     tenant_id: int,
     status_update: TenantStatusUpdate,
     db: Session = Depends(get_db),
+    user: Dict[str, Any] = Depends(require_permission("auth:admin")),
 ):
     tenant = db.query(Tenant).filter(Tenant.id == tenant_id).first()
 
@@ -133,8 +145,6 @@ def update_tenant_status(
                 subscription_plan_id=free_plan.id,
                 activated_at=activated_at,
                 expires_at=expires_at,
-                approved_by=None,
-                approved_at=activated_at,
                 status=SubscriptionStatus.ACTIVE
             )
 
@@ -151,7 +161,7 @@ def update_tenant_status(
         entity_id=tenant.id,
         old_value={"status": current_status.value},
         new_value={"status": new_status.value},
-        performed_by_user_id=None, # change later when auth implemented
+        performed_by_user_id=user["user_id"],
         performed_by_role="SUPER_ADMIN",
         reason=status_update.reason,
     )

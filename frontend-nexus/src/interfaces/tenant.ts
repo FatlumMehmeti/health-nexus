@@ -58,6 +58,14 @@ export interface TenantRead extends TenantCreate {
   updated_at: string;
 }
 
+/** Paginated list of tenants from superadmin API */
+export interface TenantListResponse {
+  items: TenantRead[];
+  total: number;
+  page: number;
+  page_size: number;
+}
+
 /** Tenant manager's current tenant (JWT-derived tenant context) */
 export interface TenantCurrentRead {
   id: number;

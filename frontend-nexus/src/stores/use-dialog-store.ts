@@ -2,7 +2,7 @@ import { create } from 'zustand'
 import type { ReactNode } from 'react'
 
 export interface DialogConfig {
-  title: string
+  title?: string
   content: ReactNode
   /** Optional footer content (e.g. action buttons) */
   footer?: ReactNode

@@ -4,14 +4,10 @@ import {
   IconLogout,
   IconNotification,
   IconUserCircle,
-} from "@tabler/icons-react"
-import { useNavigate } from "@tanstack/react-router"
+} from "@tabler/icons-react";
+import { useNavigate } from "@tanstack/react-router";
 
-import {
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
-} from "@/components/ui/avatar"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -20,38 +16,48 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+} from "@/components/ui/dropdown-menu";
 import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
   useSidebar,
-} from "@/components/ui/sidebar"
-import { useAuthStore } from "@/stores/auth.store"
+} from "@/components/ui/sidebar";
+import { useAuthStore } from "@/stores/auth.store";
+import { useDialogStore } from "@/stores/use-dialog-store";
+import { SubscriptionPlansModal } from "./subscription-plans-modal";
 
 export type NavUserInfo = {
-  name: string
-  email: string
-  avatar?: string
-}
+  name: string;
+  email: string;
+  avatar?: string;
+};
 
-export function NavUser({
-  user,
-}: {
-  user: NavUserInfo | null | undefined
-}) {
-  const { isMobile } = useSidebar()
-  const navigate = useNavigate()
-  const logout = useAuthStore((s) => s.logout)
+export function NavUser({ user }: { user: NavUserInfo | null | undefined }) {
+  const { isMobile } = useSidebar();
+  const navigate = useNavigate();
+  const logout = useAuthStore((s) => s.logout);
+  const dialogStore = useDialogStore();
 
   const handleLogout = async () => {
-    await logout()
-    navigate({ to: "/login", search: { reason: undefined, redirect: undefined }, replace: true })
-  }
+    await logout();
+    navigate({
+      to: "/login",
+      search: { reason: undefined, redirect: undefined },
+      replace: true,
+    });
+  };
+
+  const handleOpenPlans = () => {
+    dialogStore.open({
+      content: <SubscriptionPlansModal onClose={() => dialogStore.close()} />,
+      showCloseButton: true,
+    });
+  };
 
   const display = user
     ? { name: user.name, email: user.email, avatar: user.avatar ?? "" }
-    : { name: "Loading…", email: "", avatar: "" }
+    : { name: "Loading…", email: "", avatar: "" };
 
   return (
     <SidebarMenu>
@@ -105,9 +111,9 @@ export function NavUser({
                 <IconUserCircle />
                 Account
               </DropdownMenuItem>
-              <DropdownMenuItem>
+              <DropdownMenuItem onClick={handleOpenPlans}>
                 <IconCreditCard />
-                Upgrade Plan
+                Health Nexus Plans
               </DropdownMenuItem>
               <DropdownMenuItem>
                 <IconNotification />
@@ -123,5 +129,5 @@ export function NavUser({
         </DropdownMenu>
       </SidebarMenuItem>
     </SidebarMenu>
-  )
+  );
 }
