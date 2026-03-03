@@ -1,8 +1,13 @@
 import { api } from "@/lib/api-client";
-import type { TenantAuditLogRead } from "@/interfaces/audit-log";
+import type { AuditLogListResponse } from "@/interfaces/audit-log";
 
 export const auditLogsService = {
-  list: () => {
-    return api.get<TenantAuditLogRead[]>("/audit-logs");
+  list: async (page = 1, pageSize = 10) => {
+    const query = new URLSearchParams({
+      page: page.toString(),
+      page_size: pageSize.toString(),
+    });
+
+    return api.get<AuditLogListResponse>(`/audit-logs?${query.toString()}`);
   },
 };

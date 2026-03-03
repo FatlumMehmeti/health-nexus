@@ -161,7 +161,7 @@ def update_tenant_status(
         entity_id=tenant.id,
         old_value={"status": current_status.value},
         new_value={"status": new_status.value},
-        performed_by_user_id=status_update.performed_by_user_id,
+        performed_by_user_id=user["user_id"],
         performed_by_role="SUPER_ADMIN",
         reason=status_update.reason,
     )

@@ -4,11 +4,17 @@ export interface TenantAuditLogRead {
   event_type: string;
   entity_name: string;
   entity_id?: number | null;
-  old_value?: Record<string, any>;
-  new_value?: Record<string, any>;
+  old_value?: Record<string, any> | null;
+  new_value?: Record<string, any> | null;
   performed_by_user_id?: number | null;
   performed_by_role?: string | null;
-  ip_address?: string | null;
   reason?: string | null;
   created_at: string;
+}
+
+export interface AuditLogListResponse {
+  items: TenantAuditLogRead[];
+  total: number;
+  page: number;
+  page_size: number;
 }

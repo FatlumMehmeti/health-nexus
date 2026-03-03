@@ -1,5 +1,6 @@
 from pydantic import BaseModel, ConfigDict
 from datetime import datetime
+from typing import List
 
 
 class TenantAuditLogRead(BaseModel):
@@ -16,3 +17,10 @@ class TenantAuditLogRead(BaseModel):
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class AuditLogListResponse(BaseModel):
+    items: List[TenantAuditLogRead]
+    total: int
+    page: int
+    page_size: int
