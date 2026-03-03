@@ -24,6 +24,9 @@ import { can } from '@/lib/rbac'
 import { isApiError } from '@/lib/api-client'
 import { useAuthStore } from '@/stores/auth.store'
 import { tenantPlansService } from '@/services/tenant-plans.service'
+import { clientsService } from '@/services/clients.service'
+import { usersService } from '@/services/users.service'
+import { patientsService } from '@/services/patients.service'
 import { resolveMediaUrl } from '@/lib/media-url'
 import type { TenantLandingPageResponse } from '@/interfaces'
 
@@ -64,9 +67,18 @@ function formatCurrency(value: number): string {
   return usdFormatter.format(Number.isFinite(value) ? value : 0)
 }
 
+function getApiDetailCode(err: unknown): string | undefined {
+  if (!isApiError(err) || !err.data || typeof err.data !== 'object') return undefined
+  const detail = 'detail' in err.data ? (err.data as { detail?: unknown }).detail : undefined
+  if (!detail || typeof detail !== 'object') return undefined
+  const code = 'code' in detail ? (detail as { code?: unknown }).code : undefined
+  return typeof code === 'string' ? code : undefined
+}
+
 export function TenantLanding({ landingData }: TenantLandingProps) {
   const [activeTab, setActiveTab] = useState('home')
   const [selectedPlanId, setSelectedPlanId] = useState<number | null>(null)
+  const [registeredOverride, setRegisteredOverride] = useState(false)
 
   const user = useAuthStore((s) => s.user)
   const role = useAuthStore((s) => s.role)
@@ -106,6 +118,72 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
     },
   })
 
+  const authEmail = user?.email?.trim() ?? ''
+  const meQuery = useQuery({
+    queryKey: ['users-me-register-email'],
+    queryFn: usersService.getMe,
+    enabled: isAuthenticated && !authEmail,
+    retry: false,
+    staleTime: 5 * 60_000,
+  })
+  const registerEmail = authEmail || meQuery.data?.email?.trim() || ''
+  const registrationStatusQuery = useQuery({
+    queryKey: ['tenant-patient-registration', tenantId, user?.id],
+    queryFn: () => patientsService.getMyTenantProfile(tenantId!),
+    enabled: !!tenantId && isAuthenticated,
+    retry: false,
+  })
+
+  useEffect(() => {
+    setRegisteredOverride(false)
+  }, [tenantId, isAuthenticated, user?.id])
+
+  const registrationStatusError = registrationStatusQuery.error
+  const isRegistrationStatusExpectedNotRegistered =
+    isApiError(registrationStatusError) &&
+    (registrationStatusError.status === 403 || registrationStatusError.status === 404)
+  const hasUnexpectedRegistrationStatusError =
+    registrationStatusQuery.isError && !isRegistrationStatusExpectedNotRegistered
+  const isRegistered = registeredOverride || registrationStatusQuery.isSuccess
+  const isRegistrationCheckPending =
+    isAuthenticated && !!tenantId && registrationStatusQuery.isLoading && !registeredOverride
+
+  const registerMutation = useMutation({
+    mutationFn: ({ tenantId, email }: { tenantId: number; email: string }) =>
+      clientsService.registerAsPatient(tenantId, { email }),
+    onSuccess: () => {
+      toast.success('Registered')
+      setRegisteredOverride(true)
+    },
+    onError: (err) => {
+      if (isApiError(err) && err.status === 409 && getApiDetailCode(err) === 'EMAIL_ALREADY_REGISTERED') {
+        toast.success('Already registered')
+        setRegisteredOverride(true)
+        return
+      }
+      if (isApiError(err) && err.status === 403) {
+        toast.error('Access denied')
+        return
+      }
+      if (isApiError(err) && err.status === 404) {
+        toast.error('Tenant not found')
+        return
+      }
+      toast.error('Registration failed', {
+        description: isApiError(err) ? err.displayMessage : 'Please try again.',
+      })
+    },
+  })
+
+  const handleRegisterAsPatient = () => {
+    if (!tenantId) return
+    if (!registerEmail) {
+      toast.error('Unable to determine your email. Please try again.')
+      return
+    }
+    registerMutation.mutate({ tenantId, email: registerEmail })
+  }
+
   // Cancel enrollment so tenant manager sees "no active plan"
   const cancelMutation = useMutation({
     mutationFn: (tid: number) => tenantPlansService.cancelEnrollment(tid),
@@ -118,7 +196,6 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
       toast.error(isApiError(err) ? err.message : 'Failed to cancel. Please try again.')
     },
   })
-
   const logout = useAuthStore((s) => s.logout)
   const navigate = useNavigate()
   const canOpenTenantDashboard = can({ role }, 'DASHBOARD_TENANT')
@@ -321,6 +398,62 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
                   >
                     Back to top
                   </Button>
+
+                  {/* Register as patient CTA */}
+                  {isAuthenticated && user ? (
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={
+                          isRegistered ||
+                          registerMutation.isPending ||
+                          meQuery.isLoading ||
+                          isRegistrationCheckPending
+                        }
+                        loading={registerMutation.isPending}
+                        onClick={handleRegisterAsPatient}
+                      >
+                        {isRegistered
+                          ? 'Registered'
+                          : isRegistrationCheckPending
+                            ? 'Checking...'
+                            : 'Register as patient'}
+                      </Button>
+                      {isRegistered ? (
+                        <>
+                          <p className="text-xs text-muted-foreground">
+                            You&apos;re registered. Add details in your Profile.
+                          </p>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => navigate({ to: '/dashboard/profile' })}
+                          >
+                            Go to Profile
+                          </Button>
+                        </>
+                      ) : null}
+                      {hasUnexpectedRegistrationStatusError ? (
+                        <p className="text-xs text-destructive">
+                          Unable to verify registration status right now.
+                        </p>
+                      ) : null}
+                    </div>
+                  ) : (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() =>
+                        navigate({
+                          to: '/login',
+                          search: { reason: undefined, redirect: `/landing/${slug || tenant.id}` },
+                        })
+                      }
+                    >
+                      Sign in to register
+                    </Button>
+                  )}
                 </div>
               </div>
               <aside className="mt-4 flex flex-1 flex-col gap-3 rounded-xl border bg-card/60 p-4 text-sm shadow-sm sm:p-5 lg:mt-0 lg:max-w-sm">
@@ -626,3 +759,4 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
     </Tabs>
   )
 }
+

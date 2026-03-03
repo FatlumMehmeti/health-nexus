@@ -6,6 +6,22 @@ import { request } from '@/lib/api-client'
 
 const BASE = '/api/auth'
 
+/** Request body for POST /api/auth/signup */
+export type SignupRequest = {
+  email: string
+  password: string
+  first_name: string
+  last_name: string
+  role: string
+}
+
+/** Response from POST /api/auth/signup */
+export type SignupResponse = {
+  user_id: string | number
+  email: string
+  role: string
+}
+
 /** Payload for POST /api/auth/login */
 export type LoginCredentials = {
   email: string
@@ -48,4 +64,7 @@ export const authService = {
 
   logout: (refresh_token: string) =>
     request<{ message: string }>(`${BASE}/logout`, { method: 'POST', body: { refresh_token } }),
+
+  signup: (data: SignupRequest) =>
+    request<SignupResponse>(`${BASE}/signup`, { method: 'POST', body: data }),
 }

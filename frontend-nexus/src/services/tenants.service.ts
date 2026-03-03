@@ -33,6 +33,11 @@ export const tenantsService = {
   listPublicTenants: () => api.get<TenantPublicCard[]>("/api/tenants"),
 
   /**
+   * List approved tenants where the current user is enrolled.
+   */
+  //listEnrolledTenants: () => api.get<TenantPublicCard[]>("/api/tenants/enrolled"),
+
+  /**
    * Get full landing page data for a tenant by slug (public). No auth.
    */
   getLandingBySlug: (slug: string) =>

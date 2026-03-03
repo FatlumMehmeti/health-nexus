@@ -22,12 +22,11 @@ const badgeVariants = cva(
           "bg-secondary/30 text-secondary-foreground [a&]:hover:bg-secondary/90",
         destructive:
           "bg-destructive/30 text-white [a&]:hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:bg-destructive/60",
-        success:
-          "bg-success/30 text-success [a&]:hover:bg-success/90",
-        neutral:
-          "bg-neutral/30 text-white [a&]:hover:bg-neutral/90",
-        warning:
-          "bg-warning/30 text-warning [a&]:hover:bg-warning/90",
+        success: "bg-success/30 text-success [a&]:hover:bg-success/90",
+        neutral: "bg-neutral/30 text-white [a&]:hover:bg-neutral/90",
+        expired:
+          "bg-red-500/15 text-red-600 dark:bg-red-500/25 dark:text-red-400 [a&]:hover:bg-red-500/30",
+        warning: "bg-warning/30 text-warning [a&]:hover:bg-warning/90",
         outline:
           "border-border text-foreground [a&]:hover:bg-accent [a&]:hover:text-accent-foreground",
         ghost: "[a&]:hover:bg-accent [a&]:hover:text-accent-foreground",
@@ -37,8 +36,8 @@ const badgeVariants = cva(
     defaultVariants: {
       variant: "default",
     },
-  }
-)
+  },
+);
 
 type BadgeColor = "success" | "destructive" | "neutral"
 

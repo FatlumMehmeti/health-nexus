@@ -28,6 +28,8 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar"
 import { useAuthStore } from "@/stores/auth.store"
+import { useDialogStore } from "@/stores/use-dialog-store"
+import { DashboardProfilePanel } from "@/components/molecules/dashboard-profile-panel"
 
 export type NavUserInfo = {
   name: string
@@ -43,10 +45,18 @@ export function NavUser({
   const { isMobile } = useSidebar()
   const navigate = useNavigate()
   const logout = useAuthStore((s) => s.logout)
+  const dialog = useDialogStore()
 
   const handleLogout = async () => {
     await logout()
     navigate({ to: "/login", search: { reason: undefined, redirect: undefined }, replace: true })
+  }
+
+  const handleOpenProfile = () => {
+    dialog.open({
+      title: "My Profile",
+      content: <DashboardProfilePanel />,
+    })
   }
 
   const display = user
@@ -101,7 +111,7 @@ export function NavUser({
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
-              <DropdownMenuItem>
+              <DropdownMenuItem onClick={handleOpenProfile}>
                 <IconUserCircle />
                 Account
               </DropdownMenuItem>
