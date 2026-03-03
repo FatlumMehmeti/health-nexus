@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from app.auth.auth_utils import get_current_user
 from app.db import get_db
 from app.models.appointment import Appointment, AppointmentStatus
+from app.models.user import User
 from app.routes.appointment import (
     _get_doctor_overlap,
     _record_status_change,
@@ -30,6 +31,14 @@ def list_my_appointments(
     if status is not None:
         query = query.filter(Appointment.status == status)
     appointments = query.order_by(Appointment.appointment_datetime.asc()).all()
+
+    # Build a lookup: patient_user_id → full name
+    patient_ids = {a.patient_user_id for a in appointments}
+    patients_map: dict[int, str] = {}
+    if patient_ids:
+        users = db.query(User).filter(User.id.in_(patient_ids)).all()
+        patients_map = {u.id: f"{u.first_name} {u.last_name}" for u in users}
+
     return [
         {
             "id": appointment.id,
@@ -37,6 +46,9 @@ def list_my_appointments(
             "description": appointment.description,
             "doctor_user_id": appointment.doctor_user_id,
             "patient_user_id": appointment.patient_user_id,
+            "patient_name": patients_map.get(
+                appointment.patient_user_id, f"Patient #{appointment.patient_user_id}"
+            ),
             "tenant_id": appointment.tenant_id,
             "status": appointment.status.value,
             "created_at": appointment.created_at,
