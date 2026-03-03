@@ -43,6 +43,14 @@ def list_my_appointments(
     if status is not None:
         query = query.filter(Appointment.status == status)
     appointments = query.order_by(Appointment.appointment_datetime.desc()).all()
+
+    # Build a lookup: doctor_user_id → tenant_department_id
+    doctor_ids = {a.doctor_user_id for a in appointments}
+    doctors_map: dict[int, int] = {}
+    if doctor_ids:
+        doctors = db.query(Doctor).filter(Doctor.user_id.in_(doctor_ids)).all()
+        doctors_map = {d.user_id: d.tenant_department_id for d in doctors}
+
     return [
         {
             "id": a.id,
@@ -51,6 +59,7 @@ def list_my_appointments(
             "doctor_user_id": a.doctor_user_id,
             "patient_user_id": a.patient_user_id,
             "tenant_id": a.tenant_id,
+            "department_id": doctors_map.get(a.doctor_user_id),
             "status": a.status.value,
             "created_at": a.created_at,
             "updated_at": a.updated_at,

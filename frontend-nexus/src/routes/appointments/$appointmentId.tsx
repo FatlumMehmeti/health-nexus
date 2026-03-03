@@ -3,6 +3,7 @@ import { createFileRoute, Link, useParams, useSearch } from '@tanstack/react-rou
 import { useAppointmentStatusHistory } from '@/services/appointments.status-history'
 import { useCancelAppointment } from '@/services/appointments.cancel'
 import { useRescheduleAppointment } from '@/services/appointments.reschedule'
+import { usePatientAppointments } from '@/services/appointments.patient'
 import { StatusBadge } from '@/components/StatusBadge'
 import { Button } from '@/components/ui/button'
 import {
@@ -37,18 +38,16 @@ export const Route = createFileRoute('/appointments/$appointmentId')({
   component: AppointmentDetailRoute,
 })
 
-/* Hardcoded doctor / tenant / department for the demo seed.
-   Same values used in the booking page. */
-const TENANT_ID = 1
-const DOCTOR_ID = 3
-const DEPARTMENT_ID = 1
-
 function AppointmentDetailRoute() {
   const { appointmentId } = useParams({ strict: false }) as { appointmentId: string }
   const { datetime } = useSearch({ from: '/appointments/$appointmentId' })
 
   /* ── Status history (live-polls every 10 s) ── */
   const { data, isLoading, isError, error, refetch } = useAppointmentStatusHistory(appointmentId)
+
+  /* ── Load appointment list to get context for reschedule ── */
+  const { data: myAppointments } = usePatientAppointments()
+  const apptContext = myAppointments?.find((a) => String(a.id) === appointmentId)
 
   const cancelMutation = useCancelAppointment(appointmentId)
   const rescheduleMutation = useRescheduleAppointment(appointmentId)
@@ -146,16 +145,20 @@ function AppointmentDetailRoute() {
                 <RescheduleDialog
                   open={rescheduleOpen}
                   onOpenChange={setRescheduleOpen}
-                  doctorId={String(DOCTOR_ID)}
+                  doctorId={String(apptContext?.doctor_user_id ?? '')}
                   isPending={rescheduleMutation.isPending}
                   onReschedule={async (startIso) => {
+                    if (!apptContext) {
+                      toast.error('Appointment context not loaded yet, please try again')
+                      return
+                    }
                     // Build naive datetime (strip TZ) matching backend expectation
                     const naive = startIso.replace(/Z$/, '').replace(/[+-]\d{2}:\d{2}$/, '')
                     try {
                       await rescheduleMutation.mutateAsync({
-                        tenant_id: TENANT_ID,
-                        doctor_id: DOCTOR_ID,
-                        department_id: DEPARTMENT_ID,
+                        tenant_id: apptContext.tenant_id,
+                        doctor_id: apptContext.doctor_user_id,
+                        department_id: apptContext.department_id ?? 0,
                         appointment_datetime: naive,
                         duration_minutes: 30,
                       })

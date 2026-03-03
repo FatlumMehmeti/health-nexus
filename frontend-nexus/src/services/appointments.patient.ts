@@ -8,6 +8,7 @@ export interface PatientAppointment {
   doctor_user_id: number
   patient_user_id: number
   tenant_id: number
+  department_id: number | null
   status: 'REQUESTED' | 'CONFIRMED' | 'COMPLETED' | 'CANCELLED'
   created_at: string
   updated_at: string
