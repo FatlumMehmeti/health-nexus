@@ -93,7 +93,7 @@ function LoginPage() {
 
       // Get updated state after login
       const state = useAuthStore.getState();
-      const { role, tenantId } = state;
+      const { role } = state;
 
       // If there's an explicit redirect param, use it
       if (redirectTo && redirectTo.startsWith("/") && !redirectTo.startsWith("//")) {
@@ -107,23 +107,10 @@ function LoginPage() {
         return;
       }
 
-      // CLIENT users — check enrollment via backend
-      if (tenantId) {
-        try {
-          const { checkEnrollment } = await import("@/services/auth.service");
-          const isEnrolled = await checkEnrollment(tenantId);
-          if (isEnrolled) {
-            await navigate({ to: "/appointments/book", replace: true });
-          } else {
-            await navigate({ to: "/enrollment", replace: true });
-          }
-        } catch {
-          await navigate({ to: "/enrollment", replace: true });
-        }
-      } else {
-        // No tenant → go to tenant selector
-        await navigate({ to: "/tenants", replace: true });
-      }
+      // CLIENT / other roles without explicit redirect → tenant selector (dev-team default).
+      // The /appointments/book flow is handled above via the ?redirect= param
+      // that book.tsx's beforeLoad sets when redirecting unauthenticated users.
+      await navigate({ to: "/tenants", replace: true });
     } catch (err) {
       if (err instanceof ApiError) {
         setSubmitError(err.displayMessage);
