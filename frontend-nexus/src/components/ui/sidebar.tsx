@@ -1,9 +1,7 @@
 import * as React from "react";
 import { cva, type VariantProps } from "class-variance-authority";
-import { MoonIcon, SunIcon, PanelLeftIcon } from "lucide-react";
-import { useTheme } from "next-themes";
+import { PanelLeftIcon } from "lucide-react";
 import { Slot } from "radix-ui";
-
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -258,9 +256,6 @@ function SidebarTrigger({
   ...props
 }: React.ComponentProps<typeof Button>) {
   const { toggleSidebar } = useSidebar();
-  const { theme, setTheme } = useTheme();
-
-  const isDark = theme === "dark";
 
   return (
     <>
@@ -279,25 +274,7 @@ function SidebarTrigger({
         <PanelLeftIcon />
         <span className="sr-only">Toggle Sidebar</span>
       </Button>
-      <Button
-        variant="ghost"
-        size="icon"
-        onClick={() => {
-          setTheme(isDark ? "light" : "dark");
-        }}
-      >
-        {isDark ? (
-          <>
-            <SunIcon className="size-4" />
-            <span className="sr-only">Switch to light theme</span>
-          </>
-        ) : (
-          <>
-            <MoonIcon className="size-4" />
-            <span className="sr-only">Switch to dark theme</span>
-          </>
-        )}
-      </Button>
+ 
     </>
   );
 }

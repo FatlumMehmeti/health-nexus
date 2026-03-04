@@ -5,13 +5,13 @@
  *
  * Used by /landing/$tenantSlug. Data from GET /api/tenants/by-slug/{slug}/landing.
  */
-import type { CSSProperties } from 'react'
-import { useState } from 'react'
-import { useNavigate } from '@tanstack/react-router'
-import { useMutation, useQuery } from '@tanstack/react-query'
-import { toast } from 'sonner'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Button } from '@/components/ui/button'
+import type { CSSProperties } from "react";
+import { useState } from "react";
+import { useNavigate } from "@tanstack/react-router";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -19,136 +19,157 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import { can } from '@/lib/rbac'
-import { isApiError } from '@/lib/api-client'
-import { useAuthStore } from '@/stores/auth.store'
-import { tenantPlansService } from '@/services/tenant-plans.service'
-import { resolveMediaUrl } from '@/lib/media-url'
-import type { TenantLandingPageResponse } from '@/interfaces'
+} from "@/components/ui/dropdown-menu";
+import { can } from "@/lib/rbac";
+import { isApiError } from "@/lib/api-client";
+import { useAuthStore } from "@/stores/auth.store";
+import { tenantPlansService } from "@/services/tenant-plans.service";
+import { resolveMediaUrl } from "@/lib/media-url";
+import type { TenantLandingPageResponse } from "@/interfaces";
 
 export interface TenantLandingProps {
   /** Landing data from API; null while loading */
-  landingData: TenantLandingPageResponse | null
+  landingData: TenantLandingPageResponse | null;
 }
 
 interface BrandStyles {
-  headerStyle?: CSSProperties
-  bodyStyle?: CSSProperties
-  primary?: string | null
-  secondary?: string | null
-  background?: string | null
-  foreground?: string | null
+  headerStyle?: CSSProperties;
+  bodyStyle?: CSSProperties;
+  primary?: string | null;
+  secondary?: string | null;
+  background?: string | null;
+  foreground?: string | null;
 }
 
-function buildBrandStyles(details: TenantLandingPageResponse['details']): BrandStyles {
+function buildBrandStyles(
+  details: TenantLandingPageResponse["details"],
+): BrandStyles {
   return {
     headerStyle:
-      details?.font_header_family != null ? { fontFamily: details.font_header_family } : undefined,
+      details?.font_header_family != null
+        ? { fontFamily: details.font_header_family }
+        : undefined,
     bodyStyle:
-      details?.font_body_family != null ? { fontFamily: details.font_body_family } : undefined,
+      details?.font_body_family != null
+        ? { fontFamily: details.font_body_family }
+        : undefined,
     primary: details?.brand_color_primary ?? null,
     secondary: details?.brand_color_secondary ?? null,
     background: details?.brand_color_background ?? null,
     foreground: details?.brand_color_foreground ?? null,
-  }
+  };
 }
 
-const usdFormatter = new Intl.NumberFormat('en-US', {
-  style: 'currency',
-  currency: 'USD',
+const usdFormatter = new Intl.NumberFormat("en-US", {
+  style: "currency",
+  currency: "USD",
   minimumFractionDigits: 2,
-})
+});
 
 function formatCurrency(value: number): string {
-  return usdFormatter.format(Number.isFinite(value) ? value : 0)
+  return usdFormatter.format(Number.isFinite(value) ? value : 0);
 }
 
 export function TenantLanding({ landingData }: TenantLandingProps) {
-  const [activeTab, setActiveTab] = useState('home')
-  const [selectedPlanId, setSelectedPlanId] = useState<number | null>(null)
+  const [activeTab, setActiveTab] = useState("home");
+  const [selectedPlanId, setSelectedPlanId] = useState<number | null>(null);
 
-  const user = useAuthStore((s) => s.user)
-  const role = useAuthStore((s) => s.role)
-  const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
+  const user = useAuthStore((s) => s.user);
+  const role = useAuthStore((s) => s.role);
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
 
-  const tenantId = landingData?.tenant?.id
+  const tenantId = landingData?.tenant?.id;
 
   // Hydrate the selected plan from the user's existing enrollment
   useQuery({
-    queryKey: ['my-enrollment', tenantId],
+    queryKey: ["my-enrollment", tenantId],
     queryFn: () => tenantPlansService.myEnrollment(tenantId!),
     enabled: !!tenantId && isAuthenticated,
     retry: false,
     select: (data) => {
-      if (data?.user_tenant_plan_id && data.status === 'ACTIVE') {
-        setSelectedPlanId(data.user_tenant_plan_id)
+      if (data?.user_tenant_plan_id && data.status === "ACTIVE") {
+        setSelectedPlanId(data.user_tenant_plan_id);
       }
-      return data
+      return data;
     },
-  })
+  });
 
   const enrollMutation = useMutation({
     mutationFn: ({ tenantId, planId }: { tenantId: number; planId: number }) =>
       tenantPlansService.enroll(tenantId, planId),
     onSuccess: (_data, variables) => {
-      setSelectedPlanId(variables.planId)
-      toast.success('Successfully subscribed!', { description: 'Your plan has been selected.' })
+      setSelectedPlanId(variables.planId);
+      toast.success("Successfully subscribed!", {
+        description: "Your plan has been selected.",
+      });
     },
     onError: (err) => {
-      toast.error(isApiError(err) ? err.message : 'Failed to subscribe. Please try again.')
+      toast.error(
+        isApiError(err)
+          ? err.message
+          : "Failed to subscribe. Please try again.",
+      );
     },
-  })
-  const logout = useAuthStore((s) => s.logout)
-  const navigate = useNavigate()
-  const canOpenTenantDashboard = can({ role }, 'DASHBOARD_TENANT')
+  });
+  const logout = useAuthStore((s) => s.logout);
+  const navigate = useNavigate();
+  const canOpenTenantDashboard = can({ role }, "DASHBOARD_TENANT");
 
   const handleLogout = async () => {
-    await logout()
-    navigate({ to: '/login', search: { reason: undefined, redirect: undefined }, replace: true })
-  }
+    await logout();
+    navigate({
+      to: "/login",
+      search: { reason: undefined, redirect: undefined },
+      replace: true,
+    });
+  };
 
   const handleGoToTenantDashboard = () => {
     navigate({
-      to: '/dashboard/tenant/$section',
-      params: { section: 'departments-services' },
-    })
-  }
+      to: "/dashboard/tenant/$section",
+      params: { section: "departments-services" },
+    });
+  };
 
-  const userInitial = (user?.email?.trim().charAt(0) || user?.fullName?.trim().charAt(0) || 'U')
-    .toUpperCase()
+  const userInitial = (
+    user?.email?.trim().charAt(0) ||
+    user?.fullName?.trim().charAt(0) ||
+    "U"
+  ).toUpperCase();
 
   if (!landingData) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <p className="text-muted-foreground text-sm">Loading…</p>
       </div>
-    )
+    );
   }
 
-  const { tenant, details, departments, products } = landingData
-  const plans = landingData.plans ?? []
-  const title = details?.title ?? tenant.name
-  const subtitle = details?.slogan ?? 'Welcome to our landing page.'
-  const logo = resolveMediaUrl(details?.logo)
-  const heroImage = resolveMediaUrl(details?.image)
-  const moto = details?.moto ?? 'Your health, our priority.'
-  const about = details?.about_text ?? 'No description available.'
-  const slug = tenant.slug ?? ''
-  const brand = buildBrandStyles(details)
-  const fontHeaderStyle = brand.headerStyle
-  const fontBodyStyle = brand.bodyStyle
-  const featuredDepartments = departments.slice(0, 3)
-  const availableProducts = products.filter((product) => product.is_available !== false)
+  const { tenant, details, departments, products } = landingData;
+  const plans = landingData.plans ?? [];
+  const title = details?.title ?? tenant.name;
+  const subtitle = details?.slogan ?? "Welcome to our landing page.";
+  const logo = resolveMediaUrl(details?.logo);
+  const heroImage = resolveMediaUrl(details?.image);
+  const moto = details?.moto ?? "Your health, our priority.";
+  const about = details?.about_text ?? "No description available.";
+  const slug = tenant.slug ?? "";
+  const brand = buildBrandStyles(details);
+  const fontHeaderStyle = brand.headerStyle;
+  const fontBodyStyle = brand.bodyStyle;
+  const featuredDepartments = departments.slice(0, 3);
+  const availableProducts = products.filter(
+    (product) => product.is_available !== false,
+  );
   const accountButtonStyle: CSSProperties | undefined = brand.primary
     ? {
         backgroundColor: brand.primary,
         borderColor: brand.primary,
-        color: brand.foreground ?? '#ffffff',
+        color: brand.foreground ?? "#ffffff",
       }
     : brand.secondary
       ? { borderColor: brand.secondary, color: brand.secondary }
-      : undefined
+      : undefined;
 
   return (
     <Tabs
@@ -159,15 +180,16 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
     >
       <div className="pointer-events-none fixed inset-0 -z-10">
         <div
-          className="
+          className={`
             absolute inset-0 
-            bg-gradient-to-br 
-            from-[#1d2333] via-[#1c2130] to-[#375483] 
-            brightness-50 
+            bg-gradient-to-br
+            from-[#e6edf7] via-[#dbeafe] to-[#b1c4e6]
+            dark:from-[#1d2333] dark:via-[#1c2130] dark:to-[#375483]
+            brightness-100 dark:brightness-50
             -rotate-6 
             scale-200
             z-[-1]
-          "
+          `}
         />
       </div>
 
@@ -183,21 +205,26 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
             ) : (
               <div className="bg-primary/10 text-primary flex h-9 w-9 items-center justify-center rounded-lg text-sm font-semibold">
                 {title
-                  .split(' ')
+                  .split(" ")
                   .map((p) => p[0])
-                  .join('')
+                  .join("")
                   .slice(0, 2)}
               </div>
             )}
             <div className="flex flex-col">
-              <span className="text-sm font-semibold sm:text-base">{title}</span>
+              <span className="text-sm font-semibold sm:text-base">
+                {title}
+              </span>
               <span className="text-xs text-muted-foreground sm:text-[0.8rem]">
                 {subtitle}
               </span>
             </div>
           </div>
           <div className="flex items-center gap-4">
-            <TabsList variant="line" className="inline-flex items-center gap-1 rounded-lg p-0.75">
+            <TabsList
+              variant="line"
+              className="inline-flex items-center gap-1 rounded-lg p-0.75"
+            >
               <TabsTrigger value="home">HOME</TabsTrigger>
               <TabsTrigger value="departments">DEPARTMENTS</TabsTrigger>
               <TabsTrigger value="products">PRODUCTS</TabsTrigger>
@@ -249,7 +276,9 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
               <div className="flex-1 space-y-4 lg:space-y-6">
                 <p
                   className="text-sm font-medium uppercase tracking-[0.2em] text-primary"
-                  style={brand.secondary ? { color: brand.secondary } : undefined}
+                  style={
+                    brand.secondary ? { color: brand.secondary } : undefined
+                  }
                 >
                   {moto}
                 </p>
@@ -274,7 +303,9 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
                           <span
                             className="h-1.5 w-1.5 rounded-full"
                             style={
-                              brand.primary ? { backgroundColor: brand.primary } : undefined
+                              brand.primary
+                                ? { backgroundColor: brand.primary }
+                                : undefined
                             }
                           />
                           <span>{d.name}</span>
@@ -287,10 +318,13 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
                 <div className="mt-5 flex flex-wrap gap-3">
                   <Button
                     size="sm"
-                    onClick={() => setActiveTab('departments')}
+                    onClick={() => setActiveTab("departments")}
                     style={
                       brand.primary
-                        ? { backgroundColor: brand.primary, borderColor: brand.primary }
+                        ? {
+                            backgroundColor: brand.primary,
+                            borderColor: brand.primary,
+                          }
                         : undefined
                     }
                   >
@@ -299,10 +333,15 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
                   <Button
                     size="sm"
                     variant="outline"
-                    onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+                    onClick={() =>
+                      window.scrollTo({ top: 0, behavior: "smooth" })
+                    }
                     style={
                       brand.secondary
-                        ? { borderColor: brand.secondary, color: brand.secondary }
+                        ? {
+                            borderColor: brand.secondary,
+                            color: brand.secondary,
+                          }
                         : undefined
                     }
                   >
@@ -326,13 +365,17 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
                 </div>
                 <div className="flex items-center gap-2">
                   {logo ? (
-                    <img src={logo} alt={title} className="h-8 w-8 rounded-md object-contain" />
+                    <img
+                      src={logo}
+                      alt={title}
+                      className="h-8 w-8 rounded-md object-contain"
+                    />
                   ) : (
                     <div className="bg-primary/10 text-primary flex h-8 w-8 items-center justify-center rounded-md text-xs font-semibold">
                       {title
-                        .split(' ')
+                        .split(" ")
                         .map((p) => p[0])
-                        .join('')
+                        .join("")
                         .slice(0, 2)}
                     </div>
                   )}
@@ -343,12 +386,15 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
                 </h2>
                 <div className="space-y-2 text-sm">
                   <p>
-                    <span className="text-muted-foreground">Tenant:</span>{' '}
-                    <code className="rounded bg-muted px-1 text-xs">{slug || tenant.name}</code>
+                    <span className="text-muted-foreground">Tenant:</span>{" "}
+                    <code className="rounded bg-muted px-1 text-xs">
+                      {slug || tenant.name}
+                    </code>
                   </p>
                   {departments.length > 0 && (
                     <p className="text-muted-foreground">
-                      {departments.length} department(s) with services listed below.
+                      {departments.length} department(s) with services listed
+                      below.
                     </p>
                   )}
                 </div>
@@ -364,8 +410,8 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
                 </h2>
                 <p className="text-sm text-muted-foreground sm:text-base">
                   {departments.length > 0
-                    ? 'Departments and services for this tenant.'
-                    : 'No departments configured yet.'}
+                    ? "Departments and services for this tenant."
+                    : "No departments configured yet."}
                 </p>
               </div>
 
@@ -378,7 +424,9 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div>
-                          <h3 className="text-sm font-semibold sm:text-base">{dept.name}</h3>
+                          <h3 className="text-sm font-semibold sm:text-base">
+                            {dept.name}
+                          </h3>
                           {dept.location && (
                             <p className="text-xs text-muted-foreground sm:text-sm">
                               {dept.location}
@@ -401,7 +449,10 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
                               className="rounded-full border px-2 py-1 text-xs"
                               style={
                                 brand.primary
-                                  ? { borderColor: brand.primary, color: brand.primary }
+                                  ? {
+                                      borderColor: brand.primary,
+                                      color: brand.primary,
+                                    }
                                   : undefined
                               }
                             >
@@ -409,7 +460,9 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
                             </span>
                           ))
                         ) : (
-                          <p className="text-xs text-muted-foreground">No services listed.</p>
+                          <p className="text-xs text-muted-foreground">
+                            No services listed.
+                          </p>
                         )}
                       </div>
 
@@ -419,7 +472,7 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
                             .filter((s) => s.description)
                             .slice(0, 2)
                             .map((s) => s.description)
-                            .join(' • ')}
+                            .join(" • ")}
                         </p>
                       )}
                     </article>
@@ -436,11 +489,13 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
           <TabsContent value="products" className="mt-0 flex-1">
             <section className="mx-auto max-w-5xl space-y-4">
               <div className="space-y-1">
-                <h2 className="text-xl font-semibold tracking-tight sm:text-2xl">Products</h2>
+                <h2 className="text-xl font-semibold tracking-tight sm:text-2xl">
+                  Products
+                </h2>
                 <p className="text-sm text-muted-foreground sm:text-base">
                   {availableProducts.length > 0
-                    ? 'Healthcare products currently available from this tenant.'
-                    : 'No products available yet.'}
+                    ? "Healthcare products currently available from this tenant."
+                    : "No products available yet."}
                 </p>
               </div>
 
@@ -452,12 +507,17 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
                       className="flex h-full flex-col rounded-xl border bg-card/60 p-4 shadow-sm"
                     >
                       <div className="flex items-start justify-between gap-3">
-                        <h3 className="text-sm font-semibold sm:text-base">{product.name}</h3>
+                        <h3 className="text-sm font-semibold sm:text-base">
+                          {product.name}
+                        </h3>
                         <span
                           className="rounded-full border px-2 py-0.5 text-xs font-medium"
                           style={
                             brand.primary
-                              ? { borderColor: brand.primary, color: brand.primary }
+                              ? {
+                                  borderColor: brand.primary,
+                                  color: brand.primary,
+                                }
                               : undefined
                           }
                         >
@@ -465,7 +525,7 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
                         </span>
                       </div>
                       <p className="mt-2 text-sm text-muted-foreground">
-                        {product.description || 'No description provided.'}
+                        {product.description || "No description provided."}
                       </p>
                     </article>
                   ))}
@@ -486,117 +546,160 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
                 </h2>
                 <p className="text-sm text-muted-foreground sm:text-base">
                   {plans.length > 0
-                    ? 'Explore tenant-specific pricing and coverage limits for care packages.'
-                    : 'No plans available yet.'}
+                    ? "Explore tenant-specific pricing and coverage limits for care packages."
+                    : "No plans available yet."}
                 </p>
               </div>
 
-              {selectedPlanId && (() => {
-                const selected = plans.find((p) => p.id === selectedPlanId)
-                if (!selected) return null
-                return (
-                  <div
-                    className="flex items-center justify-between rounded-xl border-2 p-4"
-                    style={{ borderColor: brand.primary ?? undefined, backgroundColor: `${brand.primary ?? '#2563eb'}10` }}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div
-                        className="flex h-8 w-8 items-center justify-center rounded-full text-white text-sm font-bold"
-                        style={{ backgroundColor: brand.primary ?? '#2563eb' }}
-                      >
-                        ✓
-                      </div>
-                      <div>
-                        <p className="text-sm font-semibold">{selected.name}</p>
-                        <p className="text-xs text-muted-foreground">
-                          €{Number(selected.price).toFixed(2)}{selected.duration ? ` / ${selected.duration} days` : ''}
-                        </p>
-                      </div>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setSelectedPlanId(null)}
+              {selectedPlanId &&
+                (() => {
+                  const selected = plans.find((p) => p.id === selectedPlanId);
+                  if (!selected) return null;
+                  return (
+                    <div
+                      className="flex items-center justify-between rounded-xl border-2 p-4"
+                      style={{
+                        borderColor: brand.primary ?? undefined,
+                        backgroundColor: `${brand.primary ?? "#2563eb"}10`,
+                      }}
                     >
-                      Change plan
-                    </Button>
-                  </div>
-                )
-              })()}
+                      <div className="flex items-center gap-3">
+                        <div
+                          className="flex h-8 w-8 items-center justify-center rounded-full text-white text-sm font-bold"
+                          style={{
+                            backgroundColor: brand.primary ?? "#2563eb",
+                          }}
+                        >
+                          ✓
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold">
+                            {selected.name}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            €{Number(selected.price).toFixed(2)}
+                            {selected.duration
+                              ? ` / ${selected.duration} days`
+                              : ""}
+                          </p>
+                        </div>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setSelectedPlanId(null)}
+                      >
+                        Change plan
+                      </Button>
+                    </div>
+                  );
+                })()}
 
               {plans.length > 0 ? (
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                   {plans.map((plan) => {
-                    const isSelected = selectedPlanId === plan.id
+                    const isSelected = selectedPlanId === plan.id;
                     return (
-                    <article
-                      key={plan.id}
-                      className={`flex h-full flex-col rounded-xl border p-5 shadow-sm transition-all ${
-                        isSelected
-                          ? 'ring-2 bg-card/80'
-                          : 'bg-card/60'
-                      }`}
-                      style={isSelected ? { borderColor: brand.primary ?? undefined, outlineColor: brand.primary ?? undefined } : undefined}
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <h3 className="text-sm font-semibold sm:text-base">{plan.name}</h3>
-                        <span className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
-                          Active
-                        </span>
-                      </div>
-
-                      <p className="mt-3 text-2xl font-bold tracking-tight">
-                        €{Number(plan.price).toFixed(2)}
-                      </p>
-                      {plan.duration && (
-                        <p className="text-xs text-muted-foreground">
-                          {plan.duration} day{plan.duration !== 1 ? 's' : ''} duration
-                        </p>
-                      )}
-
-                      <p className="mt-3 flex-1 text-sm text-muted-foreground">
-                        {plan.description || 'No description provided.'}
-                      </p>
-
-                      <div className="mt-4 space-y-2 border-t pt-3">
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="text-muted-foreground">Appointments</span>
-                          <span className="font-medium">
-                            {plan.max_appointments != null ? plan.max_appointments : 'Unlimited'}
-                          </span>
-                        </div>
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="text-muted-foreground">Consultations</span>
-                          <span className="font-medium">
-                            {plan.max_consultations != null ? plan.max_consultations : 'Unlimited'}
-                          </span>
-                        </div>
-                      </div>
-
-                      <Button
-                        size="sm"
-                        className="mt-4 w-full"
-                        variant={isSelected ? 'outline' : 'default'}
-                        disabled={isSelected || enrollMutation.isPending}
+                      <article
+                        key={plan.id}
+                        className={`flex h-full flex-col rounded-xl border p-5 shadow-sm transition-all ${
+                          isSelected ? "ring-2 bg-card/80" : "bg-card/60"
+                        }`}
                         style={
                           isSelected
-                            ? { borderColor: brand.primary ?? undefined, color: brand.primary ?? undefined }
-                            : brand.primary
-                              ? { backgroundColor: brand.primary, borderColor: brand.primary }
-                              : undefined
+                            ? {
+                                borderColor: brand.primary ?? undefined,
+                                outlineColor: brand.primary ?? undefined,
+                              }
+                            : undefined
                         }
-                        onClick={() => {
-                          if (!isAuthenticated) {
-                            toast.error('Please log in to subscribe to a plan.')
-                            return
-                          }
-                          enrollMutation.mutate({ tenantId: tenant.id, planId: plan.id })
-                        }}
                       >
-                        {isSelected ? 'You have selected this plan' : enrollMutation.isPending ? 'Subscribing…' : 'Subscribe to this plan'}
-                      </Button>
-                    </article>
-                  )})}
+                        <div className="flex items-start justify-between gap-3">
+                          <h3 className="text-sm font-semibold sm:text-base">
+                            {plan.name}
+                          </h3>
+                          <span className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+                            Active
+                          </span>
+                        </div>
+
+                        <p className="mt-3 text-2xl font-bold tracking-tight">
+                          €{Number(plan.price).toFixed(2)}
+                        </p>
+                        {plan.duration && (
+                          <p className="text-xs text-muted-foreground">
+                            {plan.duration} day{plan.duration !== 1 ? "s" : ""}{" "}
+                            duration
+                          </p>
+                        )}
+
+                        <p className="mt-3 flex-1 text-sm text-muted-foreground">
+                          {plan.description || "No description provided."}
+                        </p>
+
+                        <div className="mt-4 space-y-2 border-t pt-3">
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-muted-foreground">
+                              Appointments
+                            </span>
+                            <span className="font-medium">
+                              {plan.max_appointments != null
+                                ? plan.max_appointments
+                                : "Unlimited"}
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-muted-foreground">
+                              Consultations
+                            </span>
+                            <span className="font-medium">
+                              {plan.max_consultations != null
+                                ? plan.max_consultations
+                                : "Unlimited"}
+                            </span>
+                          </div>
+                        </div>
+
+                        <Button
+                          size="sm"
+                          className="mt-4 w-full"
+                          variant={isSelected ? "outline" : "default"}
+                          disabled={isSelected || enrollMutation.isPending}
+                          style={
+                            isSelected
+                              ? {
+                                  borderColor: brand.primary ?? undefined,
+                                  color: brand.primary ?? undefined,
+                                }
+                              : brand.primary
+                                ? {
+                                    backgroundColor: brand.primary,
+                                    borderColor: brand.primary,
+                                  }
+                                : undefined
+                          }
+                          onClick={() => {
+                            if (!isAuthenticated) {
+                              toast.error(
+                                "Please log in to subscribe to a plan.",
+                              );
+                              return;
+                            }
+                            enrollMutation.mutate({
+                              tenantId: tenant.id,
+                              planId: plan.id,
+                            });
+                          }}
+                        >
+                          {isSelected
+                            ? "You have selected this plan"
+                            : enrollMutation.isPending
+                              ? "Subscribing…"
+                              : "Subscribe to this plan"}
+                        </Button>
+                      </article>
+                    );
+                  })}
                 </div>
               ) : (
                 <div className="rounded-xl border bg-card/60 p-6 text-center text-sm text-muted-foreground">
@@ -608,5 +711,5 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
         </div>
       </main>
     </Tabs>
-  )
+  );
 }

@@ -17,7 +17,7 @@ function LandingPage() {
         <div className="absolute inset-0 bg-gradient-to-b from-primary/5 via-background to-background" />
         <div className="absolute inset-0 bg-[linear-gradient(to_right,oklch(0.9_0.01_265/0.5)_1px,transparent_1px),linear-gradient(to_bottom,oklch(0.9_0.01_265/0.5)_1px,transparent_1px)] bg-[size:4rem_4rem]" />
       </div>
-
+      
       <PublicAuthHeader
         className="z-50"
         containerClassName="h-16 px-6"
