@@ -152,18 +152,17 @@ function AuditLogsPage() {
                                     : log.new_value}
                                 </div>
                               </div>
-                            </div>
-                          )}
-                        </div>
-                      </TableCell>
+                            )}
+                          </div>
+                        </TableCell>
 
-                      <TableCell className="text-sm">
-                        {log.performed_by_role && (
-                          <Badge variant="outline">
-                            {log.performed_by_role}
-                          </Badge>
-                        )}
-                      </TableCell>
+                        <TableCell className="text-sm">
+                          {log.performed_by_role && (
+                            <Badge variant="outline">
+                              {log.performed_by_role}
+                            </Badge>
+                          )}
+                        </TableCell>
 
                         <TableCell className="text-sm">
                           {log.performed_by_role && (
@@ -178,7 +177,7 @@ function AuditLogsPage() {
                           )}
                         </TableCell>
 
-                        <TableCell className="max-w-[200px] text-sm text-muted-foreground">
+                        <TableCell className="max-w-50 text-sm text-muted-foreground">
                           {log.reason || "-"}
                         </TableCell>
 

@@ -27,6 +27,7 @@ from app.models import (
     TenantDepartment,
     TenantManager,
     TenantStatus,
+    TenantSubscription,
     User,
     UserTenantPlan,
 )

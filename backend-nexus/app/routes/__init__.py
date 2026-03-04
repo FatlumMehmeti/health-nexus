@@ -11,6 +11,8 @@ from .enrollment import router as enrollment_router
 from .user_tenant_plan import router as user_tenant_plan_router
 from .public_tenant import router as public_tenant_router
 from .contract import router as contract_router
+from .tenant_subscription import router as tenant_subscription_router
+from .subscription_plan import router as subscription_plan_router
 
 __all__ = [
     "role_router",
@@ -26,4 +28,6 @@ __all__ = [
     "public_tenant_router",
     "enrollment_router",
     "contract_router",
+    "tenant_subscription_router",
+    "subscription_plan_router",
 ]
