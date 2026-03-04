@@ -157,6 +157,7 @@ def test_get_pricing_bounds_returns_expected_values(client, db_session):
     assert data["min_price"] == 50  # 100 * 0.5
     assert data["max_price"] == 200  # 100 * 2
 
+
 def test_create_plan_enforces_tenant_pricing_bounds(client, db_session):
     paid_plan = SubscriptionPlan(name="PAID", price=100, duration=30)
     db_session.add(paid_plan)
@@ -460,13 +461,9 @@ def test_get_tenant_enrollments_enforces_tenant_isolation(client, db_session):
     db_session.commit()
 
     saved = app.dependency_overrides.get(get_current_user)
-    app.dependency_overrides[get_current_user] = lambda: {
-        "user_id": client.outsider_user_id
-    }
+    app.dependency_overrides[get_current_user] = lambda: {"user_id": client.outsider_user_id}
     try:
-        response = client.get(
-            f"/user-tenant-plans/tenant/{client.tenant_id}/enrollments"
-        )
+        response = client.get(f"/user-tenant-plans/tenant/{client.tenant_id}/enrollments")
     finally:
         if saved is not None:
             app.dependency_overrides[get_current_user] = saved

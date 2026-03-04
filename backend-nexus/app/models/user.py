@@ -21,18 +21,11 @@ class User(Base):
     contact = Column(String(50))
     address = Column(Text)
 
-    created_at = Column(
-        TIMESTAMP(timezone=True),
-        server_default=func.now()
-    )
+    created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
 
     role = relationship("Role", back_populates="users")
 
-    doctor_profile = relationship(
-        "Doctor",
-        back_populates="user",
-        uselist=False
-    )
+    doctor_profile = relationship("Doctor", back_populates="user", uselist=False)
 
     patient_profile = relationship(
         "Patient",
@@ -40,7 +33,5 @@ class User(Base):
     )
 
     managed_tenants = relationship(
-        "TenantManager",
-        back_populates="user",
-        cascade="all, delete-orphan"
+        "TenantManager", back_populates="user", cascade="all, delete-orphan"
     )

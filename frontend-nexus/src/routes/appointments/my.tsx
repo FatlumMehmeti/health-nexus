@@ -3,13 +3,15 @@ import {
   Link,
   redirect,
   useNavigate,
-} from "@tanstack/react-router";
+} from '@tanstack/react-router';
 
-import { useAuthStore } from '@/stores/auth.store'
-import { usePatientAppointments, type PatientAppointment } from '@/services/appointments.patient'
-import { StatusBadge, type AppointmentStatus } from '@/components/StatusBadge'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
+import { NotificationBell } from '@/components/NotificationBell';
+import {
+  StatusBadge,
+  type AppointmentStatus,
+} from '@/components/StatusBadge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,70 +19,119 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { User } from "lucide-react";
-import { format } from 'date-fns'
-import { useState, useMemo } from 'react'
-import { NotificationBell } from '@/components/NotificationBell'
+} from '@/components/ui/dropdown-menu';
+import {
+  usePatientAppointments,
+  type PatientAppointment,
+} from '@/services/appointments.patient';
+import { useAuthStore } from '@/stores/auth.store';
+import { format } from 'date-fns';
+import { User } from 'lucide-react';
+import { useMemo, useState } from 'react';
 
 export const Route = createFileRoute('/appointments/my')({
   beforeLoad: async () => {
-    const { ensureAuth } = useAuthStore.getState()
-    await ensureAuth()
-    const state = useAuthStore.getState()
+    const { ensureAuth } = useAuthStore.getState();
+    await ensureAuth();
+    const state = useAuthStore.getState();
     if (!state.user) {
-      throw redirect({ to: '/login', search: { reason: undefined, redirect: '/appointments/my' } })
+      throw redirect({
+        to: '/login',
+        search: {
+          reason: undefined,
+          redirect: '/appointments/my',
+        },
+      });
     }
     // Seed-user shortcut: client.user belongs to tenant 2 (Riverside Health Partners)
-    if (state.user.email === 'client.user@seed.com' && !state.tenantId) {
-      useAuthStore.setState({ tenantId: '2' })
+    if (
+      state.user.email === 'client.user@seed.com' &&
+      !state.tenantId
+    ) {
+      useAuthStore.setState({ tenantId: '2' });
     }
   },
   component: MyAppointmentsPage,
-})
+});
 
-type FilterStatus = 'ALL' | AppointmentStatus
+type FilterStatus = 'ALL' | AppointmentStatus;
 
-const PAGE_SIZE = 3
+const PAGE_SIZE = 3;
 
 function toNaiveDate(iso: string): Date {
-  return new Date(iso.replace(/Z$/, '').replace(/[+-]\d{2}:\d{2}$/, ''))
+  return new Date(
+    iso.replace(/Z$/, '').replace(/[+-]\d{2}:\d{2}$/, '')
+  );
 }
 
-function Pagination({ total, page, onPageChange }: { total: number; page: number; onPageChange: (p: number) => void }) {
-  const totalPages = Math.ceil(total / PAGE_SIZE)
-  if (totalPages <= 1) return null
+function Pagination({
+  total,
+  page,
+  onPageChange,
+}: {
+  total: number;
+  page: number;
+  onPageChange: (p: number) => void;
+}) {
+  const totalPages = Math.ceil(total / PAGE_SIZE);
+  if (totalPages <= 1) return null;
   return (
     <div className="flex items-center justify-center gap-2 pt-4">
-      <Button variant="outline" size="sm" disabled={page === 1} onClick={() => onPageChange(page - 1)}>Previous</Button>
-      <span className="text-sm text-muted-foreground">{page} / {totalPages}</span>
-      <Button variant="outline" size="sm" disabled={page === totalPages} onClick={() => onPageChange(page + 1)}>Next</Button>
+      <Button
+        variant="outline"
+        size="sm"
+        disabled={page === 1}
+        onClick={() => onPageChange(page - 1)}
+      >
+        Previous
+      </Button>
+      <span className="text-sm text-muted-foreground">
+        {page} / {totalPages}
+      </span>
+      <Button
+        variant="outline"
+        size="sm"
+        disabled={page === totalPages}
+        onClick={() => onPageChange(page + 1)}
+      >
+        Next
+      </Button>
     </div>
-  )
+  );
 }
 
 function MyAppointmentsPage() {
-  const { data: appointments = [], isLoading, isError, error } = usePatientAppointments()
-  const [filter, setFilter] = useState<FilterStatus>('ALL')
-  const [page, setPage] = useState(1)
+  const {
+    data: appointments = [],
+    isLoading,
+    isError,
+    error,
+  } = usePatientAppointments();
+  const [filter, setFilter] = useState<FilterStatus>('ALL');
+  const [page, setPage] = useState(1);
 
-   const user = useAuthStore((s) => s.user);
-   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
-   const logout = useAuthStore((s) => s.logout);
+  const user = useAuthStore((s) => s.user);
+  const isAuthenticated = useAuthStore(
+    (s) => s.isAuthenticated
+  );
+  const logout = useAuthStore((s) => s.logout);
   const navigate = useNavigate();
-  
+
   const handleLogout = async () => {
     await logout();
     navigate({
-      to: "/login",
-      search: { reason: undefined, redirect: undefined },
+      to: '/login',
+      search: {
+        reason: undefined,
+        redirect: undefined,
+      },
       replace: true,
     });
   };
 
   const handleProfile = () => {
     navigate({
-      to: "/dashboard/profile",
+      to: '/dashboard/profile',
       replace: true,
     });
   };
@@ -88,30 +139,47 @@ function MyAppointmentsPage() {
   const userInitial = (
     user?.email?.trim().charAt(0) ||
     user?.fullName?.trim().charAt(0) ||
-    "U"
+    'U'
   ).toUpperCase();
 
   const showUserMenu = isAuthenticated && user;
 
   const filtered = useMemo(() => {
-    if (filter === 'ALL') return appointments
-    return appointments.filter((a) => a.status === filter)
-  }, [appointments, filter])
+    if (filter === 'ALL') return appointments;
+    return appointments.filter((a) => a.status === filter);
+  }, [appointments, filter]);
 
   const paginated = useMemo(
-    () => filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
-    [filtered, page],
-  )
+    () =>
+      filtered.slice(
+        (page - 1) * PAGE_SIZE,
+        page * PAGE_SIZE
+      ),
+    [filtered, page]
+  );
 
   const handleFilterChange = (f: FilterStatus) => {
-    setFilter(f)
-    setPage(1)
-  }
+    setFilter(f);
+    setPage(1);
+  };
 
-  const filters: FilterStatus[] = ['ALL', 'REQUESTED', 'CONFIRMED', 'COMPLETED', 'CANCELLED']
+  const filters: FilterStatus[] = [
+    'ALL',
+    'REQUESTED',
+    'CONFIRMED',
+    'COMPLETED',
+    'CANCELLED',
+  ];
 
-  if (isLoading) return <div className="p-8">Loading appointments…</div>
-  if (isError) return <div className="p-8 text-destructive">{(error as Error)?.message || 'Error loading appointments'}</div>
+  if (isLoading)
+    return <div className="p-8">Loading appointments…</div>;
+  if (isError)
+    return (
+      <div className="p-8 text-destructive">
+        {(error as Error)?.message ||
+          'Error loading appointments'}
+      </div>
+    );
 
   return (
     <div className="w-full">
@@ -176,31 +244,48 @@ function MyAppointmentsPage() {
                     {userInitial}
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="min-w-40">
+                <DropdownMenuContent
+                  align="end"
+                  className="min-w-40"
+                >
                   <DropdownMenuLabel className="text-xs sm:text-sm">
                     Signed in as
                     <br />
-                    <span className="font-medium">{user?.email}</span>
+                    <span className="font-medium">
+                      {user?.email}
+                    </span>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleProfile}>
                     <span className="flex items-center gap-2">
-                      <User size={16} className="text-muted-foreground" />
+                      <User
+                        size={16}
+                        className="text-muted-foreground"
+                      />
                       My Profile
                     </span>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleLogout}>
-                    <span className="text-destructive">Log out</span>
+                    <span className="text-destructive">
+                      Log out
+                    </span>
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
               <Link
                 to="/login"
-                search={{ reason: undefined, redirect: undefined }}
+                search={{
+                  reason: undefined,
+                  redirect: undefined,
+                }}
               >
-                <Button size="sm" variant="ghost" className="font-medium">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="font-medium"
+                >
                   Sign in
                 </Button>
               </Link>
@@ -219,12 +304,14 @@ function MyAppointmentsPage() {
               onClick={() => handleFilterChange(f)}
               className={`rounded-full px-3 py-1 text-xs font-medium transition-colors border ${
                 filter === f
-                  ? "bg-primary text-primary-foreground border-primary"
-                  : "bg-muted/50 text-muted-foreground border-border hover:bg-muted"
+                  ? 'bg-primary text-primary-foreground border-primary'
+                  : 'bg-muted/50 text-muted-foreground border-border hover:bg-muted'
               }`}
             >
-              {f === "ALL" ? "All" : f.charAt(0) + f.slice(1).toLowerCase()}
-              {f === "ALL" && ` (${appointments.length})`}
+              {f === 'ALL'
+                ? 'All'
+                : f.charAt(0) + f.slice(1).toLowerCase()}
+              {f === 'ALL' && ` (${appointments.length})`}
             </button>
           ))}
         </div>
@@ -250,11 +337,11 @@ function MyAppointmentsPage() {
                 </svg>
               </div>
               <p className="text-muted-foreground mb-4">
-                {filter === "ALL"
+                {filter === 'ALL'
                   ? "You haven't booked any appointments yet."
                   : `No ${filter.toLowerCase()} appointments found.`}
               </p>
-              {filter === "ALL" && (
+              {filter === 'ALL' && (
                 <Link to="/appointments/book">
                   <Button>Book an Appointment</Button>
                 </Link>
@@ -264,7 +351,10 @@ function MyAppointmentsPage() {
         ) : (
           <div className="space-y-3">
             {paginated.map((appt) => (
-              <AppointmentRow key={appt.id} appointment={appt} />
+              <AppointmentRow
+                key={appt.id}
+                appointment={appt}
+              />
             ))}
             <Pagination
               total={filtered.length}
@@ -278,16 +368,24 @@ function MyAppointmentsPage() {
   );
 }
 
-function AppointmentRow({ appointment }: { appointment: PatientAppointment }) {
-  const dt = toNaiveDate(appointment.appointment_datetime)
-  const dateStr = format(dt, 'EEE, MMM d, yyyy')
-  const timeStr = format(dt, 'h:mm a')
+function AppointmentRow({
+  appointment,
+}: {
+  appointment: PatientAppointment;
+}) {
+  const dt = toNaiveDate(appointment.appointment_datetime);
+  const dateStr = format(dt, 'EEE, MMM d, yyyy');
+  const timeStr = format(dt, 'h:mm a');
 
   return (
     <Link
       to="/appointments/$appointmentId"
-      params={{ appointmentId: String(appointment.id) }}
-      search={{ datetime: appointment.appointment_datetime }}
+      params={{
+        appointmentId: String(appointment.id),
+      }}
+      search={{
+        datetime: appointment.appointment_datetime,
+      }}
     >
       <Card className="transition-colors hover:bg-muted/40 cursor-pointer">
         <CardContent className="flex items-center justify-between py-4 px-5">
@@ -297,24 +395,41 @@ function AppointmentRow({ appointment }: { appointment: PatientAppointment }) {
               <span className="text-[10px] font-semibold uppercase leading-none">
                 {format(dt, 'MMM')}
               </span>
-              <span className="text-lg font-bold leading-tight">{format(dt, 'd')}</span>
+              <span className="text-lg font-bold leading-tight">
+                {format(dt, 'd')}
+              </span>
             </div>
 
             <div>
-              <p className="font-medium text-foreground">{dateStr}</p>
-              <p className="text-sm text-muted-foreground">{timeStr} · 30 min</p>
+              <p className="font-medium text-foreground">
+                {dateStr}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                {timeStr} · 30 min
+              </p>
             </div>
           </div>
 
           <div className="flex items-center gap-3">
             <StatusBadge status={appointment.status} />
             {/* Chevron */}
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-4 w-4 text-muted-foreground"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2}
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M9 5l7 7-7 7"
+              />
             </svg>
           </div>
         </CardContent>
       </Card>
     </Link>
-  )
+  );
 }

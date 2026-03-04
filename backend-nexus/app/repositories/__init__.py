@@ -12,6 +12,7 @@ By centralizing exports here:
 - Internal helper functions can remain unexposed.
 - The repository layer maintains a clear, explicit public API.
 """
+
 # Re-export repository functions as the package API.
 from .enrollment_repository import (
     get_tenant,
@@ -25,7 +26,7 @@ from .enrollment_repository import (
     get_doctor_for_user,
     insert_status_history,
     insert_audit_event,
-    list_enrollment_status_history
+    list_enrollment_status_history,
 )
 
 # Explicit public exports for `from app.repositories import *`.
@@ -41,6 +42,5 @@ __all__ = [
     "get_doctor_for_user",
     "insert_status_history",
     "insert_audit_event",
-    "list_enrollment_status_history"
+    "list_enrollment_status_history",
 ]
-

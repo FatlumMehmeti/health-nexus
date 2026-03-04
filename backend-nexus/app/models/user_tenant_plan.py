@@ -9,10 +9,7 @@ class UserTenantPlan(Base, TimestampMixin):
 
     id: Mapped[int] = mapped_column(primary_key=True)
 
-    tenant_id: Mapped[int] = mapped_column(
-        ForeignKey("tenants.id"),
-        nullable=False
-    )
+    tenant_id: Mapped[int] = mapped_column(ForeignKey("tenants.id"), nullable=False)
 
     name: Mapped[str] = mapped_column(String(255), nullable=False)
 
@@ -28,13 +25,8 @@ class UserTenantPlan(Base, TimestampMixin):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
 
     # Relationships
-    tenant = relationship(
-        "Tenant",
-        back_populates="user_tenant_plans"
-    )
+    tenant = relationship("Tenant", back_populates="user_tenant_plans")
 
     enrollments = relationship(
-        "Enrollment",
-        back_populates="user_tenant_plan",
-        cascade="all, delete-orphan"
+        "Enrollment", back_populates="user_tenant_plan", cascade="all, delete-orphan"
     )

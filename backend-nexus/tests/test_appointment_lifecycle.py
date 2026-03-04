@@ -474,6 +474,7 @@ def test_tenant_isolation_for_doctor_actions(appointment_client):
     )
     assert own_doctor_approve.status_code == 200
 
+
 def test_booking_rejected_when_plan_max_appointments_reached(appointment_client, db_session):
     client, ctx = appointment_client
     patient_token = _login(client, ctx["patient_email"], "Team2026@")
@@ -618,7 +619,6 @@ def test_patient_me_lists_and_filters_by_status(appointment_client):
     assert requested_items[0]["status"] == "REQUESTED"
 
 
-
 def test_enrollment_status_reports_enrolled_for_active_enrollment(appointment_client):
     client, ctx = appointment_client
     patient_token = _login(client, ctx["patient_email"], "Team2026@")
@@ -632,7 +632,6 @@ def test_enrollment_status_reports_enrolled_for_active_enrollment(appointment_cl
     assert response.json() == {"enrolled": True}
 
 
-
 def test_enrollment_status_reports_no_patient_profile_for_non_patient_user(appointment_client):
     client, ctx = appointment_client
     doctor_token = _login(client, ctx["doctor_email"], "Team2026@")
@@ -644,7 +643,6 @@ def test_enrollment_status_reports_no_patient_profile_for_non_patient_user(appoi
     )
     assert response.status_code == 200
     assert response.json() == {"enrolled": False, "reason": "no_patient_profile"}
-
 
 
 def test_enrollment_status_reports_no_active_enrollment(appointment_client, db_session):

@@ -14,6 +14,7 @@ class ServiceBase(BaseModel):
 
 class ServiceCreateInput(BaseModel):
     """Create service under a tenant department. tenant_id is inferred from tenant_department."""
+
     tenant_department_id: int
     name: str
     price: float

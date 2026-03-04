@@ -24,29 +24,21 @@ class Appointment(Base, TimestampMixin):
 
     id: Mapped[int] = mapped_column(primary_key=True)
 
-    appointment_datetime: Mapped[DateTime] = mapped_column(
-        DateTime(timezone=True),
-        nullable=True
-    )
+    appointment_datetime: Mapped[DateTime] = mapped_column(DateTime(timezone=True), nullable=True)
     duration_minutes: Mapped[int] = mapped_column(nullable=False, default=30)
 
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
 
-    doctor_user_id: Mapped[int] = mapped_column(
-        ForeignKey("doctors.user_id")
-    )
+    doctor_user_id: Mapped[int] = mapped_column(ForeignKey("doctors.user_id"))
 
     patient_user_id: Mapped[int] = mapped_column(
         nullable=False,
     )
 
-    tenant_id: Mapped[int] = mapped_column(
-        ForeignKey("tenants.id")
-    )
+    tenant_id: Mapped[int] = mapped_column(ForeignKey("tenants.id"))
 
     status: Mapped[AppointmentStatus] = mapped_column(
-        Enum(AppointmentStatus, name="appointment_status"),
-        default=AppointmentStatus.REQUESTED
+        Enum(AppointmentStatus, name="appointment_status"), default=AppointmentStatus.REQUESTED
     )
 
     # Relationships
@@ -54,7 +46,5 @@ class Appointment(Base, TimestampMixin):
     patient = relationship("Patient", back_populates="appointments", overlaps="tenant")
     tenant = relationship("Tenant", overlaps="appointments,patient")
     status_history = relationship(
-        "AppointmentStatusHistory",
-        back_populates="appointment",
-        cascade="all, delete-orphan"
+        "AppointmentStatusHistory", back_populates="appointment", cascade="all, delete-orphan"
     )

@@ -19,60 +19,29 @@ class ConsultationBooking(Base, TimestampMixin):
 
     id: Mapped[int] = mapped_column(primary_key=True)
 
-    lead_id: Mapped[int] = mapped_column(
-        ForeignKey("leads.id"),
-        nullable=False
-    )
+    lead_id: Mapped[int] = mapped_column(ForeignKey("leads.id"), nullable=False)
 
-    scheduled_at = mapped_column(
-        TIMESTAMP(timezone=True),
-        nullable=True
-    )
+    scheduled_at = mapped_column(TIMESTAMP(timezone=True), nullable=True)
 
-    duration_minutes: Mapped[int | None] = mapped_column(
-        Integer,
-        nullable=True
-    )
+    duration_minutes: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
-    meeting_link: Mapped[str | None] = mapped_column(
-        Text,
-        nullable=True
-    )
+    meeting_link: Mapped[str | None] = mapped_column(Text, nullable=True)
 
-    location: Mapped[str | None] = mapped_column(
-        Text,
-        nullable=True
-    )
+    location: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     status: Mapped[ConsultationStatus] = mapped_column(
-        ENUM(
-            ConsultationStatus,
-            name="consultation_status",
-            create_type=True
-        ),
+        ENUM(ConsultationStatus, name="consultation_status", create_type=True),
         server_default="SCHEDULED",
-        nullable=False
+        nullable=False,
     )
 
-    created_by_user_id: Mapped[int | None] = mapped_column(
-        ForeignKey("users.id"),
-        nullable=True
-    )
+    created_by_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
 
-    completed_at = mapped_column(
-        TIMESTAMP(timezone=True),
-        nullable=True
-    )
+    completed_at = mapped_column(TIMESTAMP(timezone=True), nullable=True)
 
-    cancelled_at = mapped_column(
-        TIMESTAMP(timezone=True),
-        nullable=True
-    )
+    cancelled_at = mapped_column(TIMESTAMP(timezone=True), nullable=True)
 
-    created_at = mapped_column(
-        TIMESTAMP(timezone=True),
-        server_default=func.now()
-    )
+    created_at = mapped_column(TIMESTAMP(timezone=True), server_default=func.now())
 
     # Relationships
     lead = relationship("Lead", back_populates="consultation_bookings")

@@ -1,6 +1,6 @@
-import { IconCheck } from "@tabler/icons-react";
-import { Button } from "@/components/ui/button";
-import type { SubscriptionPlan } from "@/services/subscription-plans.service";
+import { Button } from '@/components/ui/button';
+import type { SubscriptionPlan } from '@/services/subscription-plans.service';
+import { IconCheck } from '@tabler/icons-react';
 
 /**
  * PlanCard Component
@@ -30,21 +30,21 @@ export function PlanCard({
     <div
       className={`relative rounded-lg border flex flex-col h-full min-h-100 transition-all group ${
         isCurrentPlan
-          ? "dark:border-green-500/50 dark:bg-green-950/20 dark:shadow-lg dark:shadow-green-500/20 border-green-300 bg-green-100 shadow-lg shadow-green-200/50 cursor-not-allowed"
+          ? 'dark:border-green-500/50 dark:bg-green-950/20 dark:shadow-lg dark:shadow-green-500/20 border-green-300 bg-green-100 shadow-lg shadow-green-200/50 cursor-not-allowed'
           : isRecommended
-            ? "dark:border-blue-500 dark:bg-blue-950/20 border-blue-300 bg-blue-50 light:dark:text-gray-900"
+            ? 'dark:border-blue-500 dark:bg-blue-950/20 border-blue-300 bg-blue-50 light:dark:text-gray-900'
             : !canFitStats
-              ? "dark:border-red-500/30 dark:bg-red-950/10 border-red-200 bg-red-50/50 opacity-75"
-              : "dark:border-zinc-700 dark:bg-zinc-900/50 dark:hover:border-zinc-600 border-gray-300 bg-white hover:border-gray-400 light:dark:text-gray-900"
+              ? 'dark:border-red-500/30 dark:bg-red-950/10 border-red-200 bg-red-50/50 opacity-75'
+              : 'dark:border-zinc-700 dark:bg-zinc-900/50 dark:hover:border-zinc-600 border-gray-300 bg-white hover:border-gray-400 light:dark:text-gray-900'
       }`}
       style={
         isCurrentPlan
           ? {
-              padding: "2rem",
+              padding: '2rem',
               boxShadow:
-                "inset 0 1px 3px rgba(34, 197, 94, 0.1), 0 20px 25px -5px rgba(34, 197, 94, 0.1)",
+                'inset 0 1px 3px rgba(34, 197, 94, 0.1), 0 20px 25px -5px rgba(34, 197, 94, 0.1)',
             }
-          : { padding: "1.5rem" }
+          : { padding: '1.5rem' }
       }
     >
       {/* Badge for current plan - shows when user already has this subscription */}
@@ -128,19 +128,21 @@ export function PlanCard({
 
       {/* Action button - disabled if this is the current plan or too small */}
       <Button
-        disabled={isCurrentPlan || isChanging || !canFitStats}
+        disabled={
+          isCurrentPlan || isChanging || !canFitStats
+        }
         onClick={() => onChangePlan?.(plan.id)}
         className={`w-full mt-6 ${
           isCurrentPlan
-            ? "dark:bg-zinc-600 dark:hover:bg-zinc-600 dark:text-white dark:cursor-not-allowed dark:opacity-60 bg-gray-300 hover:bg-gray-300 text-gray-600 cursor-not-allowed opacity-60"
+            ? 'dark:bg-zinc-600 dark:hover:bg-zinc-600 dark:text-white dark:cursor-not-allowed dark:opacity-60 bg-gray-300 hover:bg-gray-300 text-gray-600 cursor-not-allowed opacity-60'
             : !canFitStats
-              ? "dark:bg-red-900 dark:hover:bg-red-900 dark:text-white dark:cursor-not-allowed dark:opacity-60 bg-red-200 hover:bg-red-200 text-red-700 cursor-not-allowed opacity-60"
+              ? 'dark:bg-red-900 dark:hover:bg-red-900 dark:text-white dark:cursor-not-allowed dark:opacity-60 bg-red-200 hover:bg-red-200 text-red-700 cursor-not-allowed opacity-60'
               : isRecommended
-                ? "dark:bg-blue-600 dark:hover:bg-blue-700 dark:text-white bg-blue-500 hover:bg-blue-600 text-white"
-                : "dark:bg-zinc-800 dark:hover:bg-zinc-700 dark:text-white bg-gray-800 hover:bg-gray-900 text-white"
+                ? 'dark:bg-blue-600 dark:hover:bg-blue-700 dark:text-white bg-blue-500 hover:bg-blue-600 text-white'
+                : 'dark:bg-zinc-800 dark:hover:bg-zinc-700 dark:text-white bg-gray-800 hover:bg-gray-900 text-white'
         }`}
       >
-        {isChanging ? "Updating..." : "Choose Plan"}
+        {isChanging ? 'Updating...' : 'Choose Plan'}
       </Button>
     </div>
   );

@@ -43,10 +43,14 @@ def _require_contract_access(user: dict, tenant_id: int, db: Session) -> None:
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Not authorized",
             )
-        manager = db.query(TenantManager).filter(
-            TenantManager.user_id == user_id,
-            TenantManager.tenant_id == tenant_id,
-        ).first()
+        manager = (
+            db.query(TenantManager)
+            .filter(
+                TenantManager.user_id == user_id,
+                TenantManager.tenant_id == tenant_id,
+            )
+            .first()
+        )
         if not manager:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
@@ -125,7 +129,11 @@ def list_contracts(
 
 
 # POST /tenants/{tenant_id}/contracts
-@router.post("/tenants/{tenant_id}/contracts", response_model=ContractRead, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/tenants/{tenant_id}/contracts",
+    response_model=ContractRead,
+    status_code=status.HTTP_201_CREATED,
+)
 def create_contract(
     tenant_id: int,
     payload: ContractCreate,
@@ -137,10 +145,14 @@ def create_contract(
 
     # Ensure doctor exists and belongs to tenant
     if payload.doctor_user_id:
-        doctor = db.query(Doctor).filter(
-            Doctor.user_id == payload.doctor_user_id,
-            Doctor.tenant_id == tenant_id,
-        ).first()
+        doctor = (
+            db.query(Doctor)
+            .filter(
+                Doctor.user_id == payload.doctor_user_id,
+                Doctor.tenant_id == tenant_id,
+            )
+            .first()
+        )
         if not doctor:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -192,10 +204,14 @@ def update_contract(
     _require_contract_access(user, contract.tenant_id, db)
 
     if payload.doctor_user_id is not None:
-        doctor = db.query(Doctor).filter(
-            Doctor.user_id == payload.doctor_user_id,
-            Doctor.tenant_id == contract.tenant_id,
-        ).first()
+        doctor = (
+            db.query(Doctor)
+            .filter(
+                Doctor.user_id == payload.doctor_user_id,
+                Doctor.tenant_id == contract.tenant_id,
+            )
+            .first()
+        )
         if not doctor:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -345,7 +361,12 @@ async def sign_contract_hospital(
     return _contract_to_read(c)
 
 
-_EXT_TO_MEDIA = {".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".webp": "image/webp"}
+_EXT_TO_MEDIA = {
+    ".png": "image/png",
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".webp": "image/webp",
+}
 
 
 def _serve_signature(contract: Contract, role: str) -> Response:

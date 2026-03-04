@@ -1,98 +1,135 @@
-import { API_BASE_URL, ApiError, api, getAccessToken, type ValidationError } from "@/lib/api-client";
 import type {
-  TenantCreate,
-  TenantRead,
-  TenantStatus,
-  TenantListResponse,
-  FontRead,
   BrandPaletteRead,
   DepartmentRead,
-  TenantPublicCard,
-  TenantLandingPageResponse,
-  TenantCurrentRead,
-  TenantDetailsRead,
-  TenantDetailsUpdate,
-  TenantDetailsMultipartUpdate,
-  DoctorRead,
-  DoctorCreateForTenant,
-  DoctorUpdate,
   DoctorAssignableRead,
-  TenantDepartmentWithServicesRead,
-  TenantDepartmentsBulkRequest,
-  ProductRead,
+  DoctorCreateForTenant,
+  DoctorRead,
+  DoctorUpdate,
+  FontRead,
   ProductCreateForTenant,
+  ProductRead,
   ProductUpdateInput,
+  ServiceCreateInput,
   ServiceLandingItem,
   ServiceRead,
-  ServiceCreateInput,
   ServiceUpdateInput,
-} from "@/interfaces";
+  TenantCreate,
+  TenantCurrentRead,
+  TenantDepartmentWithServicesRead,
+  TenantDepartmentsBulkRequest,
+  TenantDetailsMultipartUpdate,
+  TenantDetailsRead,
+  TenantDetailsUpdate,
+  TenantLandingPageResponse,
+  TenantListResponse,
+  TenantPublicCard,
+  TenantRead,
+  TenantStatus,
+} from '@/interfaces';
+import {
+  API_BASE_URL,
+  ApiError,
+  api,
+  getAccessToken,
+  type ValidationError,
+} from '@/lib/api-client';
 
 async function parseUploadError(
-  response: Response,
-): Promise<{ detail?: string | ValidationError[]; data?: unknown }> {
-  const contentType = response.headers.get("content-type") ?? "";
-  if (contentType.toLowerCase().includes("application/json")) {
+  response: Response
+): Promise<{
+  detail?: string | ValidationError[];
+  data?: unknown;
+}> {
+  const contentType =
+    response.headers.get('content-type') ?? '';
+  if (
+    contentType.toLowerCase().includes('application/json')
+  ) {
     try {
       const data = (await response.json()) as unknown;
       const detail =
-        typeof data === "object" && data !== null && "detail" in data
-          ? (data as { detail?: string | ValidationError[] }).detail
+        typeof data === 'object' &&
+        data !== null &&
+        'detail' in data
+          ? (
+              data as {
+                detail?: string | ValidationError[];
+              }
+            ).detail
           : undefined;
       return { detail, data };
     } catch {
-      return { detail: undefined, data: undefined };
+      return {
+        detail: undefined,
+        data: undefined,
+      };
     }
   }
 
   try {
     const text = await response.text();
-    return { detail: text || undefined, data: text || undefined };
+    return {
+      detail: text || undefined,
+      data: text || undefined,
+    };
   } catch {
     return { detail: undefined, data: undefined };
   }
 }
 
 async function updateTenantDetailsMultipart(
-  data: TenantDetailsMultipartUpdate,
+  data: TenantDetailsMultipartUpdate
 ): Promise<TenantDetailsRead> {
   const formData = new FormData();
 
-  if (data.logo_file) formData.append("logo", data.logo_file);
-  if (data.image_file) formData.append("image", data.image_file);
-  if (data.logo !== undefined) formData.append("logo_url", data.logo ?? "");
-  if (data.image !== undefined) formData.append("image_url", data.image ?? "");
-  if (data.clear_logo) formData.append("clear_logo", "true");
-  if (data.clear_image) formData.append("clear_image", "true");
+  if (data.logo_file)
+    formData.append('logo', data.logo_file);
+  if (data.image_file)
+    formData.append('image', data.image_file);
+  if (data.logo !== undefined)
+    formData.append('logo_url', data.logo ?? '');
+  if (data.image !== undefined)
+    formData.append('image_url', data.image ?? '');
+  if (data.clear_logo)
+    formData.append('clear_logo', 'true');
+  if (data.clear_image)
+    formData.append('clear_image', 'true');
 
-  if (data.moto !== undefined) formData.append("moto", data.moto ?? "");
-  if (data.title !== undefined) formData.append("title", data.title ?? "");
-  if (data.about_text !== undefined) formData.append("about_text", data.about_text ?? "");
-  if (data.brand_id !== undefined && data.brand_id !== null) {
-    formData.append("brand_id", String(data.brand_id));
+  if (data.moto !== undefined)
+    formData.append('moto', data.moto ?? '');
+  if (data.title !== undefined)
+    formData.append('title', data.title ?? '');
+  if (data.about_text !== undefined)
+    formData.append('about_text', data.about_text ?? '');
+  if (
+    data.brand_id !== undefined &&
+    data.brand_id !== null
+  ) {
+    formData.append('brand_id', String(data.brand_id));
   }
   if (data.font_id !== undefined && data.font_id !== null) {
-    formData.append("font_id", String(data.font_id));
+    formData.append('font_id', String(data.font_id));
   }
 
   const token = getAccessToken();
   const headers: Record<string, string> = {};
   if (token) headers.Authorization = `Bearer ${token}`;
 
-  const url = `${API_BASE_URL.replace(/\/+$/, "")}/api/tenants/details`;
+  const url = `${API_BASE_URL.replace(/\/+$/, '')}/api/tenants/details`;
   const response = await fetch(url, {
-    method: "PUT",
+    method: 'PUT',
     headers,
     body: formData,
   });
 
   if (!response.ok) {
-    const { detail, data: errorData } = await parseUploadError(response);
+    const { detail, data: errorData } =
+      await parseUploadError(response);
     throw new ApiError(
       `Request failed: ${response.status} ${response.statusText}`,
       response.status,
       detail,
-      errorData,
+      errorData
     );
   }
 
@@ -106,7 +143,8 @@ export const tenantsService = {
   /**
    * List approved tenants for public display (e.g. tenant selector). No auth.
    */
-  listPublicTenants: () => api.get<TenantPublicCard[]>("/api/tenants"),
+  listPublicTenants: () =>
+    api.get<TenantPublicCard[]>('/api/tenants'),
 
   /**
    * List approved tenants where the current user is enrolled.
@@ -118,7 +156,7 @@ export const tenantsService = {
    */
   getLandingBySlug: (slug: string) =>
     api.get<TenantLandingPageResponse>(
-      `/api/tenants/by-slug/${encodeURIComponent(slug)}/landing`,
+      `/api/tenants/by-slug/${encodeURIComponent(slug)}/landing`
     ),
 
   /**
@@ -127,7 +165,7 @@ export const tenantsService = {
    * @returns Promise with created tenant (status: pending)
    */
   createApplication: (data: TenantCreate) =>
-    api.post<TenantRead>("/api/public/tenants", data),
+    api.post<TenantRead>('/api/public/tenants', data),
 
   /**
    * List tenants for superadmin dashboard with optional status filter and pagination
@@ -145,20 +183,23 @@ export const tenantsService = {
   }) => {
     const queryParams = new URLSearchParams();
     if (params?.status) {
-      queryParams.append("status", params.status);
+      queryParams.append('status', params.status);
     }
     if (params?.search) {
-      queryParams.append("search", params.search);
+      queryParams.append('search', params.search);
     }
     if (params?.page) {
-      queryParams.append("page", String(params.page));
+      queryParams.append('page', String(params.page));
     }
     if (params?.page_size) {
-      queryParams.append("page_size", String(params.page_size));
+      queryParams.append(
+        'page_size',
+        String(params.page_size)
+      );
     }
     const queryString = queryParams.toString();
     return api.get<TenantListResponse>(
-      `/api/superadmin/tenants${queryString ? `?${queryString}` : ""}`,
+      `/api/superadmin/tenants${queryString ? `?${queryString}` : ''}`
     );
   },
 
@@ -169,62 +210,98 @@ export const tenantsService = {
    * @param reason - Optional reason for status change
    * @returns Promise with updated tenant
    */
-  updateStatus: (tenantId: number, status: TenantStatus, reason?: string) => {
-    return api.patch<TenantRead>(`/api/superadmin/tenants/${tenantId}/status`, {
-      status,
-      reason,
-    });
+  updateStatus: (
+    tenantId: number,
+    status: TenantStatus,
+    reason?: string
+  ) => {
+    return api.patch<TenantRead>(
+      `/api/superadmin/tenants/${tenantId}/status`,
+      {
+        status,
+        reason,
+      }
+    );
   },
 
   /** List fonts for tenant branding dropdown (no auth). */
-  listFonts: () => api.get<FontRead[]>("/api/fonts"),
+  listFonts: () => api.get<FontRead[]>('/api/fonts'),
 
   /** List brand palettes for tenant branding cards (no auth). */
-  listBrands: () => api.get<BrandPaletteRead[]>("/api/brands"),
+  listBrands: () =>
+    api.get<BrandPaletteRead[]>('/api/brands'),
 
   /** List global departments for tenant department assignment (no auth). */
-  listDepartmentCatalog: () => api.get<DepartmentRead[]>("/api/departments"),
+  listDepartmentCatalog: () =>
+    api.get<DepartmentRead[]>('/api/departments'),
 
   // Tenant manager (JWT-scoped) endpoints
-  getCurrentTenant: () => api.get<TenantCurrentRead>("/api/tenants/current"),
-  getTenantDetails: () => api.get<TenantDetailsRead>("/api/tenants/details"),
-  updateTenantDetails: (data: TenantDetailsMultipartUpdate | TenantDetailsUpdate) =>
-    updateTenantDetailsMultipart(data),
-  listTenantDoctors: () => api.get<DoctorRead[]>("/api/tenants/doctors"),
+  getCurrentTenant: () =>
+    api.get<TenantCurrentRead>('/api/tenants/current'),
+  getTenantDetails: () =>
+    api.get<TenantDetailsRead>('/api/tenants/details'),
+  updateTenantDetails: (
+    data: TenantDetailsMultipartUpdate | TenantDetailsUpdate
+  ) => updateTenantDetailsMultipart(data),
+  listTenantDoctors: () =>
+    api.get<DoctorRead[]>('/api/tenants/doctors'),
   listAssignableDoctors: (excludeTenantId: number) =>
     api.get<DoctorAssignableRead[]>(
-      `/api/users/doctors?exclude_tenant_id=${encodeURIComponent(String(excludeTenantId))}`,
+      `/api/users/doctors?exclude_tenant_id=${encodeURIComponent(String(excludeTenantId))}`
     ),
   createTenantDoctor: (data: DoctorCreateForTenant) =>
-    api.post<DoctorRead>("/api/tenants/doctors", data),
-  updateTenantDoctor: (userId: number, data: DoctorUpdate) =>
-    api.put<DoctorRead>(`/api/tenants/doctors/${userId}`, data),
+    api.post<DoctorRead>('/api/tenants/doctors', data),
+  updateTenantDoctor: (
+    userId: number,
+    data: DoctorUpdate
+  ) =>
+    api.put<DoctorRead>(
+      `/api/tenants/doctors/${userId}`,
+      data
+    ),
   deleteTenantDoctor: (userId: number) =>
     api.delete<void>(`/api/tenants/doctors/${userId}`),
   listTenantDepartments: () =>
-    api.get<TenantDepartmentWithServicesRead[]>("/api/tenants/departments"),
-  replaceTenantDepartments: (data: TenantDepartmentsBulkRequest) =>
-    api.post<TenantDepartmentWithServicesRead[]>(
-      "/api/tenants/departments",
-      data,
+    api.get<TenantDepartmentWithServicesRead[]>(
+      '/api/tenants/departments'
     ),
-  listTenantProducts: () => api.get<ProductRead[]>("/api/tenants/products"),
+  replaceTenantDepartments: (
+    data: TenantDepartmentsBulkRequest
+  ) =>
+    api.post<TenantDepartmentWithServicesRead[]>(
+      '/api/tenants/departments',
+      data
+    ),
+  listTenantProducts: () =>
+    api.get<ProductRead[]>('/api/tenants/products'),
   createTenantProduct: (data: ProductCreateForTenant) =>
-    api.post<ProductRead>("/api/tenants/products", data),
-  updateTenantProduct: (productId: number, data: ProductUpdateInput) =>
-    api.put<ProductRead>(`/api/tenants/products/${productId}`, data),
+    api.post<ProductRead>('/api/tenants/products', data),
+  updateTenantProduct: (
+    productId: number,
+    data: ProductUpdateInput
+  ) =>
+    api.put<ProductRead>(
+      `/api/tenants/products/${productId}`,
+      data
+    ),
   deleteTenantProduct: (productId: number) =>
     api.delete<void>(`/api/tenants/products/${productId}`),
 
   // Services (per tenant department)
   listServices: (tenantDepartmentId: number) =>
     api.get<ServiceLandingItem[]>(
-      `/api/services?tenant_department_id=${encodeURIComponent(String(tenantDepartmentId))}`,
+      `/api/services?tenant_department_id=${encodeURIComponent(String(tenantDepartmentId))}`
     ),
   createService: (data: ServiceCreateInput) =>
-    api.post<ServiceRead>("/api/services", data),
-  updateService: (serviceId: number, data: ServiceUpdateInput) =>
-    api.put<ServiceRead>(`/api/services/${serviceId}`, data),
+    api.post<ServiceRead>('/api/services', data),
+  updateService: (
+    serviceId: number,
+    data: ServiceUpdateInput
+  ) =>
+    api.put<ServiceRead>(
+      `/api/services/${serviceId}`,
+      data
+    ),
   deleteService: (serviceId: number) =>
     api.delete<void>(`/api/services/${serviceId}`),
 };

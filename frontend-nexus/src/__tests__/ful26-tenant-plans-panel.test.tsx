@@ -9,55 +9,79 @@
  * 5. Toggle visibility — hide/show plans to clients
  * 6. Enrollment table — shows users enrolled in plans
  */
-import React from "react";
-import "@testing-library/jest-dom";
-import { beforeAll, beforeEach, describe, expect, it, jest } from "@jest/globals";
-import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import {
+  beforeEach,
+  describe,
+  expect,
+  it,
+  jest,
+} from '@jest/globals';
+import {
+  QueryClient,
+  QueryClientProvider,
+} from '@tanstack/react-query';
+import '@testing-library/jest-dom';
+import {
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import React from 'react';
 
 // Mock the component since it's complex with router dependencies
 // We'll test the core logic: pricing validation, bounds display, form submission
-const TenantPlansPanel = ({ tenantId, onMocked }: { tenantId: number; onMocked?: () => void }) => {
+const TenantPlansPanel = ({
+  tenantId,
+  onMocked,
+}: {
+  tenantId: number;
+  onMocked?: () => void;
+}) => {
   const [formState, setFormState] = React.useState({
-    name: "",
-    description: "",
-    price: "",
-    max_appointments: "",
-    max_consultations: "",
+    name: '',
+    description: '',
+    price: '',
+    max_appointments: '',
+    max_consultations: '',
   });
   const [bounds, setBounds] = React.useState({
     min_price: 50.0,
     max_price: 200.0,
     base_price: 100.0,
   });
-  const [editingPlanId, setEditingPlanId] = React.useState<number | null>(null);
+  const [editingPlanId, setEditingPlanId] = React.useState<
+    number | null
+  >(null);
   const [plans, setPlans] = React.useState<any[]>([
     {
       id: 1,
-      name: "Basic Plan",
+      name: 'Basic Plan',
       price: 99.99,
       is_active: true,
       max_appointments: 5,
     },
   ]);
-  const [errorMsg, setErrorMsg] = React.useState<string | null>(null);
+  const [errorMsg, setErrorMsg] = React.useState<
+    string | null
+  >(null);
 
   const priceNum = Number(formState.price);
   const priceOutOfRange =
     bounds?.min_price != null &&
     bounds?.max_price != null &&
-    formState.price !== "" &&
+    formState.price !== '' &&
     priceNum > 0 &&
-    (priceNum < bounds.min_price || priceNum > bounds.max_price);
+    (priceNum < bounds.min_price ||
+      priceNum > bounds.max_price);
 
   const resetForm = () => {
     setFormState({
-      name: "",
-      description: "",
-      price: "",
-      max_appointments: "",
-      max_consultations: "",
+      name: '',
+      description: '',
+      price: '',
+      max_appointments: '',
+      max_consultations: '',
     });
     setEditingPlanId(null);
     setErrorMsg(null);
@@ -68,7 +92,9 @@ const TenantPlansPanel = ({ tenantId, onMocked }: { tenantId: number; onMocked?:
     const price = Number(formState.price);
 
     if (!formState.name.trim() || price <= 0) {
-      setErrorMsg("Plan name and a valid price > 0 are required");
+      setErrorMsg(
+        'Plan name and a valid price > 0 are required'
+      );
       return;
     }
 
@@ -78,7 +104,7 @@ const TenantPlansPanel = ({ tenantId, onMocked }: { tenantId: number; onMocked?:
       (price < bounds.min_price || price > bounds.max_price)
     ) {
       setErrorMsg(
-        `Price must be between €${bounds.min_price.toFixed(2)} and €${bounds.max_price.toFixed(2)} for your subscription tier.`,
+        `Price must be between €${bounds.min_price.toFixed(2)} and €${bounds.max_price.toFixed(2)} for your subscription tier.`
       );
       return;
     }
@@ -88,12 +114,18 @@ const TenantPlansPanel = ({ tenantId, onMocked }: { tenantId: number; onMocked?:
       name: formState.name,
       description: formState.description || null,
       price,
-      max_appointments: formState.max_appointments ? Number(formState.max_appointments) : null,
+      max_appointments: formState.max_appointments
+        ? Number(formState.max_appointments)
+        : null,
       is_active: true,
     };
 
     if (editingPlanId) {
-      setPlans(plans.map((p) => (p.id === editingPlanId ? newPlan : p)));
+      setPlans(
+        plans.map((p) =>
+          p.id === editingPlanId ? newPlan : p
+        )
+      );
     } else {
       setPlans([...plans, newPlan]);
     }
@@ -103,17 +135,29 @@ const TenantPlansPanel = ({ tenantId, onMocked }: { tenantId: number; onMocked?:
   };
 
   const handleToggleVisibility = (planId: number) => {
-    setPlans(plans.map((p) => (p.id === planId ? { ...p, is_active: !p.is_active } : p)));
+    setPlans(
+      plans.map((p) =>
+        p.id === planId
+          ? { ...p, is_active: !p.is_active }
+          : p
+      )
+    );
   };
 
   const handleEdit = (plan: any) => {
     setEditingPlanId(plan.id);
     setFormState({
       name: plan.name,
-      description: plan.description ?? "",
+      description: plan.description ?? '',
       price: String(plan.price),
-      max_appointments: plan.max_appointments != null ? String(plan.max_appointments) : "",
-      max_consultations: plan.max_consultations != null ? String(plan.max_consultations) : "",
+      max_appointments:
+        plan.max_appointments != null
+          ? String(plan.max_appointments)
+          : '',
+      max_consultations:
+        plan.max_consultations != null
+          ? String(plan.max_consultations)
+          : '',
     });
   };
 
@@ -122,14 +166,27 @@ const TenantPlansPanel = ({ tenantId, onMocked }: { tenantId: number; onMocked?:
       <h2 data-testid="panel-title">Manage plans</h2>
 
       {/* Pricing bounds display */}
-      {bounds?.min_price != null && bounds?.max_price != null && (
-        <div data-testid="pricing-bounds-hint" className={priceOutOfRange ? "text-red-600" : ""}>
-          Allowed range: €{bounds.min_price.toFixed(2)} – €{bounds.max_price.toFixed(2)}
-          {bounds.base_price != null && (
-            <span> (50%–200% of €{bounds.base_price.toFixed(2)} base)</span>
-          )}
-        </div>
-      )}
+      {bounds?.min_price != null &&
+        bounds?.max_price != null && (
+          <div
+            data-testid="pricing-bounds-hint"
+            className={
+              priceOutOfRange ? 'text-red-600' : ''
+            }
+          >
+            Allowed range: €{bounds.min_price.toFixed(2)} –
+            €{bounds.max_price.toFixed(2)}
+            {bounds.base_price != null && (
+              <span>
+                {' '}
+                (50%–200% of €{bounds.base_price.toFixed(
+                  2
+                )}{' '}
+                base)
+              </span>
+            )}
+          </div>
+        )}
 
       {/* Form */}
       <div data-testid="plan-form">
@@ -137,7 +194,12 @@ const TenantPlansPanel = ({ tenantId, onMocked }: { tenantId: number; onMocked?:
           data-testid="plan-name-input"
           placeholder="Plan name"
           value={formState.name}
-          onChange={(e) => setFormState((s) => ({ ...s, name: e.target.value }))}
+          onChange={(e) =>
+            setFormState((s) => ({
+              ...s,
+              name: e.target.value,
+            }))
+          }
         />
 
         <input
@@ -145,8 +207,15 @@ const TenantPlansPanel = ({ tenantId, onMocked }: { tenantId: number; onMocked?:
           type="number"
           placeholder="Price"
           value={formState.price}
-          onChange={(e) => setFormState((s) => ({ ...s, price: e.target.value }))}
-          className={priceOutOfRange ? "border-destructive" : ""}
+          onChange={(e) =>
+            setFormState((s) => ({
+              ...s,
+              price: e.target.value,
+            }))
+          }
+          className={
+            priceOutOfRange ? 'border-destructive' : ''
+          }
           aria-invalid={priceOutOfRange}
         />
 
@@ -154,31 +223,53 @@ const TenantPlansPanel = ({ tenantId, onMocked }: { tenantId: number; onMocked?:
           data-testid="plan-description-input"
           placeholder="Description"
           value={formState.description}
-          onChange={(e) => setFormState((s) => ({ ...s, description: e.target.value }))}
+          onChange={(e) =>
+            setFormState((s) => ({
+              ...s,
+              description: e.target.value,
+            }))
+          }
         />
 
         {errorMsg && (
-          <div data-testid="error-message" className="text-red-600">
+          <div
+            data-testid="error-message"
+            className="text-red-600"
+          >
             {errorMsg}
           </div>
         )}
 
-        <button data-testid="submit-button" onClick={handleSubmit}>
-          {editingPlanId ? "Update Plan" : "Create Plan"}
+        <button
+          data-testid="submit-button"
+          onClick={handleSubmit}
+        >
+          {editingPlanId ? 'Update Plan' : 'Create Plan'}
         </button>
       </div>
 
       {/* Plans list */}
       <div data-testid="plans-list">
         {plans.map((plan) => (
-          <div key={plan.id} data-testid={`plan-row-${plan.id}`}>
-            <span data-testid={`plan-name-${plan.id}`}>{plan.name}</span>
-            <span data-testid={`plan-price-${plan.id}`}>€{plan.price.toFixed(2)}</span>
+          <div
+            key={plan.id}
+            data-testid={`plan-row-${plan.id}`}
+          >
+            <span data-testid={`plan-name-${plan.id}`}>
+              {plan.name}
+            </span>
+            <span data-testid={`plan-price-${plan.id}`}>
+              €{plan.price.toFixed(2)}
+            </span>
             <span
               data-testid={`plan-active-${plan.id}`}
-              className={plan.is_active ? "bg-green-100" : "bg-gray-100"}
+              className={
+                plan.is_active
+                  ? 'bg-green-100'
+                  : 'bg-gray-100'
+              }
             >
-              {plan.is_active ? "Active" : "Hidden"}
+              {plan.is_active ? 'Active' : 'Hidden'}
             </span>
             <button
               data-testid={`edit-btn-${plan.id}`}
@@ -188,9 +279,11 @@ const TenantPlansPanel = ({ tenantId, onMocked }: { tenantId: number; onMocked?:
             </button>
             <button
               data-testid={`toggle-btn-${plan.id}`}
-              onClick={() => handleToggleVisibility(plan.id)}
+              onClick={() =>
+                handleToggleVisibility(plan.id)
+              }
             >
-              {plan.is_active ? "Hide" : "Show"}
+              {plan.is_active ? 'Hide' : 'Show'}
             </button>
           </div>
         ))}
@@ -203,12 +296,14 @@ const TenantPlansPanel = ({ tenantId, onMocked }: { tenantId: number; onMocked?:
 // Tests
 // ========================================
 
-describe("FUL-26: TenantPlansPanel", () => {
+describe('FUL-26: TenantPlansPanel', () => {
   let queryClient: QueryClient;
 
   beforeEach(() => {
     queryClient = new QueryClient({
-      defaultOptions: { queries: { retry: false } },
+      defaultOptions: {
+        queries: { retry: false },
+      },
     });
   });
 
@@ -216,143 +311,192 @@ describe("FUL-26: TenantPlansPanel", () => {
     return render(
       <QueryClientProvider client={queryClient}>
         <TenantPlansPanel tenantId={tenantId ?? 1} />
-      </QueryClientProvider>,
+      </QueryClientProvider>
     );
   }
 
-  describe("Pricing bounds & validation", () => {
-    it("displays pricing bounds hint with base price", () => {
+  describe('Pricing bounds & validation', () => {
+    it('displays pricing bounds hint with base price', () => {
       renderPanel();
-      const hint = screen.getByTestId("pricing-bounds-hint");
-      expect(hint).toHaveTextContent("Allowed range: €50.00 – €200.00");
-      expect(hint).toHaveTextContent("(50%–200% of €100.00 base)");
+      const hint = screen.getByTestId(
+        'pricing-bounds-hint'
+      );
+      expect(hint).toHaveTextContent(
+        'Allowed range: €50.00 – €200.00'
+      );
+      expect(hint).toHaveTextContent(
+        '(50%–200% of €100.00 base)'
+      );
     });
 
-    it("shows red border on price input when out of range", async () => {
+    it('shows red border on price input when out of range', async () => {
       const user = userEvent.setup();
       renderPanel();
 
-      const priceInput = screen.getByTestId("plan-price-input");
+      const priceInput = screen.getByTestId(
+        'plan-price-input'
+      );
       await user.clear(priceInput);
-      await user.type(priceInput, "25"); // Below min (50)
+      await user.type(priceInput, '25'); // Below min (50)
 
       await waitFor(() => {
-        expect(priceInput).toHaveAttribute("aria-invalid", "true");
+        expect(priceInput).toHaveAttribute(
+          'aria-invalid',
+          'true'
+        );
       });
     });
 
-    it("clears red border when price returns to valid range", async () => {
+    it('clears red border when price returns to valid range', async () => {
       const user = userEvent.setup();
       renderPanel();
 
-      const priceInput = screen.getByTestId("plan-price-input");
+      const priceInput = screen.getByTestId(
+        'plan-price-input'
+      );
       await user.clear(priceInput);
-      await user.type(priceInput, "25");
+      await user.type(priceInput, '25');
 
       await waitFor(() => {
-        expect(priceInput).toHaveAttribute("aria-invalid", "true");
+        expect(priceInput).toHaveAttribute(
+          'aria-invalid',
+          'true'
+        );
       });
 
       await user.clear(priceInput);
-      await user.type(priceInput, "100"); // Back to valid
+      await user.type(priceInput, '100'); // Back to valid
 
       await waitFor(() => {
-        expect(priceInput).toHaveAttribute("aria-invalid", "false");
+        expect(priceInput).toHaveAttribute(
+          'aria-invalid',
+          'false'
+        );
       });
     });
   });
 
-  describe("Create plan (with pricing constraints)", () => {
-    it("blocks submission when price is below min", async () => {
+  describe('Create plan (with pricing constraints)', () => {
+    it('blocks submission when price is below min', async () => {
       const user = userEvent.setup();
       renderPanel();
 
-      const nameInput = screen.getByTestId("plan-name-input");
-      const priceInput = screen.getByTestId("plan-price-input");
-      const submitBtn = screen.getByTestId("submit-button");
+      const nameInput = screen.getByTestId(
+        'plan-name-input'
+      );
+      const priceInput = screen.getByTestId(
+        'plan-price-input'
+      );
+      const submitBtn = screen.getByTestId('submit-button');
 
-      await user.type(nameInput, "Too Cheap Plan");
-      await user.type(priceInput, "25");
+      await user.type(nameInput, 'Too Cheap Plan');
+      await user.type(priceInput, '25');
       await user.click(submitBtn);
 
       await waitFor(() => {
-        expect(screen.getByTestId("error-message")).toHaveTextContent(
-          "Price must be between €50.00 and €200.00",
+        expect(
+          screen.getByTestId('error-message')
+        ).toHaveTextContent(
+          'Price must be between €50.00 and €200.00'
         );
       });
     });
 
-    it("blocks submission when price is above max", async () => {
+    it('blocks submission when price is above max', async () => {
       const user = userEvent.setup();
       renderPanel();
 
-      const nameInput = screen.getByTestId("plan-name-input");
-      const priceInput = screen.getByTestId("plan-price-input");
-      const submitBtn = screen.getByTestId("submit-button");
+      const nameInput = screen.getByTestId(
+        'plan-name-input'
+      );
+      const priceInput = screen.getByTestId(
+        'plan-price-input'
+      );
+      const submitBtn = screen.getByTestId('submit-button');
 
-      await user.type(nameInput, "Too Expensive Plan");
-      await user.type(priceInput, "250");
+      await user.type(nameInput, 'Too Expensive Plan');
+      await user.type(priceInput, '250');
       await user.click(submitBtn);
 
       await waitFor(() => {
-        expect(screen.getByTestId("error-message")).toHaveTextContent(
-          "Price must be between €50.00 and €200.00",
+        expect(
+          screen.getByTestId('error-message')
+        ).toHaveTextContent(
+          'Price must be between €50.00 and €200.00'
         );
       });
     });
 
-    it("creates plan successfully with price within bounds", async () => {
+    it('creates plan successfully with price within bounds', async () => {
       const onSuccess = jest.fn();
       const user = userEvent.setup();
 
       render(
         <QueryClientProvider client={queryClient}>
-          <TenantPlansPanel tenantId={1} onMocked={onSuccess} />
-        </QueryClientProvider>,
+          <TenantPlansPanel
+            tenantId={1}
+            onMocked={onSuccess}
+          />
+        </QueryClientProvider>
       );
 
-      const nameInput = screen.getByTestId("plan-name-input");
-      const priceInput = screen.getByTestId("plan-price-input");
-      const submitBtn = screen.getByTestId("submit-button");
+      const nameInput = screen.getByTestId(
+        'plan-name-input'
+      );
+      const priceInput = screen.getByTestId(
+        'plan-price-input'
+      );
+      const submitBtn = screen.getByTestId('submit-button');
 
-      await user.type(nameInput, "Valid Plan");
-      await user.type(priceInput, "120.50");
+      await user.type(nameInput, 'Valid Plan');
+      await user.type(priceInput, '120.50');
       await user.click(submitBtn);
 
       await waitFor(() => {
         expect(onSuccess).toHaveBeenCalled();
-        expect(screen.getByTestId("plan-name-Valid Plan")).toBeTruthy();
+        expect(
+          screen.getByTestId('plan-name-Valid Plan')
+        ).toBeTruthy();
       });
     });
   });
 
-  describe("Error correction flow", () => {
-    it("allows user to correct invalid price and resubmit", async () => {
+  describe('Error correction flow', () => {
+    it('allows user to correct invalid price and resubmit', async () => {
       const onSuccess = jest.fn();
       const user = userEvent.setup();
 
       render(
         <QueryClientProvider client={queryClient}>
-          <TenantPlansPanel tenantId={1} onMocked={onSuccess} />
-        </QueryClientProvider>,
+          <TenantPlansPanel
+            tenantId={1}
+            onMocked={onSuccess}
+          />
+        </QueryClientProvider>
       );
 
-      const nameInput = screen.getByTestId("plan-name-input");
-      const priceInput = screen.getByTestId("plan-price-input");
-      const submitBtn = screen.getByTestId("submit-button");
+      const nameInput = screen.getByTestId(
+        'plan-name-input'
+      );
+      const priceInput = screen.getByTestId(
+        'plan-price-input'
+      );
+      const submitBtn = screen.getByTestId('submit-button');
 
       // First attempt: invalid price
-      await user.type(nameInput, "Correctable Plan");
-      await user.type(priceInput, "10");
+      await user.type(nameInput, 'Correctable Plan');
+      await user.type(priceInput, '10');
       await user.click(submitBtn);
 
       await waitFor(() => {
-        expect(screen.getByTestId("error-message")).toHaveTextContent("Price must be between");
+        expect(
+          screen.getByTestId('error-message')
+        ).toHaveTextContent('Price must be between');
       });
 
       // Correct and retry
       await user.clear(priceInput);
-      await user.type(priceInput, "99.99");
+      await user.type(priceInput, '99.99');
       await user.click(submitBtn);
 
       await waitFor(() => {
@@ -361,116 +505,149 @@ describe("FUL-26: TenantPlansPanel", () => {
     });
   });
 
-  describe("Edit plan", () => {
-    it("loads plan data into form when edit is clicked", async () => {
+  describe('Edit plan', () => {
+    it('loads plan data into form when edit is clicked', async () => {
       const user = userEvent.setup();
       renderPanel();
 
-      const editBtn = screen.getByTestId("edit-btn-1");
+      const editBtn = screen.getByTestId('edit-btn-1');
       await user.click(editBtn);
 
       await waitFor(() => {
-        expect((screen.getByTestId("plan-name-input") as HTMLInputElement).value).toBe(
-          "Basic Plan",
-        );
-        expect((screen.getByTestId("plan-price-input") as HTMLInputElement).value).toBe("99.99");
+        expect(
+          (
+            screen.getByTestId(
+              'plan-name-input'
+            ) as HTMLInputElement
+          ).value
+        ).toBe('Basic Plan');
+        expect(
+          (
+            screen.getByTestId(
+              'plan-price-input'
+            ) as HTMLInputElement
+          ).value
+        ).toBe('99.99');
       });
 
-      expect(screen.getByTestId("submit-button")).toHaveTextContent("Update Plan");
+      expect(
+        screen.getByTestId('submit-button')
+      ).toHaveTextContent('Update Plan');
     });
 
-    it("updates plan with new pricing if within bounds", async () => {
+    it('updates plan with new pricing if within bounds', async () => {
       const onSuccess = jest.fn();
       const user = userEvent.setup();
 
       render(
         <QueryClientProvider client={queryClient}>
-          <TenantPlansPanel tenantId={1} onMocked={onSuccess} />
-        </QueryClientProvider>,
+          <TenantPlansPanel
+            tenantId={1}
+            onMocked={onSuccess}
+          />
+        </QueryClientProvider>
       );
 
-      await user.click(screen.getByTestId("edit-btn-1"));
+      await user.click(screen.getByTestId('edit-btn-1'));
 
-      const priceInput = screen.getByTestId("plan-price-input");
+      const priceInput = screen.getByTestId(
+        'plan-price-input'
+      );
       await user.clear(priceInput);
-      await user.type(priceInput, "149.99");
+      await user.type(priceInput, '149.99');
 
-      await user.click(screen.getByTestId("submit-button"));
+      await user.click(screen.getByTestId('submit-button'));
 
       await waitFor(() => {
         expect(onSuccess).toHaveBeenCalled();
-        expect(screen.getByTestId("plan-price-1")).toHaveTextContent("€149.99");
+        expect(
+          screen.getByTestId('plan-price-1')
+        ).toHaveTextContent('€149.99');
       });
     });
 
-    it("prevents edit if new price is out of range", async () => {
+    it('prevents edit if new price is out of range', async () => {
       const user = userEvent.setup();
       renderPanel();
 
-      await user.click(screen.getByTestId("edit-btn-1"));
+      await user.click(screen.getByTestId('edit-btn-1'));
 
-      const priceInput = screen.getByTestId("plan-price-input");
+      const priceInput = screen.getByTestId(
+        'plan-price-input'
+      );
       await user.clear(priceInput);
-      await user.type(priceInput, "250"); // Out of range
+      await user.type(priceInput, '250'); // Out of range
 
-      await user.click(screen.getByTestId("submit-button"));
+      await user.click(screen.getByTestId('submit-button'));
 
       await waitFor(() => {
-        expect(screen.getByTestId("error-message")).toHaveTextContent("Price must be between");
+        expect(
+          screen.getByTestId('error-message')
+        ).toHaveTextContent('Price must be between');
       });
     });
   });
 
-  describe("Plan visibility toggle", () => {
-    it("toggles plan visibility (hide/show)", async () => {
+  describe('Plan visibility toggle', () => {
+    it('toggles plan visibility (hide/show)', async () => {
       const user = userEvent.setup();
       renderPanel();
 
-      const planActive = screen.getByTestId("plan-active-1");
-      expect(planActive).toHaveTextContent("Active");
+      const planActive =
+        screen.getByTestId('plan-active-1');
+      expect(planActive).toHaveTextContent('Active');
 
-      const toggleBtn = screen.getByTestId("toggle-btn-1");
+      const toggleBtn = screen.getByTestId('toggle-btn-1');
       await user.click(toggleBtn);
 
       await waitFor(() => {
-        expect(screen.getByTestId("plan-active-1")).toHaveTextContent("Hidden");
+        expect(
+          screen.getByTestId('plan-active-1')
+        ).toHaveTextContent('Hidden');
       });
 
       await user.click(toggleBtn);
 
       await waitFor(() => {
-        expect(screen.getByTestId("plan-active-1")).toHaveTextContent("Active");
+        expect(
+          screen.getByTestId('plan-active-1')
+        ).toHaveTextContent('Active');
       });
     });
 
-    it("displays hidden plans with gray background", async () => {
+    it('displays hidden plans with gray background', async () => {
       const user = userEvent.setup();
       renderPanel();
 
-      await user.click(screen.getByTestId("toggle-btn-1"));
+      await user.click(screen.getByTestId('toggle-btn-1'));
 
       await waitFor(() => {
-        const planActive = screen.getByTestId("plan-active-1");
-        expect(planActive).toHaveClass("bg-gray-100");
-        expect(planActive).not.toHaveClass("bg-green-100");
+        const planActive =
+          screen.getByTestId('plan-active-1');
+        expect(planActive).toHaveClass('bg-gray-100');
+        expect(planActive).not.toHaveClass('bg-green-100');
       });
     });
   });
 
-  describe("Enrollment table display", () => {
-    it("shows all plans in the management table", () => {
+  describe('Enrollment table display', () => {
+    it('shows all plans in the management table', () => {
       renderPanel();
 
-      const plansList = screen.getByTestId("plans-list");
-      expect(plansList).toHaveTextContent("Basic Plan");
-      expect(plansList).toHaveTextContent("€99.99");
+      const plansList = screen.getByTestId('plans-list');
+      expect(plansList).toHaveTextContent('Basic Plan');
+      expect(plansList).toHaveTextContent('€99.99');
     });
 
-    it("shows plan action buttons (edit, toggle)", () => {
+    it('shows plan action buttons (edit, toggle)', () => {
       renderPanel();
 
-      expect(screen.getByTestId("edit-btn-1")).toBeInTheDocument();
-      expect(screen.getByTestId("toggle-btn-1")).toBeInTheDocument();
+      expect(
+        screen.getByTestId('edit-btn-1')
+      ).toBeInTheDocument();
+      expect(
+        screen.getByTestId('toggle-btn-1')
+      ).toBeInTheDocument();
     });
   });
 });

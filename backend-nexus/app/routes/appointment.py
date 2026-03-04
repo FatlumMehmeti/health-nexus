@@ -11,8 +11,8 @@ from app.models.doctor import Doctor
 from app.models.enrollment import Enrollment, EnrollmentStatus
 from app.models.patient import Patient
 
-
 router = APIRouter(prefix="/appointments", tags=["Appointments"])
+
 
 def _normalize_datetime(dt: datetime) -> datetime:
     if dt.tzinfo is None:
@@ -34,14 +34,17 @@ def _has_doctor_overlap(
         AppointmentStatus.CONFIRMED,
     ),
 ) -> bool:
-    return _get_doctor_overlap(
-        db=db,
-        doctor_id=doctor_id,
-        start_dt=start_dt,
-        duration_minutes=duration_minutes,
-        exclude_appointment_id=exclude_appointment_id,
-        statuses=statuses,
-    ) is not None
+    return (
+        _get_doctor_overlap(
+            db=db,
+            doctor_id=doctor_id,
+            start_dt=start_dt,
+            duration_minutes=duration_minutes,
+            exclude_appointment_id=exclude_appointment_id,
+            statuses=statuses,
+        )
+        is not None
+    )
 
 
 def _get_doctor_overlap(
@@ -134,11 +137,15 @@ def _require_patient(current_user: dict, db: Session, tenant_id: int) -> int:
     if not patient:
         raise HTTPException(403, "Only patients can perform this action")
 
-    enrollment = db.query(Enrollment).filter(
-        Enrollment.tenant_id == tenant_id,
-        Enrollment.patient_user_id == user_id,
-        Enrollment.status == EnrollmentStatus.ACTIVE,
-    ).first()
+    enrollment = (
+        db.query(Enrollment)
+        .filter(
+            Enrollment.tenant_id == tenant_id,
+            Enrollment.patient_user_id == user_id,
+            Enrollment.status == EnrollmentStatus.ACTIVE,
+        )
+        .first()
+    )
     if not enrollment:
         raise HTTPException(403, "You are not enrolled in this tenant")
 
@@ -248,28 +255,42 @@ def book_appointment(
 
     try:
         _require_patient(current_user, db, tenant_id)
-        enrollment = db.query(Enrollment).filter(
-            Enrollment.tenant_id == tenant_id,
-            Enrollment.patient_user_id == user_id,
-            Enrollment.status == EnrollmentStatus.ACTIVE,
-        ).first()
+        enrollment = (
+            db.query(Enrollment)
+            .filter(
+                Enrollment.tenant_id == tenant_id,
+                Enrollment.patient_user_id == user_id,
+                Enrollment.status == EnrollmentStatus.ACTIVE,
+            )
+            .first()
+        )
 
-        doctor = db.query(Doctor).filter(
-            Doctor.user_id == doctor_id,
-            Doctor.tenant_id == tenant_id,
-            Doctor.tenant_department_id == department_id,
-            Doctor.is_active == True,
-        ).first()
+        doctor = (
+            db.query(Doctor)
+            .filter(
+                Doctor.user_id == doctor_id,
+                Doctor.tenant_id == tenant_id,
+                Doctor.tenant_department_id == department_id,
+                Doctor.is_active == True,
+            )
+            .first()
+        )
         if not doctor:
             raise HTTPException(404, "Doctor not found in this department")
 
         plan = enrollment.user_tenant_plan
         if plan.max_appointments:
-            appointment_count = db.query(Appointment).filter(
-                Appointment.patient_user_id == user_id,
-                Appointment.tenant_id == tenant_id,
-                Appointment.status.in_([AppointmentStatus.REQUESTED, AppointmentStatus.CONFIRMED]),
-            ).count()
+            appointment_count = (
+                db.query(Appointment)
+                .filter(
+                    Appointment.patient_user_id == user_id,
+                    Appointment.tenant_id == tenant_id,
+                    Appointment.status.in_(
+                        [AppointmentStatus.REQUESTED, AppointmentStatus.CONFIRMED]
+                    ),
+                )
+                .count()
+            )
             if appointment_count >= plan.max_appointments:
                 raise HTTPException(403, "Appointment limit reached for your plan")
 

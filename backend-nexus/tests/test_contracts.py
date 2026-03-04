@@ -1,6 +1,7 @@
 """
 Tests for contract APIs: CRUD, transitions, permissions.
 """
+
 from datetime import datetime, timedelta, timezone
 
 # Minimal valid 1x1 PNG (67 bytes)
@@ -149,7 +150,9 @@ def test_list_contracts_with_doctor_filter(manager_client, db_session):
         doctor_user_id=doc_user.id,
         status=ContractStatus.DRAFT,
     )
-    c2 = Contract(tenant_id=manager_client.tenant_id, doctor_user_id=None, status=ContractStatus.DRAFT)
+    c2 = Contract(
+        tenant_id=manager_client.tenant_id, doctor_user_id=None, status=ContractStatus.DRAFT
+    )
     db_session.add_all([c1, c2])
     db_session.commit()
 
@@ -349,7 +352,10 @@ def test_transition_invalid_draft_to_expired_rejected(manager_client, db_session
         json={"next_status": "EXPIRED"},
     )
     assert r.status_code == 400
-    assert "invalid" in r.json().get("detail", "").lower() or "transition" in r.json().get("detail", "").lower()
+    assert (
+        "invalid" in r.json().get("detail", "").lower()
+        or "transition" in r.json().get("detail", "").lower()
+    )
 
 
 def test_transition_active_to_expired_success(manager_client, db_session):
@@ -424,7 +430,10 @@ def test_transition_date_validation_expires_before_activated(manager_client, db_
         json={"next_status": "ACTIVE"},
     )
     assert r.status_code == 400
-    assert "activated_at" in r.json().get("detail", "").lower() or "expires" in r.json().get("detail", "").lower()
+    assert (
+        "activated_at" in r.json().get("detail", "").lower()
+        or "expires" in r.json().get("detail", "").lower()
+    )
 
 
 def test_transition_expired_to_any_rejected(manager_client, db_session):
@@ -443,7 +452,11 @@ def test_transition_expired_to_any_rejected(manager_client, db_session):
     for next_status in ["ACTIVE", "TERMINATED"]:
         r = manager_client.post(
             f"/api/contracts/{c.id}/transition",
-            json={"next_status": next_status} if next_status != "TERMINATED" else {"next_status": "TERMINATED", "reason": "x"},
+            json=(
+                {"next_status": next_status}
+                if next_status != "TERMINATED"
+                else {"next_status": "TERMINATED", "reason": "x"}
+            ),
         )
         assert r.status_code == 400, f"EXPIRED -> {next_status} should be rejected"
 
@@ -710,7 +723,9 @@ def test_sign_doctor_wrong_content_type_rejected(manager_client, db_session):
         if prev is not None:
             app.dependency_overrides[get_current_user] = prev
     assert r.status_code == 400
-    assert "png" in r.json().get("detail", "").lower() or "jpeg" in r.json().get("detail", "").lower()
+    assert (
+        "png" in r.json().get("detail", "").lower() or "jpeg" in r.json().get("detail", "").lower()
+    )
 
 
 def test_sign_doctor_wrong_user_rejected(manager_client, db_session):

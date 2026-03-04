@@ -24,11 +24,15 @@ def _require_service_manager_or_admin(user: dict) -> tuple[bool, int | None]:
     if role == "tenant_manager":
         tenant_id_raw = user.get("tenant_id")
         if tenant_id_raw is None:
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Tenant access denied")
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN, detail="Tenant access denied"
+            )
         try:
             tenant_id = int(tenant_id_raw) if not isinstance(tenant_id_raw, int) else tenant_id_raw
         except (TypeError, ValueError):
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Tenant access denied")
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN, detail="Tenant access denied"
+            )
         return False, tenant_id
     raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Insufficient permissions")
 
@@ -36,7 +40,9 @@ def _require_service_manager_or_admin(user: dict) -> tuple[bool, int | None]:
 @router.get("", response_model=list[ServiceLandingItem])
 def list_services(
     tenant_id: int | None = Query(default=None, description="Filter by tenant"),
-    tenant_department_id: int | None = Query(default=None, description="Filter by tenant department"),
+    tenant_department_id: int | None = Query(
+        default=None, description="Filter by tenant department"
+    ),
     db: Session = Depends(get_db),
 ):
     """List services. Optionally filter by tenant_id and/or tenant_department_id."""
@@ -57,17 +63,32 @@ def create_service(
 ):
     """Create a service under a tenant department."""
     is_super_admin, tenant_id = _require_service_manager_or_admin(user)
-    td = db.query(TenantDepartment).filter(TenantDepartment.id == payload.tenant_department_id).first()
+    td = (
+        db.query(TenantDepartment)
+        .filter(TenantDepartment.id == payload.tenant_department_id)
+        .first()
+    )
     if not td:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tenant department not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Tenant department not found"
+        )
     if not is_super_admin and td.tenant_id != tenant_id:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tenant department not found")
-    existing = db.query(Service).filter(
-        Service.tenant_departments_id == payload.tenant_department_id,
-        Service.name == payload.name,
-    ).first()
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Tenant department not found"
+        )
+    existing = (
+        db.query(Service)
+        .filter(
+            Service.tenant_departments_id == payload.tenant_department_id,
+            Service.name == payload.name,
+        )
+        .first()
+    )
     if existing:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Service with this name already exists for this department")
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Service with this name already exists for this department",
+        )
     service = Service(
         name=payload.name,
         price=Decimal(str(payload.price)),

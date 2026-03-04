@@ -16,41 +16,25 @@ class TenantSubscription(Base, TimestampMixin):
 
     id: Mapped[int] = mapped_column(primary_key=True)
 
-    tenant_id: Mapped[int] = mapped_column(
-        ForeignKey("tenants.id"),
-        nullable=False
-    )
+    tenant_id: Mapped[int] = mapped_column(ForeignKey("tenants.id"), nullable=False)
 
     subscription_plan_id: Mapped[int] = mapped_column(
-        ForeignKey("subscription_plans.id"),
-        nullable=False
+        ForeignKey("subscription_plans.id"), nullable=False
     )
 
     status: Mapped[SubscriptionStatus] = mapped_column(
         Enum(SubscriptionStatus, name="subscription_status"),
         default=SubscriptionStatus.ACTIVE,
-        nullable=False
+        nullable=False,
     )
 
-    activated_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True),
-        nullable=True
-    )
+    activated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
-    expires_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True),
-        nullable=True
-    )
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
-    cancelled_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True),
-        nullable=True
-    )
-    
-    cancellation_reason: Mapped[str | None] = mapped_column(
-        Text,
-        nullable=True
-    )
+    cancelled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    cancellation_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     tenant = relationship("Tenant", back_populates="subscriptions")
     subscription_plan = relationship("SubscriptionPlan")

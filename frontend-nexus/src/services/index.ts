@@ -1,12 +1,12 @@
-export { rolesService } from "./roles.service";
-export { usersService } from "./users.service";
-export { tenantsService } from "./tenants.service";
 export type {
+  AddUserInput,
+  AddUserResponse,
   Role,
   RoleCreate,
   RoleUpdate,
   User,
   UsersResponse,
-  AddUserInput,
-  AddUserResponse,
-} from "@/interfaces";
+} from '@/interfaces';
+export { rolesService } from './roles.service';
+export { tenantsService } from './tenants.service';
+export { usersService } from './users.service';

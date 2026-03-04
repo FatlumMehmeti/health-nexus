@@ -1,4 +1,5 @@
 """PRD-05 integration test suite conftest: register marker and expose prd05 fixtures."""
+
 import pytest
 
 pytest_plugins = ["tests.integration_prd05.fixtures"]

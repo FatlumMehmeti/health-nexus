@@ -20,13 +20,13 @@ from app.repositories import (
     get_enrollment_by_id,
     get_enrollment_by_tenant_and_patient,
     list_enrollments_by_tenant,
-    list_enrollment_status_history
+    list_enrollment_status_history,
 )
-
 
 # ============================================================================
 # Error Model
 # ============================================================================
+
 
 class EnrollmentErrorCode(str, enum.Enum):
     """
@@ -36,6 +36,7 @@ class EnrollmentErrorCode(str, enum.Enum):
     to map service-layer failures into consistent HTTP responses and
     structured error payloads.
     """
+
     INVALID_TRANSITION = "INVALID_TRANSITION"
     UNAUTHORIZED = "UNAUTHORIZED"
     TENANT_SCOPE_VIOLATION = "TENANT_SCOPE_VIOLATION"
@@ -58,6 +59,7 @@ class EnrollmentServiceError(Exception):
     - http_status: the intended HTTP status code
     - details: optional structured context for debugging or clients
     """
+
     def __init__(
         self,
         code: EnrollmentErrorCode,
@@ -76,6 +78,7 @@ class EnrollmentServiceError(Exception):
 # Actor Context & Role Definitions
 # ============================================================================
 
+
 @dataclass
 class ActorContext:
     """
@@ -85,6 +88,7 @@ class ActorContext:
     This is typically constructed from the JWT payload at the route layer
     and passed into service functions to enforce authorization rules.
     """
+
     user_id: Optional[int]
     role: str
 
@@ -119,6 +123,7 @@ def _is_super_admin(actor: ActorContext) -> bool:
 # ============================================================================
 # Authorization Helpers
 # ============================================================================
+
 
 def _ensure_actor_can_mutate_tenant(
     db: Session,
@@ -197,7 +202,7 @@ def _ensure_actor_can_create_enrollment(
     if role == ROLE_TENANT_MANAGER:
         _ensure_actor_can_mutate_tenant(db, actor, tenant_id)
         return
-    #changed this part of the code to allow patients to create enrollments for themselves.
+    # changed this part of the code to allow patients to create enrollments for themselves.
     if role == ROLE_PATIENT:
         if actor.user_id is None:
             raise EnrollmentServiceError(
@@ -289,6 +294,7 @@ def _ensure_actor_can_view_enrollment(
 # Serialization
 # ============================================================================
 
+
 def _serialize_enrollment(enrollment: Enrollment) -> Dict[str, Any]:
     """
     Produce a JSON-serializable snapshot of an enrollment.
@@ -303,7 +309,11 @@ def _serialize_enrollment(enrollment: Enrollment) -> Dict[str, Any]:
         "patient_user_id": enrollment.patient_user_id,
         "user_tenant_plan_id": enrollment.user_tenant_plan_id,
         "created_by": enrollment.created_by,
-        "status": enrollment.status.value if isinstance(enrollment.status, EnrollmentStatus) else str(enrollment.status),
+        "status": (
+            enrollment.status.value
+            if isinstance(enrollment.status, EnrollmentStatus)
+            else str(enrollment.status)
+        ),
         "activated_at": enrollment.activated_at.isoformat() if enrollment.activated_at else None,
         "cancelled_at": enrollment.cancelled_at.isoformat() if enrollment.cancelled_at else None,
         "expires_at": enrollment.expires_at.isoformat() if enrollment.expires_at else None,
@@ -313,6 +323,7 @@ def _serialize_enrollment(enrollment: Enrollment) -> Dict[str, Any]:
 # ============================================================================
 # Enrollment Creation
 # ============================================================================
+
 
 def _get_constraint_name(exc: IntegrityError) -> Optional[str]:
     """
@@ -338,8 +349,7 @@ def _map_create_integrity_error(
     raw_message = str(getattr(exc, "orig", exc)).lower()
 
     is_duplicate = (
-        "uq_enrollment_patient_tenant" in constraint_name
-        or "unique constraint" in raw_message
+        "uq_enrollment_patient_tenant" in constraint_name or "unique constraint" in raw_message
     )
     if is_duplicate:
         return EnrollmentServiceError(
@@ -352,12 +362,8 @@ def _map_create_integrity_error(
             },
         )
 
-    is_patient_tenant_fk = (
-        "fk_enrollments_patient_tenant_user" in constraint_name
-        or (
-            "foreign key" in raw_message
-            and "patient" in raw_message
-        )
+    is_patient_tenant_fk = "fk_enrollments_patient_tenant_user" in constraint_name or (
+        "foreign key" in raw_message and "patient" in raw_message
     )
     if is_patient_tenant_fk:
         return EnrollmentServiceError(
@@ -538,6 +544,7 @@ def create_enrollment(
 # Status Transitions
 # ============================================================================
 
+
 def transition_enrollment(
     db: Session,
     *,
@@ -649,7 +656,9 @@ def transition_enrollment(
                 http_status=400,
                 details={
                     "enrollment_id": enrollment.id,
-                    "expires_at": enrollment.expires_at.isoformat() if enrollment.expires_at else None,
+                    "expires_at": (
+                        enrollment.expires_at.isoformat() if enrollment.expires_at else None
+                    ),
                 },
             )
 
@@ -697,6 +706,7 @@ def transition_enrollment(
 # ============================================================================
 # Scoped Reads & Listing
 # ============================================================================
+
 
 def get_enrollment_scoped(
     db: Session,
@@ -800,6 +810,7 @@ def list_enrollments_scoped(
 # Operational Status
 # ============================================================================
 
+
 def get_operational_status(
     db: Session,
     *,
@@ -850,23 +861,30 @@ def get_operational_status(
         and enrollment.expires_at > now
     )
 
-    is_expired = (
-        enrollment.status == EnrollmentStatus.EXPIRED
-        or (
-            enrollment.status == EnrollmentStatus.ACTIVE
-            and enrollment.expires_at is not None
-            and enrollment.expires_at < now
-        )
+    is_expired = enrollment.status == EnrollmentStatus.EXPIRED or (
+        enrollment.status == EnrollmentStatus.ACTIVE
+        and enrollment.expires_at is not None
+        and enrollment.expires_at < now
     )
 
     return {
         "enrollment_id": enrollment.id,
-        "status": enrollment.status.value if isinstance(enrollment.status, EnrollmentStatus) else str(enrollment.status),
+        "status": (
+            enrollment.status.value
+            if isinstance(enrollment.status, EnrollmentStatus)
+            else str(enrollment.status)
+        ),
         "isActive": is_active,
         "expires_at": enrollment.expires_at.isoformat() if enrollment.expires_at else None,
         "isExpired": is_expired,
-        "last_updated": enrollment.updated_at.isoformat() if hasattr(enrollment, "updated_at") and enrollment.updated_at else None,
+        "last_updated": (
+            enrollment.updated_at.isoformat()
+            if hasattr(enrollment, "updated_at") and enrollment.updated_at
+            else None
+        ),
     }
+
+
 def get_enrollment_history_scoped(
     db: Session,
     *,
@@ -883,6 +901,8 @@ def get_enrollment_history_scoped(
         db,
         tenant_id=expected_tenant_id,
     )
+
+
 def list_my_enrollments_global(
     db: Session,
     *,
@@ -907,8 +927,4 @@ def list_my_enrollments_global(
             http_status=403,
         )
 
-    return (
-        db.query(Enrollment)
-        .filter(Enrollment.patient_user_id == actor.user_id)
-        .all()
-    )
+    return db.query(Enrollment).filter(Enrollment.patient_user_id == actor.user_id).all()

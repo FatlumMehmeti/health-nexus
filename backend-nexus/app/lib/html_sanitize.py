@@ -1,14 +1,37 @@
 """HTML sanitization for user-provided rich text (e.g. contract terms_content)."""
+
 import bleach
 
 # Safe tags for contract/terms content (no script, iframe, object, etc.)
 ALLOWED_TAGS = {
-    "p", "br", "div", "span",
-    "h1", "h2", "h3", "h4", "h5", "h6",
-    "strong", "em", "b", "i", "u",
-    "ul", "ol", "li",
-    "blockquote", "pre", "code",
-    "a", "table", "thead", "tbody", "tr", "th", "td",
+    "p",
+    "br",
+    "div",
+    "span",
+    "h1",
+    "h2",
+    "h3",
+    "h4",
+    "h5",
+    "h6",
+    "strong",
+    "em",
+    "b",
+    "i",
+    "u",
+    "ul",
+    "ol",
+    "li",
+    "blockquote",
+    "pre",
+    "code",
+    "a",
+    "table",
+    "thead",
+    "tbody",
+    "tr",
+    "th",
+    "td",
 }
 
 ALLOWED_ATTRIBUTES = {

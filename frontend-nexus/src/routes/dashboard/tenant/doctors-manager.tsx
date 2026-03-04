@@ -1,31 +1,14 @@
-import { useEffect, useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
-import { isApiError } from "@/lib/api-client";
-import { tenantsService } from "@/services/tenants.service";
-import { useDialogStore } from "@/stores/use-dialog-store";
-import { FormSelect } from "@/components/atoms/form-select";
-import type {
-  DoctorAssignableRead,
-  DoctorCreateForTenant,
-  DoctorRead,
-  DoctorUpdate,
-} from "@/interfaces";
-import { QUERY_KEYS } from "./constants";
-import { getErrorMessage, formatDate } from "./utils";
-import { StandardTable, RowActions, RowIconActionButton } from "./shared";
+import { FormSelect } from '@/components/atoms/form-select';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Skeleton } from "@/components/ui/skeleton";
+} from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Dialog,
   DialogContent,
@@ -33,26 +16,57 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
-  TableHeader,
   TableBody,
   TableCell,
   TableHead,
+  TableHeader,
   TableRow,
-} from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
+} from '@/components/ui/table';
+import type {
+  DoctorAssignableRead,
+  DoctorCreateForTenant,
+  DoctorRead,
+  DoctorUpdate,
+} from '@/interfaces';
+import { isApiError } from '@/lib/api-client';
+import { tenantsService } from '@/services/tenants.service';
+import { useDialogStore } from '@/stores/use-dialog-store';
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query';
+import { useEffect, useState } from 'react';
+import { toast } from 'sonner';
+import { QUERY_KEYS } from './constants';
+import {
+  RowActions,
+  RowIconActionButton,
+  StandardTable,
+} from './shared';
+import { formatDate, getErrorMessage } from './utils';
 
 interface DoctorsManagerProps {
   tenantId: number;
   onSaved?: () => void;
 }
 
-export function DoctorsManager({ tenantId, onSaved }: DoctorsManagerProps) {
+export function DoctorsManager({
+  tenantId,
+  onSaved,
+}: DoctorsManagerProps) {
   const queryClient = useQueryClient();
-  const { open: openDialog, close: closeDialog } = useDialogStore();
-  const [doctorDialogOpen, setDoctorDialogOpen] = useState(false);
-  const [editingDoctor, setEditingDoctor] = useState<DoctorRead | null>(null);
+  const { open: openDialog, close: closeDialog } =
+    useDialogStore();
+  const [doctorDialogOpen, setDoctorDialogOpen] =
+    useState(false);
+  const [editingDoctor, setEditingDoctor] =
+    useState<DoctorRead | null>(null);
 
   const doctorsQuery = useQuery({
     queryKey: QUERY_KEYS.doctors,
@@ -60,7 +74,8 @@ export function DoctorsManager({ tenantId, onSaved }: DoctorsManagerProps) {
       try {
         return await tenantsService.listTenantDoctors();
       } catch (err) {
-        if (isApiError(err) && err.status === 404) return [] as DoctorRead[];
+        if (isApiError(err) && err.status === 404)
+          return [] as DoctorRead[];
         throw err;
       }
     },
@@ -68,25 +83,36 @@ export function DoctorsManager({ tenantId, onSaved }: DoctorsManagerProps) {
   const doctors = doctorsQuery.data ?? [];
 
   const assignableQuery = useQuery({
-    queryKey: ["tenant-manager", "assignable-doctors", tenantId],
-    queryFn: () => tenantsService.listAssignableDoctors(tenantId),
+    queryKey: [
+      'tenant-manager',
+      'assignable-doctors',
+      tenantId,
+    ],
+    queryFn: () =>
+      tenantsService.listAssignableDoctors(tenantId),
     enabled: doctorDialogOpen && !editingDoctor,
   });
-  const assignableDoctors = (assignableQuery.data ?? []).filter(
-    (d) => d.assigned_tenant_id == null,
-  );
+  const assignableDoctors = (
+    assignableQuery.data ?? []
+  ).filter((d) => d.assigned_tenant_id == null);
 
   const createMutation = useMutation({
     mutationFn: (data: DoctorCreateForTenant) =>
       tenantsService.createTenantDoctor(data),
     onSuccess: () => {
-      toast.success("Doctor added");
-      void queryClient.invalidateQueries({ queryKey: QUERY_KEYS.doctors });
+      toast.success('Doctor added');
+      void queryClient.invalidateQueries({
+        queryKey: QUERY_KEYS.doctors,
+      });
       onSaved?.();
       setDoctorDialogOpen(false);
     },
     onError: (err) => {
-      toast.error(isApiError(err) ? err.displayMessage : "Failed to add doctor");
+      toast.error(
+        isApiError(err)
+          ? err.displayMessage
+          : 'Failed to add doctor'
+      );
     },
   });
 
@@ -99,43 +125,54 @@ export function DoctorsManager({ tenantId, onSaved }: DoctorsManagerProps) {
       data: DoctorUpdate;
     }) => tenantsService.updateTenantDoctor(userId, data),
     onSuccess: () => {
-      toast.success("Doctor updated");
-      void queryClient.invalidateQueries({ queryKey: QUERY_KEYS.doctors });
+      toast.success('Doctor updated');
+      void queryClient.invalidateQueries({
+        queryKey: QUERY_KEYS.doctors,
+      });
       onSaved?.();
       setEditingDoctor(null);
       setDoctorDialogOpen(false);
     },
     onError: (err) => {
       toast.error(
-        isApiError(err) ? err.displayMessage : "Failed to update doctor",
+        isApiError(err)
+          ? err.displayMessage
+          : 'Failed to update doctor'
       );
     },
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (userId: number) => tenantsService.deleteTenantDoctor(userId),
+    mutationFn: (userId: number) =>
+      tenantsService.deleteTenantDoctor(userId),
     onSuccess: () => {
-      toast.success("Doctor removed");
-      void queryClient.invalidateQueries({ queryKey: QUERY_KEYS.doctors });
+      toast.success('Doctor removed');
+      void queryClient.invalidateQueries({
+        queryKey: QUERY_KEYS.doctors,
+      });
       onSaved?.();
       closeDialog();
     },
     onError: (err) => {
       toast.error(
-        isApiError(err) ? err.displayMessage : "Failed to remove doctor",
+        isApiError(err)
+          ? err.displayMessage
+          : 'Failed to remove doctor'
       );
     },
   });
 
   const confirmRemoveDoctor = (doctor: DoctorRead) => {
     const name =
-      [doctor.first_name, doctor.last_name].filter(Boolean).join(" ") ||
-      "Doctor";
+      [doctor.first_name, doctor.last_name]
+        .filter(Boolean)
+        .join(' ') || 'Doctor';
     openDialog({
-      title: "Remove doctor",
+      title: 'Remove doctor',
       content: (
         <p className="text-muted-foreground text-sm">
-          Remove {name} from this tenant? This cannot be undone.
+          Remove {name} from this tenant? This cannot be
+          undone.
         </p>
       ),
       footer: (
@@ -149,7 +186,9 @@ export function DoctorsManager({ tenantId, onSaved }: DoctorsManagerProps) {
           </Button>
           <Button
             variant="destructive"
-            onClick={() => deleteMutation.mutate(doctor.user_id)}
+            onClick={() =>
+              deleteMutation.mutate(doctor.user_id)
+            }
             disabled={deleteMutation.isPending}
           >
             Remove
@@ -165,7 +204,8 @@ export function DoctorsManager({ tenantId, onSaved }: DoctorsManagerProps) {
         <CardHeader>
           <CardTitle>Doctors</CardTitle>
           <CardDescription>
-            Add, edit, and remove doctors assigned to this tenant.
+            Add, edit, and remove doctors assigned to this
+            tenant.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -201,26 +241,39 @@ export function DoctorsManager({ tenantId, onSaved }: DoctorsManagerProps) {
                       <TableHead>Licence</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead>Created</TableHead>
-                      <TableHead className="min-w-24">Actions</TableHead>
+                      <TableHead className="min-w-24">
+                        Actions
+                      </TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {doctors.map((doctor) => (
                       <TableRow key={doctor.user_id}>
                         <TableCell>
-                          {[doctor.first_name, doctor.last_name]
+                          {[
+                            doctor.first_name,
+                            doctor.last_name,
+                          ]
                             .filter(Boolean)
-                            .join(" ") || "Doctor"}
+                            .join(' ') || 'Doctor'}
                         </TableCell>
-                        <TableCell>{doctor.specialization || "-"}</TableCell>
+                        <TableCell>
+                          {doctor.specialization || '-'}
+                        </TableCell>
                         <TableCell className="font-mono text-xs">
-                          {doctor.licence_number || "-"}
+                          {doctor.licence_number || '-'}
                         </TableCell>
                         <TableCell>
                           <Badge
-                            variant={doctor.is_active ? "success" : "neutral"}
+                            variant={
+                              doctor.is_active
+                                ? 'success'
+                                : 'neutral'
+                            }
                           >
-                            {doctor.is_active ? "Active" : "Inactive"}
+                            {doctor.is_active
+                              ? 'Active'
+                              : 'Inactive'}
                           </Badge>
                         </TableCell>
                         <TableCell className="text-muted-foreground text-sm">
@@ -239,7 +292,9 @@ export function DoctorsManager({ tenantId, onSaved }: DoctorsManagerProps) {
                             <RowIconActionButton
                               mode="delete"
                               label="Remove doctor"
-                              onClick={() => confirmRemoveDoctor(doctor)}
+                              onClick={() =>
+                                confirmRemoveDoctor(doctor)
+                              }
                             />
                           </RowActions>
                         </TableCell>
@@ -255,12 +310,17 @@ export function DoctorsManager({ tenantId, onSaved }: DoctorsManagerProps) {
 
       <DoctorDialog
         open={doctorDialogOpen}
-        mode={editingDoctor ? "edit" : "create"}
+        mode={editingDoctor ? 'edit' : 'create'}
         doctor={editingDoctor}
         assignableDoctors={assignableDoctors}
         assignableLoading={assignableQuery.isLoading}
-        isSubmitting={createMutation.isPending || updateMutation.isPending}
-        submitError={createMutation.error ?? updateMutation.error}
+        isSubmitting={
+          createMutation.isPending ||
+          updateMutation.isPending
+        }
+        submitError={
+          createMutation.error ?? updateMutation.error
+        }
         onOpenChange={(open) => {
           if (!open) {
             setDoctorDialogOpen(false);
@@ -278,7 +338,7 @@ export function DoctorsManager({ tenantId, onSaved }: DoctorsManagerProps) {
 
 interface DoctorDialogProps {
   open: boolean;
-  mode: "create" | "edit";
+  mode: 'create' | 'edit';
   doctor: DoctorRead | null;
   assignableDoctors: DoctorAssignableRead[];
   assignableLoading: boolean;
@@ -301,35 +361,35 @@ function DoctorDialog({
   onCreate,
   onUpdate,
 }: DoctorDialogProps) {
-  const [userId, setUserId] = useState("");
-  const [specialization, setSpecialization] = useState("");
-  const [education, setEducation] = useState("");
-  const [licenceNumber, setLicenceNumber] = useState("");
+  const [userId, setUserId] = useState('');
+  const [specialization, setSpecialization] = useState('');
+  const [education, setEducation] = useState('');
+  const [licenceNumber, setLicenceNumber] = useState('');
   const [isActive, setIsActive] = useState(true);
 
   useEffect(() => {
     if (!open) return;
-    if (mode === "edit" && doctor) {
+    if (mode === 'edit' && doctor) {
       setUserId(String(doctor.user_id));
-      setSpecialization(doctor.specialization ?? "");
-      setEducation(doctor.education ?? "");
-      setLicenceNumber(doctor.licence_number ?? "");
+      setSpecialization(doctor.specialization ?? '');
+      setEducation(doctor.education ?? '');
+      setLicenceNumber(doctor.licence_number ?? '');
       setIsActive(doctor.is_active);
     } else {
-      setUserId("");
-      setSpecialization("");
-      setEducation("");
-      setLicenceNumber("");
+      setUserId('');
+      setSpecialization('');
+      setEducation('');
+      setLicenceNumber('');
       setIsActive(true);
     }
   }, [open, mode, doctor]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (mode === "create") {
+    if (mode === 'create') {
       const parsed = Number(userId);
       if (!Number.isFinite(parsed) || parsed <= 0) {
-        toast.error("Please select a doctor");
+        toast.error('Please select a doctor');
         return;
       }
       onCreate({
@@ -353,9 +413,11 @@ function DoctorDialog({
   const options = assignableDoctors.map((d) => ({
     value: String(d.id),
     label:
-      [d.first_name, d.last_name].filter(Boolean).join(" ") ||
+      [d.first_name, d.last_name]
+        .filter(Boolean)
+        .join(' ') ||
       d.email ||
-      "Doctor",
+      'Doctor',
   }));
 
   return (
@@ -363,16 +425,16 @@ function DoctorDialog({
       <DialogContent className="max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
-            {mode === "edit" ? "Edit doctor" : "Add doctor"}
+            {mode === 'edit' ? 'Edit doctor' : 'Add doctor'}
           </DialogTitle>
           <DialogDescription>
-            {mode === "edit"
-              ? "Update doctor details for this tenant."
-              : "Assign an unassigned doctor to this tenant."}
+            {mode === 'edit'
+              ? 'Update doctor details for this tenant.'
+              : 'Assign an unassigned doctor to this tenant.'}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
-          {mode === "edit" ? (
+          {mode === 'edit' ? (
             <div className="space-y-2">
               <Label>Doctor</Label>
               <Input
@@ -380,8 +442,8 @@ function DoctorDialog({
                   doctor
                     ? [doctor.first_name, doctor.last_name]
                         .filter(Boolean)
-                        .join(" ") || "Doctor"
-                    : ""
+                        .join(' ') || 'Doctor'
+                    : ''
                 }
                 disabled
                 readOnly
@@ -398,23 +460,30 @@ function DoctorDialog({
               placeholder="Select a doctor"
               disabled={assignableLoading}
               helperText={
-                !assignableLoading && assignableDoctors.length === 0
-                  ? "No unassigned doctors available. All doctors with DOCTOR role are already assigned to a tenant."
+                !assignableLoading &&
+                assignableDoctors.length === 0
+                  ? 'No unassigned doctors available. All doctors with DOCTOR role are already assigned to a tenant.'
                   : undefined
               }
             />
           )}
           <div className="space-y-2">
-            <Label htmlFor="doctor-specialization">Specialization</Label>
+            <Label htmlFor="doctor-specialization">
+              Specialization
+            </Label>
             <Input
               id="doctor-specialization"
               value={specialization}
-              onChange={(e) => setSpecialization(e.target.value)}
+              onChange={(e) =>
+                setSpecialization(e.target.value)
+              }
               placeholder="e.g. General Practice, Cardiology"
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="doctor-education">Education</Label>
+            <Label htmlFor="doctor-education">
+              Education
+            </Label>
             <Input
               id="doctor-education"
               value={education}
@@ -423,20 +492,26 @@ function DoctorDialog({
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="doctor-licence">Licence number</Label>
+            <Label htmlFor="doctor-licence">
+              Licence number
+            </Label>
             <Input
               id="doctor-licence"
               value={licenceNumber}
-              onChange={(e) => setLicenceNumber(e.target.value)}
+              onChange={(e) =>
+                setLicenceNumber(e.target.value)
+              }
               placeholder="e.g. MD-001"
             />
           </div>
-          {mode === "edit" && (
+          {mode === 'edit' && (
             <div className="flex items-center space-x-2">
               <Checkbox
                 id="doctor-active"
                 checked={isActive}
-                onCheckedChange={(c) => setIsActive(c === true)}
+                onCheckedChange={(c) =>
+                  setIsActive(c === true)
+                }
               />
               <Label
                 htmlFor="doctor-active"
@@ -447,10 +522,13 @@ function DoctorDialog({
             </div>
           )}
           {submitError != null && (
-            <p className="text-sm text-destructive" role="alert">
+            <p
+              className="text-sm text-destructive"
+              role="alert"
+            >
               {isApiError(submitError)
                 ? submitError.displayMessage
-                : "An error occurred"}
+                : 'An error occurred'}
             </p>
           )}
           <DialogFooter>
@@ -463,7 +541,7 @@ function DoctorDialog({
               Cancel
             </Button>
             <Button type="submit" disabled={isSubmitting}>
-              {mode === "edit" ? "Save" : "Add"}
+              {mode === 'edit' ? 'Save' : 'Add'}
             </Button>
           </DialogFooter>
         </form>

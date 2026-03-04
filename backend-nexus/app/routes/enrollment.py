@@ -29,7 +29,6 @@ from app.services.enrollment_service import (
 )
 from app.models.enrollment import EnrollmentStatus
 
-
 router = APIRouter(
     prefix="/tenants/{tenant_id}/enrollments",
     tags=["Enrollments"],
@@ -192,21 +191,19 @@ def create_enrollment_endpoint(
             patient_user_id=enrollment.patient_user_id,
             user_tenant_plan_id=enrollment.user_tenant_plan_id,
             tenant_id=enrollment.tenant_id,
-            status=enrollment.status.value
-            if isinstance(enrollment.status, EnrollmentStatus)
-            else str(enrollment.status),
-            activated_at=enrollment.activated_at.isoformat()
-            if enrollment.activated_at
-            else None,
-            cancelled_at=enrollment.cancelled_at.isoformat()
-            if enrollment.cancelled_at
-            else None,
-            expires_at=enrollment.expires_at.isoformat()
-            if enrollment.expires_at
-            else None,
-            updated_at=enrollment.updated_at.isoformat()
-            if hasattr(enrollment, "updated_at") and enrollment.updated_at
-            else None,
+            status=(
+                enrollment.status.value
+                if isinstance(enrollment.status, EnrollmentStatus)
+                else str(enrollment.status)
+            ),
+            activated_at=enrollment.activated_at.isoformat() if enrollment.activated_at else None,
+            cancelled_at=enrollment.cancelled_at.isoformat() if enrollment.cancelled_at else None,
+            expires_at=enrollment.expires_at.isoformat() if enrollment.expires_at else None,
+            updated_at=(
+                enrollment.updated_at.isoformat()
+                if hasattr(enrollment, "updated_at") and enrollment.updated_at
+                else None
+            ),
         )
     except EnrollmentServiceError as exc:
         return _error_response(exc)
@@ -291,21 +288,19 @@ def get_enrollment_endpoint(
             patient_user_id=enrollment.patient_user_id,
             user_tenant_plan_id=enrollment.user_tenant_plan_id,
             tenant_id=enrollment.tenant_id,
-            status=enrollment.status.value
-            if isinstance(enrollment.status, EnrollmentStatus)
-            else str(enrollment.status),
-            activated_at=enrollment.activated_at.isoformat()
-            if enrollment.activated_at
-            else None,
-            cancelled_at=enrollment.cancelled_at.isoformat()
-            if enrollment.cancelled_at
-            else None,
-            expires_at=enrollment.expires_at.isoformat()
-            if enrollment.expires_at
-            else None,
-            updated_at=enrollment.updated_at.isoformat()
-            if hasattr(enrollment, "updated_at") and enrollment.updated_at
-            else None,
+            status=(
+                enrollment.status.value
+                if isinstance(enrollment.status, EnrollmentStatus)
+                else str(enrollment.status)
+            ),
+            activated_at=enrollment.activated_at.isoformat() if enrollment.activated_at else None,
+            cancelled_at=enrollment.cancelled_at.isoformat() if enrollment.cancelled_at else None,
+            expires_at=enrollment.expires_at.isoformat() if enrollment.expires_at else None,
+            updated_at=(
+                enrollment.updated_at.isoformat()
+                if hasattr(enrollment, "updated_at") and enrollment.updated_at
+                else None
+            ),
         )
     except EnrollmentServiceError as exc:
         return _error_response(exc)
@@ -316,7 +311,7 @@ def list_enrollments_endpoint(
     tenant_id: int,
     request: Request,
     patient_user_id: Optional[int] = Query(default=None),
-    status: Optional[EnrollmentStatus] = Query(default=None), 
+    status: Optional[EnrollmentStatus] = Query(default=None),
     db: Session = Depends(get_db),
     user: Dict[str, Any] = Depends(get_current_user),
 ):
@@ -353,24 +348,16 @@ def list_enrollments_endpoint(
         return [
             EnrollmentStatusRead(
                 id=e.id,
-                status=e.status.value
-                if isinstance(e.status, EnrollmentStatus)
-                else str(e.status),
+                status=e.status.value if isinstance(e.status, EnrollmentStatus) else str(e.status),
                 patient_user_id=e.patient_user_id,
                 user_tenant_plan_id=e.user_tenant_plan_id,
                 tenant_id=e.tenant_id,
-                activated_at=e.activated_at.isoformat()
-                if e.activated_at
-                else None,
-                cancelled_at=e.cancelled_at.isoformat()
-                if e.cancelled_at
-                else None,
-                expires_at=e.expires_at.isoformat()
-                if e.expires_at
-                else None,
-                updated_at=e.updated_at.isoformat()
-                if hasattr(e, "updated_at") and e.updated_at
-                else None,
+                activated_at=e.activated_at.isoformat() if e.activated_at else None,
+                cancelled_at=e.cancelled_at.isoformat() if e.cancelled_at else None,
+                expires_at=e.expires_at.isoformat() if e.expires_at else None,
+                updated_at=(
+                    e.updated_at.isoformat() if hasattr(e, "updated_at") and e.updated_at else None
+                ),
             )
             for e in enrollments
         ]
@@ -459,35 +446,34 @@ def transition_enrollment_endpoint(
             patient_user_id=enrollment.patient_user_id,
             user_tenant_plan_id=enrollment.user_tenant_plan_id,
             tenant_id=enrollment.tenant_id,
-            status=enrollment.status.value
-            if isinstance(enrollment.status, EnrollmentStatus)
-            else str(enrollment.status),
-            activated_at=enrollment.activated_at.isoformat()
-            if enrollment.activated_at
-            else None,
-            cancelled_at=enrollment.cancelled_at.isoformat()
-            if enrollment.cancelled_at
-            else None,
-            expires_at=enrollment.expires_at.isoformat()
-            if enrollment.expires_at
-            else None,
-            updated_at=enrollment.updated_at.isoformat()
-            if hasattr(enrollment, "updated_at") and enrollment.updated_at
-            else None,
+            status=(
+                enrollment.status.value
+                if isinstance(enrollment.status, EnrollmentStatus)
+                else str(enrollment.status)
+            ),
+            activated_at=enrollment.activated_at.isoformat() if enrollment.activated_at else None,
+            cancelled_at=enrollment.cancelled_at.isoformat() if enrollment.cancelled_at else None,
+            expires_at=enrollment.expires_at.isoformat() if enrollment.expires_at else None,
+            updated_at=(
+                enrollment.updated_at.isoformat()
+                if hasattr(enrollment, "updated_at") and enrollment.updated_at
+                else None
+            ),
         )
     except EnrollmentServiceError as exc:
         return _error_response(exc)
 
-#@router.get(
+
+# @router.get(
 #    "/me/enrollments",
 #    response_model=list[EnrollmentStatusRead],
-#)
-#def list_my_enrollments(
+# )
+# def list_my_enrollments(
 #    db: Session = Depends(get_db),
 #    user: Dict[str, Any] = Depends(get_current_user),
-#):
+# ):
 #    """List all enrollments for the authenticated patient user."""
-#    patient_user_id = user["user_id"]  
+#    patient_user_id = user["user_id"]
 
 #    enrollments = (
 #        db.query(Enrollment)
@@ -559,7 +545,8 @@ def transition_enrollment_endpoint(
 
 ##    except EnrollmentServiceError as exc:
 ##        return _error_response(exc)
-    
+
+
 @router.get("/{enrollment_id}/status", response_model=EnrollmentOperationalStatus)
 def enrollment_operational_status_endpoint(
     tenant_id: int,

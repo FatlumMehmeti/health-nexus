@@ -18,6 +18,7 @@ class ProductCreate(ProductBase):
 
 class ProductCreateForTenant(BaseModel):
     """Create product for a tenant (tenant_id from URL)."""
+
     name: str
     description: Optional[str] = None
     price: Decimal

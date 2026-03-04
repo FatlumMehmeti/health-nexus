@@ -8,25 +8,25 @@ Contracts bind a **Doctor** to a **Tenant** (hospital/clinic). When a doctor is 
 
 ### Contract
 
-| Field | Type | Description |
-|-------|------|-------------|
-| id | PK | Auto-increment |
-| tenant_id | FK → tenants.id | Hospital/clinic |
-| doctor_user_id | FK → doctors.user_id | Doctor (Doctor PK is user_id) |
-| status | enum | DRAFT, ACTIVE, EXPIRED, TERMINATED |
-| salary | Decimal | Annual/monthly salary (stored as decimal) |
-| terms_content | Text (HTML) | Contract body from HTML editor |
-| start_date | DateTime | Contract start |
-| end_date | DateTime | Contract end |
-| activated_at | DateTime | When status became ACTIVE (for eligibility) |
-| expires_at | DateTime | When status became EXPIRED (nullable) |
-| terms_metadata | JSON | Optional extra metadata |
-| terminated_reason | Text | Required when status = TERMINATED |
-| doctor_signed_at | DateTime | When doctor signed |
-| doctor_signature | Text | Storage path (signatures/contract_X_doctor_xxx.png); API returns URL |
-| hospital_signed_at | DateTime | When hospital/tenant manager signed |
-| hospital_signature | Text | Storage path; API returns URL |
-| created_at, updated_at | DateTime | Timestamps |
+| Field                  | Type                 | Description                                                          |
+| ---------------------- | -------------------- | -------------------------------------------------------------------- |
+| id                     | PK                   | Auto-increment                                                       |
+| tenant_id              | FK → tenants.id      | Hospital/clinic                                                      |
+| doctor_user_id         | FK → doctors.user_id | Doctor (Doctor PK is user_id)                                        |
+| status                 | enum                 | DRAFT, ACTIVE, EXPIRED, TERMINATED                                   |
+| salary                 | Decimal              | Annual/monthly salary (stored as decimal)                            |
+| terms_content          | Text (HTML)          | Contract body from HTML editor                                       |
+| start_date             | DateTime             | Contract start                                                       |
+| end_date               | DateTime             | Contract end                                                         |
+| activated_at           | DateTime             | When status became ACTIVE (for eligibility)                          |
+| expires_at             | DateTime             | When status became EXPIRED (nullable)                                |
+| terms_metadata         | JSON                 | Optional extra metadata                                              |
+| terminated_reason      | Text                 | Required when status = TERMINATED                                    |
+| doctor_signed_at       | DateTime             | When doctor signed                                                   |
+| doctor_signature       | Text                 | Storage path (signatures/contract_X_doctor_xxx.png); API returns URL |
+| hospital_signed_at     | DateTime             | When hospital/tenant manager signed                                  |
+| hospital_signature     | Text                 | Storage path; API returns URL                                        |
+| created_at, updated_at | DateTime             | Timestamps                                                           |
 
 ### Status Transitions
 

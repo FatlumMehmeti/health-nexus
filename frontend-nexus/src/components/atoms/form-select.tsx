@@ -1,14 +1,14 @@
-import * as React from "react";
+import * as React from 'react';
 
-import { Label } from "@/components/ui/label";
+import { Label } from '@/components/ui/label';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { cn } from "@/lib/utils";
+} from '@/components/ui/select';
+import { cn } from '@/lib/utils';
 
 export interface FormSelectOption {
   value: string;
@@ -27,10 +27,13 @@ export interface FormSelectProps {
   helperText?: string;
   wrapperClassName?: string;
   triggerClassName?: string;
-  "aria-invalid"?: boolean;
+  'aria-invalid'?: boolean;
 }
 
-export const FormSelect = React.forwardRef<HTMLButtonElement, FormSelectProps>(
+export const FormSelect = React.forwardRef<
+  HTMLButtonElement,
+  FormSelectProps
+>(
   (
     {
       id,
@@ -38,17 +41,17 @@ export const FormSelect = React.forwardRef<HTMLButtonElement, FormSelectProps>(
       options,
       value,
       onValueChange,
-      placeholder = "Select…",
+      placeholder = 'Select…',
       disabled = false,
       error,
       helperText,
       wrapperClassName,
       triggerClassName,
-      "aria-invalid": ariaInvalid,
+      'aria-invalid': ariaInvalid,
     },
-    ref,
+    ref
   ) => (
-    <div className={cn("space-y-2", wrapperClassName)}>
+    <div className={cn('space-y-2', wrapperClassName)}>
       <Label htmlFor={id}>{label}</Label>
       <Select
         value={value}
@@ -58,9 +61,15 @@ export const FormSelect = React.forwardRef<HTMLButtonElement, FormSelectProps>(
         <SelectTrigger
           ref={ref}
           id={id}
-          className={cn("w-full", triggerClassName)}
+          className={cn('w-full', triggerClassName)}
           aria-invalid={ariaInvalid ?? !!error}
-          aria-describedby={error ? `${id}-error` : helperText ? `${id}-helper` : undefined}
+          aria-describedby={
+            error
+              ? `${id}-error`
+              : helperText
+                ? `${id}-helper`
+                : undefined
+          }
         >
           <SelectValue placeholder={placeholder} />
         </SelectTrigger>
@@ -73,17 +82,24 @@ export const FormSelect = React.forwardRef<HTMLButtonElement, FormSelectProps>(
         </SelectContent>
       </Select>
       {error && (
-        <p id={`${id}-error`} className="text-xs text-destructive" role="alert">
+        <p
+          id={`${id}-error`}
+          className="text-xs text-destructive"
+          role="alert"
+        >
           {error}
         </p>
       )}
       {helperText && !error && (
-        <p id={`${id}-helper`} className="text-xs text-muted-foreground">
+        <p
+          id={`${id}-helper`}
+          className="text-xs text-muted-foreground"
+        >
           {helperText}
         </p>
       )}
     </div>
-  ),
+  )
 );
 
-FormSelect.displayName = "FormSelect";
+FormSelect.displayName = 'FormSelect';

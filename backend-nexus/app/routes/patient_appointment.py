@@ -24,7 +24,6 @@ from app.routes.appointment import (
 from app.models.notification import NotificationType
 from app.services.notification_service import create_notification
 
-
 router = APIRouter(prefix="/appointments", tags=["Patient Appointments"])
 
 

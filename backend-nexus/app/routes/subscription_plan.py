@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException ,Depends
+from fastapi import APIRouter, HTTPException, Depends
 from typing import List
 from app.db import get_db
 from sqlalchemy.orm import Session
@@ -12,9 +12,7 @@ router = APIRouter(prefix="/subscription_plan", tags=["Nexus Health Subscription
 @router.get("/", response_model=List[SubscriptionPlanRead])
 def get_subscription_plans(db: Session = Depends(get_db)):
     # Returns all the Health Nexus subscription plans available
-    plans = (
-        db.query(SubscriptionPlan).all()
-    )
+    plans = db.query(SubscriptionPlan).all()
     if not plans:
         raise HTTPException(status_code=404, detail="No subscription plans found")
     return plans

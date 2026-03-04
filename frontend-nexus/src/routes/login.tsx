@@ -2,40 +2,43 @@
  * Login route: email/password form, session-expired/revoked messaging, redirect when already authenticated.
  * beforeLoad: if authenticated, redirect to /dashboard or /tenants based on DASHBOARD_HOME access (rbacMatrix).
  */
-import {
-  createFileRoute,
-  Link,
-  redirect,
-  useNavigate,
-} from "@tanstack/react-router";
-import { useState } from "react";
-import { useForm } from "react-hook-form";
-import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { Button } from "@/components/ui/button";
+import { FormField } from '@/components/atoms/form-field';
+import { PasswordField } from '@/components/atoms/password-field';
+import { Button } from '@/components/ui/button';
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
-import { FormField } from "@/components/atoms/form-field";
-import { PasswordField } from "@/components/atoms/password-field";
-import { useAuthStore } from "@/stores/auth.store";
-import { ApiError } from "@/lib/api-client";
-import { can, type Role } from "@/lib/rbac";
+} from '@/components/ui/card';
+import { ApiError } from '@/lib/api-client';
+import { can, type Role } from '@/lib/rbac';
+import { useAuthStore } from '@/stores/auth.store';
+import { zodResolver } from '@hookform/resolvers/zod';
+import {
+  createFileRoute,
+  Link,
+  redirect,
+  useNavigate,
+} from '@tanstack/react-router';
+import { useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { z } from 'zod';
 
 /** Default post-login path: dashboard if user can access DASHBOARD_HOME, otherwise tenant selector. */
-function getDefaultPostLoginPath(role: Role | undefined): string {
-  return can({ role: role ?? undefined }, "DASHBOARD_HOME")
-    ? "/dashboard"
-    : "/tenants";
+function getDefaultPostLoginPath(
+  role: Role | undefined
+): string {
+  return can({ role: role ?? undefined }, 'DASHBOARD_HOME')
+    ? '/dashboard'
+    : '/tenants';
 }
 
-export const Route = createFileRoute("/login")({
+export const Route = createFileRoute('/login')({
   beforeLoad: async () => {
-    const { ensureAuth, isAuthenticated } = useAuthStore.getState();
+    const { ensureAuth, isAuthenticated } =
+      useAuthStore.getState();
     if (!isAuthenticated) await ensureAuth();
     const state = useAuthStore.getState();
     if (state.isAuthenticated) {
@@ -46,11 +49,13 @@ export const Route = createFileRoute("/login")({
   /** Parses ?reason=expired|revoked and ?redirect= for post-login redirect. */
   validateSearch: (search: Record<string, unknown>) => {
     const reason =
-      typeof search.reason === "string" ? search.reason : undefined;
+      typeof search.reason === 'string'
+        ? search.reason
+        : undefined;
     const redirect =
-      typeof search.redirect === "string" &&
-      search.redirect.startsWith("/") &&
-      !search.redirect.startsWith("//")
+      typeof search.redirect === 'string' &&
+      search.redirect.startsWith('/') &&
+      !search.redirect.startsWith('//')
         ? search.redirect
         : undefined;
     return { reason, redirect };
@@ -59,8 +64,8 @@ export const Route = createFileRoute("/login")({
 });
 
 const loginSchema = z.object({
-  email: z.string().email("Enter a valid email"),
-  password: z.string().min(1, "Password is required"),
+  email: z.string().email('Enter a valid email'),
+  password: z.string().min(1, 'Password is required'),
 });
 
 type LoginValues = z.infer<typeof loginSchema>;
@@ -70,20 +75,23 @@ function LoginPage() {
   const login = useAuthStore((s) => s.login);
   const status = useAuthStore((s) => s.status);
   const storeError = useAuthStore((s) => s.error);
-  const { reason, redirect: redirectTo } = Route.useSearch();
-  const [submitError, setSubmitError] = useState<string | null>(null);
+  const { reason, redirect: redirectTo } =
+    Route.useSearch();
+  const [submitError, setSubmitError] = useState<
+    string | null
+  >(null);
   const loginError = storeError ?? submitError;
   /** Shown when user was redirected with ?reason=expired or ?reason=revoked (e.g. after global 401 handler). */
   const reasonMessage =
-    reason === "expired"
-      ? "Session expired, please sign in again."
-      : reason === "revoked"
-        ? "Session revoked, please sign in again."
+    reason === 'expired'
+      ? 'Session expired, please sign in again.'
+      : reason === 'revoked'
+        ? 'Session revoked, please sign in again.'
         : null;
 
   const form = useForm<LoginValues>({
     resolver: zodResolver(loginSchema),
-    defaultValues: { email: "", password: "" },
+    defaultValues: { email: '', password: '' },
   });
 
   const onSubmit = async (values: LoginValues) => {
@@ -96,36 +104,54 @@ function LoginPage() {
       const { role } = state;
 
       // If there's an explicit redirect param, use it
-      if (redirectTo && redirectTo.startsWith("/") && !redirectTo.startsWith("//")) {
-        await navigate({ to: redirectTo, replace: true });
+      if (
+        redirectTo &&
+        redirectTo.startsWith('/') &&
+        !redirectTo.startsWith('//')
+      ) {
+        await navigate({
+          to: redirectTo,
+          replace: true,
+        });
         return;
       }
 
       // Dashboard-capable roles use the standard path helper
-      if (can({ role: role ?? undefined }, "DASHBOARD_HOME")) {
+      if (
+        can({ role: role ?? undefined }, 'DASHBOARD_HOME')
+      ) {
         // Doctors land directly on their appointments management page
         if (role === 'DOCTOR') {
-          await navigate({ to: '/dashboard/appointments', replace: true })
-          return
+          await navigate({
+            to: '/dashboard/appointments',
+            replace: true,
+          });
+          return;
         }
-        await navigate({ to: "/dashboard", replace: true });
+        await navigate({
+          to: '/dashboard',
+          replace: true,
+        });
         return;
       }
 
       // CLIENT / other roles without explicit redirect → tenant selector (dev-team default).
       // The /appointments/book flow is handled above via the ?redirect= param
       // that book.tsx's beforeLoad sets when redirecting unauthenticated users.
-      await navigate({ to: "/tenants", replace: true });
+      await navigate({
+        to: '/tenants',
+        replace: true,
+      });
     } catch (err) {
       if (err instanceof ApiError) {
         setSubmitError(err.displayMessage);
       } else {
-        setSubmitError("Sign in failed");
+        setSubmitError('Sign in failed');
       }
     }
   };
 
-  const isSubmitting = status === "loading";
+  const isSubmitting = status === 'loading';
 
   return (
     <div
@@ -134,7 +160,9 @@ function LoginPage() {
     >
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl">Sign in</CardTitle>
+          <CardTitle className="text-2xl">
+            Sign in
+          </CardTitle>
           <CardDescription>
             Use your backend account credentials.
           </CardDescription>
@@ -161,20 +189,24 @@ function LoginPage() {
               autoComplete="email"
               error={form.formState.errors.email?.message}
               required
-              {...form.register("email")}
+              {...form.register('email')}
             />
 
             <PasswordField
               id="password"
               label="Password"
               autoComplete="current-password"
-              error={form.formState.errors.password?.message}
+              error={
+                form.formState.errors.password?.message
+              }
               required
-              {...form.register("password")}
+              {...form.register('password')}
             />
 
             {loginError ? (
-              <p className="text-sm text-destructive">{loginError}</p>
+              <p className="text-sm text-destructive">
+                {loginError}
+              </p>
             ) : null}
 
             <Button
@@ -190,11 +222,17 @@ function LoginPage() {
           <div className="space-y-1 text-sm text-muted-foreground">
             <p>
               Don&apos;t have an account?{' '}
-              <Link to="/signup" className="underline underline-offset-4">
+              <Link
+                to="/signup"
+                className="underline underline-offset-4"
+              >
                 Register
               </Link>
             </p>
-            <Link to="/" className="underline underline-offset-4">
+            <Link
+              to="/"
+              className="underline underline-offset-4"
+            >
               Back to home
             </Link>
           </div>

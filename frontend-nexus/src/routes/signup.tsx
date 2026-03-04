@@ -4,50 +4,53 @@
  * beforeLoad: if already authenticated, redirect to dashboard or tenants.
  * Uses the same form/component patterns as login.tsx.
  */
-import {
-  createFileRoute,
-  Link,
-  redirect,
-  useNavigate,
-} from '@tanstack/react-router'
-import { useState } from 'react'
-import { useForm } from 'react-hook-form'
-import { z } from 'zod'
-import { zodResolver } from '@hookform/resolvers/zod'
-import { Button } from '@/components/ui/button'
+import { FormField } from '@/components/atoms/form-field';
+import { PasswordField } from '@/components/atoms/password-field';
+import { Button } from '@/components/ui/button';
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from '@/components/ui/card'
-import { FormField } from '@/components/atoms/form-field'
-import { PasswordField } from '@/components/atoms/password-field'
-import { useAuthStore } from '@/stores/auth.store'
-import { authService } from '@/services/auth.service'
-import { ApiError } from '@/lib/api-client'
-import { can, type Role } from '@/lib/rbac'
-import { toast } from 'sonner'
+} from '@/components/ui/card';
+import { ApiError } from '@/lib/api-client';
+import { can, type Role } from '@/lib/rbac';
+import { authService } from '@/services/auth.service';
+import { useAuthStore } from '@/stores/auth.store';
+import { zodResolver } from '@hookform/resolvers/zod';
+import {
+  createFileRoute,
+  Link,
+  redirect,
+  useNavigate,
+} from '@tanstack/react-router';
+import { useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { toast } from 'sonner';
+import { z } from 'zod';
 
-function getDefaultPostLoginPath(role: Role | undefined): string {
+function getDefaultPostLoginPath(
+  role: Role | undefined
+): string {
   return can({ role: role ?? undefined }, 'DASHBOARD_HOME')
     ? '/dashboard'
-    : '/tenants'
+    : '/tenants';
 }
 
 export const Route = createFileRoute('/signup')({
   beforeLoad: async () => {
-    const { ensureAuth, isAuthenticated } = useAuthStore.getState()
-    if (!isAuthenticated) await ensureAuth()
-    const state = useAuthStore.getState()
+    const { ensureAuth, isAuthenticated } =
+      useAuthStore.getState();
+    if (!isAuthenticated) await ensureAuth();
+    const state = useAuthStore.getState();
     if (state.isAuthenticated) {
-      const to = getDefaultPostLoginPath(state.role)
-      throw redirect({ to })
+      const to = getDefaultPostLoginPath(state.role);
+      throw redirect({ to });
     }
   },
   component: SignupPage,
-})
+});
 
 const signupSchema = z
   .object({
@@ -57,21 +60,34 @@ const signupSchema = z
     password: z
       .string()
       .min(8, 'Password must be at least 8 characters')
-      .regex(/[a-zA-Z]/, 'Password must contain at least one letter')
-      .regex(/\d/, 'Password must contain at least one number'),
-    confirmPassword: z.string().min(1, 'Confirm your password'),
+      .regex(
+        /[a-zA-Z]/,
+        'Password must contain at least one letter'
+      )
+      .regex(
+        /\d/,
+        'Password must contain at least one number'
+      ),
+    confirmPassword: z
+      .string()
+      .min(1, 'Confirm your password'),
   })
-  .refine((data) => data.password === data.confirmPassword, {
-    message: 'Passwords do not match',
-    path: ['confirmPassword'],
-  })
+  .refine(
+    (data) => data.password === data.confirmPassword,
+    {
+      message: 'Passwords do not match',
+      path: ['confirmPassword'],
+    }
+  );
 
-type SignupValues = z.infer<typeof signupSchema>
+type SignupValues = z.infer<typeof signupSchema>;
 
 function SignupPage() {
-  const navigate = useNavigate()
-  const [submitError, setSubmitError] = useState<string | null>(null)
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  const navigate = useNavigate();
+  const [submitError, setSubmitError] = useState<
+    string | null
+  >(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const form = useForm<SignupValues>({
     resolver: zodResolver(signupSchema),
@@ -82,11 +98,11 @@ function SignupPage() {
       password: '',
       confirmPassword: '',
     },
-  })
+  });
 
   const onSubmit = async (values: SignupValues) => {
-    setSubmitError(null)
-    setIsSubmitting(true)
+    setSubmitError(null);
+    setIsSubmitting(true);
     try {
       await authService.signup({
         email: values.email,
@@ -94,23 +110,32 @@ function SignupPage() {
         first_name: values.first_name,
         last_name: values.last_name,
         role: 'client',
-      })
+      });
       toast.success('Account created!', {
-        description: 'You can now sign in with your new account.',
-      })
-      await navigate({ to: '/login', search: { reason: undefined, redirect: undefined } })
+        description:
+          'You can now sign in with your new account.',
+      });
+      await navigate({
+        to: '/login',
+        search: {
+          reason: undefined,
+          redirect: undefined,
+        },
+      });
     } catch (err) {
       if (err instanceof ApiError && err.status === 409) {
-        setSubmitError('An account with this email already exists.')
+        setSubmitError(
+          'An account with this email already exists.'
+        );
       } else if (err instanceof ApiError) {
-        setSubmitError(err.displayMessage)
+        setSubmitError(err.displayMessage);
       } else {
-        setSubmitError('Sign up failed. Please try again.')
+        setSubmitError('Sign up failed. Please try again.');
       }
     } finally {
-      setIsSubmitting(false)
+      setIsSubmitting(false);
     }
-  }
+  };
 
   return (
     <div
@@ -119,9 +144,12 @@ function SignupPage() {
     >
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl">Create an account</CardTitle>
+          <CardTitle className="text-2xl">
+            Create an account
+          </CardTitle>
           <CardDescription>
-            Join Health Nexus as a patient to access tenant services.
+            Join Health Nexus as a patient to access tenant
+            services.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -135,7 +163,9 @@ function SignupPage() {
                 id="signup-first-name"
                 label="First name"
                 autoComplete="given-name"
-                error={form.formState.errors.first_name?.message}
+                error={
+                  form.formState.errors.first_name?.message
+                }
                 required
                 {...form.register('first_name')}
               />
@@ -143,7 +173,9 @@ function SignupPage() {
                 id="signup-last-name"
                 label="Last name"
                 autoComplete="family-name"
-                error={form.formState.errors.last_name?.message}
+                error={
+                  form.formState.errors.last_name?.message
+                }
                 required
                 {...form.register('last_name')}
               />
@@ -163,7 +195,9 @@ function SignupPage() {
               id="signup-password"
               label="Password"
               autoComplete="new-password"
-              error={form.formState.errors.password?.message}
+              error={
+                form.formState.errors.password?.message
+              }
               required
               {...form.register('password')}
             />
@@ -172,13 +206,19 @@ function SignupPage() {
               id="signup-confirm-password"
               label="Confirm password"
               autoComplete="new-password"
-              error={form.formState.errors.confirmPassword?.message}
+              error={
+                form.formState.errors.confirmPassword
+                  ?.message
+              }
               required
               {...form.register('confirmPassword')}
             />
 
             {submitError ? (
-              <p className="text-sm text-destructive" role="alert">
+              <p
+                className="text-sm text-destructive"
+                role="alert"
+              >
                 {submitError}
               </p>
             ) : null}
@@ -198,18 +238,24 @@ function SignupPage() {
               Already have an account?{' '}
               <Link
                 to="/login"
-                search={{ reason: undefined, redirect: undefined }}
+                search={{
+                  reason: undefined,
+                  redirect: undefined,
+                }}
                 className="underline underline-offset-4"
               >
                 Sign in
               </Link>
             </p>
-            <Link to="/" className="underline underline-offset-4">
+            <Link
+              to="/"
+              className="underline underline-offset-4"
+            >
               Back to home
             </Link>
           </div>
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }

@@ -1,27 +1,27 @@
-import * as React from "react";
-import { useEditor, EditorContent } from "@tiptap/react";
-import StarterKit from "@tiptap/starter-kit";
-import Placeholder from "@tiptap/extension-placeholder";
-import Underline from "@tiptap/extension-underline";
-import TextAlign from "@tiptap/extension-text-align";
-import { TextStyle } from "@tiptap/extension-text-style";
-import { FontSize } from "@tiptap/extension-text-style/font-size";
+import Placeholder from '@tiptap/extension-placeholder';
+import TextAlign from '@tiptap/extension-text-align';
+import { TextStyle } from '@tiptap/extension-text-style';
+import { FontSize } from '@tiptap/extension-text-style/font-size';
+import Underline from '@tiptap/extension-underline';
+import { EditorContent, useEditor } from '@tiptap/react';
+import StarterKit from '@tiptap/starter-kit';
+import * as React from 'react';
 
-import { cn } from "@/lib/utils";
-import { Toggle } from "@/components/ui/toggle";
-import { Button } from "@/components/ui/button";
+import { Button } from '@/components/ui/button';
+import { Toggle } from '@/components/ui/toggle';
+import { cn } from '@/lib/utils';
 import {
+  AlignCenterIcon,
+  AlignJustifyIcon,
+  AlignLeftIcon,
+  AlignRightIcon,
   BoldIcon,
   ItalicIcon,
-  UnderlineIcon,
-  StrikethroughIcon,
-  AlignLeftIcon,
-  AlignCenterIcon,
-  AlignRightIcon,
-  AlignJustifyIcon,
   ListIcon,
   ListOrderedIcon,
-} from "lucide-react";
+  StrikethroughIcon,
+  UnderlineIcon,
+} from 'lucide-react';
 
 interface HtmlTermsEditorProps {
   value: string;
@@ -35,10 +35,10 @@ interface HtmlTermsEditorProps {
 export function HtmlTermsEditor({
   value,
   onChange,
-  placeholder = "Write contract terms (e.g. compensation, responsibilities)...",
+  placeholder = 'Write contract terms (e.g. compensation, responsibilities)...',
   disabled = false,
   className,
-  minHeight = "12rem",
+  minHeight = '12rem',
 }: HtmlTermsEditorProps) {
   const editor = useEditor({
     extensions: [
@@ -48,9 +48,11 @@ export function HtmlTermsEditor({
       Placeholder.configure({ placeholder }),
       Underline,
       TextStyle,
-      FontSize.configure({ types: ["textStyle"] }),
+      FontSize.configure({
+        types: ['textStyle'],
+      }),
       TextAlign.configure({
-        types: ["heading", "paragraph"],
+        types: ['heading', 'paragraph'],
       }),
     ],
     content: value,
@@ -61,8 +63,8 @@ export function HtmlTermsEditor({
     editorProps: {
       attributes: {
         class: cn(
-          "prose prose-sm max-w-none focus:outline-none min-w-0",
-          "px-3 py-2 min-h-[8rem]",
+          'prose prose-sm max-w-none focus:outline-none min-w-0',
+          'px-3 py-2 min-h-[8rem]'
         ),
       },
     },
@@ -71,8 +73,13 @@ export function HtmlTermsEditor({
   React.useEffect(() => {
     if (!editor) return;
     const current = editor.getHTML();
-    if (value !== current && (value || current !== "<p></p>")) {
-      editor.commands.setContent(value || "", { emitUpdate: false });
+    if (
+      value !== current &&
+      (value || current !== '<p></p>')
+    ) {
+      editor.commands.setContent(value || '', {
+        emitUpdate: false,
+      });
     }
   }, [value, editor]);
 
@@ -85,7 +92,10 @@ export function HtmlTermsEditor({
   if (!editor) {
     return (
       <div
-        className={cn("animate-pulse rounded-md border bg-muted", className)}
+        className={cn(
+          'animate-pulse rounded-md border bg-muted',
+          className
+        )}
         style={{ minHeight }}
       />
     );
@@ -94,9 +104,9 @@ export function HtmlTermsEditor({
   return (
     <div
       className={cn(
-        "overflow-hidden rounded-md border border-input bg-background",
-        disabled && "opacity-60",
-        className,
+        'overflow-hidden rounded-md border border-input bg-background',
+        disabled && 'opacity-60',
+        className
       )}
       style={{ minHeight }}
     >
@@ -104,8 +114,10 @@ export function HtmlTermsEditor({
         <Toggle
           size="sm"
           variant="outline"
-          pressed={editor.isActive("bold")}
-          onPressedChange={() => editor.chain().focus().toggleBold().run()}
+          pressed={editor.isActive('bold')}
+          onPressedChange={() =>
+            editor.chain().focus().toggleBold().run()
+          }
           disabled={disabled}
           aria-label="Bold"
         >
@@ -114,8 +126,10 @@ export function HtmlTermsEditor({
         <Toggle
           size="sm"
           variant="outline"
-          pressed={editor.isActive("italic")}
-          onPressedChange={() => editor.chain().focus().toggleItalic().run()}
+          pressed={editor.isActive('italic')}
+          onPressedChange={() =>
+            editor.chain().focus().toggleItalic().run()
+          }
           disabled={disabled}
           aria-label="Italic"
         >
@@ -124,8 +138,10 @@ export function HtmlTermsEditor({
         <Toggle
           size="sm"
           variant="outline"
-          pressed={editor.isActive("underline")}
-          onPressedChange={() => editor.chain().focus().toggleUnderline().run()}
+          pressed={editor.isActive('underline')}
+          onPressedChange={() =>
+            editor.chain().focus().toggleUnderline().run()
+          }
           disabled={disabled}
           aria-label="Underline"
         >
@@ -134,8 +150,10 @@ export function HtmlTermsEditor({
         <Toggle
           size="sm"
           variant="outline"
-          pressed={editor.isActive("strike")}
-          onPressedChange={() => editor.chain().focus().toggleStrike().run()}
+          pressed={editor.isActive('strike')}
+          onPressedChange={() =>
+            editor.chain().focus().toggleStrike().run()
+          }
           disabled={disabled}
           aria-label="Strikethrough"
         >
@@ -149,7 +167,13 @@ export function HtmlTermsEditor({
             variant="outline"
             size="sm"
             className="h-8 min-w-8 px-1.5 font-mono text-xs"
-            onClick={() => editor.chain().focus().setFontSize(`${px}px`).run()}
+            onClick={() =>
+              editor
+                .chain()
+                .focus()
+                .setFontSize(`${px}px`)
+                .run()
+            }
             disabled={disabled}
             aria-label={`Font size ${px}px`}
             title={`${px}px`}
@@ -161,9 +185,15 @@ export function HtmlTermsEditor({
         <Toggle
           size="sm"
           variant="outline"
-          pressed={editor.isActive({ textAlign: "left" })}
+          pressed={editor.isActive({
+            textAlign: 'left',
+          })}
           onPressedChange={() =>
-            editor.chain().focus().setTextAlign("left").run()
+            editor
+              .chain()
+              .focus()
+              .setTextAlign('left')
+              .run()
           }
           disabled={disabled}
           aria-label="Align left"
@@ -173,9 +203,15 @@ export function HtmlTermsEditor({
         <Toggle
           size="sm"
           variant="outline"
-          pressed={editor.isActive({ textAlign: "center" })}
+          pressed={editor.isActive({
+            textAlign: 'center',
+          })}
           onPressedChange={() =>
-            editor.chain().focus().setTextAlign("center").run()
+            editor
+              .chain()
+              .focus()
+              .setTextAlign('center')
+              .run()
           }
           disabled={disabled}
           aria-label="Align center"
@@ -185,9 +221,15 @@ export function HtmlTermsEditor({
         <Toggle
           size="sm"
           variant="outline"
-          pressed={editor.isActive({ textAlign: "right" })}
+          pressed={editor.isActive({
+            textAlign: 'right',
+          })}
           onPressedChange={() =>
-            editor.chain().focus().setTextAlign("right").run()
+            editor
+              .chain()
+              .focus()
+              .setTextAlign('right')
+              .run()
           }
           disabled={disabled}
           aria-label="Align right"
@@ -197,9 +239,15 @@ export function HtmlTermsEditor({
         <Toggle
           size="sm"
           variant="outline"
-          pressed={editor.isActive({ textAlign: "justify" })}
+          pressed={editor.isActive({
+            textAlign: 'justify',
+          })}
           onPressedChange={() =>
-            editor.chain().focus().setTextAlign("justify").run()
+            editor
+              .chain()
+              .focus()
+              .setTextAlign('justify')
+              .run()
           }
           disabled={disabled}
           aria-label="Justify"
@@ -210,7 +258,7 @@ export function HtmlTermsEditor({
         <Toggle
           size="sm"
           variant="outline"
-          pressed={editor.isActive("bulletList")}
+          pressed={editor.isActive('bulletList')}
           onPressedChange={() =>
             editor.chain().focus().toggleBulletList().run()
           }
@@ -222,7 +270,7 @@ export function HtmlTermsEditor({
         <Toggle
           size="sm"
           variant="outline"
-          pressed={editor.isActive("orderedList")}
+          pressed={editor.isActive('orderedList')}
           onPressedChange={() =>
             editor.chain().focus().toggleOrderedList().run()
           }

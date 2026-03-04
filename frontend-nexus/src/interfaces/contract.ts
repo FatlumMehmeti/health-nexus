@@ -1,4 +1,8 @@
-export type ContractStatus = "DRAFT" | "ACTIVE" | "EXPIRED" | "TERMINATED";
+export type ContractStatus =
+  | 'DRAFT'
+  | 'ACTIVE'
+  | 'EXPIRED'
+  | 'TERMINATED';
 
 export interface Contract {
   // Backend contract primary key (integer in FastAPI schema).

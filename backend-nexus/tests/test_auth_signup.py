@@ -1,6 +1,7 @@
 """
 Pytest for POST /auth/signup using global-user registration semantics.
 """
+
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import select
@@ -45,11 +46,10 @@ def test_signup_success_creates_global_user(client):
     assert "password" not in data
 
     from app.db import SessionLocal
+
     session = SessionLocal()
     try:
-        user = session.execute(
-            select(User).where(User.email == "new@example.com")
-        ).scalar_one()
+        user = session.execute(select(User).where(User.email == "new@example.com")).scalar_one()
         assert user.first_name == "New"
         assert user.last_name == "User"
     finally:
@@ -138,11 +138,10 @@ def test_signup_password_is_hashed_in_db(client):
     assert response.status_code == 201
 
     from app.db import SessionLocal
+
     session = SessionLocal()
     try:
-        user = session.execute(
-            select(User).where(User.email == "hashed@example.com")
-        ).scalar_one()
+        user = session.execute(select(User).where(User.email == "hashed@example.com")).scalar_one()
         assert user.password != plain
         assert verify_password(plain, user.password) is True
     finally:

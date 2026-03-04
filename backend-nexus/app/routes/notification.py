@@ -6,7 +6,6 @@ from app.auth.auth_utils import get_current_user
 from app.db import get_db
 from app.models.notification import Notification
 
-
 router = APIRouter(prefix="/notifications", tags=["Notifications"])
 
 

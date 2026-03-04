@@ -1,19 +1,21 @@
+import { requireAuth } from '@/lib/guards/requireAuth';
+import { enrollmentsService } from '@/services/enrollments.service';
+import { useQuery } from '@tanstack/react-query';
 import {
   createFileRoute,
   Outlet,
   useRouterState,
-} from "@tanstack/react-router";
-import { requireAuth } from "@/lib/guards/requireAuth";
-import { useQuery } from "@tanstack/react-query";
-import { enrollmentsService } from "@/services/enrollments.service";
+} from '@tanstack/react-router';
 
+import { Badge } from '@/components/ui/badge';
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
+} from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   Table,
   TableBody,
@@ -21,12 +23,12 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
+} from '@/components/ui/table';
 
-export const Route = createFileRoute("/dashboard/client")({
-  beforeLoad: requireAuth({ routeKey: "DASHBOARD_CLIENTS" }),
+export const Route = createFileRoute('/dashboard/client')({
+  beforeLoad: requireAuth({
+    routeKey: 'DASHBOARD_CLIENTS',
+  }),
   component: ClientPage,
 });
 
@@ -34,18 +36,27 @@ export const Route = createFileRoute("/dashboard/client")({
 /* Section handling                                                            */
 /* -------------------------------------------------------------------------- */
 
-export const CLIENT_SECTION_KEYS = ["profile","enrollments", "settings"] as const;
+export const CLIENT_SECTION_KEYS = [
+  'profile',
+  'enrollments',
+  'settings',
+] as const;
 
-export type ClientSectionKey = (typeof CLIENT_SECTION_KEYS)[number];
+export type ClientSectionKey =
+  (typeof CLIENT_SECTION_KEYS)[number];
 
 export function normalizeClientSection(
-  rawSection: string | null | undefined,
+  rawSection: string | null | undefined
 ): ClientSectionKey {
-  const section = (rawSection ?? "").trim();
-  if ((CLIENT_SECTION_KEYS as readonly string[]).includes(section)) {
+  const section = (rawSection ?? '').trim();
+  if (
+    (CLIENT_SECTION_KEYS as readonly string[]).includes(
+      section
+    )
+  ) {
     return section as ClientSectionKey;
   }
-  return "profile";
+  return 'profile';
 }
 
 /* -------------------------------------------------------------------------- */
@@ -57,7 +68,7 @@ function ClientPage() {
     select: (s) => s.location.pathname,
   });
 
-  if (pathname !== "/dashboard/client") {
+  if (pathname !== '/dashboard/client') {
     return <Outlet />;
   }
 
@@ -74,9 +85,9 @@ export function ClientPageContent({
   activeSection: ClientSectionKey;
 }) {
   const enrollmentsQuery = useQuery({
-    queryKey: ["client-manager", "my-enrollments"],
+    queryKey: ['client-manager', 'my-enrollments'],
     queryFn: () => enrollmentsService.listMyEnrollments(),
-    enabled: activeSection === "enrollments",
+    enabled: activeSection === 'enrollments',
   });
 
   const isLoading = enrollmentsQuery.isLoading;
@@ -87,13 +98,15 @@ export function ClientPageContent({
   return (
     <div className="space-y-4 p-4 sm:space-y-6 sm:p-6 lg:p-8">
       <div className="space-y-2">
-        <h1 className="text-2xl font-bold sm:text-3xl">Client Dashboard</h1>
+        <h1 className="text-2xl font-bold sm:text-3xl">
+          Client Dashboard
+        </h1>
         <p className="text-muted-foreground">
           Manage your enrollments and account settings.
         </p>
       </div>
 
-          {/* ----------------------- Profile SECTION -----------------------
+      {/* ----------------------- Profile SECTION -----------------------
           {activeSection === "profile" && (
               <Card>
                   <CardHeader>
@@ -104,10 +117,10 @@ export function ClientPageContent({
                   </CardHeader>
                   <CardContent>Profile content goes here.</CardContent>
               </Card>)} */}
-        
+
       {/* ----------------------- ENROLLMENTS SECTION ----------------------- */}
 
-      {activeSection === "enrollments" && (
+      {activeSection === 'enrollments' && (
         <Card>
           <CardHeader>
             <CardTitle>My Enrollments</CardTitle>
@@ -120,13 +133,17 @@ export function ClientPageContent({
             {isLoading ? (
               <div className="space-y-2">
                 {Array.from({ length: 3 }).map((_, i) => (
-                  <Skeleton key={i} className="h-16 w-full" />
+                  <Skeleton
+                    key={i}
+                    className="h-16 w-full"
+                  />
                 ))}
               </div>
             ) : isError ? (
               <div className="py-8 text-center text-destructive">
-                Error loading enrollments:{" "}
-                {(error as Error)?.message || "Unknown error"}
+                Error loading enrollments:{' '}
+                {(error as Error)?.message ||
+                  'Unknown error'}
               </div>
             ) : enrollments.length === 0 ? (
               <div className="py-12 text-center text-muted-foreground">
@@ -141,7 +158,9 @@ export function ClientPageContent({
                       <TableHead>Status</TableHead>
                       <TableHead>Tenant Plan</TableHead>
                       <TableHead>Activated</TableHead>
-                      <TableHead>Expires / Cancelled</TableHead>
+                      <TableHead>
+                        Expires / Cancelled
+                      </TableHead>
                       <TableHead>Updated</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -156,7 +175,7 @@ export function ClientPageContent({
                         <TableCell>
                           <Badge
                             variant={getEnrollmentStatusVariant(
-                              enrollment.status,
+                              enrollment.status
                             )}
                           >
                             {enrollment.status}
@@ -168,17 +187,25 @@ export function ClientPageContent({
                         </TableCell>
 
                         <TableCell className="text-muted-foreground text-sm">
-                          {formatDate(enrollment.activated_at)}
+                          {formatDate(
+                            enrollment.activated_at
+                          )}
                         </TableCell>
 
                         <TableCell className="text-muted-foreground text-sm">
-                          {enrollment.status === "CANCELLED"
-                            ? formatDate(enrollment.cancelled_at)
-                            : formatDate(enrollment.expires_at)}
+                          {enrollment.status === 'CANCELLED'
+                            ? formatDate(
+                                enrollment.cancelled_at
+                              )
+                            : formatDate(
+                                enrollment.expires_at
+                              )}
                         </TableCell>
 
                         <TableCell className="text-muted-foreground text-sm">
-                          {formatDate(enrollment.updated_at)}
+                          {formatDate(
+                            enrollment.updated_at
+                          )}
                         </TableCell>
                       </TableRow>
                     ))}
@@ -192,7 +219,7 @@ export function ClientPageContent({
 
       {/* ------------------------- SETTINGS SECTION ------------------------ */}
 
-      {activeSection === "settings" && (
+      {activeSection === 'settings' && (
         <Card>
           <CardHeader>
             <CardTitle>Settings</CardTitle>
@@ -200,7 +227,9 @@ export function ClientPageContent({
               Manage your client account preferences.
             </CardDescription>
           </CardHeader>
-          <CardContent>Settings content goes here.</CardContent>
+          <CardContent>
+            Settings content goes here.
+          </CardContent>
         </Card>
       )}
     </div>
@@ -212,29 +241,34 @@ export function ClientPageContent({
 /* -------------------------------------------------------------------------- */
 
 function formatDate(dateString: string | null) {
-  if (!dateString) return "—";
-  return new Date(dateString).toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
+  if (!dateString) return '—';
+  return new Date(dateString).toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
   });
 }
 
 function getEnrollmentStatusVariant(
-  status: string,
-): "success" | "warning" | "destructive" | "expired" | "default" {
+  status: string
+):
+  | 'success'
+  | 'warning'
+  | 'destructive'
+  | 'expired'
+  | 'default' {
   switch (status) {
-    case "ACTIVE":
-      return "success";
-    case "PENDING":
-      return "warning";
-    case "CANCELLED":
-      return "destructive";
-    case "EXPIRED":
-      return "expired";
+    case 'ACTIVE':
+      return 'success';
+    case 'PENDING':
+      return 'warning';
+    case 'CANCELLED':
+      return 'destructive';
+    case 'EXPIRED':
+      return 'expired';
     default:
-      return "default";
+      return 'default';
   }
 }

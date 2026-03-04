@@ -1,20 +1,13 @@
-import { useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
-import { enrollmentsService, type EnrollmentStatus } from "@/services/enrollments.service";
-import { useAuthStore } from "@/stores/auth.store";
-import { getCurrentTenantWithFallback, getErrorMessage } from "./utils";
-import { QUERY_KEYS } from "./constants";
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
+} from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   Table,
   TableBody,
@@ -22,62 +15,100 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
+} from '@/components/ui/table';
+import {
+  enrollmentsService,
+  type EnrollmentStatus,
+} from '@/services/enrollments.service';
+import { useAuthStore } from '@/stores/auth.store';
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query';
+import { useState } from 'react';
+import { toast } from 'sonner';
+import { QUERY_KEYS } from './constants';
+import {
+  getCurrentTenantWithFallback,
+  getErrorMessage,
+} from './utils';
 
-type TenantStatusTab = EnrollmentStatus | "HISTORY";
+type TenantStatusTab = EnrollmentStatus | 'HISTORY';
 
-const STATUS_TABS: Array<{ value: TenantStatusTab; label: string }> = [
-  { value: "ACTIVE", label: "Approved" },
-  { value: "PENDING", label: "Pending" },
-  { value: "CANCELLED", label: "Cancelled" },
-  { value: "EXPIRED", label: "Expired" },
-  { value: "HISTORY", label: "Enrollment History" },
+const STATUS_TABS: Array<{
+  value: TenantStatusTab;
+  label: string;
+}> = [
+  { value: 'ACTIVE', label: 'Approved' },
+  { value: 'PENDING', label: 'Pending' },
+  { value: 'CANCELLED', label: 'Cancelled' },
+  { value: 'EXPIRED', label: 'Expired' },
+  {
+    value: 'HISTORY',
+    label: 'Enrollment History',
+  },
 ];
 
 function statusVariant(
-  status: string,
-): "success" | "warning" | "destructive" | "expired" | "neutral" {
-  if (status === "ACTIVE") return "success";
-  if (status === "PENDING") return "warning";
-  if (status === "CANCELLED") return "destructive";
-  if (status === "EXPIRED") return "expired";
-  return "neutral";
+  status: string
+):
+  | 'success'
+  | 'warning'
+  | 'destructive'
+  | 'expired'
+  | 'neutral' {
+  if (status === 'ACTIVE') return 'success';
+  if (status === 'PENDING') return 'warning';
+  if (status === 'CANCELLED') return 'destructive';
+  if (status === 'EXPIRED') return 'expired';
+  return 'neutral';
 }
 
-function formatDateTime(value: string | null | undefined): string {
-  if (!value) return "—";
+function formatDateTime(
+  value: string | null | undefined
+): string {
+  if (!value) return '—';
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleString("en-US", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
+  return date.toLocaleString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
   });
 }
 
 export function TenantEnrollmentsPanel() {
   const queryClient = useQueryClient();
-  const tenantIdFromStore = useAuthStore((state) => state.tenantId);
-  const [activeStatus, setActiveStatus] = useState<TenantStatusTab>("ACTIVE");
+  const tenantIdFromStore = useAuthStore(
+    (state) => state.tenantId
+  );
+  const [activeStatus, setActiveStatus] =
+    useState<TenantStatusTab>('ACTIVE');
 
   const tenantQuery = useQuery({
     queryKey: QUERY_KEYS.current,
-    queryFn: () => getCurrentTenantWithFallback(tenantIdFromStore),
+    queryFn: () =>
+      getCurrentTenantWithFallback(tenantIdFromStore),
   });
   const tenantId = tenantQuery.data?.id;
 
   const enrollmentsQuery = useQuery({
-    queryKey: ["tenant-manager", "enrollments", tenantId],
+    queryKey: ['tenant-manager', 'enrollments', tenantId],
     queryFn: () => enrollmentsService.list(tenantId!),
     enabled: !!tenantId,
   });
 
   const historyQuery = useQuery({
-    queryKey: ["tenant-manager", "enrollment-history", tenantId],
+    queryKey: [
+      'tenant-manager',
+      'enrollment-history',
+      tenantId,
+    ],
     queryFn: () => enrollmentsService.getHistory(tenantId!),
-    enabled: !!tenantId && activeStatus === "HISTORY",
+    enabled: !!tenantId && activeStatus === 'HISTORY',
   });
 
   const transitionMutation = useMutation({
@@ -89,25 +120,42 @@ export function TenantEnrollmentsPanel() {
       enrollmentId: number;
       target: EnrollmentStatus;
       reason?: string;
-    }) => enrollmentsService.transition(tenantId!, enrollmentId, target, reason),
+    }) =>
+      enrollmentsService.transition(
+        tenantId!,
+        enrollmentId,
+        target,
+        reason
+      ),
     onSuccess: () => {
-      toast.success("Enrollment updated");
+      toast.success('Enrollment updated');
       void queryClient.invalidateQueries({
-        queryKey: ["tenant-manager", "enrollments", tenantId],
+        queryKey: [
+          'tenant-manager',
+          'enrollments',
+          tenantId,
+        ],
       });
       void queryClient.invalidateQueries({
-        queryKey: ["tenant-manager", "enrollment-history", tenantId],
+        queryKey: [
+          'tenant-manager',
+          'enrollment-history',
+          tenantId,
+        ],
       });
     },
     onError: (err) => {
-      toast.error("Failed to update enrollment", {
+      toast.error('Failed to update enrollment', {
         description: getErrorMessage(err),
       });
     },
   });
 
-  const handleTransition = (enrollmentId: number, target: EnrollmentStatus) => {
-    const reason = window.prompt("Reason for transition?");
+  const handleTransition = (
+    enrollmentId: number,
+    target: EnrollmentStatus
+  ) => {
+    const reason = window.prompt('Reason for transition?');
     transitionMutation.mutate({
       enrollmentId,
       target,
@@ -118,15 +166,20 @@ export function TenantEnrollmentsPanel() {
   const isLoading =
     tenantQuery.isLoading ||
     enrollmentsQuery.isLoading ||
-    (activeStatus === "HISTORY" && historyQuery.isLoading);
+    (activeStatus === 'HISTORY' && historyQuery.isLoading);
   const isError =
     tenantQuery.isError ||
     enrollmentsQuery.isError ||
-    (activeStatus === "HISTORY" && historyQuery.isError);
-  const error = tenantQuery.error ?? enrollmentsQuery.error ?? historyQuery.error;
+    (activeStatus === 'HISTORY' && historyQuery.isError);
+  const error =
+    tenantQuery.error ??
+    enrollmentsQuery.error ??
+    historyQuery.error;
 
   const allEnrollments = enrollmentsQuery.data ?? [];
-  const filteredEnrollments = allEnrollments.filter((e) => e.status === activeStatus);
+  const filteredEnrollments = allEnrollments.filter(
+    (e) => e.status === activeStatus
+  );
   const historyItems = historyQuery.data ?? [];
 
   return (
@@ -134,7 +187,8 @@ export function TenantEnrollmentsPanel() {
       <CardHeader>
         <CardTitle>Enrollments</CardTitle>
         <CardDescription>
-          View and manage tenant enrollments, statuses, and full history.
+          View and manage tenant enrollments, statuses, and
+          full history.
         </CardDescription>
       </CardHeader>
 
@@ -144,7 +198,11 @@ export function TenantEnrollmentsPanel() {
             <Button
               key={tab.value}
               type="button"
-              variant={activeStatus === tab.value ? "default" : "outline"}
+              variant={
+                activeStatus === tab.value
+                  ? 'default'
+                  : 'outline'
+              }
               size="sm"
               onClick={() => setActiveStatus(tab.value)}
             >
@@ -161,9 +219,10 @@ export function TenantEnrollmentsPanel() {
           </div>
         ) : isError ? (
           <div className="py-8 text-center text-destructive">
-            Error loading enrollments: {getErrorMessage(error)}
+            Error loading enrollments:{' '}
+            {getErrorMessage(error)}
           </div>
-        ) : activeStatus === "HISTORY" ? (
+        ) : activeStatus === 'HISTORY' ? (
           historyItems.length === 0 ? (
             <div className="py-12 text-center text-muted-foreground">
               No history found for this tenant.
@@ -183,26 +242,46 @@ export function TenantEnrollmentsPanel() {
                 <TableBody>
                   {historyItems.map((item) => (
                     <TableRow key={item.id}>
-                      <TableCell className="font-medium">{item.enrollment_id}</TableCell>
+                      <TableCell className="font-medium">
+                        {item.enrollment_id}
+                      </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
-                          <Badge variant={statusVariant(item.old_status)}>{item.old_status}</Badge>
-                          <span className="text-muted-foreground">→</span>
-                          <Badge variant={statusVariant(item.new_status)}>{item.new_status}</Badge>
+                          <Badge
+                            variant={statusVariant(
+                              item.old_status
+                            )}
+                          >
+                            {item.old_status}
+                          </Badge>
+                          <span className="text-muted-foreground">
+                            →
+                          </span>
+                          <Badge
+                            variant={statusVariant(
+                              item.new_status
+                            )}
+                          >
+                            {item.new_status}
+                          </Badge>
                         </div>
                       </TableCell>
                       <TableCell className="text-sm">
                         {item.changed_by ? (
                           <div>
                             <p>ID: {item.changed_by}</p>
-                            <p className="text-xs text-muted-foreground">{item.changed_by_role}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {item.changed_by_role}
+                            </p>
                           </div>
                         ) : (
-                          <span className="italic text-muted-foreground">System</span>
+                          <span className="italic text-muted-foreground">
+                            System
+                          </span>
                         )}
                       </TableCell>
                       <TableCell className="max-w-[220px] truncate text-sm text-muted-foreground">
-                        {item.reason || "—"}
+                        {item.reason || '—'}
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">
                         {formatDateTime(item.changed_at)}
@@ -215,7 +294,8 @@ export function TenantEnrollmentsPanel() {
           )
         ) : filteredEnrollments.length === 0 ? (
           <div className="py-12 text-center text-muted-foreground">
-            No {activeStatus.toLowerCase()} enrollments found.
+            No {activeStatus.toLowerCase()} enrollments
+            found.
           </div>
         ) : (
           <div className="overflow-x-auto rounded-md border">
@@ -234,9 +314,15 @@ export function TenantEnrollmentsPanel() {
               <TableBody>
                 {filteredEnrollments.map((enrollment) => (
                   <TableRow key={enrollment.id}>
-                    <TableCell className="font-medium">{enrollment.id}</TableCell>
+                    <TableCell className="font-medium">
+                      {enrollment.id}
+                    </TableCell>
                     <TableCell>
-                      <Badge variant={statusVariant(enrollment.status)}>
+                      <Badge
+                        variant={statusVariant(
+                          enrollment.status
+                        )}
+                      >
                         {enrollment.status}
                       </Badge>
                     </TableCell>
@@ -244,38 +330,63 @@ export function TenantEnrollmentsPanel() {
                       {enrollment.patient_user_id}
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
-                      {formatDateTime(enrollment.activated_at)}
+                      {formatDateTime(
+                        enrollment.activated_at
+                      )}
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
-                      {enrollment.status === "CANCELLED"
-                        ? formatDateTime(enrollment.cancelled_at)
-                        : formatDateTime(enrollment.expires_at)}
+                      {enrollment.status === 'CANCELLED'
+                        ? formatDateTime(
+                            enrollment.cancelled_at
+                          )
+                        : formatDateTime(
+                            enrollment.expires_at
+                          )}
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
-                      {formatDateTime(enrollment.updated_at)}
+                      {formatDateTime(
+                        enrollment.updated_at
+                      )}
                     </TableCell>
                     <TableCell>
                       <div className="flex gap-2">
-                        {enrollment.status !== "ACTIVE" &&
-                          enrollment.status !== "CANCELLED" && (
+                        {enrollment.status !== 'ACTIVE' &&
+                          enrollment.status !==
+                            'CANCELLED' && (
                             <Button
                               type="button"
                               size="sm"
                               variant="outline"
-                              disabled={transitionMutation.isPending}
-                              onClick={() => handleTransition(enrollment.id, "ACTIVE")}
+                              disabled={
+                                transitionMutation.isPending
+                              }
+                              onClick={() =>
+                                handleTransition(
+                                  enrollment.id,
+                                  'ACTIVE'
+                                )
+                              }
                             >
                               Approve
                             </Button>
                           )}
-                        {enrollment.status !== "CANCELLED" &&
-                          enrollment.status !== "EXPIRED" && (
+                        {enrollment.status !==
+                          'CANCELLED' &&
+                          enrollment.status !==
+                            'EXPIRED' && (
                             <Button
                               type="button"
                               size="sm"
                               variant="destructive"
-                              disabled={transitionMutation.isPending}
-                              onClick={() => handleTransition(enrollment.id, "CANCELLED")}
+                              disabled={
+                                transitionMutation.isPending
+                              }
+                              onClick={() =>
+                                handleTransition(
+                                  enrollment.id,
+                                  'CANCELLED'
+                                )
+                              }
                             >
                               Cancel
                             </Button>

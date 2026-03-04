@@ -1,9 +1,12 @@
-import { useState } from "react";
-import { createFileRoute } from "@tanstack/react-router";
-import { requireAuth } from "@/lib/guards/requireAuth";
-import { useQuery } from "@tanstack/react-query";
-import { auditLogsService } from "@/services/audit-logs.service";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   Table,
   TableBody,
@@ -11,14 +14,20 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+} from '@/components/ui/table';
+import { requireAuth } from '@/lib/guards/requireAuth';
+import { auditLogsService } from '@/services/audit-logs.service';
+import { useQuery } from '@tanstack/react-query';
+import { createFileRoute } from '@tanstack/react-router';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { useState } from 'react';
 
-export const Route = createFileRoute("/dashboard/audit-logs/")({
-  beforeLoad: requireAuth({ routeKey: "DASHBOARD_AUDIT_LOGS" }),
+export const Route = createFileRoute(
+  '/dashboard/audit-logs/'
+)({
+  beforeLoad: requireAuth({
+    routeKey: 'DASHBOARD_AUDIT_LOGS',
+  }),
   component: AuditLogsPage,
 });
 
@@ -27,31 +36,33 @@ function AuditLogsPage() {
   const pageSize = 10;
 
   const { data, isLoading, isError } = useQuery({
-    queryKey: ["audit-logs", page],
+    queryKey: ['audit-logs', page],
     queryFn: () => auditLogsService.list(page, pageSize),
   });
 
   const logs = data?.items ?? [];
   const total = data?.total ?? 0;
-  const totalPages = data?.total ? Math.ceil(data.total / pageSize) : 1;
+  const totalPages = data?.total
+    ? Math.ceil(data.total / pageSize)
+    : 1;
 
   const getEventBadge = (event: string) => {
     switch (event) {
-      case "STATUS_CHANGE":
-        return "warning";
-      case "CREATION":
-        return "success";
-      case "DELETION":
-        return "destructive";
+      case 'STATUS_CHANGE':
+        return 'warning';
+      case 'CREATION':
+        return 'success';
+      case 'DELETION':
+        return 'destructive';
       default:
-        return "secondary";
+        return 'secondary';
     }
   };
 
   const formatDate = (date: string) =>
-    new Date(date).toLocaleString("en-US", {
-      dateStyle: "medium",
-      timeStyle: "short",
+    new Date(date).toLocaleString('en-US', {
+      dateStyle: 'medium',
+      timeStyle: 'short',
     });
 
   return (
@@ -59,7 +70,8 @@ function AuditLogsPage() {
       <div>
         <h1 className="text-3xl font-bold">Audit Logs</h1>
         <p className="text-muted-foreground mt-2">
-          Track all tenant lifecycle changes across the platform
+          Track all tenant lifecycle changes across the
+          platform
         </p>
       </div>
 
@@ -110,7 +122,11 @@ function AuditLogsPage() {
                         <TableCell>{log.id}</TableCell>
 
                         <TableCell>
-                          <Badge variant={getEventBadge(log.event_type)}>
+                          <Badge
+                            variant={getEventBadge(
+                              log.event_type
+                            )}
+                          >
                             {log.event_type}
                           </Badge>
                         </TableCell>
@@ -134,8 +150,13 @@ function AuditLogsPage() {
                                   Old Status
                                 </div>
                                 <div className="text-sm font-mono">
-                                  {typeof log.old_value === "object"
-                                    ? JSON.stringify(log.old_value, null, 2)
+                                  {typeof log.old_value ===
+                                  'object'
+                                    ? JSON.stringify(
+                                        log.old_value,
+                                        null,
+                                        2
+                                      )
                                     : log.old_value}
                                 </div>
                               </div>
@@ -147,8 +168,13 @@ function AuditLogsPage() {
                                   New Status
                                 </div>
                                 <div className="text-sm font-semibold text-foreground">
-                                  {typeof log.new_value === "object"
-                                    ? JSON.stringify(log.new_value, null, 2)
+                                  {typeof log.new_value ===
+                                  'object'
+                                    ? JSON.stringify(
+                                        log.new_value,
+                                        null,
+                                        2
+                                      )
                                     : log.new_value}
                                 </div>
                               </div>
@@ -172,13 +198,14 @@ function AuditLogsPage() {
                           )}
                           {log.performed_by_user_id && (
                             <div className="text-xs text-muted-foreground">
-                              User #{log.performed_by_user_id}
+                              User #
+                              {log.performed_by_user_id}
                             </div>
                           )}
                         </TableCell>
 
                         <TableCell className="max-w-50 text-sm text-muted-foreground">
-                          {log.reason || "-"}
+                          {log.reason || '-'}
                         </TableCell>
 
                         <TableCell className="text-sm text-muted-foreground">
@@ -192,14 +219,17 @@ function AuditLogsPage() {
               <div className="flex items-center justify-between border-t pt-4 mt-4">
                 <div className="text-sm text-muted-foreground">
                   Showing {(page - 1) * pageSize + 1}-
-                  {Math.min(page * pageSize, total)} of {total}
+                  {Math.min(page * pageSize, total)} of{' '}
+                  {total}
                 </div>
 
                 <div className="flex items-center gap-3">
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    onClick={() =>
+                      setPage((p) => Math.max(1, p - 1))
+                    }
                     disabled={page === 1 || isLoading}
                   >
                     <ChevronLeft className="h-4 w-4" />
@@ -213,8 +243,14 @@ function AuditLogsPage() {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                    disabled={page === totalPages || isLoading}
+                    onClick={() =>
+                      setPage((p) =>
+                        Math.min(totalPages, p + 1)
+                      )
+                    }
+                    disabled={
+                      page === totalPages || isLoading
+                    }
                   >
                     Next
                     <ChevronRight className="h-4 w-4" />

@@ -14,9 +14,6 @@ class Product(Base):
     stock_quantity: Mapped[int] = mapped_column(default=0)
     is_available: Mapped[bool] = mapped_column(Boolean, default=True)
 
-    tenant_id: Mapped[int] = mapped_column(
-        ForeignKey("tenants.id"),
-        nullable=False
-    )
+    tenant_id: Mapped[int] = mapped_column(ForeignKey("tenants.id"), nullable=False)
 
     tenant = relationship("Tenant", back_populates="products")

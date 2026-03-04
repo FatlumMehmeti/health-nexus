@@ -2,6 +2,7 @@
 Lightweight helper fixtures for PRD-05 integration tests.
 Isolated from root tests/conftest; use only within tests/integration_prd05.
 """
+
 import pytest
 
 from app.models import Tenant, TenantStatus, UserTenantPlan, Role, User, TenantManager

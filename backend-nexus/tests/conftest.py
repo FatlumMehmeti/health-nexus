@@ -70,8 +70,5 @@ def db_session():
 def require_database_url():
     """Assert DATABASE_URL is set; message indicates which env file was loaded."""
     url = os.environ.get("DATABASE_URL")
-    assert url, (
-        "DATABASE_URL must be set for tests (loaded from backend-nexus/%s)"
-        % _env_loaded
-    )
+    assert url, "DATABASE_URL must be set for tests (loaded from backend-nexus/%s)" % _env_loaded
     return url

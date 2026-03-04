@@ -1,8 +1,15 @@
-import { Outlet, createFileRoute } from "@tanstack/react-router";
-import { requireAuth } from "@/lib/guards/requireAuth";
+import { requireAuth } from '@/lib/guards/requireAuth';
+import {
+  Outlet,
+  createFileRoute,
+} from '@tanstack/react-router';
 
-export const Route = createFileRoute("/dashboard/tenant/contracts")({
-  beforeLoad: requireAuth({ routeKey: "DASHBOARD_TENANT" }),
+export const Route = createFileRoute(
+  '/dashboard/tenant/contracts'
+)({
+  beforeLoad: requireAuth({
+    routeKey: 'DASHBOARD_TENANT',
+  }),
   component: ContractsLayout,
 });
 

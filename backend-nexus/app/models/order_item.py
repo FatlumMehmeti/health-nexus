@@ -9,22 +9,13 @@ class OrderItem(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
 
-    order_id: Mapped[int] = mapped_column(
-        ForeignKey("orders.id"),
-        nullable=False
-    )
+    order_id: Mapped[int] = mapped_column(ForeignKey("orders.id"), nullable=False)
 
-    product_id: Mapped[int] = mapped_column(
-        ForeignKey("products.product_id"),
-        nullable=False
-    )
+    product_id: Mapped[int] = mapped_column(ForeignKey("products.product_id"), nullable=False)
 
     quantity: Mapped[int] = mapped_column(Integer, nullable=False)
 
-    price_at_purchase: Mapped[float] = mapped_column(
-        DECIMAL,
-        nullable=False
-    )
+    price_at_purchase: Mapped[float] = mapped_column(DECIMAL, nullable=False)
 
     # Relationships
     order = relationship("Order", back_populates="items")

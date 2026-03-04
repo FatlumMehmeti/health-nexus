@@ -1,9 +1,14 @@
-import { createFileRoute } from '@tanstack/react-router'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import { createFileRoute } from '@tanstack/react-router';
 
 export const Route = createFileRoute('/contact-admin')({
   component: ContactAdminPage,
-})
+});
 
 function ContactAdminPage() {
   return (
@@ -13,9 +18,13 @@ function ContactAdminPage() {
           <CardTitle>Contact Admin</CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col gap-4 text-sm text-muted-foreground">
-          <p>This is a mock admin contact page. Please reach out to your clinic administrator for enrollment assistance.</p>
+          <p>
+            This is a mock admin contact page. Please reach
+            out to your clinic administrator for enrollment
+            assistance.
+          </p>
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }

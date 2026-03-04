@@ -3,15 +3,20 @@
  * Protected with APP_TENANT_SELECTOR. Lists approved tenants from GET /api/tenants.
  * Each card links to the public /landing/$tenantSlug page.
  */
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
-import { requireAuth } from "@/lib/guards/requireAuth";
-import { PublicAuthHeader } from "@/components/molecules/public-auth-header";
-import { TenantBrandPreview } from "@/components/molecules/tenant-brand-preview";
-import { tenantsService } from "@/services/tenants.service";
+import { PublicAuthHeader } from '@/components/molecules/public-auth-header';
+import { TenantBrandPreview } from '@/components/molecules/tenant-brand-preview';
+import { requireAuth } from '@/lib/guards/requireAuth';
+import { tenantsService } from '@/services/tenants.service';
+import { useQuery } from '@tanstack/react-query';
+import {
+  createFileRoute,
+  Link,
+} from '@tanstack/react-router';
 
-export const Route = createFileRoute("/tenants")({
-  beforeLoad: requireAuth({ routeKey: "APP_TENANT_SELECTOR" }),
+export const Route = createFileRoute('/tenants')({
+  beforeLoad: requireAuth({
+    routeKey: 'APP_TENANT_SELECTOR',
+  }),
   component: TenantSelectorPage,
 });
 
@@ -21,7 +26,7 @@ function TenantSelectorPage() {
     isLoading,
     isError,
   } = useQuery({
-    queryKey: ["public-tenants"],
+    queryKey: ['public-tenants'],
     queryFn: () => tenantsService.listPublicTenants(),
     staleTime: 60_000,
   });
@@ -37,12 +42,15 @@ function TenantSelectorPage() {
       <main className="container mx-auto flex-1 px-4 py-6 sm:px-6 sm:py-10">
         <section className="mx-auto max-w-5xl space-y-6">
           <p className="text-sm text-muted-foreground sm:text-base">
-            Select which organization you want to use with Health Nexus. You can
-            switch tenants at any time.
+            Select which organization you want to use with
+            Health Nexus. You can switch tenants at any
+            time.
           </p>
 
           {isLoading && (
-            <p className="text-muted-foreground text-sm">Loading tenants…</p>
+            <p className="text-muted-foreground text-sm">
+              Loading tenants…
+            </p>
           )}
 
           {isError && (
@@ -51,16 +59,19 @@ function TenantSelectorPage() {
             </p>
           )}
 
-          {!isLoading && !isError && tenants.length === 0 && (
-            <p className="text-muted-foreground text-sm">
-              No tenants available.
-            </p>
-          )}
+          {!isLoading &&
+            !isError &&
+            tenants.length === 0 && (
+              <p className="text-muted-foreground text-sm">
+                No tenants available.
+              </p>
+            )}
 
           {!isLoading && tenants.length > 0 && (
             <div className="grid gap-4 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3">
               {tenants.map((tenant) => {
-                const slug = tenant.slug ?? String(tenant.id);
+                const slug =
+                  tenant.slug ?? String(tenant.id);
                 return (
                   <Link
                     key={tenant.id}
@@ -79,11 +90,15 @@ function TenantSelectorPage() {
                         image: tenant.image,
                       }}
                       brand={{
-                        backgroundColor: tenant.brand_color_background,
-                        foregroundColor: tenant.brand_color_foreground,
-                        borderColor: tenant.brand_color_muted,
+                        backgroundColor:
+                          tenant.brand_color_background,
+                        foregroundColor:
+                          tenant.brand_color_foreground,
+                        borderColor:
+                          tenant.brand_color_muted,
                         accentColor:
-                          tenant.brand_color_secondary ?? tenant.brand_color_primary,
+                          tenant.brand_color_secondary ??
+                          tenant.brand_color_primary,
                       }}
                     />
                   </Link>

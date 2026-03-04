@@ -8,7 +8,6 @@ from app.models import Patient, Tenant, TenantStatus, User
 from app.models.base import Base
 from app.routes.public_tenant import get_db as public_tenant_get_db
 
-
 TEST_DATABASE_URL = "sqlite+pysqlite:///./.pytest_tenant_client_registration.db"
 test_engine = create_engine(TEST_DATABASE_URL, future=True)
 TestSessionLocal = sessionmaker(

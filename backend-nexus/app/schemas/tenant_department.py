@@ -32,6 +32,7 @@ class UpdateTenantDepartmentRequest(BaseModel):
 
 class BulkDepartmentItem(BaseModel):
     """Department assignment with optional contact info. Services are managed via /api/services."""
+
     department_id: int
     phone_number: Optional[str] = None
     email: Optional[str] = None
@@ -40,6 +41,7 @@ class BulkDepartmentItem(BaseModel):
 
 class BulkDepartmentsRequest(BaseModel):
     """Bulk set departments for a tenant. Replaces existing with this list."""
+
     items: list[BulkDepartmentItem]
 
 
@@ -54,5 +56,6 @@ class TenantDepartmentRead(TenantDepartmentBase):
 
 class TenantDepartmentWithServicesRead(TenantDepartmentRead):
     """Tenant department with department name and services."""
+
     department_name: str
     services: list[ServiceLandingItem] = []

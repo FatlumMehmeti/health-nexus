@@ -52,15 +52,11 @@ router = APIRouter(prefix="/tenants", tags=["Tenants"])
 def list_active_tenants(db: Session = Depends(get_db)):
     """Returns approved tenants only for public display: id, slug, name, moto, about_text, logo, image, and palette."""
     tenants = (
-        db.query(Tenant)
-        .filter(Tenant.status == TenantStatus.approved)
-        .order_by(Tenant.name)
-        .all()
+        db.query(Tenant).filter(Tenant.status == TenantStatus.approved).order_by(Tenant.name).all()
     )
     result = []
     for t in tenants:
-        details = db.query(TenantDetails).filter(
-            TenantDetails.tenant_id == t.id).first()
+        details = db.query(TenantDetails).filter(TenantDetails.tenant_id == t.id).first()
         brand = details.brand if details else None
         result.append(
             TenantPublicCard(
@@ -89,15 +85,16 @@ def get_tenant_landing_by_slug(slug: str, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Tenant not found")
     if tenant.status != TenantStatus.approved:
         raise HTTPException(
-            status_code=403, detail="Landing page is only available for approved tenants")
+            status_code=403, detail="Landing page is only available for approved tenants"
+        )
 
     tenant_id = tenant.id
-    details = db.query(TenantDetails).filter(
-        TenantDetails.tenant_id == tenant_id).first()
+    details = db.query(TenantDetails).filter(TenantDetails.tenant_id == tenant_id).first()
     details_read = None
     if details:
-        font = db.query(Font).filter(
-            Font.id == details.font_id).first() if details.font_id else None
+        font = (
+            db.query(Font).filter(Font.id == details.font_id).first() if details.font_id else None
+        )
         brand = details.brand if details.brand_id else None
         details_read = TenantDetailsLandingRead(
             tenant_id=details.tenant_id,
@@ -117,12 +114,10 @@ def get_tenant_landing_by_slug(slug: str, db: Session = Depends(get_db)):
             font_body_family=font.body_font_family if font else None,
         )
 
-    tenant_deps = db.query(TenantDepartment).filter(
-        TenantDepartment.tenant_id == tenant_id).all()
+    tenant_deps = db.query(TenantDepartment).filter(TenantDepartment.tenant_id == tenant_id).all()
     departments: list[DepartmentLandingItem] = []
     for td in tenant_deps:
-        dept = db.query(Department).filter(
-            Department.id == td.department_id).first()
+        dept = db.query(Department).filter(Department.id == td.department_id).first()
         services = (
             db.query(Service)
             .filter(
@@ -138,8 +133,7 @@ def get_tenant_landing_by_slug(slug: str, db: Session = Depends(get_db)):
                 phone_number=td.phone_number,
                 email=td.email,
                 location=td.location,
-                services=[ServiceLandingItem.model_validate(
-                    s) for s in services],
+                services=[ServiceLandingItem.model_validate(s) for s in services],
             )
         )
 
@@ -188,12 +182,10 @@ def get_tenant_landing_by_slug(slug: str, db: Session = Depends(get_db)):
 
 
 def _list_tenant_departments(db: Session, tenant_id: int) -> list:
-    tenant_deps = db.query(TenantDepartment).filter(
-        TenantDepartment.tenant_id == tenant_id).all()
+    tenant_deps = db.query(TenantDepartment).filter(TenantDepartment.tenant_id == tenant_id).all()
     result = []
     for td in tenant_deps:
-        dept = db.query(Department).filter(
-            Department.id == td.department_id).first()
+        dept = db.query(Department).filter(Department.id == td.department_id).first()
         services = (
             db.query(Service)
             .filter(Service.tenant_departments_id == td.id, Service.is_active == True)
@@ -203,14 +195,15 @@ def _list_tenant_departments(db: Session, tenant_id: int) -> list:
             TenantDepartmentWithServicesRead(
                 **TenantDepartmentRead.model_validate(td).model_dump(),
                 department_name=dept.name if dept else "",
-                services=[ServiceLandingItem.model_validate(
-                    s) for s in services],
+                services=[ServiceLandingItem.model_validate(s) for s in services],
             )
         )
     return result
 
 
-def _bulk_set_tenant_departments(db: Session, tenant_id: int, payload: BulkDepartmentsRequest) -> list:
+def _bulk_set_tenant_departments(
+    db: Session, tenant_id: int, payload: BulkDepartmentsRequest
+) -> list:
     _assert_tenant_exists(db, tenant_id)
     seen_dept_ids = set()
     for item in payload.items:
@@ -220,8 +213,7 @@ def _bulk_set_tenant_departments(db: Session, tenant_id: int, payload: BulkDepar
                 detail=f"Duplicate department_id {item.department_id} in payload",
             )
         seen_dept_ids.add(item.department_id)
-        dept = db.query(Department).filter(
-            Department.id == item.department_id).first()
+        dept = db.query(Department).filter(Department.id == item.department_id).first()
         if not dept:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -257,16 +249,17 @@ def _bulk_set_tenant_departments(db: Session, tenant_id: int, payload: BulkDepar
             db.add(td)
             db.flush()
 
-        dept = db.query(Department).filter(
-            Department.id == td.department_id).first()
-        services = db.query(Service).filter(
-            Service.tenant_departments_id == td.id, Service.is_active == True).all()
+        dept = db.query(Department).filter(Department.id == td.department_id).first()
+        services = (
+            db.query(Service)
+            .filter(Service.tenant_departments_id == td.id, Service.is_active == True)
+            .all()
+        )
         result.append(
             TenantDepartmentWithServicesRead(
                 **TenantDepartmentRead.model_validate(td).model_dump(),
                 department_name=dept.name if dept else "",
-                services=[ServiceLandingItem.model_validate(
-                    s) for s in services],
+                services=[ServiceLandingItem.model_validate(s) for s in services],
             )
         )
 
@@ -276,8 +269,7 @@ def _bulk_set_tenant_departments(db: Session, tenant_id: int, payload: BulkDepar
 
 def _assert_tenant_exists(db: Session, tenant_id: int) -> None:
     if not db.query(Tenant).filter(Tenant.id == tenant_id).first():
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Tenant not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tenant not found")
 
 
 def _get_current_user_id_or_401(current_user: dict) -> int:
@@ -324,10 +316,14 @@ def get_patient_me_for_tenant(
     tenant = _get_tenant_or_404(db, tenant_id)
     _assert_tenant_approved_or_403(tenant)
 
-    patient = db.query(Patient).filter(
-        Patient.tenant_id == tenant_id,
-        Patient.user_id == user_id,
-    ).first()
+    patient = (
+        db.query(Patient)
+        .filter(
+            Patient.tenant_id == tenant_id,
+            Patient.user_id == user_id,
+        )
+        .first()
+    )
     if not patient:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -347,10 +343,14 @@ def patch_patient_me_for_tenant(
     tenant = _get_tenant_or_404(db, tenant_id)
     _assert_tenant_approved_or_403(tenant)
 
-    patient = db.query(Patient).filter(
-        Patient.tenant_id == tenant_id,
-        Patient.user_id == user_id,
-    ).first()
+    patient = (
+        db.query(Patient)
+        .filter(
+            Patient.tenant_id == tenant_id,
+            Patient.user_id == user_id,
+        )
+        .first()
+    )
     if not patient:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -368,6 +368,7 @@ def patch_patient_me_for_tenant(
 
 # ─── Tenant management (tenant_id from JWT token) ───
 
+
 @router.get("/current", response_model=TenantLandingRead)
 def get_current_tenant(
     db: Session = Depends(get_db),
@@ -377,8 +378,7 @@ def get_current_tenant(
     _, tenant_id = auth
     tenant = db.query(Tenant).filter(Tenant.id == tenant_id).first()
     if not tenant:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Tenant not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tenant not found")
     return TenantLandingRead.model_validate(tenant)
 
 
@@ -390,11 +390,11 @@ def get_tenant_details(
     """Get current user's tenant details (tenant_id from JWT)."""
     _, tenant_id = auth
     _assert_tenant_exists(db, tenant_id)
-    details = db.query(TenantDetails).filter(
-        TenantDetails.tenant_id == tenant_id).first()
+    details = db.query(TenantDetails).filter(TenantDetails.tenant_id == tenant_id).first()
     if not details:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-                            detail="Tenant details not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Tenant details not found"
+        )
     return details
 
 
@@ -420,8 +420,7 @@ async def upsert_tenant_details(
 
     _, tenant_id = auth
     _assert_tenant_exists(db, tenant_id)
-    details = db.query(TenantDetails).filter(
-        TenantDetails.tenant_id == tenant_id).first()
+    details = db.query(TenantDetails).filter(TenantDetails.tenant_id == tenant_id).first()
 
     if details is None:
         details = TenantDetails(tenant_id=tenant_id)
@@ -525,10 +524,14 @@ def list_tenant_products(
     """List current user's tenant products (tenant_id from JWT)."""
     _, tenant_id = auth
     _assert_tenant_exists(db, tenant_id)
-    return db.query(Product).filter(
-        Product.tenant_id == tenant_id,
-        Product.is_available == True,
-    ).all()
+    return (
+        db.query(Product)
+        .filter(
+            Product.tenant_id == tenant_id,
+            Product.is_available == True,
+        )
+        .all()
+    )
 
 
 @router.post("/products", response_model=ProductRead, status_code=status.HTTP_201_CREATED)
@@ -563,13 +566,16 @@ def update_tenant_product(
 ):
     """Update product. Product must belong to current user's tenant."""
     _, tenant_id = auth
-    product = db.query(Product).filter(
-        Product.product_id == product_id,
-        Product.tenant_id == tenant_id,
-    ).first()
+    product = (
+        db.query(Product)
+        .filter(
+            Product.product_id == product_id,
+            Product.tenant_id == tenant_id,
+        )
+        .first()
+    )
     if not product:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Product not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Product not found")
     data = payload.model_dump(exclude_unset=True)
     for k, v in data.items():
         setattr(product, k, v)
@@ -588,13 +594,16 @@ def delete_tenant_product(
 ):
     """Delete product. Product must belong to current user's tenant."""
     _, tenant_id = auth
-    product = db.query(Product).filter(
-        Product.product_id == product_id,
-        Product.tenant_id == tenant_id,
-    ).first()
+    product = (
+        db.query(Product)
+        .filter(
+            Product.product_id == product_id,
+            Product.tenant_id == tenant_id,
+        )
+        .first()
+    )
     if not product:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Product not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Product not found")
     db.delete(product)
     db.commit()
 
@@ -611,19 +620,25 @@ def create_tenant_doctor(
     doctor_role = db.query(Role).filter(Role.name == "DOCTOR").first()
     if not doctor_role:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="DOCTOR role not found")
-    user = db.query(User).filter(
-        User.id == payload.user_id,
-        User.role_id == doctor_role.id,
-    ).first()
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="DOCTOR role not found"
+        )
+    user = (
+        db.query(User)
+        .filter(
+            User.id == payload.user_id,
+            User.role_id == doctor_role.id,
+        )
+        .first()
+    )
     if not user:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-                            detail="User not found or not a doctor")
-    existing = db.query(Doctor).filter(
-        Doctor.user_id == payload.user_id).first()
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="User not found or not a doctor"
+        )
+    existing = db.query(Doctor).filter(Doctor.user_id == payload.user_id).first()
     if existing:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT,
-                            detail="Doctor already assigned to a tenant")
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail="Doctor already assigned to a tenant"
+        )
     doctor = Doctor(
         user_id=payload.user_id,
         tenant_id=tenant_id,
@@ -648,13 +663,16 @@ def update_tenant_doctor(
 ):
     """Update doctor. Doctor must belong to current user's tenant."""
     _, tenant_id = auth
-    doctor = db.query(Doctor).filter(
-        Doctor.user_id == user_id,
-        Doctor.tenant_id == tenant_id,
-    ).first()
+    doctor = (
+        db.query(Doctor)
+        .filter(
+            Doctor.user_id == user_id,
+            Doctor.tenant_id == tenant_id,
+        )
+        .first()
+    )
     if not doctor:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Doctor not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Doctor not found")
     data = payload.model_dump(exclude_unset=True)
     for k, v in data.items():
         setattr(doctor, k, v)
@@ -671,13 +689,16 @@ def delete_tenant_doctor(
 ):
     """Remove doctor from tenant."""
     _, tenant_id = auth
-    doctor = db.query(Doctor).filter(
-        Doctor.user_id == user_id,
-        Doctor.tenant_id == tenant_id,
-    ).first()
+    doctor = (
+        db.query(Doctor)
+        .filter(
+            Doctor.user_id == user_id,
+            Doctor.tenant_id == tenant_id,
+        )
+        .first()
+    )
     if not doctor:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Doctor not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Doctor not found")
     db.delete(doctor)
     db.commit()
 
@@ -690,13 +711,18 @@ def delete_tenant_department(
 ):
     """Delete a tenant department (and its services). Must belong to current user's tenant."""
     _, tenant_id = auth
-    td = db.query(TenantDepartment).filter(
-        TenantDepartment.id == tenant_department_id,
-        TenantDepartment.tenant_id == tenant_id,
-    ).first()
+    td = (
+        db.query(TenantDepartment)
+        .filter(
+            TenantDepartment.id == tenant_department_id,
+            TenantDepartment.tenant_id == tenant_id,
+        )
+        .first()
+    )
     if not td:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-                            detail="Tenant department not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Tenant department not found"
+        )
     db.delete(td)
     db.commit()
 
@@ -704,14 +730,14 @@ def delete_tenant_department(
 @router.get("/services", response_model=list[ServiceRead])
 def list_tenant_services(
     tenant_department_id: int | None = Query(
-        default=None, description="Filter by tenant department"),
+        default=None, description="Filter by tenant department"
+    ),
     db: Session = Depends(get_db),
     auth: tuple = Depends(require_tenant_from_token),
 ):
     """List services for current user's tenant. Optional tenant_department_id to filter by department."""
     _, tenant_id = auth
-    q = db.query(Service).filter(Service.tenant_id ==
-                                 tenant_id, Service.is_active == True)
+    q = db.query(Service).filter(Service.tenant_id == tenant_id, Service.is_active == True)
     if tenant_department_id is not None:
         q = q.filter(Service.tenant_departments_id == tenant_department_id)
     services = q.order_by(Service.name).all()
@@ -726,13 +752,16 @@ def get_tenant_service(
 ):
     """Get single service. Service must belong to current user's tenant."""
     _, tenant_id = auth
-    service = db.query(Service).filter(
-        Service.id == service_id,
-        Service.tenant_id == tenant_id,
-    ).first()
+    service = (
+        db.query(Service)
+        .filter(
+            Service.id == service_id,
+            Service.tenant_id == tenant_id,
+        )
+        .first()
+    )
     if not service:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Service not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Service not found")
     return ServiceRead.model_validate(service)
 
 
@@ -744,17 +773,26 @@ def create_tenant_service(
 ):
     """Create service under a tenant department. Department must belong to current user's tenant."""
     _, tenant_id = auth
-    td = db.query(TenantDepartment).filter(
-        TenantDepartment.id == payload.tenant_department_id,
-        TenantDepartment.tenant_id == tenant_id,
-    ).first()
+    td = (
+        db.query(TenantDepartment)
+        .filter(
+            TenantDepartment.id == payload.tenant_department_id,
+            TenantDepartment.tenant_id == tenant_id,
+        )
+        .first()
+    )
     if not td:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-                            detail="Tenant department not found")
-    existing = db.query(Service).filter(
-        Service.tenant_departments_id == payload.tenant_department_id,
-        Service.name == payload.name,
-    ).first()
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Tenant department not found"
+        )
+    existing = (
+        db.query(Service)
+        .filter(
+            Service.tenant_departments_id == payload.tenant_department_id,
+            Service.name == payload.name,
+        )
+        .first()
+    )
     if existing:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -783,13 +821,16 @@ def update_tenant_service(
 ):
     """Update service. Service must belong to current user's tenant."""
     _, tenant_id = auth
-    service = db.query(Service).filter(
-        Service.id == service_id,
-        Service.tenant_id == tenant_id,
-    ).first()
+    service = (
+        db.query(Service)
+        .filter(
+            Service.id == service_id,
+            Service.tenant_id == tenant_id,
+        )
+        .first()
+    )
     if not service:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Service not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Service not found")
     data = payload.model_dump(exclude_unset=True)
     for k, v in data.items():
         setattr(service, k, v)
@@ -808,12 +849,15 @@ def delete_tenant_service(
 ):
     """Delete service. Service must belong to current user's tenant."""
     _, tenant_id = auth
-    service = db.query(Service).filter(
-        Service.id == service_id,
-        Service.tenant_id == tenant_id,
-    ).first()
+    service = (
+        db.query(Service)
+        .filter(
+            Service.id == service_id,
+            Service.tenant_id == tenant_id,
+        )
+        .first()
+    )
     if not service:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Service not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Service not found")
     db.delete(service)
     db.commit()

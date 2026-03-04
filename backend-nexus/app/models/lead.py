@@ -27,26 +27,19 @@ class Lead(Base, TimestampMixin):
     source: Mapped[str | None] = mapped_column(String(100))
 
     status: Mapped[LeadStatus] = mapped_column(
-        Enum(LeadStatus, name="lead_status"),
-        default=LeadStatus.NEW,
-        nullable=False
+        Enum(LeadStatus, name="lead_status"), default=LeadStatus.NEW, nullable=False
     )
 
     assigned_sales_user_id: Mapped[int | None] = mapped_column(
-        ForeignKey("users.id"),
-        nullable=True
+        ForeignKey("users.id"), nullable=True
     )
 
     notes: Mapped[str | None] = mapped_column(Text)
 
     status_history = relationship(
-        "LeadStatusHistory",
-        back_populates="lead",
-        cascade="all, delete-orphan"
+        "LeadStatusHistory", back_populates="lead", cascade="all, delete-orphan"
     )
 
     consultation_bookings = relationship(
-        "ConsultationBooking",
-        back_populates="lead",
-        cascade="all, delete-orphan"
+        "ConsultationBooking", back_populates="lead", cascade="all, delete-orphan"
     )

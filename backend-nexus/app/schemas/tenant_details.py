@@ -14,6 +14,7 @@ class TenantDetailsBase(BaseModel):
 
 class TenantDetailsUpdate(BaseModel):
     """All optional for partial updates."""
+
     logo: Optional[str] = None
     image: Optional[str] = None
     moto: Optional[str] = None

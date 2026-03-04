@@ -1,22 +1,39 @@
-import { createFileRoute, Link } from '@tanstack/react-router'
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from '@/components/ui/card'
-import { IconLayout } from '@tabler/icons-react'
+} from '@/components/ui/card';
+import { IconLayout } from '@tabler/icons-react';
+import {
+  createFileRoute,
+  Link,
+} from '@tanstack/react-router';
 
-export const Route = createFileRoute('/dashboard/landing-pages/')({
+export const Route = createFileRoute(
+  '/dashboard/landing-pages/'
+)({
   component: LandingPagesIndexPage,
-})
+});
 
 const LANDINGS = [
-  { id: '1', title: 'Landing 1', description: 'First landing page variant' },
-  { id: '2', title: 'Landing 2', description: 'Second landing page variant' },
-  { id: '3', title: 'Landing 3', description: 'Third landing page variant' },
-]
+  {
+    id: '1',
+    title: 'Landing 1',
+    description: 'First landing page variant',
+  },
+  {
+    id: '2',
+    title: 'Landing 2',
+    description: 'Second landing page variant',
+  },
+  {
+    id: '3',
+    title: 'Landing 3',
+    description: 'Third landing page variant',
+  },
+];
 
 function LandingPagesIndexPage() {
   return (
@@ -36,15 +53,19 @@ function LandingPagesIndexPage() {
               <CardHeader>
                 <IconLayout className="mb-2 size-8 text-muted-foreground" />
                 <CardTitle>{landing.title}</CardTitle>
-                <CardDescription>{landing.description}</CardDescription>
+                <CardDescription>
+                  {landing.description}
+                </CardDescription>
               </CardHeader>
               <CardContent>
-                <span className="text-sm text-primary">View →</span>
+                <span className="text-sm text-primary">
+                  View →
+                </span>
               </CardContent>
             </Card>
           </Link>
         ))}
       </div>
     </div>
-  )
+  );
 }

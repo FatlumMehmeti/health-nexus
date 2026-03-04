@@ -21,6 +21,7 @@ class AssignDoctorRequest(BaseModel):
 
 class DoctorCreateForTenant(BaseModel):
     """Create/assign doctor to tenant. tenant_id from JWT."""
+
     user_id: int
     specialization: Optional[str] = None
     education: Optional[str] = None
@@ -47,5 +48,6 @@ class DoctorRead(DoctorBase):
 
 class DoctorReadWithName(DoctorRead):
     """Doctor with user name for dropdowns (e.g. contract doctor selection)."""
+
     first_name: Optional[str] = None
     last_name: Optional[str] = None

@@ -1,5 +1,5 @@
-import { api } from "@/lib/api-client";
-import type { AuditLogListResponse } from "@/interfaces/audit-log";
+import type { AuditLogListResponse } from '@/interfaces/audit-log';
+import { api } from '@/lib/api-client';
 
 export const auditLogsService = {
   list: async (page = 1, pageSize = 10) => {
@@ -8,6 +8,8 @@ export const auditLogsService = {
       page_size: pageSize.toString(),
     });
 
-    return api.get<AuditLogListResponse>(`/audit-logs?${query.toString()}`);
+    return api.get<AuditLogListResponse>(
+      `/audit-logs?${query.toString()}`
+    );
   },
 };

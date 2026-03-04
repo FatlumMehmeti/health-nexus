@@ -1,4 +1,4 @@
-import { apiFetch } from "@/lib/api-client";
+import { apiFetch } from '@/lib/api-client';
 
 export interface Notification {
   id: number;
@@ -12,27 +12,32 @@ export interface Notification {
 }
 
 export async function getMyNotifications(
-  unreadOnly = false,
+  unreadOnly = false
 ): Promise<Notification[]> {
-  const qs = unreadOnly ? "?unread_only=true" : "";
+  const qs = unreadOnly ? '?unread_only=true' : '';
   return apiFetch<Notification[]>(`/notifications/me${qs}`);
 }
 
 export async function getUnreadCount(): Promise<number> {
-  const res = await apiFetch<{ count: number }>("/notifications/me/unread-count");
+  const res = await apiFetch<{ count: number }>(
+    '/notifications/me/unread-count'
+  );
   return res.count;
 }
 
 export async function markNotificationRead(
-  notificationId: number,
+  notificationId: number
 ): Promise<void> {
-  await apiFetch(`/notifications/${notificationId}/read`, { method: "PATCH" });
+  await apiFetch(`/notifications/${notificationId}/read`, {
+    method: 'PATCH',
+  });
 }
 
 export async function markAllNotificationsRead(): Promise<number> {
-  const res = await apiFetch<{ marked_read: number }>(
-    "/notifications/me/read-all",
-    { method: "PATCH" },
-  );
+  const res = await apiFetch<{
+    marked_read: number;
+  }>('/notifications/me/read-all', {
+    method: 'PATCH',
+  });
   return res.marked_read;
 }

@@ -21,7 +21,5 @@ class SubscriptionPlan(Base, TimestampMixin):
     max_departments: Mapped[int] = mapped_column(Integer, nullable=True)
 
     subscriptions = relationship(
-        "TenantSubscription",
-        back_populates="subscription_plan",
-        cascade="all, delete-orphan"
+        "TenantSubscription", back_populates="subscription_plan", cascade="all, delete-orphan"
     )

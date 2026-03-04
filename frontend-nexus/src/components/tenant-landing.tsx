@@ -6,13 +6,7 @@
  * Used by /landing/$tenantSlug. Data from GET /api/tenants/by-slug/{slug}/landing.
  */
 
-import type { CSSProperties } from 'react'
-import { useEffect, useState } from 'react'
-import { useNavigate } from '@tanstack/react-router'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { toast } from 'sonner'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Button } from '@/components/ui/button'
+import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -20,16 +14,31 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { can } from "@/lib/rbac";
-import { isApiError } from "@/lib/api-client";
-import { useAuthStore } from "@/stores/auth.store";
-import { tenantPlansService } from "@/services/tenant-plans.service";
-import { clientsService } from '@/services/clients.service'
-import { usersService } from '@/services/users.service'
-import { patientsService } from '@/services/patients.service'
-import { resolveMediaUrl } from '@/lib/media-url'
-import type { TenantLandingPageResponse } from '@/interfaces'
+} from '@/components/ui/dropdown-menu';
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from '@/components/ui/tabs';
+import type { TenantLandingPageResponse } from '@/interfaces';
+import { isApiError } from '@/lib/api-client';
+import { resolveMediaUrl } from '@/lib/media-url';
+import { can } from '@/lib/rbac';
+import { clientsService } from '@/services/clients.service';
+import { patientsService } from '@/services/patients.service';
+import { tenantPlansService } from '@/services/tenant-plans.service';
+import { usersService } from '@/services/users.service';
+import { useAuthStore } from '@/stores/auth.store';
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query';
+import { useNavigate } from '@tanstack/react-router';
+import type { CSSProperties } from 'react';
+import { useEffect, useState } from 'react';
+import { toast } from 'sonner';
 
 export interface TenantLandingProps {
   /** Landing data from API; null while loading */
@@ -46,12 +55,14 @@ interface BrandStyles {
 }
 
 function buildBrandStyles(
-  details: TenantLandingPageResponse["details"],
+  details: TenantLandingPageResponse['details']
 ): BrandStyles {
   return {
     headerStyle:
       details?.font_header_family != null
-        ? { fontFamily: details.font_header_family }
+        ? {
+            fontFamily: details.font_header_family,
+          }
         : undefined,
     bodyStyle:
       details?.font_body_family != null
@@ -64,206 +75,303 @@ function buildBrandStyles(
   };
 }
 
-const usdFormatter = new Intl.NumberFormat("en-US", {
-  style: "currency",
-  currency: "USD",
+const usdFormatter = new Intl.NumberFormat('en-US', {
+  style: 'currency',
+  currency: 'USD',
   minimumFractionDigits: 2,
 });
 
 function formatCurrency(value: number): string {
-  return usdFormatter.format(Number.isFinite(value) ? value : 0);
+  return usdFormatter.format(
+    Number.isFinite(value) ? value : 0
+  );
 }
 
-function getApiDetailCode(err: unknown): string | undefined {
-  if (!isApiError(err) || !err.data || typeof err.data !== 'object') return undefined
-  const detail = 'detail' in err.data ? (err.data as { detail?: unknown }).detail : undefined
-  if (!detail || typeof detail !== 'object') return undefined
-  const code = 'code' in detail ? (detail as { code?: unknown }).code : undefined
-  return typeof code === 'string' ? code : undefined
+function getApiDetailCode(
+  err: unknown
+): string | undefined {
+  if (
+    !isApiError(err) ||
+    !err.data ||
+    typeof err.data !== 'object'
+  )
+    return undefined;
+  const detail =
+    'detail' in err.data
+      ? (err.data as { detail?: unknown }).detail
+      : undefined;
+  if (!detail || typeof detail !== 'object')
+    return undefined;
+  const code =
+    'code' in detail
+      ? (detail as { code?: unknown }).code
+      : undefined;
+  return typeof code === 'string' ? code : undefined;
 }
 
-export function TenantLanding({ landingData }: TenantLandingProps) {
-  const [activeTab, setActiveTab] = useState('home')
-  const [selectedPlanId, setSelectedPlanId] = useState<number | null>(null)
-  const [registeredOverride, setRegisteredOverride] = useState(false)
+export function TenantLanding({
+  landingData,
+}: TenantLandingProps) {
+  const [activeTab, setActiveTab] = useState('home');
+  const [selectedPlanId, setSelectedPlanId] = useState<
+    number | null
+  >(null);
+  const [registeredOverride, setRegisteredOverride] =
+    useState(false);
 
   const user = useAuthStore((s) => s.user);
   const role = useAuthStore((s) => s.role);
-  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const isAuthenticated = useAuthStore(
+    (s) => s.isAuthenticated
+  );
 
   const tenantId = landingData?.tenant?.id;
 
-  const queryClient = useQueryClient()
+  const queryClient = useQueryClient();
 
   // Hydrate the selected plan from the user's existing enrollment.
   // Only sync on initial fetch — not on every render — so the user
   // can click "Change plan" without it snapping back immediately.
   const { data: enrollmentData } = useQuery({
     queryKey: ['my-enrollment', tenantId],
-    queryFn: () => tenantPlansService.myEnrollment(tenantId!),
+    queryFn: () =>
+      tenantPlansService.myEnrollment(tenantId!),
     enabled: !!tenantId && isAuthenticated,
     retry: false,
-  })
+  });
 
   useEffect(() => {
-    if (enrollmentData?.user_tenant_plan_id && enrollmentData.status === 'ACTIVE') {
-      setSelectedPlanId(enrollmentData.user_tenant_plan_id)
+    if (
+      enrollmentData?.user_tenant_plan_id &&
+      enrollmentData.status === 'ACTIVE'
+    ) {
+      setSelectedPlanId(enrollmentData.user_tenant_plan_id);
     }
-  }, [enrollmentData])
+  }, [enrollmentData]);
 
   const enrollMutation = useMutation({
-    mutationFn: ({ tenantId, planId }: { tenantId: number; planId: number }) =>
-      tenantPlansService.enroll(tenantId, planId),
+    mutationFn: ({
+      tenantId,
+      planId,
+    }: {
+      tenantId: number;
+      planId: number;
+    }) => tenantPlansService.enroll(tenantId, planId),
     onSuccess: (_data, variables) => {
-      setSelectedPlanId(variables.planId)
+      setSelectedPlanId(variables.planId);
       // Invalidate the cached enrollment so next hydration uses the new plan
-      queryClient.invalidateQueries({ queryKey: ['my-enrollment', tenantId] })
-      toast.success('Successfully subscribed!', { description: 'Your plan has been selected.' })
+      queryClient.invalidateQueries({
+        queryKey: ['my-enrollment', tenantId],
+      });
+      toast.success('Successfully subscribed!', {
+        description: 'Your plan has been selected.',
+      });
     },
     onError: (err) => {
       toast.error(
         isApiError(err)
           ? err.message
-          : "Failed to subscribe. Please try again.",
+          : 'Failed to subscribe. Please try again.'
       );
     },
-  })
+  });
 
-  const authEmail = user?.email?.trim() ?? ''
+  const authEmail = user?.email?.trim() ?? '';
   const meQuery = useQuery({
     queryKey: ['users-me-register-email'],
     queryFn: usersService.getMe,
     enabled: isAuthenticated && !authEmail,
     retry: false,
     staleTime: 5 * 60_000,
-  })
-  const registerEmail = authEmail || meQuery.data?.email?.trim() || ''
+  });
+  const registerEmail =
+    authEmail || meQuery.data?.email?.trim() || '';
   const registrationStatusQuery = useQuery({
-    queryKey: ['tenant-patient-registration', tenantId, user?.id],
-    queryFn: () => patientsService.getMyTenantProfile(tenantId!),
+    queryKey: [
+      'tenant-patient-registration',
+      tenantId,
+      user?.id,
+    ],
+    queryFn: () =>
+      patientsService.getMyTenantProfile(tenantId!),
     enabled: !!tenantId && isAuthenticated,
     retry: false,
-  })
+  });
 
   useEffect(() => {
-    setRegisteredOverride(false)
-  }, [tenantId, isAuthenticated, user?.id])
+    setRegisteredOverride(false);
+  }, [tenantId, isAuthenticated, user?.id]);
 
-  const registrationStatusError = registrationStatusQuery.error
+  const registrationStatusError =
+    registrationStatusQuery.error;
   const isRegistrationStatusExpectedNotRegistered =
     isApiError(registrationStatusError) &&
-    (registrationStatusError.status === 403 || registrationStatusError.status === 404)
+    (registrationStatusError.status === 403 ||
+      registrationStatusError.status === 404);
   const hasUnexpectedRegistrationStatusError =
-    registrationStatusQuery.isError && !isRegistrationStatusExpectedNotRegistered
-  const isRegistered = registeredOverride || registrationStatusQuery.isSuccess
+    registrationStatusQuery.isError &&
+    !isRegistrationStatusExpectedNotRegistered;
+  const isRegistered =
+    registeredOverride || registrationStatusQuery.isSuccess;
   const isRegistrationCheckPending =
-    isAuthenticated && !!tenantId && registrationStatusQuery.isLoading && !registeredOverride
+    isAuthenticated &&
+    !!tenantId &&
+    registrationStatusQuery.isLoading &&
+    !registeredOverride;
 
   const registerMutation = useMutation({
-    mutationFn: ({ tenantId, email }: { tenantId: number; email: string }) =>
-      clientsService.registerAsPatient(tenantId, { email }),
+    mutationFn: ({
+      tenantId,
+      email,
+    }: {
+      tenantId: number;
+      email: string;
+    }) =>
+      clientsService.registerAsPatient(tenantId, {
+        email,
+      }),
     onSuccess: () => {
-      toast.success('Registered')
-      setRegisteredOverride(true)
+      toast.success('Registered');
+      setRegisteredOverride(true);
     },
     onError: (err) => {
-      if (isApiError(err) && err.status === 409 && getApiDetailCode(err) === 'EMAIL_ALREADY_REGISTERED') {
-        toast.success('Already registered')
-        setRegisteredOverride(true)
-        return
+      if (
+        isApiError(err) &&
+        err.status === 409 &&
+        getApiDetailCode(err) === 'EMAIL_ALREADY_REGISTERED'
+      ) {
+        toast.success('Already registered');
+        setRegisteredOverride(true);
+        return;
       }
       if (isApiError(err) && err.status === 403) {
-        toast.error('Access denied')
-        return
+        toast.error('Access denied');
+        return;
       }
       if (isApiError(err) && err.status === 404) {
-        toast.error('Tenant not found')
-        return
+        toast.error('Tenant not found');
+        return;
       }
       toast.error('Registration failed', {
-        description: isApiError(err) ? err.displayMessage : 'Please try again.',
-      })
+        description: isApiError(err)
+          ? err.displayMessage
+          : 'Please try again.',
+      });
     },
-  })
+  });
 
   const handleRegisterAsPatient = () => {
-    if (!tenantId) return
+    if (!tenantId) return;
     if (!registerEmail) {
-      toast.error('Unable to determine your email. Please try again.')
-      return
+      toast.error(
+        'Unable to determine your email. Please try again.'
+      );
+      return;
     }
-    registerMutation.mutate({ tenantId, email: registerEmail })
-  }
+    registerMutation.mutate({
+      tenantId,
+      email: registerEmail,
+    });
+  };
 
   // Cancel enrollment so tenant manager sees "no active plan"
   const cancelMutation = useMutation({
-    mutationFn: (tid: number) => tenantPlansService.cancelEnrollment(tid),
+    mutationFn: (tid: number) =>
+      tenantPlansService.cancelEnrollment(tid),
     onSuccess: () => {
-      setSelectedPlanId(null)
-      queryClient.invalidateQueries({ queryKey: ['my-enrollment', tenantId] })
-      toast.success('Plan cancelled', { description: 'You can pick a new plan below.' })
+      setSelectedPlanId(null);
+      queryClient.invalidateQueries({
+        queryKey: ['my-enrollment', tenantId],
+      });
+      toast.success('Plan cancelled', {
+        description: 'You can pick a new plan below.',
+      });
     },
     onError: (err) => {
-      toast.error(isApiError(err) ? err.message : 'Failed to cancel. Please try again.')
+      toast.error(
+        isApiError(err)
+          ? err.message
+          : 'Failed to cancel. Please try again.'
+      );
     },
-  })
-  const logout = useAuthStore((s) => s.logout)
-  const navigate = useNavigate()
-  const canOpenTenantDashboard = can({ role }, 'DASHBOARD_TENANT')
+  });
+  const logout = useAuthStore((s) => s.logout);
+  const navigate = useNavigate();
+  const canOpenTenantDashboard = can(
+    { role },
+    'DASHBOARD_TENANT'
+  );
 
   const handleLogout = async () => {
     await logout();
     navigate({
-      to: "/login",
-      search: { reason: undefined, redirect: undefined },
+      to: '/login',
+      search: {
+        reason: undefined,
+        redirect: undefined,
+      },
       replace: true,
     });
   };
 
   const handleGoToTenantDashboard = () => {
     navigate({
-      to: "/dashboard/tenant/$section",
-      params: { section: "departments-services" },
+      to: '/dashboard/tenant/$section',
+      params: { section: 'departments-services' },
     });
   };
 
   const userInitial = (
     user?.email?.trim().charAt(0) ||
     user?.fullName?.trim().charAt(0) ||
-    "U"
+    'U'
   ).toUpperCase();
 
   if (!landingData) {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <p className="text-muted-foreground text-sm">Loading…</p>
+        <p className="text-muted-foreground text-sm">
+          Loading…
+        </p>
       </div>
     );
   }
 
-  const { tenant, details, departments, products } = landingData
-  const plans = (landingData.plans ?? []).filter((p) => p.is_active !== false)
-  const title = details?.title ?? tenant.name
-  const subtitle = details?.slogan ?? 'Welcome to our landing page.'
-  const logo = resolveMediaUrl(details?.logo)
-  const heroImage = resolveMediaUrl(details?.image)
-  const moto = details?.moto ?? 'Your health, our priority.'
-  const about = details?.about_text ?? 'No description available.'
-  const slug = tenant.slug ?? ''
-  const brand = buildBrandStyles(details)
-  const fontHeaderStyle = brand.headerStyle
-  const fontBodyStyle = brand.bodyStyle
-  const featuredDepartments = departments.slice(0, 3)
-  const availableProducts = products.filter((product) => product.is_available !== false)
-  const accountButtonStyle: CSSProperties | undefined = brand.primary
-    ? {
-        backgroundColor: brand.primary,
-        borderColor: brand.primary,
-        color: brand.foreground ?? "#ffffff",
-      }
-    : brand.secondary
-      ? { borderColor: brand.secondary, color: brand.secondary }
-      : undefined;
+  const { tenant, details, departments, products } =
+    landingData;
+  const plans = (landingData.plans ?? []).filter(
+    (p) => p.is_active !== false
+  );
+  const title = details?.title ?? tenant.name;
+  const subtitle =
+    details?.slogan ?? 'Welcome to our landing page.';
+  const logo = resolveMediaUrl(details?.logo);
+  const heroImage = resolveMediaUrl(details?.image);
+  const moto =
+    details?.moto ?? 'Your health, our priority.';
+  const about =
+    details?.about_text ?? 'No description available.';
+  const slug = tenant.slug ?? '';
+  const brand = buildBrandStyles(details);
+  const fontHeaderStyle = brand.headerStyle;
+  const fontBodyStyle = brand.bodyStyle;
+  const featuredDepartments = departments.slice(0, 3);
+  const availableProducts = products.filter(
+    (product) => product.is_available !== false
+  );
+  const accountButtonStyle: CSSProperties | undefined =
+    brand.primary
+      ? {
+          backgroundColor: brand.primary,
+          borderColor: brand.primary,
+          color: brand.foreground ?? '#ffffff',
+        }
+      : brand.secondary
+        ? {
+            borderColor: brand.secondary,
+            color: brand.secondary,
+          }
+        : undefined;
 
   return (
     <Tabs
@@ -299,9 +407,9 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
             ) : (
               <div className="bg-primary/10 text-primary flex h-9 w-9 items-center justify-center rounded-lg text-sm font-semibold">
                 {title
-                  .split(" ")
+                  .split(' ')
                   .map((p) => p[0])
-                  .join("")
+                  .join('')
                   .slice(0, 2)}
               </div>
             )}
@@ -320,8 +428,12 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
               className="inline-flex items-center gap-1 rounded-lg p-0.75"
             >
               <TabsTrigger value="home">HOME</TabsTrigger>
-              <TabsTrigger value="departments">DEPARTMENTS</TabsTrigger>
-              <TabsTrigger value="products">PRODUCTS</TabsTrigger>
+              <TabsTrigger value="departments">
+                DEPARTMENTS
+              </TabsTrigger>
+              <TabsTrigger value="products">
+                PRODUCTS
+              </TabsTrigger>
               <TabsTrigger value="plans">PLANS</TabsTrigger>
             </TabsList>
             {isAuthenticated && user ? (
@@ -338,23 +450,32 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
                     {userInitial}
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="min-w-40">
+                <DropdownMenuContent
+                  align="end"
+                  className="min-w-40"
+                >
                   <DropdownMenuLabel className="text-xs sm:text-sm">
                     Signed in as
                     <br />
-                    <span className="font-medium">{user.email}</span>
+                    <span className="font-medium">
+                      {user.email}
+                    </span>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   {canOpenTenantDashboard ? (
                     <>
-                      <DropdownMenuItem onClick={handleGoToTenantDashboard}>
+                      <DropdownMenuItem
+                        onClick={handleGoToTenantDashboard}
+                      >
                         Go to dashboard
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
                     </>
                   ) : null}
                   <DropdownMenuItem onClick={handleLogout}>
-                    <span className="text-destructive">Log out</span>
+                    <span className="text-destructive">
+                      Log out
+                    </span>
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -371,7 +492,9 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
                 <p
                   className="text-sm font-medium uppercase tracking-[0.2em] text-primary"
                   style={
-                    brand.secondary ? { color: brand.secondary } : undefined
+                    brand.secondary
+                      ? { color: brand.secondary }
+                      : undefined
                   }
                 >
                   {moto}
@@ -393,12 +516,18 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
                     </p>
                     <ul className="grid gap-1 text-sm text-muted-foreground sm:grid-cols-2">
                       {featuredDepartments.map((d) => (
-                        <li key={d.id} className="flex items-center gap-2">
+                        <li
+                          key={d.id}
+                          className="flex items-center gap-2"
+                        >
                           <span
                             className="h-1.5 w-1.5 rounded-full"
                             style={
                               brand.primary
-                                ? { backgroundColor: brand.primary }
+                                ? {
+                                    backgroundColor:
+                                      brand.primary,
+                                  }
                                 : undefined
                             }
                           />
@@ -412,7 +541,9 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
                 <div className="mt-5 flex flex-wrap gap-3">
                   <Button
                     size="sm"
-                    onClick={() => setActiveTab("departments")}
+                    onClick={() =>
+                      setActiveTab('departments')
+                    }
                     style={
                       brand.primary
                         ? {
@@ -428,7 +559,10 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
                     size="sm"
                     variant="outline"
                     onClick={() =>
-                      window.scrollTo({ top: 0, behavior: "smooth" })
+                      window.scrollTo({
+                        top: 0,
+                        behavior: 'smooth',
+                      })
                     }
                     style={
                       brand.secondary
@@ -466,12 +600,17 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
                       {isRegistered ? (
                         <>
                           <p className="text-xs text-muted-foreground">
-                            You&apos;re registered. Add details in your Profile.
+                            You&apos;re registered. Add
+                            details in your Profile.
                           </p>
                           <Button
                             size="sm"
                             variant="ghost"
-                            onClick={() => navigate({ to: '/dashboard/profile' })}
+                            onClick={() =>
+                              navigate({
+                                to: '/dashboard/profile',
+                              })
+                            }
                           >
                             Go to Profile
                           </Button>
@@ -479,7 +618,8 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
                       ) : null}
                       {hasUnexpectedRegistrationStatusError ? (
                         <p className="text-xs text-destructive">
-                          Unable to verify registration status right now.
+                          Unable to verify registration
+                          status right now.
                         </p>
                       ) : null}
                     </div>
@@ -490,7 +630,10 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
                       onClick={() =>
                         navigate({
                           to: '/login',
-                          search: { reason: undefined, redirect: `/landing/${slug || tenant.id}` },
+                          search: {
+                            reason: undefined,
+                            redirect: `/landing/${slug || tenant.id}`,
+                          },
                         })
                       }
                     >
@@ -523,28 +666,32 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
                   ) : (
                     <div className="bg-primary/10 text-primary flex h-8 w-8 items-center justify-center rounded-md text-xs font-semibold">
                       {title
-                        .split(" ")
+                        .split(' ')
                         .map((p) => p[0])
-                        .join("")
+                        .join('')
                         .slice(0, 2)}
                     </div>
                   )}
-                  <p className="text-xs text-muted-foreground">Brand preview</p>
+                  <p className="text-xs text-muted-foreground">
+                    Brand preview
+                  </p>
                 </div>
                 <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                   At a glance
                 </h2>
                 <div className="space-y-2 text-sm">
                   <p>
-                    <span className="text-muted-foreground">Tenant:</span>{" "}
+                    <span className="text-muted-foreground">
+                      Tenant:
+                    </span>{' '}
                     <code className="rounded bg-muted px-1 text-xs">
                       {slug || tenant.name}
                     </code>
                   </p>
                   {departments.length > 0 && (
                     <p className="text-muted-foreground">
-                      {departments.length} department(s) with services listed
-                      below.
+                      {departments.length} department(s)
+                      with services listed below.
                     </p>
                   )}
                 </div>
@@ -552,7 +699,10 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
             </section>
           </TabsContent>
 
-          <TabsContent value="departments" className="mt-0 flex-1">
+          <TabsContent
+            value="departments"
+            className="mt-0 flex-1"
+          >
             <section className="mx-auto max-w-5xl space-y-4">
               <div className="space-y-1">
                 <h2 className="text-xl font-semibold tracking-tight sm:text-2xl">
@@ -560,8 +710,8 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
                 </h2>
                 <p className="text-sm text-muted-foreground sm:text-base">
                   {departments.length > 0
-                    ? "Departments and services for this tenant."
-                    : "No departments configured yet."}
+                    ? 'Departments and services for this tenant.'
+                    : 'No departments configured yet.'}
                 </p>
               </div>
 
@@ -583,10 +733,15 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
                             </p>
                           )}
                         </div>
-                        {(dept.phone_number || dept.email) && (
+                        {(dept.phone_number ||
+                          dept.email) && (
                           <div className="space-y-0.5 text-right text-[0.7rem] text-muted-foreground">
-                            {dept.phone_number && <p>{dept.phone_number}</p>}
-                            {dept.email && <p>{dept.email}</p>}
+                            {dept.phone_number && (
+                              <p>{dept.phone_number}</p>
+                            )}
+                            {dept.email && (
+                              <p>{dept.email}</p>
+                            )}
                           </div>
                         )}
                       </div>
@@ -600,7 +755,8 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
                               style={
                                 brand.primary
                                   ? {
-                                      borderColor: brand.primary,
+                                      borderColor:
+                                        brand.primary,
                                       color: brand.primary,
                                     }
                                   : undefined
@@ -616,13 +772,15 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
                         )}
                       </div>
 
-                      {dept.services.some((s) => s.description) && (
+                      {dept.services.some(
+                        (s) => s.description
+                      ) && (
                         <p className="mt-3 text-xs text-muted-foreground">
                           {dept.services
                             .filter((s) => s.description)
                             .slice(0, 2)
                             .map((s) => s.description)
-                            .join(" • ")}
+                            .join(' • ')}
                         </p>
                       )}
                     </article>
@@ -636,7 +794,10 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
             </section>
           </TabsContent>
 
-          <TabsContent value="products" className="mt-0 flex-1">
+          <TabsContent
+            value="products"
+            className="mt-0 flex-1"
+          >
             <section className="mx-auto max-w-5xl space-y-4">
               <div className="space-y-1">
                 <h2 className="text-xl font-semibold tracking-tight sm:text-2xl">
@@ -644,8 +805,8 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
                 </h2>
                 <p className="text-sm text-muted-foreground sm:text-base">
                   {availableProducts.length > 0
-                    ? "Healthcare products currently available from this tenant."
-                    : "No products available yet."}
+                    ? 'Healthcare products currently available from this tenant.'
+                    : 'No products available yet.'}
                 </p>
               </div>
 
@@ -665,7 +826,8 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
                           style={
                             brand.primary
                               ? {
-                                  borderColor: brand.primary,
+                                  borderColor:
+                                    brand.primary,
                                   color: brand.primary,
                                 }
                               : undefined
@@ -675,7 +837,8 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
                         </span>
                       </div>
                       <p className="mt-2 text-sm text-muted-foreground">
-                        {product.description || "No description provided."}
+                        {product.description ||
+                          'No description provided.'}
                       </p>
                     </article>
                   ))}
@@ -688,7 +851,10 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
             </section>
           </TabsContent>
 
-          <TabsContent value="plans" className="mt-0 flex-1">
+          <TabsContent
+            value="plans"
+            className="mt-0 flex-1"
+          >
             <section className="mx-auto max-w-5xl space-y-4">
               <div className="space-y-1">
                 <h2 className="text-xl font-semibold tracking-tight sm:text-2xl">
@@ -696,60 +862,91 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
                 </h2>
                 <p className="text-sm text-muted-foreground sm:text-base">
                   {plans.length > 0
-                    ? "Explore tenant-specific pricing and coverage limits for care packages."
-                    : "No plans available yet."}
+                    ? 'Explore tenant-specific pricing and coverage limits for care packages.'
+                    : 'No plans available yet.'}
                 </p>
               </div>
 
-              {selectedPlanId && (() => {
-                const selected = plans.find((p) => p.id === selectedPlanId)
-                if (!selected) return null
-                return (
-                  <div
-                    className="flex items-center justify-between rounded-xl border-2 p-4"
-                    style={{ borderColor: brand.primary ?? undefined, backgroundColor: `${brand.primary ?? '#2563eb'}10` }}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div
-                        className="flex h-8 w-8 items-center justify-center rounded-full text-white text-sm font-bold"
-                        style={{ backgroundColor: brand.primary ?? '#2563eb' }}
-                      >
-                        ✓
-                      </div>
-                      <div>
-                        <p className="text-sm font-semibold">{selected.name}</p>
-                        <p className="text-xs text-muted-foreground">
-                          €{Number(selected.price).toFixed(2)}{selected.duration ? ` / ${selected.duration} days` : ''}
-                        </p>
-                      </div>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      disabled={cancelMutation.isPending}
-                      onClick={() => {
-                        if (tenantId) cancelMutation.mutate(tenantId)
+              {selectedPlanId &&
+                (() => {
+                  const selected = plans.find(
+                    (p) => p.id === selectedPlanId
+                  );
+                  if (!selected) return null;
+                  return (
+                    <div
+                      className="flex items-center justify-between rounded-xl border-2 p-4"
+                      style={{
+                        borderColor:
+                          brand.primary ?? undefined,
+                        backgroundColor: `${brand.primary ?? '#2563eb'}10`,
                       }}
                     >
-                      {cancelMutation.isPending ? 'Cancelling…' : 'Change plan'}
-                    </Button>
-                  </div>
-                )
-              })()}
+                      <div className="flex items-center gap-3">
+                        <div
+                          className="flex h-8 w-8 items-center justify-center rounded-full text-white text-sm font-bold"
+                          style={{
+                            backgroundColor:
+                              brand.primary ?? '#2563eb',
+                          }}
+                        >
+                          ✓
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold">
+                            {selected.name}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            €
+                            {Number(selected.price).toFixed(
+                              2
+                            )}
+                            {selected.duration
+                              ? ` / ${selected.duration} days`
+                              : ''}
+                          </p>
+                        </div>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        disabled={cancelMutation.isPending}
+                        onClick={() => {
+                          if (tenantId)
+                            cancelMutation.mutate(tenantId);
+                        }}
+                      >
+                        {cancelMutation.isPending
+                          ? 'Cancelling…'
+                          : 'Change plan'}
+                      </Button>
+                    </div>
+                  );
+                })()}
 
               {plans.length > 0 ? (
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                   {plans.map((plan) => {
-                    const isSelected = selectedPlanId === plan.id
+                    const isSelected =
+                      selectedPlanId === plan.id;
                     return (
                       <article
                         key={plan.id}
                         className={`flex h-full flex-col rounded-xl border p-5 shadow-sm transition-all ${
-                          isSelected ? 'ring-2 bg-card/80' : 'bg-card/60'
+                          isSelected
+                            ? 'ring-2 bg-card/80'
+                            : 'bg-card/60'
                         }`}
                         style={
                           isSelected
-                            ? { borderColor: brand.primary ?? undefined, outlineColor: brand.primary ?? undefined }
+                            ? {
+                                borderColor:
+                                  brand.primary ??
+                                  undefined,
+                                outlineColor:
+                                  brand.primary ??
+                                  undefined,
+                              }
                             : undefined
                         }
                       >
@@ -758,7 +955,9 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
                             {plan.name}
                           </h3>
                           <span className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
-                            {isSelected ? "Active" : "Available"}
+                            {isSelected
+                              ? 'Active'
+                              : 'Available'}
                           </span>
                         </div>
 
@@ -767,13 +966,17 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
                         </p>
                         {plan.duration && (
                           <p className="text-xs text-muted-foreground">
-                            {plan.duration} day{plan.duration !== 1 ? "s" : ""}{" "}
+                            {plan.duration} day
+                            {plan.duration !== 1
+                              ? 's'
+                              : ''}{' '}
                             duration
                           </p>
                         )}
 
                         <p className="mt-3 flex-1 text-sm text-muted-foreground">
-                          {plan.description || "No description provided."}
+                          {plan.description ||
+                            'No description provided.'}
                         </p>
 
                         <div className="mt-4 space-y-2 border-t pt-3">
@@ -784,7 +987,7 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
                             <span className="font-medium">
                               {plan.max_appointments != null
                                 ? plan.max_appointments
-                                : "Unlimited"}
+                                : 'Unlimited'}
                             </span>
                           </div>
                           <div className="flex items-center justify-between text-sm">
@@ -792,9 +995,10 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
                               Consultations
                             </span>
                             <span className="font-medium">
-                              {plan.max_consultations != null
+                              {plan.max_consultations !=
+                              null
                                 ? plan.max_consultations
-                                : "Unlimited"}
+                                : 'Unlimited'}
                             </span>
                           </div>
                         </div>
@@ -802,25 +1006,38 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
                         <Button
                           size="sm"
                           className="mt-4 w-full"
-                          variant={isSelected ? "outline" : "default"}
-                          disabled={isSelected || enrollMutation.isPending}
+                          variant={
+                            isSelected
+                              ? 'outline'
+                              : 'default'
+                          }
+                          disabled={
+                            isSelected ||
+                            enrollMutation.isPending
+                          }
                           style={
                             isSelected
                               ? {
-                                  borderColor: brand.primary ?? undefined,
-                                  color: brand.primary ?? undefined,
+                                  borderColor:
+                                    brand.primary ??
+                                    undefined,
+                                  color:
+                                    brand.primary ??
+                                    undefined,
                                 }
                               : brand.primary
                                 ? {
-                                    backgroundColor: brand.primary,
-                                    borderColor: brand.primary,
+                                    backgroundColor:
+                                      brand.primary,
+                                    borderColor:
+                                      brand.primary,
                                   }
                                 : undefined
                           }
                           onClick={() => {
                             if (!isAuthenticated) {
                               toast.error(
-                                "Please log in to subscribe to a plan.",
+                                'Please log in to subscribe to a plan.'
                               );
                               return;
                             }
@@ -831,13 +1048,13 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
                           }}
                         >
                           {isSelected
-                            ? "You have selected this plan"
+                            ? 'You have selected this plan'
                             : enrollMutation.isPending
-                              ? "Subscribing…"
-                              : "Subscribe to this plan"}
+                              ? 'Subscribing…'
+                              : 'Subscribe to this plan'}
                         </Button>
                       </article>
-                    )
+                    );
                   })}
                 </div>
               ) : (

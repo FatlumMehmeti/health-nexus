@@ -19,18 +19,21 @@ This is the initial commit, used as a base for the project setup.
    `docker compose up --build`
 
 On startup, backend now:
+
 - waits for Postgres,
 - runs `alembic upgrade head`,
 - seeds deterministic baseline data for PRD-01 and PRD-02 (`app.seed`),
 - verifies migration + seed baseline (`app.verify_seed`).
 
 You can control bootstrap behavior via env vars:
+
 - `SEED_ON_BOOT=true|false` (default `true`)
 - `VERIFY_SEED_ON_BOOT=true|false` (default `true`)
 
 ## Reproducible seed baseline
 
 Seeded roles:
+
 - `SUPER_ADMIN`
 - `TENANT_MANAGER`
 - `DOCTOR`
@@ -38,12 +41,14 @@ Seeded roles:
 - `CLIENT`
 
 Seeded tenants:
+
 - `Iliria Hospital`
 - `Dardania Clinic`
 - `American Hospital`
 - `Polyclinic Diagnoze`
 
 Seeded memberships:
+
 - `Small Clinic` (`1500` / 30 days)
 - `Medium Clinic` (`5000` / 30 days)
 - `Hospital` (`10000` / 30 days)

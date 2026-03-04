@@ -21,7 +21,6 @@ from app.schemas.user_tenant_plan import (
     UserTenantPlanUpdate,
 )
 
-
 router = APIRouter(
     prefix="/user-tenant-plans",
     tags=["User Tenant Plans"],
@@ -393,9 +392,7 @@ def get_active_public_plans_by_tenant(
 
 
 # get all enrollments in a tenant as a tenant manager (for admin dashboard) - includes patient user info and plan info
-@router.get(
-    "/tenant/{tenant_id}/enrollments", response_model=List[EnrollmentDetailRead]
-)
+@router.get("/tenant/{tenant_id}/enrollments", response_model=List[EnrollmentDetailRead])
 def get_tenant_enrollments(
     tenant_id: int,
     db: Session = Depends(get_db),

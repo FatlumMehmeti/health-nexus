@@ -53,6 +53,7 @@ def client(db_session):
 # Admin Endpoint RBAC Tests
 # -----------------------------
 
+
 def test_get_auth_admin_without_auth_returns_403(client):
     response = client.get("/api/auth/admin")
     assert response.status_code == 403
@@ -103,6 +104,7 @@ def test_get_auth_admin_as_super_admin_returns_200(client):
 # -----------------------------
 # Refresh + Logout Tests
 # -----------------------------
+
 
 def test_refresh_returns_new_access_token(client):
     login_resp = client.post(

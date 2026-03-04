@@ -1,6 +1,7 @@
 """
 Simple CRUD test to verify database connection and basic operations.
 """
+
 from datetime import datetime, timedelta
 
 from app.db import SessionLocal
@@ -57,9 +58,11 @@ def test_crud_operations():
         session.commit()
 
         # TEST COMPLEX READ
-        fetched_subscription = session.query(TenantSubscription).filter(
-            TenantSubscription.id == subscription.id
-        ).first()
+        fetched_subscription = (
+            session.query(TenantSubscription)
+            .filter(TenantSubscription.id == subscription.id)
+            .first()
+        )
         assert fetched_subscription is not None
         assert fetched_subscription.tenant.name == "Health Nexus Clinic"
         assert fetched_subscription.subscription_plan.name == "Pro Plan"

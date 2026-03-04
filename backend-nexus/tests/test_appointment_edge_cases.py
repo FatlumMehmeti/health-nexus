@@ -34,7 +34,6 @@ from app.models import (
 )
 from app.models.notification import Notification
 
-
 # ── helpers ─────────────────────────────────────────────────────────────────
 
 
@@ -78,9 +77,7 @@ def ctx(db_session):
     db_session.add(dept)
     db_session.flush()
 
-    td = TenantDepartment(
-        tenant_id=tenant.id, department_id=dept.id, phone_number="000"
-    )
+    td = TenantDepartment(tenant_id=tenant.id, department_id=dept.id, phone_number="000")
     db_session.add(td)
     db_session.flush()
 
@@ -457,37 +454,22 @@ class TestNotificationCreation:
     def test_booking_creates_notification_for_doctor(self, ctx):
         _book(ctx)
         # doctor_id is the user_id of the doctor
-        assert (
-            self._notif_count(ctx["db"], ctx["doctor_id"], "APPOINTMENT_CREATED") == 1
-        )
+        assert self._notif_count(ctx["db"], ctx["doctor_id"], "APPOINTMENT_CREATED") == 1
 
     def test_approve_creates_notification_for_patient(self, ctx):
         aid = _book(ctx)
-        ctx["client"].patch(
-            f"/appointments/{aid}/approve", headers=_auth(ctx["doctor_token"])
-        )
-        assert (
-            self._notif_count(ctx["db"], ctx["patient_id"], "APPOINTMENT_CONFIRMED")
-            == 1
-        )
+        ctx["client"].patch(f"/appointments/{aid}/approve", headers=_auth(ctx["doctor_token"]))
+        assert self._notif_count(ctx["db"], ctx["patient_id"], "APPOINTMENT_CONFIRMED") == 1
 
     def test_reject_creates_notification_for_patient(self, ctx):
         aid = _book(ctx)
-        ctx["client"].patch(
-            f"/appointments/{aid}/reject", headers=_auth(ctx["doctor_token"])
-        )
-        assert (
-            self._notif_count(ctx["db"], ctx["patient_id"], "APPOINTMENT_REJECTED") == 1
-        )
+        ctx["client"].patch(f"/appointments/{aid}/reject", headers=_auth(ctx["doctor_token"]))
+        assert self._notif_count(ctx["db"], ctx["patient_id"], "APPOINTMENT_REJECTED") == 1
 
     def test_cancel_creates_notification_for_doctor(self, ctx):
         aid = _book(ctx)
-        ctx["client"].patch(
-            f"/appointments/{aid}/cancel", headers=_auth(ctx["patient_token"])
-        )
-        assert (
-            self._notif_count(ctx["db"], ctx["doctor_id"], "APPOINTMENT_CANCELLED") == 1
-        )
+        ctx["client"].patch(f"/appointments/{aid}/cancel", headers=_auth(ctx["patient_token"]))
+        assert self._notif_count(ctx["db"], ctx["doctor_id"], "APPOINTMENT_CANCELLED") == 1
 
     def test_reschedule_creates_notification_for_doctor(self, ctx):
         aid = _book(ctx)
@@ -502,20 +484,14 @@ class TestNotificationCreation:
                 "duration_minutes": 30,
             },
         )
-        assert (
-            self._notif_count(ctx["db"], ctx["doctor_id"], "APPOINTMENT_RESCHEDULED")
-            == 1
-        )
+        assert self._notif_count(ctx["db"], ctx["doctor_id"], "APPOINTMENT_RESCHEDULED") == 1
 
     def test_complete_creates_notification_for_patient(self, ctx):
         aid = _book(ctx)
         c, dt = ctx["client"], ctx["doctor_token"]
         c.patch(f"/appointments/{aid}/approve", headers=_auth(dt))
         c.patch(f"/appointments/{aid}/complete", headers=_auth(dt))
-        assert (
-            self._notif_count(ctx["db"], ctx["patient_id"], "APPOINTMENT_COMPLETED")
-            == 1
-        )
+        assert self._notif_count(ctx["db"], ctx["patient_id"], "APPOINTMENT_COMPLETED") == 1
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -554,9 +530,7 @@ class TestNotificationEndpoints:
         assert resp.status_code == 200
         assert resp.json()["is_read"] is True
 
-        count = c.get("/notifications/me/unread-count", headers=_auth(dt)).json()[
-            "count"
-        ]
+        count = c.get("/notifications/me/unread-count", headers=_auth(dt)).json()["count"]
         assert count == 0
 
     def test_mark_all_read(self, ctx):
@@ -564,18 +538,14 @@ class TestNotificationEndpoints:
         _book(ctx, _SLOT_2)
         c, dt = ctx["client"], ctx["doctor_token"]
 
-        before = c.get("/notifications/me/unread-count", headers=_auth(dt)).json()[
-            "count"
-        ]
+        before = c.get("/notifications/me/unread-count", headers=_auth(dt)).json()["count"]
         assert before >= 2
 
         resp = c.patch("/notifications/me/read-all", headers=_auth(dt))
         assert resp.status_code == 200
         assert resp.json()["marked_read"] >= 2
 
-        after = c.get("/notifications/me/unread-count", headers=_auth(dt)).json()[
-            "count"
-        ]
+        after = c.get("/notifications/me/unread-count", headers=_auth(dt)).json()["count"]
         assert after == 0
 
     def test_notification_contains_entity_reference(self, ctx):
@@ -593,9 +563,7 @@ class TestNotificationEndpoints:
         # patient's own list is empty (no notification for patient from booking)
         notifs = c.get("/notifications/me", headers=_auth(pt)).json()
         # Try to mark doctor's notification as read using patient's token
-        doctor_notifs = c.get(
-            "/notifications/me", headers=_auth(ctx["doctor_token"])
-        ).json()
+        doctor_notifs = c.get("/notifications/me", headers=_auth(ctx["doctor_token"])).json()
         nid = doctor_notifs[0]["id"]
 
         resp = c.patch(f"/notifications/{nid}/read", headers=_auth(pt))

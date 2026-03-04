@@ -18,11 +18,7 @@ class TenantAuditLog(Base, TimestampMixin):
 
     id: Mapped[int] = mapped_column(primary_key=True)
 
-    tenant_id: Mapped[int] = mapped_column(
-        ForeignKey("tenants.id"),
-        nullable=False,
-        index=True
-    )
+    tenant_id: Mapped[int] = mapped_column(ForeignKey("tenants.id"), nullable=False, index=True)
 
     # What happened
     event_type: Mapped[str] = mapped_column(String(50), nullable=False)

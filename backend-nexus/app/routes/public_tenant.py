@@ -9,10 +9,9 @@ from app.models.user import User
 from app.models.patient import Patient
 from app.models.lead import Lead, LeadStatus
 from app.schemas.tenant import TenantCreate, TenantRead
-from app.schemas.lead import LeadCreate,PublicLeadCreate
+from app.schemas.lead import LeadCreate, PublicLeadCreate
 from app.schemas.patient import ClientRegistrationRequest, ClientRegistrationResponse
 from app.auth.auth_utils import hash_password, verify_token, TokenError
-
 
 router = APIRouter(prefix="/tenants", tags=["Public Tenant Requests"])
 
@@ -20,6 +19,7 @@ _TENANT_NOT_ACTIVE_DETAIL = {
     "code": "TENANT_NOT_ACTIVE",
     "message": "Tenant must be active to register clients",
 }
+
 
 def get_db():
     yield from app_get_db()
@@ -39,23 +39,28 @@ def get_authenticated_user_if_present(request: Request) -> dict | None:
     except TokenError:
         raise HTTPException(status_code=401, detail="Invalid or expired token")
 
+
 # Endpoint for potential tenants to apply for a tenant account (Tenant Application).
 @router.post("", response_model=TenantRead, status_code=status.HTTP_201_CREATED)
 def create_tenant_application(payload: TenantCreate, db: Session = Depends(get_db)):
 
     # If the email/licence_number already exists in the database, tenant creation is not allowed.
-    existing = db.query(Tenant).filter(
-        (Tenant.email == payload.email) | (Tenant.licence_number == payload.licence_number)
-    ).first()
+    existing = (
+        db.query(Tenant)
+        .filter((Tenant.email == payload.email) | (Tenant.licence_number == payload.licence_number))
+        .first()
+    )
 
     if existing:
-        raise HTTPException(status_code=409, detail="Tenant with this email or licence number already exists")
-        
+        raise HTTPException(
+            status_code=409, detail="Tenant with this email or licence number already exists"
+        )
+
     tenant = Tenant(
         name=payload.name,
         email=payload.email,
         licence_number=payload.licence_number,
-        status=TenantStatus.pending
+        status=TenantStatus.pending,
     )
     db.add(tenant)
     db.commit()
@@ -63,7 +68,7 @@ def create_tenant_application(payload: TenantCreate, db: Session = Depends(get_d
     return tenant
 
 
-# Endpoint for potential tenants to submit a consultation request 
+# Endpoint for potential tenants to submit a consultation request
 # (e.g: to get more info about what Nexus Health offers, ask for a demo etc), without applying to join the platform first.
 @router.post(
     "/consultation",
@@ -134,10 +139,14 @@ def register_client_in_tenant(
             if not user:
                 raise
 
-    existing_patient = db.query(Patient).filter(
-        Patient.user_id == user.id,
-        Patient.tenant_id == tenant.id,
-    ).first()
+    existing_patient = (
+        db.query(Patient)
+        .filter(
+            Patient.user_id == user.id,
+            Patient.tenant_id == tenant.id,
+        )
+        .first()
+    )
     if existing_patient:
         raise HTTPException(
             status_code=409,
@@ -160,10 +169,14 @@ def register_client_in_tenant(
         db.commit()
     except IntegrityError:
         db.rollback()
-        duplicate = db.query(Patient).filter(
-            Patient.user_id == user.id,
-            Patient.tenant_id == tenant.id,
-        ).first()
+        duplicate = (
+            db.query(Patient)
+            .filter(
+                Patient.user_id == user.id,
+                Patient.tenant_id == tenant.id,
+            )
+            .first()
+        )
         if duplicate:
             raise HTTPException(
                 status_code=409,
@@ -179,4 +192,6 @@ def register_client_in_tenant(
         patient_id=user.id,
         tenant_id=tenant.id,
     )
+
+
 # Add an endpoint that gets plans. (IGNORE because it is a scrapped for now)

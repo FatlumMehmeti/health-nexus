@@ -206,9 +206,7 @@ def refresh_access_token(refresh_token: str) -> TokenResponse:
         stmt = select(Session).where(Session.refresh_jti == jti)
         db_session = session.execute(stmt).scalar_one_or_none()
         if db_session is None:
-            logger.warning(
-                "auth.refresh_denied session_not_found jti=%s user_id=%s", jti, user_id
-            )
+            logger.warning("auth.refresh_denied session_not_found jti=%s user_id=%s", jti, user_id)
             raise HTTPException(status_code=401, detail="Invalid refresh token")
         if db_session.state != "active":
             logger.warning(

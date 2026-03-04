@@ -36,7 +36,6 @@ from app.models import (
 )
 from app.models.enrollment import EnrollmentStatus
 
-
 ROLE_NAMES = [
     "SUPER_ADMIN",
     "TENANT_MANAGER",
@@ -57,9 +56,7 @@ class SeedUser:
 
 SEED_USERS = [
     SeedUser("Super", "Admin", "super.admin@seed.com", "Team2026@", "SUPER_ADMIN"),
-    SeedUser(
-        "Tenant", "Manager", "tenant.manager@seed.com", "Team2026@", "TENANT_MANAGER"
-    ),
+    SeedUser("Tenant", "Manager", "tenant.manager@seed.com", "Team2026@", "TENANT_MANAGER"),
     SeedUser("Doctor", "One", "doctor.one@seed.com", "Team2026@", "DOCTOR"),
     SeedUser("Doctor", "Two", "doctor.two@seed.com", "Team2026@", "DOCTOR"),
     SeedUser("Doctor", "Three", "doctor.three@seed.com", "Team2026@", "DOCTOR"),
@@ -72,14 +69,10 @@ SEED_USERS = [
     SeedUser("Doctor", "Ten", "doctor.ten@seed.com", "Team2026@", "DOCTOR"),
     SeedUser("Sales", "Agent", "sales.agent@seed.com", "Team2026@", "SALES"),
     SeedUser("Client", "User", "client.user@seed.com", "Team2026@", "CLIENT"),
-    SeedUser(
-        "Registered", "Client", "registered.client@seed.com", "Team2026@", "CLIENT"
-    ),
+    SeedUser("Registered", "Client", "registered.client@seed.com", "Team2026@", "CLIENT"),
     SeedUser("Global", "Only", "global.only@seed.com", "Team2026@", "CLIENT"),
     SeedUser("Client", "NoEnroll", "client.noenroll@seed.com", "Team2026@", "CLIENT"),
-    SeedUser(
-        "Client", "OtherTenant", "client.othertenant@seed.com", "Team2026@", "CLIENT"
-    ),
+    SeedUser("Client", "OtherTenant", "client.othertenant@seed.com", "Team2026@", "CLIENT"),
 ]
 
 SEED_PATIENTS = [
@@ -431,10 +424,38 @@ SEED_TENANT_DETAILS = [
 ]
 
 SEED_SUBSCRIPTION_PLANS = [
-    {"name": "FREE", "price": Decimal("0.00"), "duration": 30, "max_doctors": 5, "max_patients": 100, "max_departments": 3},
-    {"name": "Small Clinic", "price": Decimal("1499.00"), "duration": 30, "max_doctors": 15, "max_patients": 1000, "max_departments": 8},
-    {"name": "Medium Clinic", "price": Decimal("3999.00"), "duration": 30, "max_doctors": 50, "max_patients": 5000, "max_departments": 20},
-    {"name": "Hospital", "price": Decimal("9999.00"), "duration": 30, "max_doctors": 200, "max_patients": 20000, "max_departments": 50},
+    {
+        "name": "FREE",
+        "price": Decimal("0.00"),
+        "duration": 30,
+        "max_doctors": 5,
+        "max_patients": 100,
+        "max_departments": 3,
+    },
+    {
+        "name": "Small Clinic",
+        "price": Decimal("1499.00"),
+        "duration": 30,
+        "max_doctors": 15,
+        "max_patients": 1000,
+        "max_departments": 8,
+    },
+    {
+        "name": "Medium Clinic",
+        "price": Decimal("3999.00"),
+        "duration": 30,
+        "max_doctors": 50,
+        "max_patients": 5000,
+        "max_departments": 20,
+    },
+    {
+        "name": "Hospital",
+        "price": Decimal("9999.00"),
+        "duration": 30,
+        "max_doctors": 200,
+        "max_patients": 20000,
+        "max_departments": 50,
+    },
 ]
 
 # tenant_managers model payloads
@@ -747,21 +768,111 @@ SEED_DEPARTMENTS = [
 
 # tenant_name, department_name, contact info
 SEED_TENANT_DEPARTMENTS = [
-    {"tenant_name": "Bluestone Clinic", "department_name": "General Practice", "phone_number": "+1-555-1001", "email": "gp@bluestone.com", "location": "Building A, Floor 1"},
-    {"tenant_name": "Bluestone Clinic", "department_name": "Cardiology", "phone_number": "+1-555-1002", "email": "cardio@bluestone.com", "location": "Building A, Floor 2"},
-    {"tenant_name": "Bluestone Clinic", "department_name": "Pediatrics", "phone_number": "+1-555-1003", "email": "pediatrics@bluestone.com", "location": "Building B, Floor 1"},
-    {"tenant_name": "Riverside Health Partners", "department_name": "General Practice", "phone_number": "+1-555-2001", "email": "info@riverside.com", "location": "Main Street 100"},
-    {"tenant_name": "Riverside Health Partners", "department_name": "Pediatrics", "phone_number": "+1-555-2002", "email": "pediatrics@riverside.com", "location": "Main Street 100, Wing B"},
-    {"tenant_name": "Apex Medical Group", "department_name": "General Practice", "phone_number": "+1-555-3001", "email": "gp@apex.com", "location": "Downtown Plaza, Level 1"},
-    {"tenant_name": "Apex Medical Group", "department_name": "Cardiology", "phone_number": "+1-555-3002", "email": "cardio@apex.com", "location": "Downtown Plaza, Level 2"},
-    {"tenant_name": "Apex Medical Group", "department_name": "Dermatology", "phone_number": "+1-555-3003", "email": "derma@apex.com", "location": "Downtown Plaza, Suite 301"},
-    {"tenant_name": "Apex Medical Group", "department_name": "Neurology", "phone_number": "+1-555-3004", "email": "neuro@apex.com", "location": "Downtown Plaza, Level 3"},
-    {"tenant_name": "Apex Medical Group", "department_name": "Orthopedics", "phone_number": "+1-555-3005", "email": "ortho@apex.com", "location": "Downtown Plaza, Suite 401"},
-    {"tenant_name": "Apex Medical Group", "department_name": "Pediatrics", "phone_number": "+1-555-3006", "email": "pediatrics@apex.com", "location": "Downtown Plaza, Level 1, Wing B"},
-    {"tenant_name": "Northgate Wellness", "department_name": "General Practice", "phone_number": "+1-555-4001", "email": "wellness@northgate.com", "location": "Northgate Center"},
-    {"tenant_name": "Sunrise Family Practice", "department_name": "General Practice", "phone_number": "+1-555-5001", "email": "family@sunrisefp.com", "location": "Sunrise Mall"},
-    {"tenant_name": "MetroCare Associates", "department_name": "General Practice", "phone_number": "+1-555-6001", "email": "metro@metrocare.com", "location": "Metro Tower"},
-    {"tenant_name": "MetroCare Associates", "department_name": "Orthopedics", "phone_number": "+1-555-6002", "email": "ortho@metrocare.com", "location": "Metro Tower, Level 2"},
+    {
+        "tenant_name": "Bluestone Clinic",
+        "department_name": "General Practice",
+        "phone_number": "+1-555-1001",
+        "email": "gp@bluestone.com",
+        "location": "Building A, Floor 1",
+    },
+    {
+        "tenant_name": "Bluestone Clinic",
+        "department_name": "Cardiology",
+        "phone_number": "+1-555-1002",
+        "email": "cardio@bluestone.com",
+        "location": "Building A, Floor 2",
+    },
+    {
+        "tenant_name": "Bluestone Clinic",
+        "department_name": "Pediatrics",
+        "phone_number": "+1-555-1003",
+        "email": "pediatrics@bluestone.com",
+        "location": "Building B, Floor 1",
+    },
+    {
+        "tenant_name": "Riverside Health Partners",
+        "department_name": "General Practice",
+        "phone_number": "+1-555-2001",
+        "email": "info@riverside.com",
+        "location": "Main Street 100",
+    },
+    {
+        "tenant_name": "Riverside Health Partners",
+        "department_name": "Pediatrics",
+        "phone_number": "+1-555-2002",
+        "email": "pediatrics@riverside.com",
+        "location": "Main Street 100, Wing B",
+    },
+    {
+        "tenant_name": "Apex Medical Group",
+        "department_name": "General Practice",
+        "phone_number": "+1-555-3001",
+        "email": "gp@apex.com",
+        "location": "Downtown Plaza, Level 1",
+    },
+    {
+        "tenant_name": "Apex Medical Group",
+        "department_name": "Cardiology",
+        "phone_number": "+1-555-3002",
+        "email": "cardio@apex.com",
+        "location": "Downtown Plaza, Level 2",
+    },
+    {
+        "tenant_name": "Apex Medical Group",
+        "department_name": "Dermatology",
+        "phone_number": "+1-555-3003",
+        "email": "derma@apex.com",
+        "location": "Downtown Plaza, Suite 301",
+    },
+    {
+        "tenant_name": "Apex Medical Group",
+        "department_name": "Neurology",
+        "phone_number": "+1-555-3004",
+        "email": "neuro@apex.com",
+        "location": "Downtown Plaza, Level 3",
+    },
+    {
+        "tenant_name": "Apex Medical Group",
+        "department_name": "Orthopedics",
+        "phone_number": "+1-555-3005",
+        "email": "ortho@apex.com",
+        "location": "Downtown Plaza, Suite 401",
+    },
+    {
+        "tenant_name": "Apex Medical Group",
+        "department_name": "Pediatrics",
+        "phone_number": "+1-555-3006",
+        "email": "pediatrics@apex.com",
+        "location": "Downtown Plaza, Level 1, Wing B",
+    },
+    {
+        "tenant_name": "Northgate Wellness",
+        "department_name": "General Practice",
+        "phone_number": "+1-555-4001",
+        "email": "wellness@northgate.com",
+        "location": "Northgate Center",
+    },
+    {
+        "tenant_name": "Sunrise Family Practice",
+        "department_name": "General Practice",
+        "phone_number": "+1-555-5001",
+        "email": "family@sunrisefp.com",
+        "location": "Sunrise Mall",
+    },
+    {
+        "tenant_name": "MetroCare Associates",
+        "department_name": "General Practice",
+        "phone_number": "+1-555-6001",
+        "email": "metro@metrocare.com",
+        "location": "Metro Tower",
+    },
+    {
+        "tenant_name": "MetroCare Associates",
+        "department_name": "Orthopedics",
+        "phone_number": "+1-555-6002",
+        "email": "ortho@metrocare.com",
+        "location": "Metro Tower, Level 2",
+    },
 ]
 
 # user_email, tenant_name, specialization, licence_number, education, working_hours (optional)
@@ -775,14 +886,54 @@ _WEEKDAY_HOURS = {
 }
 
 SEED_DOCTORS = [
-    {"user_email": "doctor.one@seed.com", "tenant_name": "Bluestone Clinic", "specialization": "General Practice", "licence_number": "MD-BLU-001"},
-    {"user_email": "doctor.two@seed.com", "tenant_name": "Bluestone Clinic", "specialization": "Cardiology", "licence_number": "MD-BLU-002"},
-    {"user_email": "doctor.seven@seed.com", "tenant_name": "Bluestone Clinic", "specialization": "General Practice", "licence_number": "MD-BLU-003"},
-    {"user_email": "doctor.eight@seed.com", "tenant_name": "Bluestone Clinic", "specialization": "Cardiology", "licence_number": "MD-BLU-004"},
-    {"user_email": "doctor.nine@seed.com", "tenant_name": "Bluestone Clinic", "specialization": "Pediatrics", "licence_number": "MD-BLU-005"},
-    {"user_email": "doctor.ten@seed.com", "tenant_name": "Bluestone Clinic", "specialization": "Dermatology", "licence_number": "MD-BLU-006"},
-    {"user_email": "doctor.three@seed.com", "tenant_name": "Riverside Health Partners", "specialization": "General Practice", "licence_number": "MD-RIV-001"},
-    {"user_email": "doctor.four@seed.com", "tenant_name": "Riverside Health Partners", "specialization": "Pediatrics", "licence_number": "MD-RIV-002"},
+    {
+        "user_email": "doctor.one@seed.com",
+        "tenant_name": "Bluestone Clinic",
+        "specialization": "General Practice",
+        "licence_number": "MD-BLU-001",
+    },
+    {
+        "user_email": "doctor.two@seed.com",
+        "tenant_name": "Bluestone Clinic",
+        "specialization": "Cardiology",
+        "licence_number": "MD-BLU-002",
+    },
+    {
+        "user_email": "doctor.seven@seed.com",
+        "tenant_name": "Bluestone Clinic",
+        "specialization": "General Practice",
+        "licence_number": "MD-BLU-003",
+    },
+    {
+        "user_email": "doctor.eight@seed.com",
+        "tenant_name": "Bluestone Clinic",
+        "specialization": "Cardiology",
+        "licence_number": "MD-BLU-004",
+    },
+    {
+        "user_email": "doctor.nine@seed.com",
+        "tenant_name": "Bluestone Clinic",
+        "specialization": "Pediatrics",
+        "licence_number": "MD-BLU-005",
+    },
+    {
+        "user_email": "doctor.ten@seed.com",
+        "tenant_name": "Bluestone Clinic",
+        "specialization": "Dermatology",
+        "licence_number": "MD-BLU-006",
+    },
+    {
+        "user_email": "doctor.three@seed.com",
+        "tenant_name": "Riverside Health Partners",
+        "specialization": "General Practice",
+        "licence_number": "MD-RIV-001",
+    },
+    {
+        "user_email": "doctor.four@seed.com",
+        "tenant_name": "Riverside Health Partners",
+        "specialization": "Pediatrics",
+        "licence_number": "MD-RIV-002",
+    },
     # Apex Medical Group - full example
     {
         "user_email": "doctor.five@seed.com",
@@ -814,14 +965,33 @@ SEED_DOCTORS = [
 
 # tenant_name, user_email (doctor), status, salary, terms_content, start_date, end_date
 SEED_CONTRACTS = [
-    {"tenant_name": "Bluestone Clinic", "user_email": "doctor.one@seed.com", "status": ContractStatus.ACTIVE, "salary": 85000,
-     "terms_content": "<h2>Employment Contract</h2><p>This agreement is between Bluestone Clinic and Dr. One.</p><p><strong>Salary:</strong> $85,000/year</p><p><strong>Term:</strong> 12 months from start date.</p>",
-     "start_date": None, "end_date": None},
-    {"tenant_name": "Bluestone Clinic", "user_email": "doctor.two@seed.com", "status": ContractStatus.ACTIVE, "salary": 95000,
-     "terms_content": "<h2>Cardiology Specialist Contract</h2><p>Employment terms for Cardiology department.</p><p><strong>Salary:</strong> $95,000/year</p>",
-     "start_date": None, "end_date": None},
-    {"tenant_name": "Bluestone Clinic", "user_email": "doctor.one@seed.com", "status": ContractStatus.DRAFT, "salary": 90000,
-     "terms_content": "<p>Proposed contract renewal - pending review.</p>", "start_date": None, "end_date": None},
+    {
+        "tenant_name": "Bluestone Clinic",
+        "user_email": "doctor.one@seed.com",
+        "status": ContractStatus.ACTIVE,
+        "salary": 85000,
+        "terms_content": "<h2>Employment Contract</h2><p>This agreement is between Bluestone Clinic and Dr. One.</p><p><strong>Salary:</strong> $85,000/year</p><p><strong>Term:</strong> 12 months from start date.</p>",
+        "start_date": None,
+        "end_date": None,
+    },
+    {
+        "tenant_name": "Bluestone Clinic",
+        "user_email": "doctor.two@seed.com",
+        "status": ContractStatus.ACTIVE,
+        "salary": 95000,
+        "terms_content": "<h2>Cardiology Specialist Contract</h2><p>Employment terms for Cardiology department.</p><p><strong>Salary:</strong> $95,000/year</p>",
+        "start_date": None,
+        "end_date": None,
+    },
+    {
+        "tenant_name": "Bluestone Clinic",
+        "user_email": "doctor.one@seed.com",
+        "status": ContractStatus.DRAFT,
+        "salary": 90000,
+        "terms_content": "<p>Proposed contract renewal - pending review.</p>",
+        "start_date": None,
+        "end_date": None,
+    },
 ]
 
 # tenant_name, department_name, name, price, description
@@ -1150,9 +1320,7 @@ def seed_tenants(session):
 def seed_tenant_details(session, tenants_by_name):
     from app.models import TenantDetails
 
-    existing = {
-        detail.tenant_id: detail for detail in session.query(TenantDetails).all()
-    }
+    existing = {detail.tenant_id: detail for detail in session.query(TenantDetails).all()}
     tenants_by_name = {tenant.name: tenant for tenant in session.query(Tenant).all()}
 
     for payload in SEED_TENANT_DETAILS:
@@ -1185,53 +1353,59 @@ def seed_subscription_plans(session):
 def seed_tenant_subscriptions(session, tenants_by_name):
     from app.models.tenant_subscription import SubscriptionStatus
     from datetime import timedelta
-    
+
     # Get all subscription plans
     free_plan = session.query(SubscriptionPlan).filter(SubscriptionPlan.name == "FREE").first()
-    small_clinic_plan = session.query(SubscriptionPlan).filter(SubscriptionPlan.name == "Small Clinic").first()
-    medium_clinic_plan = session.query(SubscriptionPlan).filter(SubscriptionPlan.name == "Medium Clinic").first()
-    hospital_plan = session.query(SubscriptionPlan).filter(SubscriptionPlan.name == "Hospital").first()
-    
+    small_clinic_plan = (
+        session.query(SubscriptionPlan).filter(SubscriptionPlan.name == "Small Clinic").first()
+    )
+    medium_clinic_plan = (
+        session.query(SubscriptionPlan).filter(SubscriptionPlan.name == "Medium Clinic").first()
+    )
+    hospital_plan = (
+        session.query(SubscriptionPlan).filter(SubscriptionPlan.name == "Hospital").first()
+    )
+
     if not free_plan:
         raise Exception("FREE subscription plan not found")
-    
+
     existing_subscriptions = {
-        (sub.tenant_id, sub.subscription_plan_id): sub 
+        (sub.tenant_id, sub.subscription_plan_id): sub
         for sub in session.query(TenantSubscription).all()
     }
-    
+
     # Map specific tenants to their subscription plans (non-FREE)
     specific_subscriptions = {
         "Bluestone Clinic": medium_clinic_plan,  # Tenant manager's clinic gets Medium plan
         "Riverside Health Partners": small_clinic_plan,  # Small Clinic plan
         "Apex Medical Group": hospital_plan,  # Hospital plan
     }
-    
+
     # Create subscriptions for all approved tenants
     for tenant_name, tenant in tenants_by_name.items():
         if tenant.status == TenantStatus.approved:
             # Check if this tenant has a specific plan assigned
             specific_plan = specific_subscriptions.get(tenant_name)
             plan_to_use = specific_plan if specific_plan else free_plan
-            
+
             key = (tenant.id, plan_to_use.id)
-            
+
             # Skip if subscription already exists
             if key in existing_subscriptions:
                 continue
-            
+
             # Create subscription
             activated_at = datetime.now(timezone.utc)
             expires_at = activated_at + timedelta(days=plan_to_use.duration)
-            
+
             subscription = TenantSubscription(
                 tenant_id=tenant.id,
                 subscription_plan_id=plan_to_use.id,
                 activated_at=activated_at,
                 expires_at=expires_at,
-                status=SubscriptionStatus.ACTIVE
+                status=SubscriptionStatus.ACTIVE,
             )
-            
+
             session.add(subscription)
 
 
@@ -1258,8 +1432,7 @@ def seed_users(session, roles_by_name):
 def seed_patients(session, users_by_email):
     tenants_by_name = {tenant.name: tenant for tenant in session.query(Tenant).all()}
     existing = {
-        (patient.tenant_id, patient.user_id): patient
-        for patient in session.query(Patient).all()
+        (patient.tenant_id, patient.user_id): patient for patient in session.query(Patient).all()
     }
 
     for payload in SEED_PATIENTS:
@@ -1290,10 +1463,7 @@ def seed_patients(session, users_by_email):
 
 def seed_user_tenant_plans(session):
     tenants_by_name = {tenant.name: tenant for tenant in session.query(Tenant).all()}
-    existing = {
-        (plan.tenant_id, plan.name): plan
-        for plan in session.query(UserTenantPlan).all()
-    }
+    existing = {(plan.tenant_id, plan.name): plan for plan in session.query(UserTenantPlan).all()}
 
     for payload in SEED_USER_TENANT_PLANS:
         tenant = tenants_by_name.get(payload["tenant_name"])
@@ -1329,12 +1499,9 @@ def seed_user_tenant_plans(session):
 def seed_enrollments(session, users_by_email):
     tenants_by_name = {tenant.name: tenant for tenant in session.query(Tenant).all()}
     plans_by_tenant_and_name = {
-        (plan.tenant_id, plan.name): plan
-        for plan in session.query(UserTenantPlan).all()
+        (plan.tenant_id, plan.name): plan for plan in session.query(UserTenantPlan).all()
     }
-    patients_by_tenant_user = {
-        (p.tenant_id, p.user_id): p for p in session.query(Patient).all()
-    }
+    patients_by_tenant_user = {(p.tenant_id, p.user_id): p for p in session.query(Patient).all()}
     existing = {
         (enrollment.tenant_id, enrollment.patient_user_id): enrollment
         for enrollment in session.query(Enrollment).all()
@@ -1346,14 +1513,10 @@ def seed_enrollments(session, users_by_email):
         patient_user = users_by_email.get(payload["patient_user_email"])
         created_by = users_by_email.get(payload["created_by_email"])
         if tenant is None:
-            print(
-                f"  [seed_enrollments] Skip: tenant '{payload['tenant_name']}' not found"
-            )
+            print(f"  [seed_enrollments] Skip: tenant '{payload['tenant_name']}' not found")
             continue
         if patient_user is None:
-            print(
-                f"  [seed_enrollments] Skip: user '{payload['patient_user_email']}' not found"
-            )
+            print(f"  [seed_enrollments] Skip: user '{payload['patient_user_email']}' not found")
             continue
         if created_by is None:
             print(
@@ -1647,10 +1810,14 @@ def seed_contracts(session, users_by_email, tenants_by_name):
         user = users_by_email.get(payload["user_email"])
         if not tenant or not user:
             continue
-        doctor = session.query(Doctor).filter(
-            Doctor.user_id == user.id,
-            Doctor.tenant_id == tenant.id,
-        ).first()
+        doctor = (
+            session.query(Doctor)
+            .filter(
+                Doctor.user_id == user.id,
+                Doctor.tenant_id == tenant.id,
+            )
+            .first()
+        )
         if not doctor:
             continue
         start = payload.get("start_date") or (now - timedelta(days=30))
@@ -1662,7 +1829,11 @@ def seed_contracts(session, users_by_email, tenants_by_name):
                 doctor_user_id=doctor.user_id,
                 status=payload["status"],
                 salary=Decimal(str(payload["salary"])),
-                terms_content=sanitize_html(payload.get("terms_content")) if payload.get("terms_content") else None,
+                terms_content=(
+                    sanitize_html(payload.get("terms_content"))
+                    if payload.get("terms_content")
+                    else None
+                ),
                 start_date=start,
                 end_date=end,
                 activated_at=activated,
@@ -1712,11 +1883,7 @@ def seed_enrollment(session):
         if tenant is None:
             continue
 
-        plan = (
-            session.query(UserTenantPlan)
-            .filter_by(tenant_id=tenant.id, name="FREE")
-            .first()
-        )
+        plan = session.query(UserTenantPlan).filter_by(tenant_id=tenant.id, name="FREE").first()
         if plan is None:
             continue
 
@@ -1809,9 +1976,7 @@ def run_seed() -> None:
         enrollment_count = session.query(Enrollment).count()
         history_count = session.query(EnrollmentStatusHistory).count()
         print("Seed completed.")
-        print(
-            f"  Enrollments: {enrollment_count} | Enrollment status history: {history_count}"
-        )
+        print(f"  Enrollments: {enrollment_count} | Enrollment status history: {history_count}")
     except Exception:
         session.rollback()
         raise

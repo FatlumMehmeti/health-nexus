@@ -21,6 +21,7 @@ class UserCreate(BaseModel):
     address: Optional[str] = None
     role: str
 
+
 class UserUpdate(BaseModel):
     first_name: Optional[str] = None
     last_name: Optional[str] = None

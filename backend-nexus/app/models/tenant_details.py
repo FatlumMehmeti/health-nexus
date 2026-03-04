@@ -10,9 +10,13 @@ class TenantDetails(Base, TimestampMixin):
 
     # Branding fields
     logo: Mapped[str] = mapped_column(String(255), nullable=True)
-    image: Mapped[str] = mapped_column(String(255), nullable=True)  # hero/cover image for public listing
+    image: Mapped[str] = mapped_column(
+        String(255), nullable=True
+    )  # hero/cover image for public listing
     moto: Mapped[str] = mapped_column(String(255), nullable=True)
-    brand_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("brand_palettes.id"), nullable=True)
+    brand_id: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("brand_palettes.id"), nullable=True
+    )
 
     # Content fields
     title: Mapped[str] = mapped_column(String(255), nullable=True)

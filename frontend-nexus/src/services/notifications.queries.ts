@@ -1,13 +1,20 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query';
 import {
   getMyNotifications,
   getUnreadCount,
-  markNotificationRead,
   markAllNotificationsRead,
-} from "./notifications.service";
+  markNotificationRead,
+} from './notifications.service';
 
-const NOTIFICATIONS_KEY = ["notifications"] as const;
-const UNREAD_COUNT_KEY = ["notifications", "unread-count"] as const;
+const NOTIFICATIONS_KEY = ['notifications'] as const;
+const UNREAD_COUNT_KEY = [
+  'notifications',
+  'unread-count',
+] as const;
 
 export function useNotifications(unreadOnly = false) {
   return useQuery({
@@ -29,9 +36,15 @@ export function useUnreadCount() {
   });
 }
 
-export function invalidateNotifications(qc: ReturnType<typeof useQueryClient>) {
-  qc.invalidateQueries({ queryKey: NOTIFICATIONS_KEY });
-  qc.invalidateQueries({ queryKey: UNREAD_COUNT_KEY });
+export function invalidateNotifications(
+  qc: ReturnType<typeof useQueryClient>
+) {
+  qc.invalidateQueries({
+    queryKey: NOTIFICATIONS_KEY,
+  });
+  qc.invalidateQueries({
+    queryKey: UNREAD_COUNT_KEY,
+  });
 }
 
 export function useMarkRead() {

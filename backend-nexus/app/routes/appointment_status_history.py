@@ -7,7 +7,6 @@ from app.models.appointment import Appointment
 from app.models.appointment_status_history import AppointmentStatusHistory
 from app.schemas.appointment_status_history import AppointmentStatusHistoryRead
 
-
 router = APIRouter(prefix="/appointments", tags=["Appointment Status History"])
 
 

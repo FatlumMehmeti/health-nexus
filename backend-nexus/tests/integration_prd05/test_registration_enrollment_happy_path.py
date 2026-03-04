@@ -3,6 +3,7 @@ PRD-05 integration test: Registration and enrollment happy path.
 Register client under tenant A, create enrollment, retrieve it, transition PENDING -> ACTIVE,
 retrieve status; assert all 200/201 and tenant_id remains consistent.
 """
+
 import pytest
 
 from tests.integration_prd05.fixtures import (
@@ -40,13 +41,13 @@ def test_happy_path_enrollment_lifecycle(
         db_session=db_session,
         role=role_patient,
     )
-    assert int(reg.get("tenant_id")) == int(tenant_id), "Registration response tenant_id must match tenant A"
+    assert int(reg.get("tenant_id")) == int(
+        tenant_id
+    ), "Registration response tenant_id must match tenant A"
     user_id = reg["user_id"]
 
     # 2. Login and create enrollment (201)
-    client_headers = login_client(
-        prd05_client, "happy-path-client@prd05.example.com", "PassPRD05!"
-    )
+    client_headers = login_client(prd05_client, "happy-path-client@prd05.example.com", "PassPRD05!")
     enrollment_id = create_enrollment_via_api(
         prd05_client,
         tenant_id,
@@ -56,9 +57,7 @@ def test_happy_path_enrollment_lifecycle(
     )
 
     # 3. Retrieve enrollment (200)
-    get_resp = get_enrollment_via_api(
-        prd05_client, tenant_id, enrollment_id, client_headers
-    )
+    get_resp = get_enrollment_via_api(prd05_client, tenant_id, enrollment_id, client_headers)
     assert get_resp.status_code == 200, (get_resp.status_code, get_resp.text)
     enrollment = get_resp.json()
     # API returns EnrollmentStatusRead (id, status, activated_at, ...); no tenant_id in body.
@@ -69,7 +68,9 @@ def test_happy_path_enrollment_lifecycle(
     )
     assert list_resp.status_code == 200, (list_resp.status_code, list_resp.text)
     listed_ids = [e["id"] for e in list_resp.json()]
-    assert enrollment_id in listed_ids, "Enrollment must appear under tenant A list (tenant consistency)"
+    assert (
+        enrollment_id in listed_ids
+    ), "Enrollment must appear under tenant A list (tenant consistency)"
     assert enrollment.get("status") == "PENDING", "New enrollment should be PENDING"
 
     # 4. Valid state transition PENDING -> ACTIVE (200) — requires tenant manager
@@ -98,13 +99,13 @@ def test_happy_path_enrollment_lifecycle(
     assert status_body.get("status") == "ACTIVE", "Retrieved status must be ACTIVE"
 
     # Final consistency: get enrollment again; prove tenant by listing under tenant_a
-    final_get = get_enrollment_via_api(
-        prd05_client, tenant_id, enrollment_id, client_headers
-    )
+    final_get = get_enrollment_via_api(prd05_client, tenant_id, enrollment_id, client_headers)
     assert final_get.status_code == 200, (final_get.status_code, final_get.text)
     final_list = prd05_client.get(
         f"/api/tenants/{tenant_id}/enrollments",
         headers=client_headers,
     )
     assert final_list.status_code == 200, (final_list.status_code, final_list.text)
-    assert enrollment_id in [e["id"] for e in final_list.json()], "Final enrollment must belong to tenant A"
+    assert enrollment_id in [
+        e["id"] for e in final_list.json()
+    ], "Final enrollment must belong to tenant A"

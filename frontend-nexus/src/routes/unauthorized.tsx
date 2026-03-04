@@ -1,21 +1,26 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { Button } from "@/components/ui/button";
+import { Button } from '@/components/ui/button';
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
-import { useAuthStore } from "@/stores/auth.store";
+} from '@/components/ui/card';
+import { useAuthStore } from '@/stores/auth.store';
+import {
+  createFileRoute,
+  Link,
+} from '@tanstack/react-router';
 
 /** Dedicated 403 screen for users without required permissions. Styled consistently with login (Card, typography). */
-export const Route = createFileRoute("/unauthorized")({
+export const Route = createFileRoute('/unauthorized')({
   component: UnauthorizedPage,
 });
 
 function UnauthorizedPage() {
-  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const isAuthenticated = useAuthStore(
+    (state) => state.isAuthenticated
+  );
 
   return (
     <div
@@ -31,17 +36,27 @@ function UnauthorizedPage() {
             You do not have access to this area
           </CardTitle>
           <CardDescription className="mx-auto max-w-md">
-            Your current role does not include the permissions required to view
-            this page. If you believe this is an error, please contact an
+            Your current role does not include the
+            permissions required to view this page. If you
+            believe this is an error, please contact an
             administrator.
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-wrap justify-center gap-3">
-          <Button variant="outline" onClick={() => window.history.back()}>
+          <Button
+            variant="outline"
+            onClick={() => window.history.back()}
+          >
             Go back
           </Button>
           {!isAuthenticated && (
-            <Link to="/login" search={{ reason: undefined, redirect: undefined }}>
+            <Link
+              to="/login"
+              search={{
+                reason: undefined,
+                redirect: undefined,
+              }}
+            >
               <Button>Go to login</Button>
             </Link>
           )}

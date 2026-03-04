@@ -7,6 +7,7 @@ from typing import Optional
 
 class TenantPublicCard(BaseModel):
     """Minimal tenant info for public listing (active tenants only)."""
+
     id: int
     slug: Optional[str] = None
     name: str
@@ -106,6 +107,7 @@ class TenantDetailsLandingRead(BaseModel):
 
 class PlanLandingItem(BaseModel):
     """Active plan shown on the public tenant landing page."""
+
     id: int
     name: str
     description: Optional[str] = None

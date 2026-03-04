@@ -35,9 +35,7 @@ class Report(Base):
 
     medicine: Mapped[str | None] = mapped_column(Text, nullable=True)
 
-    doctor_user_id: Mapped[int] = mapped_column(
-        ForeignKey("doctors.user_id"), nullable=False
-    )
+    doctor_user_id: Mapped[int] = mapped_column(ForeignKey("doctors.user_id"), nullable=False)
 
     patient_user_id: Mapped[int] = mapped_column(nullable=False)
 

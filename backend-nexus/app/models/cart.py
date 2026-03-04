@@ -24,19 +24,12 @@ class Cart(Base, TimestampMixin):
 
     id: Mapped[int] = mapped_column(primary_key=True)
 
-    patient_user_id: Mapped[int] = mapped_column(
-        nullable=False
-    )
+    patient_user_id: Mapped[int] = mapped_column(nullable=False)
 
-    tenant_id: Mapped[int] = mapped_column(
-        ForeignKey("tenants.id"),
-        nullable=False
-    )
+    tenant_id: Mapped[int] = mapped_column(ForeignKey("tenants.id"), nullable=False)
 
     status: Mapped[CartStatus] = mapped_column(
-        Enum(CartStatus, name="cart_status"),
-        default=CartStatus.ACTIVE,
-        nullable=False
+        Enum(CartStatus, name="cart_status"), default=CartStatus.ACTIVE, nullable=False
     )
 
     # Relationships

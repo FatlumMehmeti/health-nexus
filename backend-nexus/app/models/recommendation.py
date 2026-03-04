@@ -6,9 +6,7 @@ from .base import Base
 class Recommendation(Base):
     __tablename__ = "recommendations"
 
-    __table_args__ = (
-        UniqueConstraint("service_id", "report_id", name="unique_service_report"),
-    )
+    __table_args__ = (UniqueConstraint("service_id", "report_id", name="unique_service_report"),)
 
     id = Column(Integer, primary_key=True, index=True)
 

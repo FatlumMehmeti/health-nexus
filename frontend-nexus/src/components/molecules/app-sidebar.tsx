@@ -1,28 +1,22 @@
-import * as React from 'react';
 import {
+  IconBuildingStore,
+  IconCalendarCheck,
   IconDashboard,
   IconDatabase,
   IconDatabaseExport,
   IconFileDescription,
   IconFolder,
+  IconHistory,
   IconInnerShadowTop,
   IconKey,
   IconReport,
-  IconBuildingStore,
-  IconHistory,
-  IconUserCircle,
-  IconCalendarCheck,
-  IconSearch,
   IconSettings,
   IconStethoscope,
+  IconUserCircle,
   type Icon,
-  IconUser,
 } from '@tabler/icons-react';
+import * as React from 'react';
 
-import { NavMain } from './nav-main';
-import { NavUser } from './nav-user';
-import { NotificationBell } from '@/components/NotificationBell';
-import { Link } from '@tanstack/react-router';
 import {
   Sidebar,
   SidebarContent,
@@ -32,10 +26,12 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from '@/components/ui/sidebar';
-import { useAuthStore } from '@/stores/auth.store';
 import { can, type UserWithRole } from '@/lib/rbac';
 import type { RouteKey } from '@/lib/rbacMatrix';
-import { icons } from 'lucide-react';
+import { useAuthStore } from '@/stores/auth.store';
+import { Link } from '@tanstack/react-router';
+import { NavMain } from './nav-main';
+import { NavUser } from './nav-user';
 
 /** Nav item with optional routeKey for RBAC; items without routeKey are shown to all authenticated users. */
 const navMainAll: Array<{
@@ -163,12 +159,15 @@ const clientsDocuments = [
   },
 ] as const;
 
-export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+export function AppSidebar({
+  ...props
+}: React.ComponentProps<typeof Sidebar>) {
   const { user, role } = useAuthStore();
   const userWithRole: UserWithRole = { role };
   const navMain = React.useMemo(() => {
     const baseItems = navMainAll.filter(
-      (item) => !item.routeKey || can(userWithRole, item.routeKey)
+      (item) =>
+        !item.routeKey || can(userWithRole, item.routeKey)
     );
     if (role === 'DOCTOR' && user?.id) {
       baseItems.push({
@@ -180,8 +179,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     return baseItems;
   }, [role, user?.id, userWithRole]);
   const documentItems = React.useMemo(() => {
-    if (role === 'SUPER_ADMIN') return [...superAdminDocuments];
-    if (role === 'TENANT_MANAGER') return [...tenantManagerDocuments];
+    if (role === 'SUPER_ADMIN')
+      return [...superAdminDocuments];
+    if (role === 'TENANT_MANAGER')
+      return [...tenantManagerDocuments];
     if (role === 'CLIENT') return [...clientsDocuments];
     return [];
   }, [role]);
@@ -207,10 +208,15 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <SidebarMenu>
           <SidebarMenuItem>
             <div className="flex items-center justify-between w-full">
-              <SidebarMenuButton asChild className="data-[slot=sidebar-menu-button]:p-1.5!">
+              <SidebarMenuButton
+                asChild
+                className="data-[slot=sidebar-menu-button]:p-1.5!"
+              >
                 <Link to="/">
                   <IconInnerShadowTop className="size-5!" />
-                  <span className="text-base font-semibold">Health Nexus</span>
+                  <span className="text-base font-semibold">
+                    Health Nexus
+                  </span>
                 </Link>
               </SidebarMenuButton>
             </div>
@@ -219,7 +225,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarHeader>
       <SidebarContent>
         <NavMain items={navMain} />
-        {documentItems.length > 0 ? <NavMain items={documentItems} label={documentsLabel} /> : null}
+        {documentItems.length > 0 ? (
+          <NavMain
+            items={documentItems}
+            label={documentsLabel}
+          />
+        ) : null}
       </SidebarContent>
       <SidebarFooter>
         <NavUser user={sidebarUser} />

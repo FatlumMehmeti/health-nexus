@@ -6,11 +6,7 @@ from app.models.tenant_audit_log import TenantAuditLog
 from app.schemas.tenant_audit_log import TenantAuditLogRead, AuditLogListResponse
 from app.auth.auth_utils import get_current_user
 
-
-router = APIRouter(
-    prefix="/audit-logs",
-    tags=["Audit Logs"]
-)
+router = APIRouter(prefix="/audit-logs", tags=["Audit Logs"])
 
 
 def get_db():
@@ -23,10 +19,7 @@ def get_db():
 
 def verify_super_admin(current_user: dict):
     if current_user.get("role") != "SUPER_ADMIN":
-        raise HTTPException(
-            status_code=403,
-            detail="Only SUPER_ADMIN can access all audit logs"
-        )
+        raise HTTPException(status_code=403, detail="Only SUPER_ADMIN can access all audit logs")
 
 
 def verify_audit_access(current_user: dict, tenant_id: int):
@@ -38,8 +31,7 @@ def verify_audit_access(current_user: dict, tenant_id: int):
 
     if role == "TENANT_MANAGER" and user_tenant_id != tenant_id:
         raise HTTPException(
-            status_code=403,
-            detail="Tenant managers can only access their own tenant logs"
+            status_code=403, detail="Tenant managers can only access their own tenant logs"
         )
 
 
@@ -53,10 +45,7 @@ def get_all_audit_logs(
 ):
     verify_super_admin(current_user)
 
-    query = (
-        db.query(TenantAuditLog)
-        .order_by(TenantAuditLog.created_at.desc())
-    )
+    query = db.query(TenantAuditLog).order_by(TenantAuditLog.created_at.desc())
 
     total = query.count()
 
@@ -70,6 +59,7 @@ def get_all_audit_logs(
         page=page,
         page_size=page_size,
     )
+
 
 # get tenant audit logs for specific tenant - accessible by SUPER_ADMIN and TENANT_MANAGER of that tenant
 @router.get("/{tenant_id}", response_model=AuditLogListResponse)

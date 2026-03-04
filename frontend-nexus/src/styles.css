@@ -1,16 +1,19 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 
 @plugin "tailwindcss-animate";
 
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-sans:
+    'Inter', ui-sans-serif, system-ui, sans-serif;
   /* Light theme – pure white / gray (no blue tint) */
   --background: oklch(0.99 0 0); /* almost pure white */
   --foreground: oklch(0.18 0 0); /* dark gray text */
   --primary: oklch(0.1 0 0); /* even darker gray */
-  --primary-foreground: oklch(0.99 0 0); /* white on primary */
+  --primary-foreground: oklch(
+    0.99 0 0
+  ); /* white on primary */
   --secondary: oklch(0.96 0 0);
   --secondary-foreground: oklch(0.26 0 0);
   --muted: oklch(0.95 0 0);
@@ -62,7 +65,9 @@
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
-  --color-destructive-foreground: var(--destructive-foreground);
+  --color-destructive-foreground: var(
+    --destructive-foreground
+  );
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
   --color-input: var(--input);
@@ -86,9 +91,13 @@
   --radius-lg: var(--radius);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent-foreground: var(
+    --sidebar-accent-foreground
+  );
   --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary-foreground: var(
+    --sidebar-primary-foreground
+  );
   --color-sidebar-primary: var(--sidebar-primary);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar: var(--sidebar);
@@ -113,13 +122,16 @@
   height: 0;
 }
 
-
 .dark {
   /* Dark theme – neutral black/gray palette */
   --background: oklch(0.14 0 0); /* near-black */
   --foreground: oklch(0.96 0 0); /* light gray text */
-  --primary: oklch(0.9 0 0); /* much lighter, closer to white for primary */
-  --primary-foreground: oklch(0.12 0 0); /* dark text on primary */
+  --primary: oklch(
+    0.9 0 0
+  ); /* much lighter, closer to white for primary */
+  --primary-foreground: oklch(
+    0.12 0 0
+  ); /* dark text on primary */
   --secondary: oklch(0.22 0 0);
   --secondary-foreground: oklch(0.94 0 0);
   --muted: oklch(0.22 0 0);

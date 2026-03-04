@@ -16,7 +16,9 @@ load_dotenv(dotenv_path=dotenv_path)
 DATABASE_URL = os.getenv("DATABASE_URL")
 
 if not DATABASE_URL:
-    raise RuntimeError("DATABASE_URL is required (e.g. postgresql+psycopg://user:pass@db:5432/name)")
+    raise RuntimeError(
+        "DATABASE_URL is required (e.g. postgresql+psycopg://user:pass@db:5432/name)"
+    )
 
 
 def get_storage_root() -> str:

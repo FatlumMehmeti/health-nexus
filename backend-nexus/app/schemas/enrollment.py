@@ -37,6 +37,7 @@ class EnrollmentRead(EnrollmentBase):
 
 class EnrollmentDetailRead(BaseModel):
     """Enriched enrollment view for the tenant manager dashboard."""
+
     id: int
     status: EnrollmentStatus
     patient_user_id: int
@@ -52,6 +53,7 @@ class EnrollmentDetailRead(BaseModel):
 
     class Config:
         from_attributes = True
+
 
 class EnrollmentCreateRequest(BaseModel):
     patient_user_id: int

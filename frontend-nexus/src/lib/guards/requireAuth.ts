@@ -5,18 +5,24 @@
  * - Authenticated but forbidden (RBAC) → { to: '/unauthorized' }.
  * - Otherwise → null (allow access).
  */
-import { redirect } from '@tanstack/react-router'
-import { useAuthStore } from '@/stores/auth.store'
-import { can, type UserWithRole } from '@/lib/rbac'
-import type { RouteKey } from '@/lib/rbacMatrix'
+import { can, type UserWithRole } from '@/lib/rbac';
+import type { RouteKey } from '@/lib/rbacMatrix';
+import { useAuthStore } from '@/stores/auth.store';
+import { redirect } from '@tanstack/react-router';
 
 export type RequireAuthOptions = {
-  routeKey?: RouteKey
-}
+  routeKey?: RouteKey;
+};
 
 export type ProtectedRedirect =
-  | { to: '/login'; search: { reason?: 'expired' | 'revoked'; redirect?: string } }
-  | { to: '/unauthorized' }
+  | {
+      to: '/login';
+      search: {
+        reason?: 'expired' | 'revoked';
+        redirect?: string;
+      };
+    }
+  | { to: '/unauthorized' };
 
 /**
  * Runs ensureAuth(), then returns redirect payload if user should be sent to login or unauthorized; otherwise null.
@@ -26,36 +32,50 @@ export async function getProtectedRedirect(
   options?: RequireAuthOptions,
   currentPath?: string
 ): Promise<ProtectedRedirect | null> {
-  const { ensureAuth } = useAuthStore.getState()
-  await ensureAuth()
+  const { ensureAuth } = useAuthStore.getState();
+  await ensureAuth();
 
-  const state = useAuthStore.getState()
+  const state = useAuthStore.getState();
   if (!state.isAuthenticated) {
-    const search: { reason?: 'expired' | 'revoked'; redirect?: string } = {}
-    if (state.authErrorReason) search.reason = state.authErrorReason
+    const search: {
+      reason?: 'expired' | 'revoked';
+      redirect?: string;
+    } = {};
+    if (state.authErrorReason)
+      search.reason = state.authErrorReason;
     const rawPath =
       currentPath ??
-      (typeof window !== 'undefined' ? window.location.pathname : undefined)
+      (typeof window !== 'undefined'
+        ? window.location.pathname
+        : undefined);
     // Only use pathname for redirect; avoid long encoded search strings (tokens, codes, state).
     const path =
-      typeof rawPath === 'string' && rawPath.startsWith('/') && !rawPath.startsWith('//')
-        ? rawPath.split('?')[0]?.trim() ?? rawPath
-        : undefined
-    if (path && path !== '/login' && path.length <= 256) search.redirect = path
-    return { to: '/login', search }
+      typeof rawPath === 'string' &&
+      rawPath.startsWith('/') &&
+      !rawPath.startsWith('//')
+        ? (rawPath.split('?')[0]?.trim() ?? rawPath)
+        : undefined;
+    if (path && path !== '/login' && path.length <= 256)
+      search.redirect = path;
+    return { to: '/login', search };
   }
 
   if (options?.routeKey) {
-    const user: UserWithRole = { role: state.role }
-    if (!can(user, options.routeKey)) return { to: '/unauthorized' }
+    const user: UserWithRole = {
+      role: state.role,
+    };
+    if (!can(user, options.routeKey))
+      return { to: '/unauthorized' };
   }
-  return null
+  return null;
 }
 
 /** Returns a beforeLoad handler: throws redirect to /login or /unauthorized when access is denied. */
-export function requireAuth(options?: RequireAuthOptions): () => Promise<void> {
+export function requireAuth(
+  options?: RequireAuthOptions
+): () => Promise<void> {
   return async () => {
-    const result = await getProtectedRedirect(options)
-    if (result) throw redirect(result)
-  }
+    const result = await getProtectedRedirect(options);
+    if (result) throw redirect(result);
+  };
 }

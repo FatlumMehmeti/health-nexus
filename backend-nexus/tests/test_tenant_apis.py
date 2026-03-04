@@ -2,6 +2,7 @@
 Tests for tenant management APIs. Uses token-based auth (tenant_id from JWT).
 Requires: TENANT_MANAGER user linked to a tenant via TenantManager.
 """
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -105,7 +106,8 @@ def test_create_tenant_doctor(client, auth_headers):
     try:
         doctor_role = session.query(Role).filter(Role.name == "DOCTOR").first()
         new_doctor_user = User(
-            first_name="Test", last_name="Doctor",
+            first_name="Test",
+            last_name="Doctor",
             email="test.doctor@test.com",
             password=hash_password("pass"),
             role_id=doctor_role.id,
@@ -166,7 +168,8 @@ def test_delete_tenant_doctor(client, auth_headers):
         doctor_role = session.query(Role).filter(Role.name == "DOCTOR").first()
         bluestone = session.query(Tenant).filter(Tenant.name == "Bluestone Clinic").first()
         new_user = User(
-            first_name="Del", last_name="Doc",
+            first_name="Del",
+            last_name="Doc",
             email="del.doctor@test.com",
             password=hash_password("pass"),
             role_id=doctor_role.id,
@@ -209,6 +212,7 @@ def test_post_tenant_departments_bulk(client, auth_headers):
 
     from app.db import SessionLocal
     from app.models import Department
+
     session = SessionLocal()
     depts = session.query(Department).limit(2).all()
     session.close()

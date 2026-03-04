@@ -25,19 +25,12 @@ class Order(Base, TimestampMixin):
 
     id: Mapped[int] = mapped_column(primary_key=True)
 
-    patient_user_id: Mapped[int] = mapped_column(
-        nullable=False
-    )
+    patient_user_id: Mapped[int] = mapped_column(nullable=False)
 
-    tenant_id: Mapped[int] = mapped_column(
-        ForeignKey("tenants.id"),
-        nullable=False
-    )
+    tenant_id: Mapped[int] = mapped_column(ForeignKey("tenants.id"), nullable=False)
 
     status: Mapped[OrderStatus] = mapped_column(
-        Enum(OrderStatus, name="order_status"),
-        default=OrderStatus.PENDING,
-        nullable=False
+        Enum(OrderStatus, name="order_status"), default=OrderStatus.PENDING, nullable=False
     )
 
     subtotal: Mapped[float] = mapped_column(DECIMAL, default=0)
@@ -49,8 +42,4 @@ class Order(Base, TimestampMixin):
     patient = relationship("Patient", back_populates="orders", overlaps="tenant,orders")
     tenant = relationship("Tenant", back_populates="orders", overlaps="patient,orders")
 
-    items = relationship(
-        "OrderItem",
-        back_populates="order",
-        cascade="all, delete-orphan"
-    )
+    items = relationship("OrderItem", back_populates="order", cascade="all, delete-orphan")

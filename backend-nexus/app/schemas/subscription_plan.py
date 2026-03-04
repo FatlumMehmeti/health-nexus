@@ -31,6 +31,4 @@ class SubscriptionPlanUpdate(BaseModel):
 class SubscriptionPlanRead(SubscriptionPlanBase):
     id: int
 
-    model_config = {
-        "from_attributes": True
-    }
+    model_config = {"from_attributes": True}

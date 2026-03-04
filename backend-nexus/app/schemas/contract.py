@@ -30,7 +30,9 @@ class ContractBase(BaseModel):
 
 
 class ContractCreate(ContractBase):
-    doctor_user_id: Optional[int] = Field(None, description="Doctor user_id (required when creating contract for a doctor)")
+    doctor_user_id: Optional[int] = Field(
+        None, description="Doctor user_id (required when creating contract for a doctor)"
+    )
 
 
 class ContractRead(ContractBase):

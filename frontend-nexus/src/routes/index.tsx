@@ -1,14 +1,19 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { Button } from "@/components/ui/button";
-import { PublicAuthHeader } from "@/components/molecules/public-auth-header";
-import { useAuthStore } from "@/stores/auth.store";
+import { PublicAuthHeader } from '@/components/molecules/public-auth-header';
+import { Button } from '@/components/ui/button';
+import { useAuthStore } from '@/stores/auth.store';
+import {
+  createFileRoute,
+  Link,
+} from '@tanstack/react-router';
 
-export const Route = createFileRoute("/")({
+export const Route = createFileRoute('/')({
   component: LandingPage,
 });
 
 function LandingPage() {
-  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const isAuthenticated = useAuthStore(
+    (s) => s.isAuthenticated
+  );
 
   return (
     <div className="relative flex min-h-screen flex-col overflow-hidden">
@@ -17,7 +22,7 @@ function LandingPage() {
         <div className="absolute inset-0 bg-gradient-to-b from-primary/5 via-background to-background" />
         <div className="absolute inset-0 bg-[linear-gradient(to_right,oklch(0.9_0.01_265/0.5)_1px,transparent_1px),linear-gradient(to_bottom,oklch(0.9_0.01_265/0.5)_1px,transparent_1px)] bg-[size:4rem_4rem]" />
       </div>
-      
+
       <PublicAuthHeader
         className="z-50"
         containerClassName="h-16 px-6"
@@ -25,13 +30,19 @@ function LandingPage() {
         rightSlot={
           isAuthenticated ? (
             <Link to="/tenants">
-              <Button size="sm" className="font-medium shadow-sm">
+              <Button
+                size="sm"
+                className="font-medium shadow-sm"
+              >
                 Go to tenants
               </Button>
             </Link>
           ) : (
             <Link to="/register">
-              <Button size="sm" className="font-medium shadow-sm">
+              <Button
+                size="sm"
+                className="font-medium shadow-sm"
+              >
                 Join Platform
               </Button>
             </Link>
@@ -51,8 +62,9 @@ function LandingPage() {
             </span>
           </h1>
           <p className="mx-auto max-w-lg text-lg leading-relaxed text-muted-foreground">
-            A unified platform for healthcare teams to coordinate care, share
-            insights, and deliver better outcomes.
+            A unified platform for healthcare teams to
+            coordinate care, share insights, and deliver
+            better outcomes.
           </p>
           <div className="flex flex-wrap justify-center gap-3 pt-2">
             <Link to="/register">
@@ -67,7 +79,10 @@ function LandingPage() {
               <Button
                 size="lg"
                 className="min-w-[180px] shadow-md transition-all hover:shadow-lg bg-primary text-primary-foreground border-2 border-primary/70 ring-2 ring-primary/10 hover:bg-primary/90 hover:ring-primary/20 focus:ring-4 focus:ring-primary/30"
-                style={{ boxShadow: '0 4px 24px 0 rgba(80, 72, 229, 0.10)' }}
+                style={{
+                  boxShadow:
+                    '0 4px 24px 0 rgba(80, 72, 229, 0.10)',
+                }}
               >
                 Book Appointment
               </Button>

@@ -1,4 +1,4 @@
-# Thus file holds endpoints related to tenant management for the Super Admin dashboard 
+# Thus file holds endpoints related to tenant management for the Super Admin dashboard
 # (e.g: list tenants, view tenant details, approve/reject/suspend tenants etc).
 
 from fastapi import APIRouter, HTTPException, Depends, status, Query
@@ -15,6 +15,7 @@ from app.services.audit_service import create_audit_log
 from app.models.tenant_audit_log import TenantAuditEventType
 
 router = APIRouter(prefix="/tenants", tags=["Super Admin - Tenant Management"])
+
 
 # Endpoint to list tenants for the Super Admin dashboard.
 # Supports optional filtering by status and search (name).
@@ -37,10 +38,10 @@ def list_tenants(
         query = query.filter(Tenant.name.ilike(f"%{search}%"))
 
     query = query.order_by(Tenant.id.desc())
-    
+
     # Get total count before pagination
     total = query.count()
-    
+
     # Apply pagination
     offset = (page - 1) * page_size
     items = query.offset(offset).limit(page_size).all()
@@ -51,6 +52,7 @@ def list_tenants(
         page=page,
         page_size=page_size,
     )
+
 
 # Gets tenant details for the Super Admin dashboard tenant details page.
 @router.get("/{tenant_id}", response_model=TenantRead)
@@ -68,6 +70,7 @@ def get_tenant(
         )
 
     return tenant
+
 
 # Endpoint to update tenant status (approve/reject/suspend/activate) from the Super Admin dashboard tenant details/modal page.
 # It is through this endpoint that the Tenant lifecycle will be managed (e.g: pending -> approved, approved -> suspended etc).
@@ -88,8 +91,7 @@ def update_tenant_status(
 
     current_status = tenant.status
     new_status = status_update.status
-    
-    
+
     allowed_transitions = {
         TenantStatus.pending: [TenantStatus.approved, TenantStatus.rejected],
         TenantStatus.approved: [TenantStatus.suspended, TenantStatus.archived],
@@ -117,39 +119,41 @@ def update_tenant_status(
     if current_status == TenantStatus.pending and new_status == TenantStatus.approved:
         # Find the FREE membership plan
         free_plan = db.query(SubscriptionPlan).filter(SubscriptionPlan.name == "FREE").first()
-        
+
         if not free_plan:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="FREE plan not found in database",
             )
-        
+
         # Check if tenant already has a subscription
-        existing_subscription = db.query(TenantSubscription).filter(
-            TenantSubscription.tenant_id == tenant_id,
-            TenantSubscription.expires_at > datetime.now(timezone.utc),
-            TenantSubscription.activated_at.isnot(None),
-            TenantSubscription.status == SubscriptionStatus.ACTIVE
-        ).first()
-        
+        existing_subscription = (
+            db.query(TenantSubscription)
+            .filter(
+                TenantSubscription.tenant_id == tenant_id,
+                TenantSubscription.expires_at > datetime.now(timezone.utc),
+                TenantSubscription.activated_at.isnot(None),
+                TenantSubscription.status == SubscriptionStatus.ACTIVE,
+            )
+            .first()
+        )
+
         # If there is no subscription yet, create a new subscription with the FREE plan
         if not existing_subscription:
             activated_at = datetime.now(timezone.utc)
 
-            expires_at = activated_at + timedelta(
-                days=free_plan.duration
-            )
+            expires_at = activated_at + timedelta(days=free_plan.duration)
 
             new_subscription = TenantSubscription(
                 tenant_id=tenant_id,
                 subscription_plan_id=free_plan.id,
                 activated_at=activated_at,
                 expires_at=expires_at,
-                status=SubscriptionStatus.ACTIVE
+                status=SubscriptionStatus.ACTIVE,
             )
 
             db.add(new_subscription)
-            
+
     tenant.status = new_status
 
     # AUDIT LOG ENTRY

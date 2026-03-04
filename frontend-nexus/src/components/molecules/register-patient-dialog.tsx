@@ -7,11 +7,8 @@
  *  - open / onOpenChange : controlled dialog state
  *  - onRegistered : called on 201 success or 409 (already registered) so parent can disable button
  */
-import { useState } from 'react'
-import { useForm } from 'react-hook-form'
-import { z } from 'zod'
-import { zodResolver } from '@hookform/resolvers/zod'
-import { toast } from 'sonner'
+import { FormField } from '@/components/atoms/form-field';
+import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
@@ -19,19 +16,22 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog'
-import { Button } from '@/components/ui/button'
+} from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select'
-import { Label } from '@/components/ui/label'
-import { FormField } from '@/components/atoms/form-field'
-import { clientsService } from '@/services/clients.service'
-import { isApiError } from '@/lib/api-client'
+} from '@/components/ui/select';
+import { isApiError } from '@/lib/api-client';
+import { clientsService } from '@/services/clients.service';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { toast } from 'sonner';
+import { z } from 'zod';
 
 // ─── Schema ───────────────────────────────────────────────────────────────────
 
@@ -41,9 +41,9 @@ const patientSchema = z.object({
   birthdate: z.string().optional(),
   gender: z.string().optional(),
   blood_type: z.string().optional(),
-})
+});
 
-type PatientValues = z.infer<typeof patientSchema>
+type PatientValues = z.infer<typeof patientSchema>;
 
 // ─── Constants ─────────────────────────────────────────────────────────────────
 
@@ -51,19 +51,31 @@ const GENDER_OPTIONS = [
   { value: 'male', label: 'Male' },
   { value: 'female', label: 'Female' },
   { value: 'other', label: 'Other' },
-  { value: 'prefer_not_to_say', label: 'Prefer not to say' },
-]
+  {
+    value: 'prefer_not_to_say',
+    label: 'Prefer not to say',
+  },
+];
 
-const BLOOD_TYPE_OPTIONS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-']
+const BLOOD_TYPE_OPTIONS = [
+  'A+',
+  'A-',
+  'B+',
+  'B-',
+  'AB+',
+  'AB-',
+  'O+',
+  'O-',
+];
 
 // ─── Component ─────────────────────────────────────────────────────────────────
 
 export interface RegisterPatientDialogProps {
-  tenantId: number
-  userEmail: string
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  onRegistered: () => void
+  tenantId: number;
+  userEmail: string;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onRegistered: () => void;
 }
 
 export function RegisterPatientDialog({
@@ -73,7 +85,7 @@ export function RegisterPatientDialog({
   onOpenChange,
   onRegistered,
 }: RegisterPatientDialogProps) {
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const form = useForm<PatientValues>({
     resolver: zodResolver(patientSchema),
@@ -84,10 +96,10 @@ export function RegisterPatientDialog({
       gender: '',
       blood_type: '',
     },
-  })
+  });
 
   const onSubmit = async (values: PatientValues) => {
-    setIsSubmitting(true)
+    setIsSubmitting(true);
     try {
       await clientsService.registerAsPatient(tenantId, {
         email: userEmail,
@@ -96,40 +108,45 @@ export function RegisterPatientDialog({
         birthdate: values.birthdate || null,
         gender: values.gender || null,
         blood_type: values.blood_type || null,
-      })
+      });
       toast.success('Registered in this tenant', {
-        description: 'You are now a patient at this healthcare organization.',
-      })
-      form.reset()
-      onOpenChange(false)
-      onRegistered()
+        description:
+          'You are now a patient at this healthcare organization.',
+      });
+      form.reset();
+      onOpenChange(false);
+      onRegistered();
     } catch (err) {
       if (isApiError(err) && err.status === 409) {
         toast.error('Already registered in this tenant', {
-          description: 'Your account is already a patient here.',
-        })
-        onOpenChange(false)
-        onRegistered()
+          description:
+            'Your account is already a patient here.',
+        });
+        onOpenChange(false);
+        onRegistered();
       } else if (isApiError(err) && err.status === 403) {
         toast.error('Access denied', {
           description:
             'This tenant is not accepting registrations or your account is not permitted.',
-        })
+        });
         // keep dialog open
       } else if (isApiError(err) && err.status === 404) {
         toast.error('Tenant not found', {
-          description: 'This healthcare organization could not be found.',
-        })
+          description:
+            'This healthcare organization could not be found.',
+        });
         // keep dialog open
       } else {
         toast.error('Registration failed', {
-          description: isApiError(err) ? err.displayMessage : 'Please try again.',
-        })
+          description: isApiError(err)
+            ? err.displayMessage
+            : 'Please try again.',
+        });
       }
     } finally {
-      setIsSubmitting(false)
+      setIsSubmitting(false);
     }
-  }
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -138,8 +155,11 @@ export function RegisterPatientDialog({
           <DialogTitle>Register as a patient</DialogTitle>
           <DialogDescription>
             Registering as{' '}
-            <span className="font-medium text-foreground">{userEmail}</span>.
-            Fill in your details to become a patient at this organization.
+            <span className="font-medium text-foreground">
+              {userEmail}
+            </span>
+            . Fill in your details to become a patient at
+            this organization.
           </DialogDescription>
         </DialogHeader>
 
@@ -154,7 +174,9 @@ export function RegisterPatientDialog({
               id="patient-first-name"
               label="First name"
               autoComplete="given-name"
-              error={form.formState.errors.first_name?.message}
+              error={
+                form.formState.errors.first_name?.message
+              }
               required
               {...form.register('first_name')}
             />
@@ -162,7 +184,9 @@ export function RegisterPatientDialog({
               id="patient-last-name"
               label="Last name"
               autoComplete="family-name"
-              error={form.formState.errors.last_name?.message}
+              error={
+                form.formState.errors.last_name?.message
+              }
               required
               {...form.register('last_name')}
             />
@@ -183,7 +207,9 @@ export function RegisterPatientDialog({
             <Select
               value={form.watch('gender') ?? ''}
               onValueChange={(val) =>
-                form.setValue('gender', val, { shouldValidate: true })
+                form.setValue('gender', val, {
+                  shouldValidate: true,
+                })
               }
             >
               <SelectTrigger id="patient-gender">
@@ -191,7 +217,10 @@ export function RegisterPatientDialog({
               </SelectTrigger>
               <SelectContent>
                 {GENDER_OPTIONS.map((opt) => (
-                  <SelectItem key={opt.value} value={opt.value}>
+                  <SelectItem
+                    key={opt.value}
+                    value={opt.value}
+                  >
                     {opt.label}
                   </SelectItem>
                 ))}
@@ -201,11 +230,15 @@ export function RegisterPatientDialog({
 
           {/* Blood type */}
           <div className="space-y-2">
-            <Label htmlFor="patient-blood-type">Blood type</Label>
+            <Label htmlFor="patient-blood-type">
+              Blood type
+            </Label>
             <Select
               value={form.watch('blood_type') ?? ''}
               onValueChange={(val) =>
-                form.setValue('blood_type', val, { shouldValidate: true })
+                form.setValue('blood_type', val, {
+                  shouldValidate: true,
+                })
               }
             >
               <SelectTrigger id="patient-blood-type">
@@ -230,12 +263,16 @@ export function RegisterPatientDialog({
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={isSubmitting} loading={isSubmitting}>
+            <Button
+              type="submit"
+              disabled={isSubmitting}
+              loading={isSubmitting}
+            >
               Register
             </Button>
           </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

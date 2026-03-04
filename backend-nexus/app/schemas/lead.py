@@ -19,6 +19,7 @@ class LeadCreate(LeadBase):
 
 class PublicLeadCreate(BaseModel):
     """Schema for public consultation/contact form - no tenant_id required."""
+
     tenant_name: str
     contact_email: str
     description: str | None = None

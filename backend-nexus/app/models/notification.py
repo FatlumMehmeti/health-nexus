@@ -23,12 +23,8 @@ class Notification(TimestampMixin, Base):
     user_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("users.id"), nullable=False, index=True
     )
-    tenant_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("tenants.id"), nullable=False
-    )
-    type: Mapped[NotificationType] = mapped_column(
-        Enum(NotificationType), nullable=False
-    )
+    tenant_id: Mapped[int] = mapped_column(Integer, ForeignKey("tenants.id"), nullable=False)
+    type: Mapped[NotificationType] = mapped_column(Enum(NotificationType), nullable=False)
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     message: Mapped[str] = mapped_column(Text, nullable=False)
     is_read: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)

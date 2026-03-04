@@ -1,9 +1,12 @@
+import { NotificationBell } from '@/components/NotificationBell';
+import { Button } from '@/components/ui/button';
+import { Calendar } from '@/components/ui/calendar';
 import {
-  createFileRoute,
-  redirect,
-  Link,
-  useNavigate,
-} from "@tanstack/react-router";
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,78 +14,108 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { User } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { useAuthStore } from '@/stores/auth.store'
-import { checkEnrollment } from '@/services/auth.service'
-import { useState, useEffect } from 'react'
-import { useDoctorAvailability, useTenantDoctors } from '@/services/appointments.queries'
-import { useBookAppointment } from '@/services/appointments.mutations'
-import { format } from 'date-fns'
-import { Calendar } from '@/components/ui/calendar'
-import { isApiError } from '@/lib/api-client'
-import { NotificationBell } from '@/components/NotificationBell'
+} from '@/components/ui/dropdown-menu';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { isApiError } from '@/lib/api-client';
+import { useBookAppointment } from '@/services/appointments.mutations';
+import {
+  useDoctorAvailability,
+  useTenantDoctors,
+} from '@/services/appointments.queries';
+import { checkEnrollment } from '@/services/auth.service';
+import { useAuthStore } from '@/stores/auth.store';
+import {
+  createFileRoute,
+  Link,
+  redirect,
+  useNavigate,
+} from '@tanstack/react-router';
+import { format } from 'date-fns';
+import { User } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
 export const Route = createFileRoute('/appointments/book')({
   beforeLoad: async () => {
-    const { ensureAuth } = useAuthStore.getState()
-    await ensureAuth()
+    const { ensureAuth } = useAuthStore.getState();
+    await ensureAuth();
 
     // Re-read state after ensureAuth (it may have updated)
-    const state = useAuthStore.getState()
+    const state = useAuthStore.getState();
 
     if (!state.user) {
-      throw redirect({ to: '/login', search: { reason: undefined, redirect: '/appointments/book' } })
+      throw redirect({
+        to: '/login',
+        search: {
+          reason: undefined,
+          redirect: '/appointments/book',
+        },
+      });
     }
 
-    const roleValue = state.role as unknown as string | undefined
-    const isPatient = state.role === 'CLIENT' || roleValue === 'PATIENT'
+    const roleValue = state.role as unknown as
+      | string
+      | undefined;
+    const isPatient =
+      state.role === 'CLIENT' || roleValue === 'PATIENT';
     if (!isPatient) {
-      throw redirect({ to: '/unauthorized' })
+      throw redirect({ to: '/unauthorized' });
     }
 
     // Check enrollment status from backend
     if (!state.tenantId) {
-      throw redirect({ to: '/enrollment' })
+      throw redirect({ to: '/enrollment' });
     }
-    const isEnrolled = await checkEnrollment(state.tenantId)
+    const isEnrolled = await checkEnrollment(
+      state.tenantId
+    );
     if (!isEnrolled) {
-      throw redirect({ to: '/enrollment' })
+      throw redirect({ to: '/enrollment' });
     }
   },
   component: AppointmentBookingPage,
-})
+});
 
 function AppointmentBookingPage() {
-  const { tenantId } = useAuthStore()
-  const [doctorId, setDoctorId] = useState<string>('')
-  const [date, setDate] = useState<Date | undefined>(undefined)
-  const formattedDate = date ? format(date, 'yyyy-MM-dd') : ''
-  
-  
+  const { tenantId } = useAuthStore();
+  const [doctorId, setDoctorId] = useState<string>('');
+  const [date, setDate] = useState<Date | undefined>(
+    undefined
+  );
+  const formattedDate = date
+    ? format(date, 'yyyy-MM-dd')
+    : '';
+
   const user = useAuthStore((s) => s.user);
-  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const isAuthenticated = useAuthStore(
+    (s) => s.isAuthenticated
+  );
   const logout = useAuthStore((s) => s.logout);
   const navigate = useNavigate();
 
-  const { data: doctors, isLoading: doctorsLoading } = useTenantDoctors()
-
+  const { data: doctors, isLoading: doctorsLoading } =
+    useTenantDoctors();
 
   const handleLogout = async () => {
     await logout();
     navigate({
-      to: "/login",
-      search: { reason: undefined, redirect: undefined },
+      to: '/login',
+      search: {
+        reason: undefined,
+        redirect: undefined,
+      },
       replace: true,
     });
   };
 
   const handleProfile = () => {
     navigate({
-      to: "/dashboard/profile",
+      to: '/dashboard/profile',
       replace: true,
     });
   };
@@ -90,7 +123,7 @@ function AppointmentBookingPage() {
   const userInitial = (
     user?.email?.trim().charAt(0) ||
     user?.fullName?.trim().charAt(0) ||
-    "U"
+    'U'
   ).toUpperCase();
 
   const showUserMenu = isAuthenticated && user;
@@ -98,47 +131,48 @@ function AppointmentBookingPage() {
   // Auto-select the first available doctor when the list loads
   useEffect(() => {
     if (doctors && doctors.length > 0 && !doctorId) {
-      setDoctorId(doctors[0].id)
+      setDoctorId(doctors[0].id);
     }
-  }, [doctors, doctorId])
+  }, [doctors, doctorId]);
 
   // Look up the full doctor object for the currently selected doctorId
-  const selectedDoctor = doctors?.find((d) => d.id === doctorId)
-  
+  const selectedDoctor = doctors?.find(
+    (d) => d.id === doctorId
+  );
+
   const {
     data: availability,
     isLoading,
     isError,
     error,
-  } = useDoctorAvailability(doctorId, formattedDate)
-  
-  const bookAppointment = useBookAppointment()
+  } = useDoctorAvailability(doctorId, formattedDate);
+
+  const bookAppointment = useBookAppointment();
 
   const handleSlotClick = (slotTime: string) => {
-    
     if (!date || !tenantId) {
-      return
+      return;
     }
 
     // Build a naive ISO datetime string matching the backend's format
     // (no timezone offset — the backend treats these as clinic-local times)
-    const isoDatetime = `${formattedDate}T${slotTime}:00`
+    const isoDatetime = `${formattedDate}T${slotTime}:00`;
 
     bookAppointment.mutate({
       tenant_id: tenantId,
       doctor_id: doctorId,
       department_id: selectedDoctor?.department_id,
       appointment_datetime: isoDatetime,
-    })
-  }
+    });
+  };
 
   const handleDateChange = (newDate: Date | undefined) => {
-    setDate(newDate)
-  }
+    setDate(newDate);
+  };
 
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-  
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
   return (
     <div className="w-full">
       {/* Page Header */}
@@ -149,7 +183,8 @@ function AppointmentBookingPage() {
               Book an Appointment
             </h1>
             <p className="mt-2 text-sm text-muted-foreground">
-              Select a date and available time slot with our healthcare provider
+              Select a date and available time slot with our
+              healthcare provider
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -172,31 +207,48 @@ function AppointmentBookingPage() {
                     {userInitial}
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="min-w-40">
+                <DropdownMenuContent
+                  align="end"
+                  className="min-w-40"
+                >
                   <DropdownMenuLabel className="text-xs sm:text-sm">
                     Signed in as
                     <br />
-                    <span className="font-medium">{user?.email}</span>
+                    <span className="font-medium">
+                      {user?.email}
+                    </span>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleProfile}>
                     <span className="flex items-center gap-2">
-                      <User size={16} className="text-muted-foreground" />
+                      <User
+                        size={16}
+                        className="text-muted-foreground"
+                      />
                       My Profile
                     </span>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleLogout}>
-                    <span className="text-destructive">Log out</span>
+                    <span className="text-destructive">
+                      Log out
+                    </span>
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
               <Link
                 to="/login"
-                search={{ reason: undefined, redirect: undefined }}
+                search={{
+                  reason: undefined,
+                  redirect: undefined,
+                }}
               >
-                <Button size="sm" variant="ghost" className="font-medium">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="font-medium"
+                >
                   Sign in
                 </Button>
               </Link>
@@ -220,7 +272,10 @@ function AppointmentBookingPage() {
                 Loading doctors...
               </p>
             ) : doctors && doctors.length > 0 ? (
-              <Select value={doctorId} onValueChange={setDoctorId}>
+              <Select
+                value={doctorId}
+                onValueChange={setDoctorId}
+              >
                 <SelectTrigger className="w-full sm:w-80">
                   <SelectValue placeholder="Choose a doctor" />
                 </SelectTrigger>
@@ -228,7 +283,9 @@ function AppointmentBookingPage() {
                   {doctors.map((doc) => (
                     <SelectItem key={doc.id} value={doc.id}>
                       {doc.name}
-                      {doc.specialization ? ` — ${doc.specialization}` : ""}
+                      {doc.specialization
+                        ? ` — ${doc.specialization}`
+                        : ''}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -267,8 +324,8 @@ function AppointmentBookingPage() {
               <CardHeader>
                 <CardTitle className="text-lg font-semibold text-foreground">
                   {date
-                    ? `Available Slots — ${format(date, "MMMM d, yyyy")}`
-                    : "Available Time Slots"}
+                    ? `Available Slots — ${format(date, 'MMMM d, yyyy')}`
+                    : 'Available Time Slots'}
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -291,7 +348,8 @@ function AppointmentBookingPage() {
                       </svg>
                     </div>
                     <p className="text-sm text-muted-foreground">
-                      Select a date to see available time slots
+                      Select a date to see available time
+                      slots
                     </p>
                   </div>
                 )}
@@ -313,7 +371,8 @@ function AppointmentBookingPage() {
                     <p className="mt-1 text-sm text-destructive/80">
                       {isApiError(error)
                         ? error.displayMessage
-                        : error?.message || "Failed to load available slots."}
+                        : error?.message ||
+                          'Failed to load available slots.'}
                     </p>
                   </div>
                 )}
@@ -325,7 +384,8 @@ function AppointmentBookingPage() {
                   availability.slots.length === 0 && (
                     <div className="flex flex-col items-center justify-center py-12 text-center">
                       <p className="text-sm text-muted-foreground">
-                        No slots available for this date. Try another date.
+                        No slots available for this date.
+                        Try another date.
                       </p>
                     </div>
                   )}
@@ -337,18 +397,27 @@ function AppointmentBookingPage() {
                   availability.slots.length > 0 && (
                     <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
                       {availability.slots.map((slot) => {
-                        const appointmentDateTime = new Date(date);
+                        const appointmentDateTime =
+                          new Date(date);
                         const [hours, minutes] = slot.time
-                          .split(":")
+                          .split(':')
                           .map(Number);
-                        appointmentDateTime.setHours(hours, minutes, 0, 0);
-                        const isPast = appointmentDateTime < new Date();
+                        appointmentDateTime.setHours(
+                          hours,
+                          minutes,
+                          0,
+                          0
+                        );
+                        const isPast =
+                          appointmentDateTime < new Date();
 
                         return (
                           <Button
                             key={slot.time}
                             variant={
-                              slot.available && !isPast ? "default" : "outline"
+                              slot.available && !isPast
+                                ? 'default'
+                                : 'outline'
                             }
                             size="sm"
                             disabled={
@@ -357,7 +426,9 @@ function AppointmentBookingPage() {
                               bookAppointment.isPending
                             }
                             className="font-medium"
-                            onClick={() => handleSlotClick(slot.time)}
+                            onClick={() =>
+                              handleSlotClick(slot.time)
+                            }
                           >
                             {slot.time}
                           </Button>
@@ -373,9 +444,10 @@ function AppointmentBookingPage() {
                     </p>
                     <p className="mt-1 text-sm text-destructive/80">
                       {isApiError(bookAppointment.error)
-                        ? bookAppointment.error.displayMessage
+                        ? bookAppointment.error
+                            .displayMessage
                         : bookAppointment.error?.message ||
-                          "Failed to book appointment"}
+                          'Failed to book appointment'}
                     </p>
                   </div>
                 )}
@@ -412,12 +484,15 @@ function AppointmentBookingPage() {
               </svg>
               <div className="space-y-1">
                 <p className="text-foreground">
-                  <span className="font-medium">Duration:</span> 30 minutes per
-                  appointment
+                  <span className="font-medium">
+                    Duration:
+                  </span>{' '}
+                  30 minutes per appointment
                 </p>
                 <p className="text-muted-foreground">
-                  Your appointment will be confirmed once booked. You will
-                  receive a confirmation notification.
+                  Your appointment will be confirmed once
+                  booked. You will receive a confirmation
+                  notification.
                 </p>
               </div>
             </div>

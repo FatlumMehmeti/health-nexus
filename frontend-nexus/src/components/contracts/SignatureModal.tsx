@@ -1,8 +1,8 @@
-import * as React from "react";
-import SignatureCanvas from "react-signature-canvas";
-import { toast } from "sonner";
+import * as React from 'react';
+import SignatureCanvas from 'react-signature-canvas';
+import { toast } from 'sonner';
 
-import { Button } from "@/components/ui/button";
+import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
@@ -10,7 +10,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from '@/components/ui/dialog';
 
 interface SignatureModalProps {
   open: boolean;
@@ -28,11 +28,13 @@ export function SignatureModal({
   open,
   onOpenChange,
   title,
-  description = "Draw your signature in the box below, then click Save.",
+  description = 'Draw your signature in the box below, then click Save.',
   onConfirm,
   isSubmitting = false,
 }: SignatureModalProps) {
-  const canvasRef = React.useRef<SignatureCanvas | null>(null);
+  const canvasRef = React.useRef<SignatureCanvas | null>(
+    null
+  );
 
   const handleClear = () => {
     canvasRef.current?.clear();
@@ -42,16 +44,20 @@ export function SignatureModal({
     const pad = canvasRef.current;
     if (!pad) return;
     if (pad.isEmpty()) {
-      toast.error("Please draw your signature first.");
+      toast.error('Please draw your signature first.');
       return;
     }
 
     const canvas = pad.getCanvas();
-    const dataUrl = canvas.toDataURL("image/jpeg", 0.92);
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
     const blob = await fetch(dataUrl).then((r) => r.blob());
-    const file = new File([blob], `signature_${Date.now()}.jpg`, {
-      type: "image/jpeg",
-    });
+    const file = new File(
+      [blob],
+      `signature_${Date.now()}.jpg`,
+      {
+        type: 'image/jpeg',
+      }
+    );
 
     try {
       await onConfirm(file);
@@ -74,7 +80,9 @@ export function SignatureModal({
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
-          <DialogDescription>{description}</DialogDescription>
+          <DialogDescription>
+            {description}
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-3">
@@ -84,9 +92,9 @@ export function SignatureModal({
               canvasProps={{
                 width: CANVAS_WIDTH,
                 height: CANVAS_HEIGHT,
-                className: "block touch-none select-none",
+                className: 'block touch-none select-none',
                 style: {
-                  display: "block",
+                  display: 'block',
                   width: CANVAS_WIDTH,
                   height: CANVAS_HEIGHT,
                 },
@@ -109,7 +117,8 @@ export function SignatureModal({
             </span>
           </div>
           <p className="text-xs text-muted-foreground">
-            Draw your signature above using a mouse or touch. Clear to redraw.
+            Draw your signature above using a mouse or
+            touch. Clear to redraw.
           </p>
         </div>
 

@@ -1,6 +1,6 @@
-import { apiFetch } from "@/lib/api-client";
+import { apiFetch } from '@/lib/api-client';
 
-const BASE = "/api/subscription_plan";
+const BASE = '/api/subscription_plan';
 
 /**
  * Represents a subscription plan available in Health Nexus
@@ -22,7 +22,7 @@ export interface TenantSubscription {
   id: number;
   tenant_id: number;
   subscription_plan_id: number;
-  status: "ACTIVE" | "EXPIRED";
+  status: 'ACTIVE' | 'EXPIRED';
   activated_at: string;
   expires_at: string;
   cancelled_at: string | null; // When subscription was cancelled by tenant
@@ -43,9 +43,11 @@ export interface SubscriptionStats {
 /**
  * Fetch all available subscription plans
  */
-export async function getSubscriptionPlans(): Promise<SubscriptionPlan[]> {
+export async function getSubscriptionPlans(): Promise<
+  SubscriptionPlan[]
+> {
   return apiFetch(`${BASE}/`, {
-    method: "GET",
+    method: 'GET',
   });
 }
 
@@ -54,7 +56,7 @@ export async function getSubscriptionPlans(): Promise<SubscriptionPlan[]> {
  */
 export async function getCurrentSubscription(): Promise<TenantSubscription> {
   return apiFetch(`${BASE}/current`, {
-    method: "GET",
+    method: 'GET',
   });
 }
 
@@ -63,7 +65,7 @@ export async function getCurrentSubscription(): Promise<TenantSubscription> {
  */
 export async function getSubscriptionStats(): Promise<SubscriptionStats> {
   return apiFetch(`${BASE}/stats`, {
-    method: "GET",
+    method: 'GET',
   });
 }
 
@@ -71,10 +73,10 @@ export async function getSubscriptionStats(): Promise<SubscriptionStats> {
  * Change tenant's subscription plan
  */
 export async function changePlan(
-  newPlanId: number,
+  newPlanId: number
 ): Promise<TenantSubscription> {
   return apiFetch(`${BASE}/change`, {
-    method: "POST",
+    method: 'POST',
     body: { new_plan_id: newPlanId },
   });
 }

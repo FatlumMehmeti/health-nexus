@@ -3,6 +3,7 @@ Tests for tenant audit log API: GET /audit-logs.
 Uses conftest's reset_database and db_session.
 Audit logs are created when tenant status is updated.
 """
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -18,6 +19,7 @@ def override_user(role: str, tenant_id: int | None = None):
             "role": role,
             "tenant_id": tenant_id,
         }
+
     return _override
 
 

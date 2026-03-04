@@ -19,25 +19,13 @@ class Patient(Base, TimestampMixin):
         primary_key=True,
     )
 
-    user_id: Mapped[int] = mapped_column(
-        ForeignKey("users.id"),
-        primary_key=True
-    )
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), primary_key=True)
 
-    birthdate: Mapped[str | None] = mapped_column(
-        Date,
-        nullable=True
-    )
+    birthdate: Mapped[str | None] = mapped_column(Date, nullable=True)
 
-    gender: Mapped[str | None] = mapped_column(
-        String(20),
-        nullable=True
-    )
+    gender: Mapped[str | None] = mapped_column(String(20), nullable=True)
 
-    blood_type: Mapped[str | None] = mapped_column(
-        String(20),
-        nullable=True
-    )
+    blood_type: Mapped[str | None] = mapped_column(String(20), nullable=True)
 
     # Relationships
     tenant = relationship(
@@ -50,22 +38,12 @@ class Patient(Base, TimestampMixin):
         back_populates="patient_profile",
     )
 
-    appointments = relationship(
-        "Appointment",
-        back_populates="patient",
-        overlaps="tenant"
-    )
+    appointments = relationship("Appointment", back_populates="patient", overlaps="tenant")
 
     carts = relationship(
-        "Cart",
-        back_populates="patient",
-        overlaps="tenant,carts",
-        cascade="all, delete-orphan"
+        "Cart", back_populates="patient", overlaps="tenant,carts", cascade="all, delete-orphan"
     )
 
     orders = relationship(
-        "Order",
-        back_populates="patient",
-        overlaps="tenant,orders",
-        cascade="all, delete-orphan"
+        "Order", back_populates="patient", overlaps="tenant,orders", cascade="all, delete-orphan"
     )

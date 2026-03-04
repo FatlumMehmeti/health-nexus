@@ -1,12 +1,12 @@
 """
 Contract business logic: transitions, validation, eligibility.
 """
+
 from datetime import datetime, timezone
 
 from sqlalchemy.orm import Session
 
 from app.models.contract import Contract, ContractStatus
-
 
 # Allowed transitions: from_status -> set(of to_status)
 ALLOWED_TRANSITIONS: dict[ContractStatus, set[ContractStatus]] = {
@@ -87,12 +87,8 @@ def has_active_contract_for_doctor(db: Session, doctor_user_id: int) -> bool:
             Contract.doctor_user_id == doctor_user_id,
             Contract.status == ContractStatus.ACTIVE,
         )
-        .filter(
-            (Contract.start_date.is_(None)) | (Contract.start_date <= now)
-        )
-        .filter(
-            (Contract.end_date.is_(None)) | (Contract.end_date >= now)
-        )
+        .filter((Contract.start_date.is_(None)) | (Contract.start_date <= now))
+        .filter((Contract.end_date.is_(None)) | (Contract.end_date >= now))
         .first()
         is not None
     )

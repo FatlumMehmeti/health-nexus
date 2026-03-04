@@ -2,6 +2,7 @@
 PRD-05 integration tests: Tenant boundary.
 Ensures tenants cannot access or modify resources belonging to another tenant.
 """
+
 import pytest
 
 from tests.integration_prd05.fixtures import (
@@ -55,9 +56,10 @@ def test_access_enrollment_from_other_tenant_denied(
         f"/api/tenants/{tenant_b.id}/enrollments/{enrollment_id}",
         headers=headers_b,
     )
-    assert resp.status_code in (403, 404), (
-        f"Expected 403 or 404, got {resp.status_code}: {resp.text}"
-    )
+    assert resp.status_code in (
+        403,
+        404,
+    ), f"Expected 403 or 404, got {resp.status_code}: {resp.text}"
 
 
 @pytest.mark.prd05
@@ -78,9 +80,7 @@ def test_transition_enrollment_from_other_tenant_denied(
         db_session=db_session,
         role=role_patient,
     )
-    headers_a = login_client(
-        prd05_client, "client-trans-a@prd05.example.com", "PassPRD05!"
-    )
+    headers_a = login_client(prd05_client, "client-trans-a@prd05.example.com", "PassPRD05!")
     enrollment_id = create_enrollment_via_api(
         prd05_client,
         tenant_a.id,
@@ -97,18 +97,17 @@ def test_transition_enrollment_from_other_tenant_denied(
         db_session=db_session,
         role=role_patient,
     )
-    headers_b = login_client(
-        prd05_client, "client-trans-b@prd05.example.com", "PassPRD05!"
-    )
+    headers_b = login_client(prd05_client, "client-trans-b@prd05.example.com", "PassPRD05!")
 
     resp = prd05_client.post(
         f"/api/tenants/{tenant_b.id}/enrollments/{enrollment_id}/transition",
         json={"target_status": "ACTIVE"},
         headers=headers_b,
     )
-    assert resp.status_code in (403, 404), (
-        f"Expected 403 or 404, got {resp.status_code}: {resp.text}"
-    )
+    assert resp.status_code in (
+        403,
+        404,
+    ), f"Expected 403 or 404, got {resp.status_code}: {resp.text}"
 
 
 @pytest.mark.prd05
@@ -129,9 +128,7 @@ def test_status_read_from_other_tenant_denied(
         db_session=db_session,
         role=role_patient,
     )
-    headers_a = login_client(
-        prd05_client, "client-status-a@prd05.example.com", "PassPRD05!"
-    )
+    headers_a = login_client(prd05_client, "client-status-a@prd05.example.com", "PassPRD05!")
     enrollment_id = create_enrollment_via_api(
         prd05_client,
         tenant_a.id,
@@ -148,14 +145,13 @@ def test_status_read_from_other_tenant_denied(
         db_session=db_session,
         role=role_patient,
     )
-    headers_b = login_client(
-        prd05_client, "client-status-b@prd05.example.com", "PassPRD05!"
-    )
+    headers_b = login_client(prd05_client, "client-status-b@prd05.example.com", "PassPRD05!")
 
     resp = prd05_client.get(
         f"/api/tenants/{tenant_b.id}/enrollments/{enrollment_id}/status",
         headers=headers_b,
     )
-    assert resp.status_code in (403, 404), (
-        f"Expected 403 or 404, got {resp.status_code}: {resp.text}"
-    )
+    assert resp.status_code in (
+        403,
+        404,
+    ), f"Expected 403 or 404, got {resp.status_code}: {resp.text}"

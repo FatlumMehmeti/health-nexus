@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Iterable, Optional
 
-from sqlalchemy.orm import Session,joinedload
+from sqlalchemy.orm import Session, joinedload
 
 from app.models import (
     Enrollment,
@@ -15,10 +15,10 @@ from app.models import (
     Doctor,
 )
 
-
 # ---------------------------------------------------------------------------
 # Tenant / Patient / Plan Retrieval
 # ---------------------------------------------------------------------------
+
 
 def get_tenant(db: Session, tenant_id: int) -> Optional[Tenant]:
     """
@@ -88,6 +88,7 @@ def get_user_tenant_plan(db: Session, plan_id: int) -> Optional[UserTenantPlan]:
 # ---------------------------------------------------------------------------
 # Enrollment Retrieval
 # ---------------------------------------------------------------------------
+
 
 def get_enrollment_by_id(db: Session, enrollment_id: int) -> Optional[Enrollment]:
     """
@@ -162,6 +163,7 @@ def list_enrollments_by_tenant(
 # Role / Relationship Lookups
 # ---------------------------------------------------------------------------
 
+
 def get_tenant_manager(
     db: Session,
     user_id: int,
@@ -206,6 +208,7 @@ def get_doctor_for_user(db: Session, user_id: int) -> Optional[Doctor]:
 # Write Operations (History / Audit)
 # ---------------------------------------------------------------------------
 
+
 def insert_status_history(
     db: Session,
     history: EnrollmentStatusHistory,
@@ -244,8 +247,11 @@ def insert_audit_event(
     db.flush()
 
     # ---------------------------------------------------------------------------
+
+
 # Enrollment Status History Retrieval
 # ---------------------------------------------------------------------------
+
 
 def list_enrollment_status_history(
     db: Session,

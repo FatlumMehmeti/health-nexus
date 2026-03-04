@@ -1,14 +1,16 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { requireAuth } from "@/lib/guards/requireAuth";
+import { requireAuth } from '@/lib/guards/requireAuth';
 import {
-  normalizeClientSection,
   ClientPageContent,
-} from "@/routes/dashboard/client";
+  normalizeClientSection,
+} from '@/routes/dashboard/client';
+import { createFileRoute } from '@tanstack/react-router';
 
 export const Route = createFileRoute(
-  "/dashboard/client/$section",
+  '/dashboard/client/$section'
 )({
-  beforeLoad: requireAuth({ routeKey: "DASHBOARD_CLIENTS" }),
+  beforeLoad: requireAuth({
+    routeKey: 'DASHBOARD_CLIENTS',
+  }),
   component: ClientSectionPage,
 });
 

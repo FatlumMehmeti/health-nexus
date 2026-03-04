@@ -13,7 +13,6 @@ from app.services.enrollment_service import (
 from app.models.enrollment import EnrollmentStatus
 from fastapi.responses import JSONResponse
 
-
 router = APIRouter(
     prefix="/enrollments",
     tags=["Enrollments"],
@@ -67,21 +66,11 @@ def list_my_enrollments(
                 patient_user_id=e.patient_user_id,
                 tenant_id=e.tenant_id,
                 user_tenant_plan_id=e.user_tenant_plan_id,
-                status=e.status.value
-                if isinstance(e.status, EnrollmentStatus)
-                else str(e.status),
-                activated_at=e.activated_at.isoformat()
-                if e.activated_at
-                else None,
-                cancelled_at=e.cancelled_at.isoformat()
-                if e.cancelled_at
-                else None,
-                expires_at=e.expires_at.isoformat()
-                if e.expires_at
-                else None,
-                updated_at=e.updated_at.isoformat()
-                if e.updated_at
-                else None,
+                status=e.status.value if isinstance(e.status, EnrollmentStatus) else str(e.status),
+                activated_at=e.activated_at.isoformat() if e.activated_at else None,
+                cancelled_at=e.cancelled_at.isoformat() if e.cancelled_at else None,
+                expires_at=e.expires_at.isoformat() if e.expires_at else None,
+                updated_at=e.updated_at.isoformat() if e.updated_at else None,
             )
             for e in enrollments
         ]

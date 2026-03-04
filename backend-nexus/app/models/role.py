@@ -2,6 +2,7 @@ from sqlalchemy import String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from .base import Base, TimestampMixin
 
+
 class Role(Base, TimestampMixin):
     __tablename__ = "roles"
 

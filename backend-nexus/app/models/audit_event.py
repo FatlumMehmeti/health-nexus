@@ -11,10 +11,7 @@ class AuditEvent(Base, TimestampMixin):
 
     id: Mapped[int] = mapped_column(primary_key=True)
 
-    tenant_id: Mapped[int] = mapped_column(
-        ForeignKey("tenants.id"),
-        nullable=False
-    )
+    tenant_id: Mapped[int] = mapped_column(ForeignKey("tenants.id"), nullable=False)
 
     entity_type: Mapped[str] = mapped_column(String(100))
     entity_id: Mapped[int] = mapped_column()
@@ -24,10 +21,7 @@ class AuditEvent(Base, TimestampMixin):
     old_value: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     new_value: Mapped[dict | None] = mapped_column(JSON, nullable=True)
 
-    actor_user_id: Mapped[int | None] = mapped_column(
-        ForeignKey("users.id"),
-        nullable=True
-    )
+    actor_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
 
     tenant = relationship("Tenant")
     actor = relationship("User")

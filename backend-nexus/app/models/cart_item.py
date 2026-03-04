@@ -9,15 +9,9 @@ class CartItem(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
 
-    cart_id: Mapped[int] = mapped_column(
-        ForeignKey("carts.id"),
-        nullable=False
-    )
+    cart_id: Mapped[int] = mapped_column(ForeignKey("carts.id"), nullable=False)
 
-    product_id: Mapped[int] = mapped_column(
-        ForeignKey("products.product_id"),
-        nullable=False
-    )
+    product_id: Mapped[int] = mapped_column(ForeignKey("products.product_id"), nullable=False)
 
     quantity: Mapped[int] = mapped_column(Integer, nullable=False)
 

@@ -2,6 +2,7 @@
 Tests for tenant APIs: public registration, superadmin list/get/status update.
 Uses conftest's reset_database and db_session.
 """
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -167,4 +168,7 @@ def test_superadmin_patch_status_invalid_transition_returns_400(client, db_sessi
         json={"status": "suspended"},
     )
     assert response.status_code == 400
-    assert "invalid" in response.json().get("detail", "").lower() or "transition" in response.json().get("detail", "").lower()
+    assert (
+        "invalid" in response.json().get("detail", "").lower()
+        or "transition" in response.json().get("detail", "").lower()
+    )

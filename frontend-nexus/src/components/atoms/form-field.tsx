@@ -1,11 +1,11 @@
-import * as React from "react";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { cn } from "@/lib/utils";
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { cn } from '@/lib/utils';
+import * as React from 'react';
 
 export interface FormFieldProps extends Omit<
   React.ComponentProps<typeof Input>,
-  "id"
+  'id'
 > {
   id: string;
   label: string;
@@ -14,16 +14,30 @@ export interface FormFieldProps extends Omit<
   required?: boolean;
 }
 
-const FormField = React.forwardRef<HTMLInputElement, FormFieldProps>(
+const FormField = React.forwardRef<
+  HTMLInputElement,
+  FormFieldProps
+>(
   (
-    { id, label, error, wrapperClassName, className, required, ...inputProps },
-    ref,
+    {
+      id,
+      label,
+      error,
+      wrapperClassName,
+      className,
+      required,
+      ...inputProps
+    },
+    ref
   ) => (
-    <div className={cn("space-y-2", wrapperClassName)}>
+    <div className={cn('space-y-2', wrapperClassName)}>
       <Label htmlFor={id}>
         {label}
         {required && (
-          <span className="text-destructive -ml-0.5" aria-hidden>
+          <span
+            className="text-destructive -ml-0.5"
+            aria-hidden
+          >
             *
           </span>
         )}
@@ -39,14 +53,18 @@ const FormField = React.forwardRef<HTMLInputElement, FormFieldProps>(
         {...inputProps}
       />
       {error && (
-        <p id={`${id}-error`} className="text-xs text-destructive" role="alert">
+        <p
+          id={`${id}-error`}
+          className="text-xs text-destructive"
+          role="alert"
+        >
           {error}
         </p>
       )}
     </div>
-  ),
+  )
 );
 
-FormField.displayName = "FormField";
+FormField.displayName = 'FormField';
 
 export { FormField };

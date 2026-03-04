@@ -1,6 +1,3 @@
-import type { ReactNode } from 'react';
-import { LayoutDashboard, User } from 'lucide-react';
-import { Link, useNavigate } from '@tanstack/react-router';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -12,6 +9,9 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/stores/auth.store';
+import { Link, useNavigate } from '@tanstack/react-router';
+import { LayoutDashboard, User } from 'lucide-react';
+import type { ReactNode } from 'react';
 
 interface PublicAuthHeaderProps {
   showBrandName?: boolean;
@@ -30,16 +30,22 @@ export function PublicAuthHeader({
 }: PublicAuthHeaderProps) {
   const user = useAuthStore((s) => s.user);
   const role = useAuthStore((s) => s.role);
-  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const isAuthenticated = useAuthStore(
+    (s) => s.isAuthenticated
+  );
   const logout = useAuthStore((s) => s.logout);
   const navigate = useNavigate();
-  const canGoToDashboard = role != null && role !== 'CLIENT';
+  const canGoToDashboard =
+    role != null && role !== 'CLIENT';
 
   const handleLogout = async () => {
     await logout();
     navigate({
       to: '/login',
-      search: { reason: undefined, redirect: undefined },
+      search: {
+        reason: undefined,
+        redirect: undefined,
+      },
       replace: true,
     });
   };
@@ -70,19 +76,27 @@ export function PublicAuthHeader({
           containerClassName
         )}
       >
-        <Link to="/" className="flex items-center gap-2 transition-opacity hover:opacity-90">
+        <Link
+          to="/"
+          className="flex items-center gap-2 transition-opacity hover:opacity-90"
+        >
           <img
             src="/images/logo.webp"
             alt="Health Nexus"
             className="h-9 w-9 rounded-lg object-contain"
           />
           {showBrandName ? (
-            <span className="text-lg font-semibold tracking-tight">Health Nexus</span>
+            <span className="text-lg font-semibold tracking-tight">
+              Health Nexus
+            </span>
           ) : null}
         </Link>
 
         <div className="flex items-center gap-2">
-          {rightSlot && (showRightSlotWhenAuthenticated || !showUserMenu) ? rightSlot : null}
+          {rightSlot &&
+          (showRightSlotWhenAuthenticated || !showUserMenu)
+            ? rightSlot
+            : null}
           {showUserMenu ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -96,34 +110,63 @@ export function PublicAuthHeader({
                   {userInitial}
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="min-w-40">
+              <DropdownMenuContent
+                align="end"
+                className="min-w-40"
+              >
                 <DropdownMenuLabel className="text-xs sm:text-sm">
                   Signed in as
                   <br />
-                  <span className="font-medium">{user.email}</span>
+                  <span className="font-medium">
+                    {user.email}
+                  </span>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 {canGoToDashboard ? (
-                  <DropdownMenuItem onClick={() => navigate({ to: '/dashboard' })}>
-                    <LayoutDashboard size={16} className="text-muted-foreground" />
+                  <DropdownMenuItem
+                    onClick={() =>
+                      navigate({
+                        to: '/dashboard',
+                      })
+                    }
+                  >
+                    <LayoutDashboard
+                      size={16}
+                      className="text-muted-foreground"
+                    />
                     Go to dashboard
                   </DropdownMenuItem>
                 ) : null}
                 <DropdownMenuItem onClick={handleProfile}>
                   <span className="flex items-center gap-2">
-                    <User size={16} className="text-muted-foreground" />
+                    <User
+                      size={16}
+                      className="text-muted-foreground"
+                    />
                     My Profile
                   </span>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleLogout}>
-                  <span className="text-destructive">Log out</span>
+                  <span className="text-destructive">
+                    Log out
+                  </span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (
-            <Link to="/login" search={{ reason: undefined, redirect: undefined }}>
-              <Button size="sm" variant="ghost" className="font-medium">
+            <Link
+              to="/login"
+              search={{
+                reason: undefined,
+                redirect: undefined,
+              }}
+            >
+              <Button
+                size="sm"
+                variant="ghost"
+                className="font-medium"
+              >
                 Sign in
               </Button>
             </Link>

@@ -1,16 +1,16 @@
-import { useState } from "react";
 import {
   IconBell,
   IconBellFilled,
+  IconCalendarEvent,
   IconCheck,
   IconChecks,
-  IconCalendarEvent,
-} from "@tabler/icons-react";
-import { formatDistanceToNow } from "date-fns";
-import { useNavigate } from "@tanstack/react-router";
-import { useQueryClient } from "@tanstack/react-query";
+} from '@tabler/icons-react';
+import { useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from '@tanstack/react-router';
+import { formatDistanceToNow } from 'date-fns';
+import { useState } from 'react';
 
-import { Button } from "@/components/ui/button";
+import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -18,29 +18,37 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from '@/components/ui/dropdown-menu';
 import {
+  invalidateNotifications,
+  useMarkAllRead,
+  useMarkRead,
   useNotifications,
   useUnreadCount,
-  useMarkRead,
-  useMarkAllRead,
-  invalidateNotifications,
-} from "@/services/notifications.queries";
-import type { Notification } from "@/services/notifications.service";
-import { useAuthStore } from "@/stores/auth.store";
+} from '@/services/notifications.queries';
+import type { Notification } from '@/services/notifications.service';
+import { useAuthStore } from '@/stores/auth.store';
 
 function notificationIcon(type: string) {
   switch (type) {
-    case "APPOINTMENT_CONFIRMED":
-      return <IconCheck className="size-4 text-green-400" />;
-    case "APPOINTMENT_REJECTED":
-    case "APPOINTMENT_CANCELLED":
-      return <IconCalendarEvent className="size-4 text-red-400" />;
-    case "APPOINTMENT_CREATED":
-    case "APPOINTMENT_RESCHEDULED":
-      return <IconCalendarEvent className="size-4 text-blue-400" />;
-    case "APPOINTMENT_COMPLETED":
-      return <IconChecks className="size-4 text-green-400" />;
+    case 'APPOINTMENT_CONFIRMED':
+      return (
+        <IconCheck className="size-4 text-green-400" />
+      );
+    case 'APPOINTMENT_REJECTED':
+    case 'APPOINTMENT_CANCELLED':
+      return (
+        <IconCalendarEvent className="size-4 text-red-400" />
+      );
+    case 'APPOINTMENT_CREATED':
+    case 'APPOINTMENT_RESCHEDULED':
+      return (
+        <IconCalendarEvent className="size-4 text-blue-400" />
+      );
+    case 'APPOINTMENT_COMPLETED':
+      return (
+        <IconChecks className="size-4 text-green-400" />
+      );
     default:
       return <IconBell className="size-4" />;
   }
@@ -63,10 +71,12 @@ function NotificationRow({
         onNavigate(notification);
       }}
     >
-      <div className="mt-0.5 shrink-0">{notificationIcon(notification.type)}</div>
+      <div className="mt-0.5 shrink-0">
+        {notificationIcon(notification.type)}
+      </div>
       <div className="flex-1 min-w-0">
         <p
-          className={`text-sm leading-tight ${notification.is_read ? "text-muted-foreground" : "font-medium text-foreground"}`}
+          className={`text-sm leading-tight ${notification.is_read ? 'text-muted-foreground' : 'font-medium text-foreground'}`}
         >
           {notification.title}
         </p>
@@ -75,10 +85,13 @@ function NotificationRow({
         </p>
         <p className="text-[11px] text-muted-foreground/60 mt-1">
           {notification.created_at
-            ? formatDistanceToNow(new Date(notification.created_at), {
-                addSuffix: true,
-              })
-            : ""}
+            ? formatDistanceToNow(
+                new Date(notification.created_at),
+                {
+                  addSuffix: true,
+                }
+              )
+            : ''}
         </p>
       </div>
       {!notification.is_read && (
@@ -99,13 +112,20 @@ export function NotificationBell() {
 
   const handleNavigate = (n: Notification) => {
     setOpen(false);
-    if (n.entity_type === "appointment" && n.entity_id) {
+    if (n.entity_type === 'appointment' && n.entity_id) {
       const role = useAuthStore.getState().role;
-      if (role === "DOCTOR") {
+      if (role === 'DOCTOR') {
         // Doctors go to their appointment management dashboard
-        navigate({ to: "/dashboard/appointments" });
+        navigate({
+          to: '/dashboard/appointments',
+        });
       } else {
-        navigate({ to: "/appointments/$appointmentId", params: { appointmentId: String(n.entity_id) } });
+        navigate({
+          to: '/appointments/$appointmentId',
+          params: {
+            appointmentId: String(n.entity_id),
+          },
+        });
       }
     }
   };
@@ -119,7 +139,11 @@ export function NotificationBell() {
       }}
     >
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" className="relative">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="relative"
+        >
           {count > 0 ? (
             <IconBellFilled className="size-5" />
           ) : (
@@ -127,14 +151,17 @@ export function NotificationBell() {
           )}
           {count > 0 && (
             <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold text-destructive-foreground">
-              {count > 99 ? "99+" : count}
+              {count > 99 ? '99+' : count}
             </span>
           )}
           <span className="sr-only">Notifications</span>
         </Button>
       </DropdownMenuTrigger>
 
-      <DropdownMenuContent align="end" className="w-80 max-h-[28rem] overflow-y-auto">
+      <DropdownMenuContent
+        align="end"
+        className="w-80 max-h-[28rem] overflow-y-auto"
+      >
         <DropdownMenuLabel className="flex items-center justify-between">
           <span>Notifications</span>
           {count > 0 && (

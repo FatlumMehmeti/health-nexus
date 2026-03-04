@@ -27,26 +27,17 @@ class Payment(Base, TimestampMixin):
     payment_id: Mapped[int] = mapped_column(primary_key=True)
 
     payment_type: Mapped[PaymentType] = mapped_column(
-        Enum(PaymentType, name="payment_type"),
-        nullable=False
+        Enum(PaymentType, name="payment_type"), nullable=False
     )
 
-    price: Mapped[float] = mapped_column(
-        DECIMAL,
-        nullable=False
-    )
+    price: Mapped[float] = mapped_column(DECIMAL, nullable=False)
 
-    tenant_id: Mapped[int] = mapped_column(
-        ForeignKey("tenants.id"),
-        nullable=False
-    )
+    tenant_id: Mapped[int] = mapped_column(ForeignKey("tenants.id"), nullable=False)
 
     stripe_payment_intent_id: Mapped[str | None] = mapped_column(Text)
 
     status: Mapped[PaymentStatus] = mapped_column(
-        Enum(PaymentStatus, name="payment_status"),
-        default=PaymentStatus.INITIATED,
-        nullable=False
+        Enum(PaymentStatus, name="payment_status"), default=PaymentStatus.INITIATED, nullable=False
     )
 
     reference_id: Mapped[int | None] = mapped_column(Integer)

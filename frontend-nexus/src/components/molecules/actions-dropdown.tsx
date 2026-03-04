@@ -1,20 +1,20 @@
-import * as React from "react";
-import { MoreVertical } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
+import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from '@/components/ui/dropdown-menu';
+import { cn } from '@/lib/utils';
+import { MoreVertical } from 'lucide-react';
+import * as React from 'react';
 
 export type ActionItem = {
   label: string;
   icon?: React.ReactNode;
   onClick: () => void;
-  variant?: "default" | "destructive";
+  variant?: 'default' | 'destructive';
   separatorBefore?: boolean;
   /** Optional disabled state for actions gated by business rules (e.g. missing signatures). */
   disabled?: boolean;
@@ -22,27 +22,27 @@ export type ActionItem = {
 
 export type ActionsDropdownProps = {
   actions: ActionItem[];
-  trigger?: "button" | "icon";
-  align?: "start" | "center" | "end";
+  trigger?: 'button' | 'icon';
+  align?: 'start' | 'center' | 'end';
   className?: string;
 };
 
 export function ActionsDropdown({
   actions,
-  trigger = "button",
-  align = "end",
+  trigger = 'button',
+  align = 'end',
   className,
 }: ActionsDropdownProps) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        {trigger === "icon" ? (
+        {trigger === 'icon' ? (
           <Button
             variant="ghost"
             size="icon"
             className={cn(
-              "text-muted-foreground size-8 data-[state=open]:bg-muted flex",
-              className,
+              'text-muted-foreground size-8 data-[state=open]:bg-muted flex',
+              className
             )}
           >
             <MoreVertical className="size-4" />
@@ -53,7 +53,7 @@ export function ActionsDropdown({
             variant="ghost"
             size="icon"
             className={cn(
-              "text-muted-foreground size-8 data-[state=open]:bg-muted flex",
+              'text-muted-foreground size-8 data-[state=open]:bg-muted flex',
               className
             )}
           >
@@ -65,7 +65,9 @@ export function ActionsDropdown({
       <DropdownMenuContent align={align}>
         {actions.map((action, index) => (
           <React.Fragment key={index}>
-            {action.separatorBefore && index > 0 && <DropdownMenuSeparator />}
+            {action.separatorBefore && index > 0 && (
+              <DropdownMenuSeparator />
+            )}
             <DropdownMenuItem
               variant={action.variant}
               disabled={action.disabled}

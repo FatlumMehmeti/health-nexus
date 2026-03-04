@@ -1,24 +1,28 @@
 export const QUERY_KEYS = {
-  current: ["tenant-manager", "current"] as const,
-  details: ["tenant-manager", "details"] as const,
-  doctors: ["tenant-manager", "doctors"] as const,
-  departments: ["tenant-manager", "departments"] as const,
-  products: ["tenant-manager", "products"] as const,
-  fonts: ["tenant-manager", "fonts"] as const,
-  brands: ["tenant-manager", "brands"] as const,
-  departmentCatalog: ["tenant-manager", "department-catalog"] as const,
+  current: ['tenant-manager', 'current'] as const,
+  details: ['tenant-manager', 'details'] as const,
+  doctors: ['tenant-manager', 'doctors'] as const,
+  departments: ['tenant-manager', 'departments'] as const,
+  products: ['tenant-manager', 'products'] as const,
+  fonts: ['tenant-manager', 'fonts'] as const,
+  brands: ['tenant-manager', 'brands'] as const,
+  departmentCatalog: [
+    'tenant-manager',
+    'department-catalog',
+  ] as const,
 };
 
 export const TENANT_SECTION_KEYS = [
-  "departments-services",
-  "doctors",
-  "products",
-  "plans",
-  "enrollments",
-  "settings",
+  'departments-services',
+  'doctors',
+  'products',
+  'plans',
+  'enrollments',
+  'settings',
 ] as const;
 
-export type TenantSectionKey = (typeof TENANT_SECTION_KEYS)[number];
+export type TenantSectionKey =
+  (typeof TENANT_SECTION_KEYS)[number];
 
 export interface TenantDetailsFormState {
   logo: string;

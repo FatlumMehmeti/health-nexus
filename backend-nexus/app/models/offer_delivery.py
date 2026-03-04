@@ -26,9 +26,7 @@ class OfferDelivery(Base, TimestampMixin):
 
     id: Mapped[int] = mapped_column(primary_key=True)
 
-    recommendation_id: Mapped[int] = mapped_column(
-        ForeignKey("recommendations.id"), nullable=False
-    )
+    recommendation_id: Mapped[int] = mapped_column(ForeignKey("recommendations.id"), nullable=False)
 
     patient_user_id: Mapped[int] = mapped_column(nullable=False)
 
@@ -40,16 +38,10 @@ class OfferDelivery(Base, TimestampMixin):
         nullable=False,
     )
 
-    delivered_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    delivered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
-    responded_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    responded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
-    expires_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     recommendation = relationship("Recommendation")

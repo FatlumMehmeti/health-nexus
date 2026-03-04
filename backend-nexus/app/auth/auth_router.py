@@ -15,6 +15,7 @@ from app.auth.auth_utils import require_permission, require_role
 # Router for authentication endpoints
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
+
 # Signup endpoint - creates a global user account
 @router.post("/signup", response_model=SignupResponse, status_code=201)
 def signup(body: SignupRequest) -> SignupResponse:
@@ -53,6 +54,7 @@ def logout(body: RefreshRequest) -> dict:
 @router.get("/me")
 def get_me(user=Depends(require_permission("auth:me"))):
     return {"message": "You are authenticated", "user": user}
+
 
 # Protected admin route using RBAC (SUPER_ADMIN only)
 @router.get("/admin")

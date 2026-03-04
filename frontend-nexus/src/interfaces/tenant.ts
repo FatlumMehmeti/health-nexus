@@ -1,15 +1,15 @@
 /**
  * Tenant interfaces matching backend schemas
  */
-import type { ServiceLandingItem } from "./landing";
+import type { ServiceLandingItem } from './landing';
 
 /** Status of a tenant application/account */
 export enum TenantStatus {
-  PENDING = "pending",
-  APPROVED = "approved",
-  REJECTED = "rejected",
-  SUSPENDED = "suspended",
-  ARCHIVED = "archived",
+  PENDING = 'pending',
+  APPROVED = 'approved',
+  REJECTED = 'rejected',
+  SUSPENDED = 'suspended',
+  ARCHIVED = 'archived',
 }
 
 /** Font option for tenant branding */
