@@ -14,6 +14,7 @@ export const TENANT_SECTION_KEYS = [
   "doctors",
   "products",
   "plans",
+  "enrollments",
   "settings",
 ] as const;
 

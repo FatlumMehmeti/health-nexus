@@ -9,24 +9,29 @@ import {
 const NOTIFICATIONS_KEY = ["notifications"] as const;
 const UNREAD_COUNT_KEY = ["notifications", "unread-count"] as const;
 
-/** Poll notifications list every 15 s */
 export function useNotifications(unreadOnly = false) {
   return useQuery({
     queryKey: [...NOTIFICATIONS_KEY, { unreadOnly }],
     queryFn: () => getMyNotifications(unreadOnly),
-    refetchInterval: 15_000,
-    staleTime: 10_000,
+    staleTime: 30_000,
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
   });
 }
 
-/** Poll unread count every 10 s (lightweight endpoint) */
 export function useUnreadCount() {
   return useQuery({
     queryKey: UNREAD_COUNT_KEY,
     queryFn: getUnreadCount,
-    refetchInterval: 10_000,
-    staleTime: 8_000,
+    staleTime: 30_000,
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
   });
+}
+
+export function invalidateNotifications(qc: ReturnType<typeof useQueryClient>) {
+  qc.invalidateQueries({ queryKey: NOTIFICATIONS_KEY });
+  qc.invalidateQueries({ queryKey: UNREAD_COUNT_KEY });
 }
 
 export function useMarkRead() {
@@ -35,8 +40,7 @@ export function useMarkRead() {
     mutationFn: (notificationId: number) =>
       markNotificationRead(notificationId),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: NOTIFICATIONS_KEY });
-      qc.invalidateQueries({ queryKey: UNREAD_COUNT_KEY });
+      invalidateNotifications(qc);
     },
   });
 }
@@ -46,8 +50,7 @@ export function useMarkAllRead() {
   return useMutation({
     mutationFn: markAllNotificationsRead,
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: NOTIFICATIONS_KEY });
-      qc.invalidateQueries({ queryKey: UNREAD_COUNT_KEY });
+      invalidateNotifications(qc);
     },
   });
 }

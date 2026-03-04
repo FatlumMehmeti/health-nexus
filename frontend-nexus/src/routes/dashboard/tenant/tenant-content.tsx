@@ -7,6 +7,7 @@ import { DoctorsManager } from "./doctors-manager";
 import { TenantDepartmentsManager } from "./departments-manager";
 import { ProductsManager } from "./products-manager";
 import { TenantPlansPanel } from "./plans-panel";
+import { TenantEnrollmentsPanel } from "./enrollments-panel";
 import { TenantDetailsEditor } from "./details-editor";
 import type { TenantSectionKey } from "./constants";
 import {
@@ -83,7 +84,7 @@ export function TenantManagerPageContent({
       <div className="space-y-2">
         <h1 className="text-2xl font-bold sm:text-3xl">My Tenant</h1>
         <p className="text-muted-foreground">
-          Manage branding, departments, services, and products for your tenant.
+          Manage branding, departments, services, products, plans, and enrollments.
         </p>
       </div>
 
@@ -121,6 +122,8 @@ export function TenantManagerPageContent({
         )}
 
         {activeSection === "plans" && <TenantPlansPanel />}
+
+        {activeSection === "enrollments" && <TenantEnrollmentsPanel />}
 
         {activeSection === "settings" && (
           <TenantDetailsEditor onSaved={notifyDataChanged} />

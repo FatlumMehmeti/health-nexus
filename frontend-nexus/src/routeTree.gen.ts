@@ -26,9 +26,6 @@ import { Route as DashboardTenantsRouteImport } from './routes/dashboard/tenants
 import { Route as DashboardTenantRouteImport } from './routes/dashboard/tenant'
 import { Route as DashboardRolesRouteImport } from './routes/dashboard/roles'
 import { Route as DashboardProfileRouteImport } from './routes/dashboard/profile'
-import { Route as DashboardGlobalStateRouteImport } from './routes/dashboard/global-state'
-import { Route as DashboardFormsRouteImport } from './routes/dashboard/forms'
-import { Route as DashboardDataRouteImport } from './routes/dashboard/data'
 import { Route as DashboardClientRouteImport } from './routes/dashboard/client'
 import { Route as DashboardAppointmentsRouteImport } from './routes/dashboard/appointments'
 import { Route as AppointmentsSelectTenantRouteImport } from './routes/appointments/select-tenant'
@@ -129,21 +126,6 @@ const DashboardRolesRoute = DashboardRolesRouteImport.update({
 const DashboardProfileRoute = DashboardProfileRouteImport.update({
   id: '/profile',
   path: '/profile',
-  getParentRoute: () => DashboardRouteRoute,
-} as any)
-const DashboardGlobalStateRoute = DashboardGlobalStateRouteImport.update({
-  id: '/global-state',
-  path: '/global-state',
-  getParentRoute: () => DashboardRouteRoute,
-} as any)
-const DashboardFormsRoute = DashboardFormsRouteImport.update({
-  id: '/forms',
-  path: '/forms',
-  getParentRoute: () => DashboardRouteRoute,
-} as any)
-const DashboardDataRoute = DashboardDataRouteImport.update({
-  id: '/data',
-  path: '/data',
   getParentRoute: () => DashboardRouteRoute,
 } as any)
 const DashboardClientRoute = DashboardClientRouteImport.update({
@@ -255,9 +237,6 @@ export interface FileRoutesByFullPath {
   '/appointments/select-tenant': typeof AppointmentsSelectTenantRoute
   '/dashboard/appointments': typeof DashboardAppointmentsRoute
   '/dashboard/client': typeof DashboardClientRouteWithChildren
-  '/dashboard/data': typeof DashboardDataRoute
-  '/dashboard/forms': typeof DashboardFormsRoute
-  '/dashboard/global-state': typeof DashboardGlobalStateRoute
   '/dashboard/profile': typeof DashboardProfileRoute
   '/dashboard/roles': typeof DashboardRolesRoute
   '/dashboard/tenant': typeof DashboardTenantRouteWithChildren
@@ -291,9 +270,6 @@ export interface FileRoutesByTo {
   '/appointments/select-tenant': typeof AppointmentsSelectTenantRoute
   '/dashboard/appointments': typeof DashboardAppointmentsRoute
   '/dashboard/client': typeof DashboardClientRouteWithChildren
-  '/dashboard/data': typeof DashboardDataRoute
-  '/dashboard/forms': typeof DashboardFormsRoute
-  '/dashboard/global-state': typeof DashboardGlobalStateRoute
   '/dashboard/profile': typeof DashboardProfileRoute
   '/dashboard/roles': typeof DashboardRolesRoute
   '/dashboard/tenant': typeof DashboardTenantRouteWithChildren
@@ -329,9 +305,6 @@ export interface FileRoutesById {
   '/appointments/select-tenant': typeof AppointmentsSelectTenantRoute
   '/dashboard/appointments': typeof DashboardAppointmentsRoute
   '/dashboard/client': typeof DashboardClientRouteWithChildren
-  '/dashboard/data': typeof DashboardDataRoute
-  '/dashboard/forms': typeof DashboardFormsRoute
-  '/dashboard/global-state': typeof DashboardGlobalStateRoute
   '/dashboard/profile': typeof DashboardProfileRoute
   '/dashboard/roles': typeof DashboardRolesRoute
   '/dashboard/tenant': typeof DashboardTenantRouteWithChildren
@@ -369,9 +342,6 @@ export interface FileRouteTypes {
     | '/appointments/select-tenant'
     | '/dashboard/appointments'
     | '/dashboard/client'
-    | '/dashboard/data'
-    | '/dashboard/forms'
-    | '/dashboard/global-state'
     | '/dashboard/profile'
     | '/dashboard/roles'
     | '/dashboard/tenant'
@@ -405,9 +375,6 @@ export interface FileRouteTypes {
     | '/appointments/select-tenant'
     | '/dashboard/appointments'
     | '/dashboard/client'
-    | '/dashboard/data'
-    | '/dashboard/forms'
-    | '/dashboard/global-state'
     | '/dashboard/profile'
     | '/dashboard/roles'
     | '/dashboard/tenant'
@@ -442,9 +409,6 @@ export interface FileRouteTypes {
     | '/appointments/select-tenant'
     | '/dashboard/appointments'
     | '/dashboard/client'
-    | '/dashboard/data'
-    | '/dashboard/forms'
-    | '/dashboard/global-state'
     | '/dashboard/profile'
     | '/dashboard/roles'
     | '/dashboard/tenant'
@@ -600,27 +564,6 @@ declare module '@tanstack/react-router' {
       path: '/profile'
       fullPath: '/dashboard/profile'
       preLoaderRoute: typeof DashboardProfileRouteImport
-      parentRoute: typeof DashboardRouteRoute
-    }
-    '/dashboard/global-state': {
-      id: '/dashboard/global-state'
-      path: '/global-state'
-      fullPath: '/dashboard/global-state'
-      preLoaderRoute: typeof DashboardGlobalStateRouteImport
-      parentRoute: typeof DashboardRouteRoute
-    }
-    '/dashboard/forms': {
-      id: '/dashboard/forms'
-      path: '/forms'
-      fullPath: '/dashboard/forms'
-      preLoaderRoute: typeof DashboardFormsRouteImport
-      parentRoute: typeof DashboardRouteRoute
-    }
-    '/dashboard/data': {
-      id: '/dashboard/data'
-      path: '/data'
-      fullPath: '/dashboard/data'
-      preLoaderRoute: typeof DashboardDataRouteImport
       parentRoute: typeof DashboardRouteRoute
     }
     '/dashboard/client': {
@@ -799,9 +742,6 @@ interface DashboardRouteRouteChildren {
   DashboardLandingPagesRouteRoute: typeof DashboardLandingPagesRouteRouteWithChildren
   DashboardAppointmentsRoute: typeof DashboardAppointmentsRoute
   DashboardClientRoute: typeof DashboardClientRouteWithChildren
-  DashboardDataRoute: typeof DashboardDataRoute
-  DashboardFormsRoute: typeof DashboardFormsRoute
-  DashboardGlobalStateRoute: typeof DashboardGlobalStateRoute
   DashboardProfileRoute: typeof DashboardProfileRoute
   DashboardRolesRoute: typeof DashboardRolesRoute
   DashboardTenantRoute: typeof DashboardTenantRouteWithChildren
@@ -815,9 +755,6 @@ const DashboardRouteRouteChildren: DashboardRouteRouteChildren = {
   DashboardLandingPagesRouteRoute: DashboardLandingPagesRouteRouteWithChildren,
   DashboardAppointmentsRoute: DashboardAppointmentsRoute,
   DashboardClientRoute: DashboardClientRouteWithChildren,
-  DashboardDataRoute: DashboardDataRoute,
-  DashboardFormsRoute: DashboardFormsRoute,
-  DashboardGlobalStateRoute: DashboardGlobalStateRoute,
   DashboardProfileRoute: DashboardProfileRoute,
   DashboardRolesRoute: DashboardRolesRoute,
   DashboardTenantRoute: DashboardTenantRouteWithChildren,

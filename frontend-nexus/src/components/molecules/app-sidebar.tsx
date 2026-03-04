@@ -105,6 +105,11 @@ const superAdminDocuments = [
 
 const tenantManagerDocuments = [
   {
+    title: 'Tenant Details',
+    url: '/dashboard/tenant/settings',
+    icon: IconSettings,
+  },
+  {
     title: 'Departments & Services',
     url: '/dashboard/tenant/departments-services',
     icon: IconFolder,
@@ -133,11 +138,6 @@ const tenantManagerDocuments = [
     title: 'Enrollments',
     url: '/dashboard/tenant/enrollments',
     icon: IconHistory,
-  },
-  {
-    title: 'Settings',
-    url: '/dashboard/tenant/settings',
-    icon: IconSettings,
   },
 ] as const;
 const clientsDocuments = [
@@ -213,7 +213,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   <span className="text-base font-semibold">Health Nexus</span>
                 </Link>
               </SidebarMenuButton>
- 
             </div>
           </SidebarMenuItem>
         </SidebarMenu>

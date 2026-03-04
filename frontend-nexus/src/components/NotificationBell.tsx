@@ -8,6 +8,7 @@ import {
 } from "@tabler/icons-react";
 import { formatDistanceToNow } from "date-fns";
 import { useNavigate } from "@tanstack/react-router";
+import { useQueryClient } from "@tanstack/react-query";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -23,6 +24,7 @@ import {
   useUnreadCount,
   useMarkRead,
   useMarkAllRead,
+  invalidateNotifications,
 } from "@/services/notifications.queries";
 import type { Notification } from "@/services/notifications.service";
 import { useAuthStore } from "@/stores/auth.store";
@@ -87,6 +89,7 @@ function NotificationRow({
 }
 
 export function NotificationBell() {
+  const qc = useQueryClient();
   const { data: count = 0 } = useUnreadCount();
   const { data: notifications = [] } = useNotifications();
   const markRead = useMarkRead();
@@ -108,7 +111,13 @@ export function NotificationBell() {
   };
 
   return (
-    <DropdownMenu open={open} onOpenChange={setOpen}>
+    <DropdownMenu
+      open={open}
+      onOpenChange={(nextOpen) => {
+        setOpen(nextOpen);
+        if (nextOpen) invalidateNotifications(qc);
+      }}
+    >
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" size="icon" className="relative">
           {count > 0 ? (
