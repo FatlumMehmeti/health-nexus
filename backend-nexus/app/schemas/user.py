@@ -22,12 +22,12 @@ class UserCreate(BaseModel):
     role: str
 
 class UserUpdate(BaseModel):
-    first_name: Optional[str]
-    last_name: Optional[str]
-    contact: Optional[str]
-    address: Optional[str]
-    role_id: Optional[int]
-    password: Optional[str]
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    contact: Optional[str] = None
+    address: Optional[str] = None
+    role_id: Optional[int] = None
+    password: Optional[str] = None
 
 
 class UserRead(UserBase):

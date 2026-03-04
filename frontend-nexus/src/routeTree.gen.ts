@@ -11,25 +11,38 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as UnauthorizedRouteImport } from './routes/unauthorized'
 import { Route as TenantsRouteImport } from './routes/tenants'
+import { Route as SignupRouteImport } from './routes/signup'
 import { Route as RegisterRouteImport } from './routes/register'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as EnrollmentRouteImport } from './routes/enrollment'
+import { Route as ContactAdminRouteImport } from './routes/contact-admin'
 import { Route as LandingRouteRouteImport } from './routes/landing/route'
 import { Route as DashboardRouteRouteImport } from './routes/dashboard/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as DashboardIndexRouteImport } from './routes/dashboard/index'
 import { Route as LandingTenantSlugRouteImport } from './routes/landing/$tenantSlug'
+import { Route as DoctorAppointmentsRouteImport } from './routes/doctor/appointments'
 import { Route as DashboardTenantsRouteImport } from './routes/dashboard/tenants'
 import { Route as DashboardTenantRouteImport } from './routes/dashboard/tenant'
 import { Route as DashboardRolesRouteImport } from './routes/dashboard/roles'
+import { Route as DashboardProfileRouteImport } from './routes/dashboard/profile'
 import { Route as DashboardGlobalStateRouteImport } from './routes/dashboard/global-state'
 import { Route as DashboardFormsRouteImport } from './routes/dashboard/forms'
 import { Route as DashboardDataRouteImport } from './routes/dashboard/data'
+import { Route as DashboardClientRouteImport } from './routes/dashboard/client'
+import { Route as DashboardAppointmentsRouteImport } from './routes/dashboard/appointments'
+import { Route as AppointmentsSelectTenantRouteImport } from './routes/appointments/select-tenant'
+import { Route as AppointmentsMyRouteImport } from './routes/appointments/my'
+import { Route as AppointmentsConfirmationRouteImport } from './routes/appointments/confirmation'
+import { Route as AppointmentsBookRouteImport } from './routes/appointments/book'
+import { Route as AppointmentsAppointmentIdRouteImport } from './routes/appointments/$appointmentId'
 import { Route as DashboardLandingPagesRouteRouteImport } from './routes/dashboard/landing-pages/route'
 import { Route as DashboardLandingPagesIndexRouteImport } from './routes/dashboard/landing-pages/index'
 import { Route as DashboardAuditLogsIndexRouteImport } from './routes/dashboard/audit-logs/index'
 import { Route as DashboardTenantSectionRouteImport } from './routes/dashboard/tenant.$section'
 import { Route as DashboardLandingPagesPageIdRouteImport } from './routes/dashboard/landing-pages/$pageId'
 import { Route as DashboardContractSignDoctorContractIdRouteImport } from './routes/dashboard/contract-sign-doctor.$contractId'
+import { Route as DashboardClientSectionRouteImport } from './routes/dashboard/client.$section'
 import { Route as DashboardTenantContractsRouteRouteImport } from './routes/dashboard/tenant/contracts/route'
 import { Route as DashboardTenantContractsIndexRouteImport } from './routes/dashboard/tenant/contracts/index'
 
@@ -43,6 +56,11 @@ const TenantsRoute = TenantsRouteImport.update({
   path: '/tenants',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SignupRoute = SignupRouteImport.update({
+  id: '/signup',
+  path: '/signup',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const RegisterRoute = RegisterRouteImport.update({
   id: '/register',
   path: '/register',
@@ -51,6 +69,16 @@ const RegisterRoute = RegisterRouteImport.update({
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EnrollmentRoute = EnrollmentRouteImport.update({
+  id: '/enrollment',
+  path: '/enrollment',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ContactAdminRoute = ContactAdminRouteImport.update({
+  id: '/contact-admin',
+  path: '/contact-admin',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LandingRouteRoute = LandingRouteRouteImport.update({
@@ -78,6 +106,11 @@ const LandingTenantSlugRoute = LandingTenantSlugRouteImport.update({
   path: '/$tenantSlug',
   getParentRoute: () => LandingRouteRoute,
 } as any)
+const DoctorAppointmentsRoute = DoctorAppointmentsRouteImport.update({
+  id: '/doctor/appointments',
+  path: '/doctor/appointments',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DashboardTenantsRoute = DashboardTenantsRouteImport.update({
   id: '/tenants',
   path: '/tenants',
@@ -91,6 +124,11 @@ const DashboardTenantRoute = DashboardTenantRouteImport.update({
 const DashboardRolesRoute = DashboardRolesRouteImport.update({
   id: '/roles',
   path: '/roles',
+  getParentRoute: () => DashboardRouteRoute,
+} as any)
+const DashboardProfileRoute = DashboardProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
   getParentRoute: () => DashboardRouteRoute,
 } as any)
 const DashboardGlobalStateRoute = DashboardGlobalStateRouteImport.update({
@@ -108,6 +146,44 @@ const DashboardDataRoute = DashboardDataRouteImport.update({
   path: '/data',
   getParentRoute: () => DashboardRouteRoute,
 } as any)
+const DashboardClientRoute = DashboardClientRouteImport.update({
+  id: '/client',
+  path: '/client',
+  getParentRoute: () => DashboardRouteRoute,
+} as any)
+const DashboardAppointmentsRoute = DashboardAppointmentsRouteImport.update({
+  id: '/appointments',
+  path: '/appointments',
+  getParentRoute: () => DashboardRouteRoute,
+} as any)
+const AppointmentsSelectTenantRoute =
+  AppointmentsSelectTenantRouteImport.update({
+    id: '/appointments/select-tenant',
+    path: '/appointments/select-tenant',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const AppointmentsMyRoute = AppointmentsMyRouteImport.update({
+  id: '/appointments/my',
+  path: '/appointments/my',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AppointmentsConfirmationRoute =
+  AppointmentsConfirmationRouteImport.update({
+    id: '/appointments/confirmation',
+    path: '/appointments/confirmation',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const AppointmentsBookRoute = AppointmentsBookRouteImport.update({
+  id: '/appointments/book',
+  path: '/appointments/book',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AppointmentsAppointmentIdRoute =
+  AppointmentsAppointmentIdRouteImport.update({
+    id: '/appointments/$appointmentId',
+    path: '/appointments/$appointmentId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const DashboardLandingPagesRouteRoute =
   DashboardLandingPagesRouteRouteImport.update({
     id: '/landing-pages',
@@ -142,6 +218,11 @@ const DashboardContractSignDoctorContractIdRoute =
     path: '/contract-sign-doctor/$contractId',
     getParentRoute: () => DashboardRouteRoute,
   } as any)
+const DashboardClientSectionRoute = DashboardClientSectionRouteImport.update({
+  id: '/$section',
+  path: '/$section',
+  getParentRoute: () => DashboardClientRoute,
+} as any)
 const DashboardTenantContractsRouteRoute =
   DashboardTenantContractsRouteRouteImport.update({
     id: '/contracts',
@@ -159,20 +240,33 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRouteRouteWithChildren
   '/landing': typeof LandingRouteRouteWithChildren
+  '/contact-admin': typeof ContactAdminRoute
+  '/enrollment': typeof EnrollmentRoute
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
+  '/signup': typeof SignupRoute
   '/tenants': typeof TenantsRoute
   '/unauthorized': typeof UnauthorizedRoute
   '/dashboard/landing-pages': typeof DashboardLandingPagesRouteRouteWithChildren
+  '/appointments/$appointmentId': typeof AppointmentsAppointmentIdRoute
+  '/appointments/book': typeof AppointmentsBookRoute
+  '/appointments/confirmation': typeof AppointmentsConfirmationRoute
+  '/appointments/my': typeof AppointmentsMyRoute
+  '/appointments/select-tenant': typeof AppointmentsSelectTenantRoute
+  '/dashboard/appointments': typeof DashboardAppointmentsRoute
+  '/dashboard/client': typeof DashboardClientRouteWithChildren
   '/dashboard/data': typeof DashboardDataRoute
   '/dashboard/forms': typeof DashboardFormsRoute
   '/dashboard/global-state': typeof DashboardGlobalStateRoute
+  '/dashboard/profile': typeof DashboardProfileRoute
   '/dashboard/roles': typeof DashboardRolesRoute
   '/dashboard/tenant': typeof DashboardTenantRouteWithChildren
   '/dashboard/tenants': typeof DashboardTenantsRoute
+  '/doctor/appointments': typeof DoctorAppointmentsRoute
   '/landing/$tenantSlug': typeof LandingTenantSlugRoute
   '/dashboard/': typeof DashboardIndexRoute
   '/dashboard/tenant/contracts': typeof DashboardTenantContractsRouteRouteWithChildren
+  '/dashboard/client/$section': typeof DashboardClientSectionRoute
   '/dashboard/contract-sign-doctor/$contractId': typeof DashboardContractSignDoctorContractIdRoute
   '/dashboard/landing-pages/$pageId': typeof DashboardLandingPagesPageIdRoute
   '/dashboard/tenant/$section': typeof DashboardTenantSectionRoute
@@ -183,18 +277,31 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/landing': typeof LandingRouteRouteWithChildren
+  '/contact-admin': typeof ContactAdminRoute
+  '/enrollment': typeof EnrollmentRoute
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
+  '/signup': typeof SignupRoute
   '/tenants': typeof TenantsRoute
   '/unauthorized': typeof UnauthorizedRoute
+  '/appointments/$appointmentId': typeof AppointmentsAppointmentIdRoute
+  '/appointments/book': typeof AppointmentsBookRoute
+  '/appointments/confirmation': typeof AppointmentsConfirmationRoute
+  '/appointments/my': typeof AppointmentsMyRoute
+  '/appointments/select-tenant': typeof AppointmentsSelectTenantRoute
+  '/dashboard/appointments': typeof DashboardAppointmentsRoute
+  '/dashboard/client': typeof DashboardClientRouteWithChildren
   '/dashboard/data': typeof DashboardDataRoute
   '/dashboard/forms': typeof DashboardFormsRoute
   '/dashboard/global-state': typeof DashboardGlobalStateRoute
+  '/dashboard/profile': typeof DashboardProfileRoute
   '/dashboard/roles': typeof DashboardRolesRoute
   '/dashboard/tenant': typeof DashboardTenantRouteWithChildren
   '/dashboard/tenants': typeof DashboardTenantsRoute
+  '/doctor/appointments': typeof DoctorAppointmentsRoute
   '/landing/$tenantSlug': typeof LandingTenantSlugRoute
   '/dashboard': typeof DashboardIndexRoute
+  '/dashboard/client/$section': typeof DashboardClientSectionRoute
   '/dashboard/contract-sign-doctor/$contractId': typeof DashboardContractSignDoctorContractIdRoute
   '/dashboard/landing-pages/$pageId': typeof DashboardLandingPagesPageIdRoute
   '/dashboard/tenant/$section': typeof DashboardTenantSectionRoute
@@ -207,20 +314,33 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRouteRouteWithChildren
   '/landing': typeof LandingRouteRouteWithChildren
+  '/contact-admin': typeof ContactAdminRoute
+  '/enrollment': typeof EnrollmentRoute
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
+  '/signup': typeof SignupRoute
   '/tenants': typeof TenantsRoute
   '/unauthorized': typeof UnauthorizedRoute
   '/dashboard/landing-pages': typeof DashboardLandingPagesRouteRouteWithChildren
+  '/appointments/$appointmentId': typeof AppointmentsAppointmentIdRoute
+  '/appointments/book': typeof AppointmentsBookRoute
+  '/appointments/confirmation': typeof AppointmentsConfirmationRoute
+  '/appointments/my': typeof AppointmentsMyRoute
+  '/appointments/select-tenant': typeof AppointmentsSelectTenantRoute
+  '/dashboard/appointments': typeof DashboardAppointmentsRoute
+  '/dashboard/client': typeof DashboardClientRouteWithChildren
   '/dashboard/data': typeof DashboardDataRoute
   '/dashboard/forms': typeof DashboardFormsRoute
   '/dashboard/global-state': typeof DashboardGlobalStateRoute
+  '/dashboard/profile': typeof DashboardProfileRoute
   '/dashboard/roles': typeof DashboardRolesRoute
   '/dashboard/tenant': typeof DashboardTenantRouteWithChildren
   '/dashboard/tenants': typeof DashboardTenantsRoute
+  '/doctor/appointments': typeof DoctorAppointmentsRoute
   '/landing/$tenantSlug': typeof LandingTenantSlugRoute
   '/dashboard/': typeof DashboardIndexRoute
   '/dashboard/tenant/contracts': typeof DashboardTenantContractsRouteRouteWithChildren
+  '/dashboard/client/$section': typeof DashboardClientSectionRoute
   '/dashboard/contract-sign-doctor/$contractId': typeof DashboardContractSignDoctorContractIdRoute
   '/dashboard/landing-pages/$pageId': typeof DashboardLandingPagesPageIdRoute
   '/dashboard/tenant/$section': typeof DashboardTenantSectionRoute
@@ -234,20 +354,33 @@ export interface FileRouteTypes {
     | '/'
     | '/dashboard'
     | '/landing'
+    | '/contact-admin'
+    | '/enrollment'
     | '/login'
     | '/register'
+    | '/signup'
     | '/tenants'
     | '/unauthorized'
     | '/dashboard/landing-pages'
+    | '/appointments/$appointmentId'
+    | '/appointments/book'
+    | '/appointments/confirmation'
+    | '/appointments/my'
+    | '/appointments/select-tenant'
+    | '/dashboard/appointments'
+    | '/dashboard/client'
     | '/dashboard/data'
     | '/dashboard/forms'
     | '/dashboard/global-state'
+    | '/dashboard/profile'
     | '/dashboard/roles'
     | '/dashboard/tenant'
     | '/dashboard/tenants'
+    | '/doctor/appointments'
     | '/landing/$tenantSlug'
     | '/dashboard/'
     | '/dashboard/tenant/contracts'
+    | '/dashboard/client/$section'
     | '/dashboard/contract-sign-doctor/$contractId'
     | '/dashboard/landing-pages/$pageId'
     | '/dashboard/tenant/$section'
@@ -258,18 +391,31 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/landing'
+    | '/contact-admin'
+    | '/enrollment'
     | '/login'
     | '/register'
+    | '/signup'
     | '/tenants'
     | '/unauthorized'
+    | '/appointments/$appointmentId'
+    | '/appointments/book'
+    | '/appointments/confirmation'
+    | '/appointments/my'
+    | '/appointments/select-tenant'
+    | '/dashboard/appointments'
+    | '/dashboard/client'
     | '/dashboard/data'
     | '/dashboard/forms'
     | '/dashboard/global-state'
+    | '/dashboard/profile'
     | '/dashboard/roles'
     | '/dashboard/tenant'
     | '/dashboard/tenants'
+    | '/doctor/appointments'
     | '/landing/$tenantSlug'
     | '/dashboard'
+    | '/dashboard/client/$section'
     | '/dashboard/contract-sign-doctor/$contractId'
     | '/dashboard/landing-pages/$pageId'
     | '/dashboard/tenant/$section'
@@ -281,20 +427,33 @@ export interface FileRouteTypes {
     | '/'
     | '/dashboard'
     | '/landing'
+    | '/contact-admin'
+    | '/enrollment'
     | '/login'
     | '/register'
+    | '/signup'
     | '/tenants'
     | '/unauthorized'
     | '/dashboard/landing-pages'
+    | '/appointments/$appointmentId'
+    | '/appointments/book'
+    | '/appointments/confirmation'
+    | '/appointments/my'
+    | '/appointments/select-tenant'
+    | '/dashboard/appointments'
+    | '/dashboard/client'
     | '/dashboard/data'
     | '/dashboard/forms'
     | '/dashboard/global-state'
+    | '/dashboard/profile'
     | '/dashboard/roles'
     | '/dashboard/tenant'
     | '/dashboard/tenants'
+    | '/doctor/appointments'
     | '/landing/$tenantSlug'
     | '/dashboard/'
     | '/dashboard/tenant/contracts'
+    | '/dashboard/client/$section'
     | '/dashboard/contract-sign-doctor/$contractId'
     | '/dashboard/landing-pages/$pageId'
     | '/dashboard/tenant/$section'
@@ -307,10 +466,19 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   DashboardRouteRoute: typeof DashboardRouteRouteWithChildren
   LandingRouteRoute: typeof LandingRouteRouteWithChildren
+  ContactAdminRoute: typeof ContactAdminRoute
+  EnrollmentRoute: typeof EnrollmentRoute
   LoginRoute: typeof LoginRoute
   RegisterRoute: typeof RegisterRoute
+  SignupRoute: typeof SignupRoute
   TenantsRoute: typeof TenantsRoute
   UnauthorizedRoute: typeof UnauthorizedRoute
+  AppointmentsAppointmentIdRoute: typeof AppointmentsAppointmentIdRoute
+  AppointmentsBookRoute: typeof AppointmentsBookRoute
+  AppointmentsConfirmationRoute: typeof AppointmentsConfirmationRoute
+  AppointmentsMyRoute: typeof AppointmentsMyRoute
+  AppointmentsSelectTenantRoute: typeof AppointmentsSelectTenantRoute
+  DoctorAppointmentsRoute: typeof DoctorAppointmentsRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -329,6 +497,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TenantsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/signup': {
+      id: '/signup'
+      path: '/signup'
+      fullPath: '/signup'
+      preLoaderRoute: typeof SignupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/register': {
       id: '/register'
       path: '/register'
@@ -341,6 +516,20 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/enrollment': {
+      id: '/enrollment'
+      path: '/enrollment'
+      fullPath: '/enrollment'
+      preLoaderRoute: typeof EnrollmentRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/contact-admin': {
+      id: '/contact-admin'
+      path: '/contact-admin'
+      fullPath: '/contact-admin'
+      preLoaderRoute: typeof ContactAdminRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/landing': {
@@ -378,6 +567,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LandingTenantSlugRouteImport
       parentRoute: typeof LandingRouteRoute
     }
+    '/doctor/appointments': {
+      id: '/doctor/appointments'
+      path: '/doctor/appointments'
+      fullPath: '/doctor/appointments'
+      preLoaderRoute: typeof DoctorAppointmentsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/dashboard/tenants': {
       id: '/dashboard/tenants'
       path: '/tenants'
@@ -397,6 +593,13 @@ declare module '@tanstack/react-router' {
       path: '/roles'
       fullPath: '/dashboard/roles'
       preLoaderRoute: typeof DashboardRolesRouteImport
+      parentRoute: typeof DashboardRouteRoute
+    }
+    '/dashboard/profile': {
+      id: '/dashboard/profile'
+      path: '/profile'
+      fullPath: '/dashboard/profile'
+      preLoaderRoute: typeof DashboardProfileRouteImport
       parentRoute: typeof DashboardRouteRoute
     }
     '/dashboard/global-state': {
@@ -419,6 +622,55 @@ declare module '@tanstack/react-router' {
       fullPath: '/dashboard/data'
       preLoaderRoute: typeof DashboardDataRouteImport
       parentRoute: typeof DashboardRouteRoute
+    }
+    '/dashboard/client': {
+      id: '/dashboard/client'
+      path: '/client'
+      fullPath: '/dashboard/client'
+      preLoaderRoute: typeof DashboardClientRouteImport
+      parentRoute: typeof DashboardRouteRoute
+    }
+    '/dashboard/appointments': {
+      id: '/dashboard/appointments'
+      path: '/appointments'
+      fullPath: '/dashboard/appointments'
+      preLoaderRoute: typeof DashboardAppointmentsRouteImport
+      parentRoute: typeof DashboardRouteRoute
+    }
+    '/appointments/select-tenant': {
+      id: '/appointments/select-tenant'
+      path: '/appointments/select-tenant'
+      fullPath: '/appointments/select-tenant'
+      preLoaderRoute: typeof AppointmentsSelectTenantRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/appointments/my': {
+      id: '/appointments/my'
+      path: '/appointments/my'
+      fullPath: '/appointments/my'
+      preLoaderRoute: typeof AppointmentsMyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/appointments/confirmation': {
+      id: '/appointments/confirmation'
+      path: '/appointments/confirmation'
+      fullPath: '/appointments/confirmation'
+      preLoaderRoute: typeof AppointmentsConfirmationRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/appointments/book': {
+      id: '/appointments/book'
+      path: '/appointments/book'
+      fullPath: '/appointments/book'
+      preLoaderRoute: typeof AppointmentsBookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/appointments/$appointmentId': {
+      id: '/appointments/$appointmentId'
+      path: '/appointments/$appointmentId'
+      fullPath: '/appointments/$appointmentId'
+      preLoaderRoute: typeof AppointmentsAppointmentIdRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/dashboard/landing-pages': {
       id: '/dashboard/landing-pages'
@@ -462,6 +714,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardContractSignDoctorContractIdRouteImport
       parentRoute: typeof DashboardRouteRoute
     }
+    '/dashboard/client/$section': {
+      id: '/dashboard/client/$section'
+      path: '/$section'
+      fullPath: '/dashboard/client/$section'
+      preLoaderRoute: typeof DashboardClientSectionRouteImport
+      parentRoute: typeof DashboardClientRoute
+    }
     '/dashboard/tenant/contracts': {
       id: '/dashboard/tenant/contracts'
       path: '/contracts'
@@ -495,6 +754,18 @@ const DashboardLandingPagesRouteRouteWithChildren =
     DashboardLandingPagesRouteRouteChildren,
   )
 
+interface DashboardClientRouteChildren {
+  DashboardClientSectionRoute: typeof DashboardClientSectionRoute
+}
+
+const DashboardClientRouteChildren: DashboardClientRouteChildren = {
+  DashboardClientSectionRoute: DashboardClientSectionRoute,
+}
+
+const DashboardClientRouteWithChildren = DashboardClientRoute._addFileChildren(
+  DashboardClientRouteChildren,
+)
+
 interface DashboardTenantContractsRouteRouteChildren {
   DashboardTenantContractsIndexRoute: typeof DashboardTenantContractsIndexRoute
 }
@@ -526,9 +797,12 @@ const DashboardTenantRouteWithChildren = DashboardTenantRoute._addFileChildren(
 
 interface DashboardRouteRouteChildren {
   DashboardLandingPagesRouteRoute: typeof DashboardLandingPagesRouteRouteWithChildren
+  DashboardAppointmentsRoute: typeof DashboardAppointmentsRoute
+  DashboardClientRoute: typeof DashboardClientRouteWithChildren
   DashboardDataRoute: typeof DashboardDataRoute
   DashboardFormsRoute: typeof DashboardFormsRoute
   DashboardGlobalStateRoute: typeof DashboardGlobalStateRoute
+  DashboardProfileRoute: typeof DashboardProfileRoute
   DashboardRolesRoute: typeof DashboardRolesRoute
   DashboardTenantRoute: typeof DashboardTenantRouteWithChildren
   DashboardTenantsRoute: typeof DashboardTenantsRoute
@@ -539,9 +813,12 @@ interface DashboardRouteRouteChildren {
 
 const DashboardRouteRouteChildren: DashboardRouteRouteChildren = {
   DashboardLandingPagesRouteRoute: DashboardLandingPagesRouteRouteWithChildren,
+  DashboardAppointmentsRoute: DashboardAppointmentsRoute,
+  DashboardClientRoute: DashboardClientRouteWithChildren,
   DashboardDataRoute: DashboardDataRoute,
   DashboardFormsRoute: DashboardFormsRoute,
   DashboardGlobalStateRoute: DashboardGlobalStateRoute,
+  DashboardProfileRoute: DashboardProfileRoute,
   DashboardRolesRoute: DashboardRolesRoute,
   DashboardTenantRoute: DashboardTenantRouteWithChildren,
   DashboardTenantsRoute: DashboardTenantsRoute,
@@ -571,10 +848,19 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   DashboardRouteRoute: DashboardRouteRouteWithChildren,
   LandingRouteRoute: LandingRouteRouteWithChildren,
+  ContactAdminRoute: ContactAdminRoute,
+  EnrollmentRoute: EnrollmentRoute,
   LoginRoute: LoginRoute,
   RegisterRoute: RegisterRoute,
+  SignupRoute: SignupRoute,
   TenantsRoute: TenantsRoute,
   UnauthorizedRoute: UnauthorizedRoute,
+  AppointmentsAppointmentIdRoute: AppointmentsAppointmentIdRoute,
+  AppointmentsBookRoute: AppointmentsBookRoute,
+  AppointmentsConfirmationRoute: AppointmentsConfirmationRoute,
+  AppointmentsMyRoute: AppointmentsMyRoute,
+  AppointmentsSelectTenantRoute: AppointmentsSelectTenantRoute,
+  DoctorAppointmentsRoute: DoctorAppointmentsRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

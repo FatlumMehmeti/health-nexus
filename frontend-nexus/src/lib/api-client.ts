@@ -138,10 +138,14 @@ async function readTextSafely(res: Response): Promise<string | undefined> {
   }
 }
 
+/** Paths where a 401 means "wrong credentials", not "session expired" — don't fire the global session handler. */
+const AUTH_OWN_401_PATHS = ["/auth/login", "/auth/signup", "/auth/refresh"];
+
 function buildError(
   res: Response,
   data: unknown,
   text: string | undefined,
+  url: string,
 ): ApiError {
   let message = "Request failed";
   let detail: string | ValidationError[] | undefined;
@@ -164,7 +168,8 @@ function buildError(
     detail,
     data ?? text,
   );
-  if (res.status === 401) onUnauthorized?.(err);
+  const isAuthOwnPath = AUTH_OWN_401_PATHS.some((p) => url.includes(p));
+  if (res.status === 401 && !isAuthOwnPath) onUnauthorized?.(err);
   return err;
 }
 
@@ -218,7 +223,7 @@ export async function apiFetch<T>(
   const text = data === undefined ? await readTextSafely(res) : undefined;
 
   if (!res.ok) {
-    throw buildError(res, data, text);
+    throw buildError(res, data, text, url);
   }
 
   if (skipJson || res.status === 204) return undefined as T;

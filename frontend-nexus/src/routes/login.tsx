@@ -90,12 +90,32 @@ function LoginPage() {
     setSubmitError(null);
     try {
       await login(values);
-      const defaultPath = getDefaultPostLoginPath(useAuthStore.getState().role);
-      const target =
-        redirectTo && redirectTo.startsWith("/") && !redirectTo.startsWith("//")
-          ? redirectTo
-          : defaultPath;
-      await navigate({ to: target, replace: true });
+
+      // Get updated state after login
+      const state = useAuthStore.getState();
+      const { role } = state;
+
+      // If there's an explicit redirect param, use it
+      if (redirectTo && redirectTo.startsWith("/") && !redirectTo.startsWith("//")) {
+        await navigate({ to: redirectTo, replace: true });
+        return;
+      }
+
+      // Dashboard-capable roles use the standard path helper
+      if (can({ role: role ?? undefined }, "DASHBOARD_HOME")) {
+        // Doctors land directly on their appointments management page
+        if (role === 'DOCTOR') {
+          await navigate({ to: '/dashboard/appointments', replace: true })
+          return
+        }
+        await navigate({ to: "/dashboard", replace: true });
+        return;
+      }
+
+      // CLIENT / other roles without explicit redirect → tenant selector (dev-team default).
+      // The /appointments/book flow is handled above via the ?redirect= param
+      // that book.tsx's beforeLoad sets when redirecting unauthenticated users.
+      await navigate({ to: "/tenants", replace: true });
     } catch (err) {
       if (err instanceof ApiError) {
         setSubmitError(err.displayMessage);
@@ -167,7 +187,13 @@ function LoginPage() {
             </Button>
           </form>
 
-          <div className="text-sm text-muted-foreground">
+          <div className="space-y-1 text-sm text-muted-foreground">
+            <p>
+              Don&apos;t have an account?{' '}
+              <Link to="/signup" className="underline underline-offset-4">
+                Register
+              </Link>
+            </p>
             <Link to="/" className="underline underline-offset-4">
               Back to home
             </Link>

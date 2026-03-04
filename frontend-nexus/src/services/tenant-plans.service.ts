@@ -36,6 +36,12 @@ export interface TenantPlanUpdateApi {
   is_active?: boolean | null
 }
 
+export interface PricingBoundsApi {
+  min_price: number | null
+  max_price: number | null
+  base_price: number | null
+}
+
 export interface EnrollmentDetailApi {
   id: number
   status: 'PENDING' | 'ACTIVE' | 'CANCELLED' | 'EXPIRED'
@@ -87,5 +93,11 @@ export const tenantPlansService = {
 
   myEnrollment: (tenantId: number) =>
     apiFetch<EnrollmentApi>(`${BASE}/my-enrollment?tenant_id=${tenantId}`, { method: 'GET' }),
+
+  cancelEnrollment: (tenantId: number) =>
+    apiFetch<EnrollmentApi>(`${BASE}/cancel-enrollment?tenant_id=${tenantId}`, { method: 'POST' }),
+
+  pricingBounds: (tenantId: number) =>
+    apiFetch<PricingBoundsApi>(`${BASE}/pricing-bounds?tenant_id=${tenantId}`, { method: 'GET' }),
 }
 

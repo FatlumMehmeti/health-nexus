@@ -16,7 +16,11 @@ export const Route = createFileRoute("/tenants")({
 });
 
 function TenantSelectorPage() {
-  const { data: tenants = [], isLoading, isError } = useQuery({
+  const {
+    data: tenants = [],
+    isLoading,
+    isError,
+  } = useQuery({
     queryKey: ["public-tenants"],
     queryFn: () => tenantsService.listPublicTenants(),
     staleTime: 60_000,
@@ -33,8 +37,8 @@ function TenantSelectorPage() {
       <main className="container mx-auto flex-1 px-4 py-6 sm:px-6 sm:py-10">
         <section className="mx-auto max-w-5xl space-y-6">
           <p className="text-sm text-muted-foreground sm:text-base">
-            Select which organization you want to use with Health Nexus. You can switch tenants at
-            any time.
+            Select which organization you want to use with Health Nexus. You can
+            switch tenants at any time.
           </p>
 
           {isLoading && (
@@ -42,11 +46,15 @@ function TenantSelectorPage() {
           )}
 
           {isError && (
-            <p className="text-destructive text-sm">Failed to load tenants. Try again later.</p>
+            <p className="text-destructive text-sm">
+              Failed to load tenants. Try again later.
+            </p>
           )}
 
           {!isLoading && !isError && tenants.length === 0 && (
-            <p className="text-muted-foreground text-sm">No tenants available.</p>
+            <p className="text-muted-foreground text-sm">
+              No tenants available.
+            </p>
           )}
 
           {!isLoading && tenants.length > 0 && (

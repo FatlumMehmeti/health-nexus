@@ -1,12 +1,13 @@
 from pathlib import Path
 
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
+from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse, RedirectResponse
 
 from app.config import get_storage_root
 from app.auth.auth_router import router as auth_router
+from app.routes.enrollment_me import router as enrollment_me_router
 from app.routes import (
     role_router,
     enrollment_router,
@@ -23,6 +24,12 @@ from app.routes import (
     contract_router,
     tenant_subscription_router,
     subscription_plan_router,
+    patients_router,
+    appointment_router,
+    doctor_appointment_router,
+    patient_appointment_router,
+    appointment_status_history_router,
+    notification_router,
 )
 
 app = FastAPI(
@@ -39,11 +46,40 @@ app.mount("/uploads", StaticFiles(directory=str(_uploads_dir)), name="uploads")
 # CORS configuration for development - allows frontend on various ports
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "http://localhost:3000",
+        "http://localhost:3001",
+        "http://localhost:3002",
+        "http://localhost:3003",
+        "http://localhost:5173",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+# Catch-all handler: ensures CORS headers are present even on unhandled 500s
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception):
+    origin = request.headers.get("origin", "")
+    allowed = [
+        "http://localhost:3000",
+        "http://localhost:3001",
+        "http://localhost:3002",
+        "http://localhost:3003",
+        "http://localhost:5173",
+    ]
+    headers = {}
+    if origin in allowed:
+        headers["Access-Control-Allow-Origin"] = origin
+        headers["Access-Control-Allow-Credentials"] = "true"
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Internal server error"},
+        headers=headers,
+    )
+
 
 # Include routers
 app.include_router(role_router)
@@ -56,12 +92,19 @@ app.include_router(brand_router, prefix="/api")
 app.include_router(service_router, prefix="/api")
 app.include_router(auth_router, prefix="/api")
 app.include_router(public_tenant_router, prefix="/api/public")
+app.include_router(patients_router, prefix="/api")
 app.include_router(tenant_audit_log)
+app.include_router(enrollment_me_router, prefix="/api")
 app.include_router(enrollment_router, prefix="/api")
 app.include_router(user_tenant_plan_router)
 app.include_router(contract_router)
 app.include_router(tenant_subscription_router, prefix="/api")
 app.include_router(subscription_plan_router, prefix="/api")
+app.include_router(appointment_router)
+app.include_router(doctor_appointment_router)
+app.include_router(patient_appointment_router)
+app.include_router(appointment_status_history_router)
+app.include_router(notification_router)
 
 
 @app.get("/")

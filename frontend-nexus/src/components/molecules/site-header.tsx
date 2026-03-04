@@ -3,10 +3,12 @@ import { SidebarTrigger } from "@/components/ui/sidebar";
 import { MoonIcon, SunIcon } from "lucide-react";
 import { useTheme } from "next-themes";
 import { Button } from "../ui/button";
+import { NotificationBell } from "../NotificationBell";
+import { useAuthStore } from "@/stores/auth.store";
 
 export function SiteHeader() {
   const { theme, setTheme } = useTheme();
-
+  const { user } = useAuthStore();
   const isDark = theme === "dark";
   return (
     <header className="flex h-10 shrink-0 items-center gap-2 border-b transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-(--header-height)">
@@ -36,7 +38,9 @@ export function SiteHeader() {
           className="mx-2 data-[orientation=vertical]:h-4"
         />
 
-        <div className="ml-auto flex items-center gap-2"></div>
+        <div className="ml-auto flex items-center gap-2">
+        {user && <NotificationBell />}
+        </div>
       </div>
     </header>
   );

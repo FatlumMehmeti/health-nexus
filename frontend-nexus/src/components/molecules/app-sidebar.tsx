@@ -1,4 +1,4 @@
-import * as React from "react";
+import * as React from 'react';
 import {
   IconDashboard,
   IconDatabase,
@@ -10,14 +10,19 @@ import {
   IconReport,
   IconBuildingStore,
   IconHistory,
+  IconUserCircle,
+  IconCalendarCheck,
+  IconSearch,
   IconSettings,
   IconStethoscope,
   type Icon,
-} from "@tabler/icons-react";
+  IconUser,
+} from '@tabler/icons-react';
 
-import { NavMain } from "./nav-main";
-import { NavUser } from "./nav-user";
-import { Link } from "@tanstack/react-router";
+import { NavMain } from './nav-main';
+import { NavUser } from './nav-user';
+import { NotificationBell } from '@/components/NotificationBell';
+import { Link } from '@tanstack/react-router';
 import {
   Sidebar,
   SidebarContent,
@@ -26,10 +31,11 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-} from "@/components/ui/sidebar";
-import { useAuthStore } from "@/stores/auth.store";
-import { can, type UserWithRole } from "@/lib/rbac";
-import type { RouteKey } from "@/lib/rbacMatrix";
+} from '@/components/ui/sidebar';
+import { useAuthStore } from '@/stores/auth.store';
+import { can, type UserWithRole } from '@/lib/rbac';
+import type { RouteKey } from '@/lib/rbacMatrix';
+import { icons } from 'lucide-react';
 
 /** Nav item with optional routeKey for RBAC; items without routeKey are shown to all authenticated users. */
 const navMainAll: Array<{
@@ -39,83 +45,120 @@ const navMainAll: Array<{
   routeKey?: RouteKey;
 }> = [
   {
-    title: "Dashboard",
-    url: "/dashboard",
+    title: 'Dashboard',
+    url: '/dashboard',
     icon: IconDashboard,
-    routeKey: "DASHBOARD_HOME",
+    routeKey: 'DASHBOARD_HOME',
   },
   {
-    title: "Tenants",
-    url: "/dashboard/tenants",
+    title: 'Tenants',
+    url: '/dashboard/tenants',
     icon: IconBuildingStore,
-    routeKey: "DASHBOARD_TENANTS",
+    routeKey: 'DASHBOARD_TENANTS',
   },
   {
-    title: "Audit Logs",
-    url: "/dashboard/audit-logs",
+    title: 'Audit Logs',
+    url: '/dashboard/audit-logs',
     icon: IconHistory,
-    routeKey: "DASHBOARD_AUDIT_LOGS",
+    routeKey: 'DASHBOARD_AUDIT_LOGS',
   },
-  
+  {
+    title: 'Profile',
+    url: '/dashboard/profile',
+    icon: IconUserCircle,
+  },
+  {
+    title: 'Appointments',
+    url: '/dashboard/appointments',
+    icon: IconCalendarCheck,
+    routeKey: 'DASHBOARD_DOCTOR_APPOINTMENTS',
+  },
 ];
 
 const superAdminDocuments = [
   {
-    title: "Forms",
-    url: "/dashboard/forms",
+    title: 'Forms',
+    url: '/dashboard/forms',
     icon: IconFileDescription,
   },
   {
-    title: "Global State",
-    url: "/dashboard/global-state",
+    title: 'Global State',
+    url: '/dashboard/global-state',
     icon: IconDatabase,
   },
   {
-    title: "Landing Pages",
-    url: "/dashboard/landing-pages",
+    title: 'Landing Pages',
+    url: '/dashboard/landing-pages',
     icon: IconFolder,
   },
   {
-    title: "Data Fetching",
-    url: "/dashboard/data",
+    title: 'Data Fetching',
+    url: '/dashboard/data',
     icon: IconDatabaseExport,
   },
   {
-    title: "Roles",
-    url: "/dashboard/roles",
+    title: 'Roles',
+    url: '/dashboard/roles',
     icon: IconKey,
   },
 ] as const;
 
 const tenantManagerDocuments = [
   {
-    title: "Departments & Services",
-    url: "/dashboard/tenant/departments-services",
+    title: 'Departments & Services',
+    url: '/dashboard/tenant/departments-services',
     icon: IconFolder,
   },
   {
-    title: "Doctors",
-    url: "/dashboard/tenant/doctors",
+    title: 'Doctors',
+    url: '/dashboard/tenant/doctors',
     icon: IconStethoscope,
   },
   {
-    title: "Products",
-    url: "/dashboard/tenant/products",
+    title: 'Products',
+    url: '/dashboard/tenant/products',
     icon: IconBuildingStore,
   },
   {
-    title: "Plans",
-    url: "/dashboard/tenant/plans",
+    title: 'Plans',
+    url: '/dashboard/tenant/plans',
     icon: IconReport,
   },
   {
-    title: "Contracts",
-    url: "/dashboard/tenant/contracts",
+    title: 'Contracts',
+    url: '/dashboard/tenant/contracts',
     icon: IconFileDescription,
   },
   {
-    title: "Settings",
-    url: "/dashboard/tenant/settings",
+    title: 'Enrollments',
+    url: '/dashboard/tenant/enrollments',
+    icon: IconHistory,
+  },
+  {
+    title: 'Settings',
+    url: '/dashboard/tenant/settings',
+    icon: IconSettings,
+  },
+] as const;
+const clientsDocuments = [
+  {
+    title: 'Enrollments',
+    url: '/dashboard/client/enrollments',
+    icon: IconHistory,
+  },
+  {
+    title: 'My Appointments',
+    url: '/appointments/my',
+    icon: IconCalendarCheck,
+  },
+  {
+    title: 'Tenants',
+    url: '/tenants',
+    icon: IconBuildingStore,
+  },
+  {
+    title: 'Settings',
+    url: '/dashboard/client/settings',
     icon: IconSettings,
   },
 ] as const;
@@ -125,11 +168,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const userWithRole: UserWithRole = { role };
   const navMain = React.useMemo(() => {
     const baseItems = navMainAll.filter(
-      (item) => !item.routeKey || can(userWithRole, item.routeKey),
+      (item) => !item.routeKey || can(userWithRole, item.routeKey)
     );
-    if (role === "DOCTOR" && user?.id) {
+    if (role === 'DOCTOR' && user?.id) {
       baseItems.push({
-        title: "My Contract",
+        title: 'My Contract',
         url: `/dashboard/contract-sign-doctor/${user.id}`,
         icon: IconFileDescription,
       });
@@ -137,17 +180,24 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     return baseItems;
   }, [role, user?.id, userWithRole]);
   const documentItems = React.useMemo(() => {
-    if (role === "SUPER_ADMIN") return [...superAdminDocuments];
-    if (role === "TENANT_MANAGER") return [...tenantManagerDocuments];
+    if (role === 'SUPER_ADMIN') return [...superAdminDocuments];
+    if (role === 'TENANT_MANAGER') return [...tenantManagerDocuments];
+    if (role === 'CLIENT') return [...clientsDocuments];
     return [];
   }, [role]);
-  const documentsLabel = role === "TENANT_MANAGER" ? "Management" : "Documents";
+
+  const documentsLabel = React.useMemo(() => {
+    if (role === 'TENANT_MANAGER') return 'My Tenant';
+    if (role === 'CLIENT') return 'Account & Services';
+    return 'Documents';
+  }, [role]);
+
   const sidebarUser = React.useMemo(() => {
     if (!user) return null;
     return {
-      name: user.fullName ?? user.email ?? "User",
+      name: user.fullName ?? user.email ?? 'User',
       email: user.email,
-      avatar: "/images/logo.webp",
+      avatar: '/images/logo.webp',
     };
   }, [user]);
 
@@ -156,23 +206,21 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton
-              asChild
-              className="data-[slot=sidebar-menu-button]:p-1.5!"
-            >
-              <Link to="/">
-                <IconInnerShadowTop className="size-5!" />
-                <span className="text-base font-semibold">Health Nexus</span>
-              </Link>
-            </SidebarMenuButton>
+            <div className="flex items-center justify-between w-full">
+              <SidebarMenuButton asChild className="data-[slot=sidebar-menu-button]:p-1.5!">
+                <Link to="/">
+                  <IconInnerShadowTop className="size-5!" />
+                  <span className="text-base font-semibold">Health Nexus</span>
+                </Link>
+              </SidebarMenuButton>
+ 
+            </div>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
         <NavMain items={navMain} />
-        {documentItems.length > 0 ? (
-          <NavMain items={documentItems} label={documentsLabel} />
-        ) : null}
+        {documentItems.length > 0 ? <NavMain items={documentItems} label={documentsLabel} /> : null}
       </SidebarContent>
       <SidebarFooter>
         <NavUser user={sidebarUser} />
