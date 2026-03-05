@@ -99,7 +99,6 @@ A PR is ready when:
 
 ## 6) Project Structure
 
-<!-- Flag Engine Implementation in Progress -->
 
 ### Backend
 
