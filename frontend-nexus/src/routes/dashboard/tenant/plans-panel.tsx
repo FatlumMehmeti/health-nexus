@@ -76,6 +76,7 @@ export function TenantPlansPanel() {
     name: '',
     description: '',
     price: '',
+    duration: '30',
     max_appointments: '',
     max_consultations: '',
   });
@@ -88,6 +89,7 @@ export function TenantPlansPanel() {
       name: '',
       description: '',
       price: '',
+      duration: '30',
       max_appointments: '',
       max_consultations: '',
     });
@@ -227,6 +229,7 @@ export function TenantPlansPanel() {
       name: formState.name.trim(),
       description: formState.description.trim() || null,
       price,
+      duration: formState.duration ? Number(formState.duration) : 30,
       max_appointments: formState.max_appointments
         ? Number(formState.max_appointments)
         : null,
@@ -242,9 +245,56 @@ export function TenantPlansPanel() {
         data: payload,
       });
     } else {
-      createMutation.mutate({
-        ...payload,
-        tenant_id: tenantId,
+      openDialog({
+        title: 'Add this plan?',
+        content: (
+          <div className="space-y-2 text-sm">
+            <div className="flex justify-between border-b pb-2">
+              <span className="text-muted-foreground">Plan name</span>
+              <span className="font-medium">{payload.name}</span>
+            </div>
+            {payload.description && (
+              <div className="flex justify-between border-b pb-2">
+                <span className="text-muted-foreground">Description</span>
+                <span>{payload.description}</span>
+              </div>
+            )}
+            <div className="flex justify-between border-b pb-2">
+              <span className="text-muted-foreground">Price</span>
+              <span className="font-medium">€{payload.price.toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between border-b pb-2">
+              <span className="text-muted-foreground">Duration</span>
+              <span>{payload.duration} days</span>
+            </div>
+            <div className="flex justify-between border-b pb-2">
+              <span className="text-muted-foreground">Max appointments</span>
+              <span>{payload.max_appointments ?? 'Unlimited'}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Max consultations</span>
+              <span>{payload.max_consultations ?? 'Unlimited'}</span>
+            </div>
+          </div>
+        ),
+        footer: (
+          <>
+            <Button variant="outline" onClick={closeDialog}>
+              Edit
+            </Button>
+            <Button
+              onClick={() => {
+                closeDialog();
+                createMutation.mutate({
+                  ...payload,
+                  tenant_id: tenantId,
+                });
+              }}
+            >
+              Add plan
+            </Button>
+          </>
+        ),
       });
     }
   };
@@ -255,6 +305,7 @@ export function TenantPlansPanel() {
       name: plan.name,
       description: plan.description ?? '',
       price: String(plan.price),
+      duration: plan.duration != null ? String(plan.duration) : '30',
       max_appointments:
         plan.max_appointments != null
           ? String(plan.max_appointments)
@@ -307,7 +358,7 @@ export function TenantPlansPanel() {
               }
             />
           </div>
-          <div className="grid gap-3 sm:grid-cols-3">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <div className="space-y-1.5">
               <Label htmlFor="plan-price">
                 Price (EUR)
@@ -337,6 +388,24 @@ export function TenantPlansPanel() {
                   {bounds.max_price.toFixed(2)}
                 </p>
               ) : null}
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="plan-duration">
+                Duration (days)
+              </Label>
+              <Input
+                id="plan-duration"
+                type="number"
+                min="1"
+                placeholder="30"
+                value={formState.duration}
+                onChange={(e) =>
+                  setFormState((s) => ({
+                    ...s,
+                    duration: e.target.value,
+                  }))
+                }
+              />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="plan-max-apt">
