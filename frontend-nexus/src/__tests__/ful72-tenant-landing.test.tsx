@@ -17,17 +17,9 @@ import {
   QueryClient,
   QueryClientProvider,
 } from '@tanstack/react-query';
-import {
-  createRouter,
-  RouterProvider,
-} from '@tanstack/react-router';
+import { createRouter, RouterProvider } from '@tanstack/react-router';
 import '@testing-library/jest-dom';
-import {
-  act,
-  render,
-  screen,
-  waitFor,
-} from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import { TenantLanding } from '../components/tenant-landing';
 import type { TenantLandingPageResponse } from '../interfaces';
 import { ApiError } from '../lib/api-client';
@@ -144,32 +136,24 @@ describe('FUL-72 public tenant landing route', () => {
 
   it('fetches landing data by slug and renders hero content', async () => {
     const landing = buildSampleLanding();
-    global.fetch = jest.fn(
-      async (input: RequestInfo | URL) => {
-        const url =
-          typeof input === 'string'
-            ? input
-            : input.toString();
-        if (
-          url.includes(
-            '/api/tenants/by-slug/acme-health/landing'
-          )
-        ) {
-          return new Response(JSON.stringify(landing), {
-            status: 200,
-            headers: {
-              'Content-Type': 'application/json',
-            },
-          });
-        }
-        return new Response('{}', {
+    global.fetch = jest.fn(async (input: RequestInfo | URL) => {
+      const url =
+        typeof input === 'string' ? input : input.toString();
+      if (url.includes('/api/tenants/by-slug/acme-health/landing')) {
+        return new Response(JSON.stringify(landing), {
           status: 200,
           headers: {
             'Content-Type': 'application/json',
           },
         });
       }
-    ) as unknown as typeof fetch;
+      return new Response('{}', {
+        status: 200,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+    }) as unknown as typeof fetch;
 
     const router = createTestRouter();
     renderWithProviders(router);
@@ -197,42 +181,36 @@ describe('FUL-72 public tenant landing route', () => {
   });
 
   it('shows a friendly not-found screen when landing API returns 404', async () => {
-    global.fetch = jest.fn(
-      async (input: RequestInfo | URL) => {
-        const url =
-          typeof input === 'string'
-            ? input
-            : input.toString();
-        if (
-          url.includes(
-            '/api/tenants/by-slug/missing-tenant/landing'
-          )
-        ) {
-          const err = new ApiError(
-            'Tenant not found',
-            404,
-            'Tenant not found'
-          );
-          return new Response(
-            JSON.stringify({
-              detail: err.displayMessage,
-            }),
-            {
-              status: 404,
-              headers: {
-                'Content-Type': 'application/json',
-              },
-            }
-          );
-        }
-        return new Response('{}', {
-          status: 200,
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        });
+    global.fetch = jest.fn(async (input: RequestInfo | URL) => {
+      const url =
+        typeof input === 'string' ? input : input.toString();
+      if (
+        url.includes('/api/tenants/by-slug/missing-tenant/landing')
+      ) {
+        const err = new ApiError(
+          'Tenant not found',
+          404,
+          'Tenant not found'
+        );
+        return new Response(
+          JSON.stringify({
+            detail: err.displayMessage,
+          }),
+          {
+            status: 404,
+            headers: {
+              'Content-Type': 'application/json',
+            },
+          }
+        );
       }
-    ) as unknown as typeof fetch;
+      return new Response('{}', {
+        status: 200,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+    }) as unknown as typeof fetch;
 
     const router = createTestRouter();
     renderWithProviders(router);
@@ -245,9 +223,7 @@ describe('FUL-72 public tenant landing route', () => {
     });
 
     await waitFor(() => {
-      expect(
-        screen.getByText(/Tenant not found/i)
-      ).toBeTruthy();
+      expect(screen.getByText(/Tenant not found/i)).toBeTruthy();
     });
 
     expect(

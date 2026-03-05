@@ -34,23 +34,16 @@ import {
   type ValidationError,
 } from '@/lib/api-client';
 
-async function parseUploadError(
-  response: Response
-): Promise<{
+async function parseUploadError(response: Response): Promise<{
   detail?: string | ValidationError[];
   data?: unknown;
 }> {
-  const contentType =
-    response.headers.get('content-type') ?? '';
-  if (
-    contentType.toLowerCase().includes('application/json')
-  ) {
+  const contentType = response.headers.get('content-type') ?? '';
+  if (contentType.toLowerCase().includes('application/json')) {
     try {
       const data = (await response.json()) as unknown;
       const detail =
-        typeof data === 'object' &&
-        data !== null &&
-        'detail' in data
+        typeof data === 'object' && data !== null && 'detail' in data
           ? (
               data as {
                 detail?: string | ValidationError[];
@@ -82,18 +75,14 @@ async function updateTenantDetailsMultipart(
 ): Promise<TenantDetailsRead> {
   const formData = new FormData();
 
-  if (data.logo_file)
-    formData.append('logo', data.logo_file);
-  if (data.image_file)
-    formData.append('image', data.image_file);
+  if (data.logo_file) formData.append('logo', data.logo_file);
+  if (data.image_file) formData.append('image', data.image_file);
   if (data.logo !== undefined)
     formData.append('logo_url', data.logo ?? '');
   if (data.image !== undefined)
     formData.append('image_url', data.image ?? '');
-  if (data.clear_logo)
-    formData.append('clear_logo', 'true');
-  if (data.clear_image)
-    formData.append('clear_image', 'true');
+  if (data.clear_logo) formData.append('clear_logo', 'true');
+  if (data.clear_image) formData.append('clear_image', 'true');
 
   if (data.moto !== undefined)
     formData.append('moto', data.moto ?? '');
@@ -101,10 +90,7 @@ async function updateTenantDetailsMultipart(
     formData.append('title', data.title ?? '');
   if (data.about_text !== undefined)
     formData.append('about_text', data.about_text ?? '');
-  if (
-    data.brand_id !== undefined &&
-    data.brand_id !== null
-  ) {
+  if (data.brand_id !== undefined && data.brand_id !== null) {
     formData.append('brand_id', String(data.brand_id));
   }
   if (data.font_id !== undefined && data.font_id !== null) {
@@ -192,10 +178,7 @@ export const tenantsService = {
       queryParams.append('page', String(params.page));
     }
     if (params?.page_size) {
-      queryParams.append(
-        'page_size',
-        String(params.page_size)
-      );
+      queryParams.append('page_size', String(params.page_size));
     }
     const queryString = queryParams.toString();
     return api.get<TenantListResponse>(
@@ -228,8 +211,7 @@ export const tenantsService = {
   listFonts: () => api.get<FontRead[]>('/api/fonts'),
 
   /** List brand palettes for tenant branding cards (no auth). */
-  listBrands: () =>
-    api.get<BrandPaletteRead[]>('/api/brands'),
+  listBrands: () => api.get<BrandPaletteRead[]>('/api/brands'),
 
   /** List global departments for tenant department assignment (no auth). */
   listDepartmentCatalog: () =>
@@ -251,23 +233,15 @@ export const tenantsService = {
     ),
   createTenantDoctor: (data: DoctorCreateForTenant) =>
     api.post<DoctorRead>('/api/tenants/doctors', data),
-  updateTenantDoctor: (
-    userId: number,
-    data: DoctorUpdate
-  ) =>
-    api.put<DoctorRead>(
-      `/api/tenants/doctors/${userId}`,
-      data
-    ),
+  updateTenantDoctor: (userId: number, data: DoctorUpdate) =>
+    api.put<DoctorRead>(`/api/tenants/doctors/${userId}`, data),
   deleteTenantDoctor: (userId: number) =>
     api.delete<void>(`/api/tenants/doctors/${userId}`),
   listTenantDepartments: () =>
     api.get<TenantDepartmentWithServicesRead[]>(
       '/api/tenants/departments'
     ),
-  replaceTenantDepartments: (
-    data: TenantDepartmentsBulkRequest
-  ) =>
+  replaceTenantDepartments: (data: TenantDepartmentsBulkRequest) =>
     api.post<TenantDepartmentWithServicesRead[]>(
       '/api/tenants/departments',
       data
@@ -280,10 +254,7 @@ export const tenantsService = {
     productId: number,
     data: ProductUpdateInput
   ) =>
-    api.put<ProductRead>(
-      `/api/tenants/products/${productId}`,
-      data
-    ),
+    api.put<ProductRead>(`/api/tenants/products/${productId}`, data),
   deleteTenantProduct: (productId: number) =>
     api.delete<void>(`/api/tenants/products/${productId}`),
 
@@ -294,14 +265,8 @@ export const tenantsService = {
     ),
   createService: (data: ServiceCreateInput) =>
     api.post<ServiceRead>('/api/services', data),
-  updateService: (
-    serviceId: number,
-    data: ServiceUpdateInput
-  ) =>
-    api.put<ServiceRead>(
-      `/api/services/${serviceId}`,
-      data
-    ),
+  updateService: (serviceId: number, data: ServiceUpdateInput) =>
+    api.put<ServiceRead>(`/api/services/${serviceId}`, data),
   deleteService: (serviceId: number) =>
     api.delete<void>(`/api/services/${serviceId}`),
 };

@@ -21,7 +21,12 @@ from app.models.role import Role
 from app.models.user import User
 
 from app.schemas.tenant_details import TenantDetailsRead
-from app.schemas.doctor import DoctorRead, DoctorCreateForTenant, DoctorUpdate
+from app.schemas.doctor import (
+    DoctorCreateForTenant,
+    DoctorRead,
+    DoctorReadWithName,
+    DoctorUpdate,
+)
 from app.schemas.patient_schema import PatientMeResponse, PatientMeUpdateRequest
 from app.schemas.tenant_department import (
     TenantDepartmentRead,
@@ -483,7 +488,7 @@ async def upsert_tenant_details(
     return details
 
 
-@router.get("/doctors", response_model=list[DoctorRead])
+@router.get("/doctors", response_model=list[DoctorReadWithName])
 def list_tenant_doctors(
     db: Session = Depends(get_db),
     auth: tuple = Depends(require_tenant_from_token),
@@ -491,7 +496,27 @@ def list_tenant_doctors(
     """List current user's tenant doctors (tenant_id from JWT)."""
     _, tenant_id = auth
     _assert_tenant_exists(db, tenant_id)
-    return db.query(Doctor).filter(Doctor.tenant_id == tenant_id).all()
+    doctors_q = (
+        db.query(Doctor, User)
+        .join(User, Doctor.user_id == User.id)
+        .filter(Doctor.tenant_id == tenant_id)
+        .all()
+    )
+    return [
+        DoctorReadWithName(
+            user_id=d.user_id,
+            first_name=u.first_name,
+            last_name=u.last_name,
+            specialization=d.specialization,
+            education=d.education,
+            licence_number=d.licence_number,
+            tenant_id=d.tenant_id,
+            working_hours=d.working_hours,
+            is_active=d.is_active,
+            created_at=d.created_at,
+        )
+        for d, u in doctors_q
+    ]
 
 
 @router.get("/departments", response_model=list[TenantDepartmentWithServicesRead])
@@ -617,6 +642,17 @@ def create_tenant_doctor(
     """Assign/create doctor for current user's tenant. User must have DOCTOR role."""
     _, tenant_id = auth
     _assert_tenant_exists(db, tenant_id)
+    tenant_department = (
+        db.query(TenantDepartment)
+        .filter(TenantDepartment.tenant_id == tenant_id)
+        .order_by(TenantDepartment.id.asc())
+        .first()
+    )
+    if not tenant_department:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No tenant departments configured. Create a department before assigning doctors.",
+        )
     doctor_role = db.query(Role).filter(Role.name == "DOCTOR").first()
     if not doctor_role:
         raise HTTPException(
@@ -642,6 +678,7 @@ def create_tenant_doctor(
     doctor = Doctor(
         user_id=payload.user_id,
         tenant_id=tenant_id,
+        tenant_department_id=tenant_department.id,
         specialization=payload.specialization,
         education=payload.education,
         licence_number=payload.licence_number,

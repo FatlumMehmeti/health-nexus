@@ -1,7 +1,4 @@
-import {
-  cva,
-  type VariantProps,
-} from 'class-variance-authority';
+import { cva, type VariantProps } from 'class-variance-authority';
 import { Loader2Icon } from 'lucide-react';
 import { Slot } from 'radix-ui';
 import * as React from 'react';

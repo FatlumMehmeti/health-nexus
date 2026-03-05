@@ -42,18 +42,13 @@ export const CLIENT_SECTION_KEYS = [
   'settings',
 ] as const;
 
-export type ClientSectionKey =
-  (typeof CLIENT_SECTION_KEYS)[number];
+export type ClientSectionKey = (typeof CLIENT_SECTION_KEYS)[number];
 
 export function normalizeClientSection(
   rawSection: string | null | undefined
 ): ClientSectionKey {
   const section = (rawSection ?? '').trim();
-  if (
-    (CLIENT_SECTION_KEYS as readonly string[]).includes(
-      section
-    )
-  ) {
+  if ((CLIENT_SECTION_KEYS as readonly string[]).includes(section)) {
     return section as ClientSectionKey;
   }
   return 'profile';
@@ -133,17 +128,13 @@ export function ClientPageContent({
             {isLoading ? (
               <div className="space-y-2">
                 {Array.from({ length: 3 }).map((_, i) => (
-                  <Skeleton
-                    key={i}
-                    className="h-16 w-full"
-                  />
+                  <Skeleton key={i} className="h-16 w-full" />
                 ))}
               </div>
             ) : isError ? (
               <div className="py-8 text-center text-destructive">
                 Error loading enrollments:{' '}
-                {(error as Error)?.message ||
-                  'Unknown error'}
+                {(error as Error)?.message || 'Unknown error'}
               </div>
             ) : enrollments.length === 0 ? (
               <div className="py-12 text-center text-muted-foreground">
@@ -158,9 +149,7 @@ export function ClientPageContent({
                       <TableHead>Status</TableHead>
                       <TableHead>Tenant Plan</TableHead>
                       <TableHead>Activated</TableHead>
-                      <TableHead>
-                        Expires / Cancelled
-                      </TableHead>
+                      <TableHead>Expires / Cancelled</TableHead>
                       <TableHead>Updated</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -187,25 +176,17 @@ export function ClientPageContent({
                         </TableCell>
 
                         <TableCell className="text-muted-foreground text-sm">
-                          {formatDate(
-                            enrollment.activated_at
-                          )}
+                          {formatDate(enrollment.activated_at)}
                         </TableCell>
 
                         <TableCell className="text-muted-foreground text-sm">
                           {enrollment.status === 'CANCELLED'
-                            ? formatDate(
-                                enrollment.cancelled_at
-                              )
-                            : formatDate(
-                                enrollment.expires_at
-                              )}
+                            ? formatDate(enrollment.cancelled_at)
+                            : formatDate(enrollment.expires_at)}
                         </TableCell>
 
                         <TableCell className="text-muted-foreground text-sm">
-                          {formatDate(
-                            enrollment.updated_at
-                          )}
+                          {formatDate(enrollment.updated_at)}
                         </TableCell>
                       </TableRow>
                     ))}
@@ -227,9 +208,7 @@ export function ClientPageContent({
               Manage your client account preferences.
             </CardDescription>
           </CardHeader>
-          <CardContent>
-            Settings content goes here.
-          </CardContent>
+          <CardContent>Settings content goes here.</CardContent>
         </Card>
       )}
     </div>
@@ -253,12 +232,7 @@ function formatDate(dateString: string | null) {
 
 function getEnrollmentStatusVariant(
   status: string
-):
-  | 'success'
-  | 'warning'
-  | 'destructive'
-  | 'expired'
-  | 'default' {
+): 'success' | 'warning' | 'destructive' | 'expired' | 'default' {
   switch (status) {
     case 'ACTIVE':
       return 'success';

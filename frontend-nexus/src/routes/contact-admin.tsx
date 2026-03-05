@@ -19,9 +19,8 @@ function ContactAdminPage() {
         </CardHeader>
         <CardContent className="flex flex-col gap-4 text-sm text-muted-foreground">
           <p>
-            This is a mock admin contact page. Please reach
-            out to your clinic administrator for enrollment
-            assistance.
+            This is a mock admin contact page. Please reach out to
+            your clinic administrator for enrollment assistance.
           </p>
         </CardContent>
       </Card>

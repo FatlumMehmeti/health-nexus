@@ -37,11 +37,7 @@ export function Calendar({
 }: CalendarProps) {
   const [viewDate, setViewDate] = React.useState(() => {
     if (selected)
-      return new Date(
-        selected.getFullYear(),
-        selected.getMonth(),
-        1
-      );
+      return new Date(selected.getFullYear(), selected.getMonth(), 1);
     return new Date(
       new Date().getFullYear(),
       new Date().getMonth(),
@@ -60,10 +56,8 @@ export function Calendar({
     year: 'numeric',
   });
 
-  const prevMonth = () =>
-    setViewDate(new Date(year, month - 1, 1));
-  const nextMonth = () =>
-    setViewDate(new Date(year, month + 1, 1));
+  const prevMonth = () => setViewDate(new Date(year, month - 1, 1));
+  const nextMonth = () => setViewDate(new Date(year, month + 1, 1));
 
   const cells: (number | null)[] = [];
   for (let i = 0; i < firstDay; i++) cells.push(null);
@@ -110,9 +104,7 @@ export function Calendar({
       <div className="grid grid-cols-7 gap-0">
         {cells.map((day, i) => {
           if (day === null) {
-            return (
-              <div key={`empty-${i}`} className="h-9" />
-            );
+            return <div key={`empty-${i}`} className="h-9" />;
           }
 
           const cellDate = new Date(year, month, day);
@@ -120,9 +112,7 @@ export function Calendar({
             ? isSameDay(cellDate, selected)
             : false;
           const isToday = isSameDay(cellDate, today);
-          const isDisabled = disabled
-            ? disabled(cellDate)
-            : false;
+          const isDisabled = disabled ? disabled(cellDate) : false;
 
           return (
             <div
@@ -134,25 +124,20 @@ export function Calendar({
                 disabled={isDisabled}
                 onClick={() => {
                   if (!isDisabled) {
-                    onSelect?.(
-                      isSelected ? undefined : cellDate
-                    );
+                    onSelect?.(isSelected ? undefined : cellDate);
                   }
                 }}
                 className={cn(
                   'inline-flex h-8 w-8 items-center justify-center rounded-md text-sm transition-colors',
                   'hover:bg-accent hover:text-accent-foreground',
                   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-                  isDisabled &&
-                    'pointer-events-none opacity-30',
+                  isDisabled && 'pointer-events-none opacity-30',
                   isSelected &&
                     'bg-primary text-primary-foreground hover:bg-primary/90',
                   !isSelected &&
                     isToday &&
                     'border border-primary/50 text-primary font-semibold',
-                  !isSelected &&
-                    !isToday &&
-                    'text-foreground'
+                  !isSelected && !isToday && 'text-foreground'
                 )}
               >
                 {day}

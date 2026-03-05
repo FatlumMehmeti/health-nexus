@@ -10,18 +10,12 @@ export interface AppointmentStatusHistory {
     | 'COMPLETED'
     | 'CANCELLED'
     | null;
-  new_status:
-    | 'REQUESTED'
-    | 'CONFIRMED'
-    | 'COMPLETED'
-    | 'CANCELLED';
+  new_status: 'REQUESTED' | 'CONFIRMED' | 'COMPLETED' | 'CANCELLED';
   changed_by: number | null;
   changed_at: string; // ISO string
 }
 
-export function useAppointmentStatusHistory(
-  appointmentId: string
-) {
+export function useAppointmentStatusHistory(appointmentId: string) {
   return useQuery<AppointmentStatusHistory[]>({
     queryKey: ['appointment-status-history', appointmentId],
     queryFn: () =>

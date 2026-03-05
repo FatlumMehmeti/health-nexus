@@ -18,16 +18,8 @@ import {
   QueryClient,
   QueryClientProvider,
 } from '@tanstack/react-query';
-import {
-  createRouter,
-  RouterProvider,
-} from '@tanstack/react-router';
-import {
-  act,
-  render,
-  screen,
-  waitFor,
-} from '@testing-library/react';
+import { createRouter, RouterProvider } from '@tanstack/react-router';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import { routeTree } from '../routeTree.gen';
 
 // Dashboard index imports this JSON; stub it in Jest to avoid file-loader issues.
@@ -105,9 +97,7 @@ function createTestRouter() {
   });
 }
 
-function renderApp(
-  router: ReturnType<typeof createTestRouter>
-) {
+function renderApp(router: ReturnType<typeof createTestRouter>) {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
@@ -148,62 +138,57 @@ beforeEach(() => {
   meRole = 'admin';
 
   // Single fetch mock for all tests: /auth/me drives auth; dummyjson and others get safe stubs.
-  globalThis.fetch = jest.fn(
-    async (input: RequestInfo | URL) => {
-      const url =
-        typeof input === 'string'
-          ? input
-          : input.toString();
+  globalThis.fetch = jest.fn(async (input: RequestInfo | URL) => {
+    const url = typeof input === 'string' ? input : input.toString();
 
-      if (url.includes('/auth/me')) {
-        if (meStatus === 401)
-          return new Response(null, {
-            status: 401,
-          });
-        return new Response(
-          JSON.stringify({
-            message: 'You are authenticated',
-            user: {
-              user_id: '1',
-              email: 'test@example.com',
-              role: meRole,
-            },
-          }),
-          {
-            status: 200,
-            headers: {
-              'Content-Type': 'application/json',
-            },
-          }
-        );
-      }
-
-      // Dashboard data/forms pages may call this; stub so tests don't hit the network.
-      if (url.startsWith('https://dummyjson.com/users')) {
-        return new Response(
-          JSON.stringify({
-            users: [],
-            total: 0,
-            skip: 0,
-            limit: 30,
-          }),
-          {
-            status: 200,
-            headers: {
-              'Content-Type': 'application/json',
-            },
-          }
-        );
-      }
-
-      return new Response(JSON.stringify({}), {
-        status: 200,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
+    if (url.includes('/auth/me')) {
+      if (meStatus === 401)
+        return new Response(null, {
+          status: 401,
+        });
+      return new Response(
+        JSON.stringify({
+          message: 'You are authenticated',
+          user: {
+            user_id: '1',
+            email: 'test@example.com',
+            role: meRole,
+          },
+        }),
+        {
+          status: 200,
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }
+      );
     }
-  ) as unknown as typeof fetch;
+
+    // Dashboard data/forms pages may call this; stub so tests don't hit the network.
+    if (url.startsWith('https://dummyjson.com/users')) {
+      return new Response(
+        JSON.stringify({
+          users: [],
+          total: 0,
+          skip: 0,
+          limit: 30,
+        }),
+        {
+          status: 200,
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+    }
+
+    return new Response(JSON.stringify({}), {
+      status: 200,
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+  }) as unknown as typeof fetch;
 });
 
 describe('Auth guarding + RBAC route matrix', () => {
@@ -217,9 +202,7 @@ describe('Auth guarding + RBAC route matrix', () => {
     });
 
     await waitFor(() => {
-      expect(
-        screen.getByTestId('login-page')
-      ).toBeInTheDocument();
+      expect(screen.getByTestId('login-page')).toBeInTheDocument();
     });
   });
 
@@ -234,9 +217,7 @@ describe('Auth guarding + RBAC route matrix', () => {
     });
 
     await waitFor(() => {
-      expect(
-        screen.getByTestId('login-page')
-      ).toBeInTheDocument();
+      expect(screen.getByTestId('login-page')).toBeInTheDocument();
       expect(
         screen.getByTestId('session-reason-message')
       ).toHaveTextContent(/Session expired/i);

@@ -23,11 +23,7 @@ import {
   QueryClientProvider,
 } from '@tanstack/react-query';
 import '@testing-library/jest-dom';
-import {
-  render,
-  screen,
-  waitFor,
-} from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
 import { Toaster } from 'sonner';
@@ -94,9 +90,9 @@ function TestTenantPlansPanel() {
     number | null
   >(null);
   const [plans, setPlans] = React.useState(plansQuery.data);
-  const [submitError, setSubmitError] = React.useState<
-    string | null
-  >(null);
+  const [submitError, setSubmitError] = React.useState<string | null>(
+    null
+  );
 
   const bounds = boundsQuery.data ?? null;
 
@@ -107,8 +103,7 @@ function TestTenantPlansPanel() {
     bounds?.max_price != null &&
     formState.price !== '' &&
     priceNum > 0 &&
-    (priceNum < bounds.min_price ||
-      priceNum > bounds.max_price);
+    (priceNum < bounds.min_price || priceNum > bounds.max_price);
 
   const resetForm = () => {
     setFormState({
@@ -129,9 +124,7 @@ function TestTenantPlansPanel() {
     const price = Number(formState.price);
 
     if (!formState.name.trim() || price <= 0) {
-      setSubmitError(
-        'Plan name and a valid price > 0 are required'
-      );
+      setSubmitError('Plan name and a valid price > 0 are required');
       return;
     }
 
@@ -163,9 +156,7 @@ function TestTenantPlansPanel() {
     if (editingPlanId) {
       setPlans(
         plans.map((p) =>
-          p.id === editingPlanId
-            ? { ...payload, id: p.id }
-            : p
+          p.id === editingPlanId ? { ...payload, id: p.id } : p
         )
       );
     } else {
@@ -201,9 +192,7 @@ function TestTenantPlansPanel() {
   const handleToggleVisibility = (planId: number) => {
     setPlans(
       plans.map((p) =>
-        p.id === planId
-          ? { ...p, is_active: !p.is_active }
-          : p
+        p.id === planId ? { ...p, is_active: !p.is_active } : p
       )
     );
   };
@@ -213,8 +202,8 @@ function TestTenantPlansPanel() {
     <div data-testid="tenant-plans-panel">
       <h2>Manage plans</h2>
       <p>
-        Add plans and toggle visibility. Changes are saved
-        to the backend.
+        Add plans and toggle visibility. Changes are saved to the
+        backend.
       </p>
 
       {/* Plan form */}
@@ -268,9 +257,7 @@ function TestTenantPlansPanel() {
                   price: e.target.value,
                 }))
               }
-              className={
-                priceOutOfRange ? 'border-destructive' : ''
-              }
+              className={priceOutOfRange ? 'border-destructive' : ''}
               aria-invalid={priceOutOfRange}
             />
 
@@ -285,13 +272,11 @@ function TestTenantPlansPanel() {
                     : 'text-muted-foreground'
                 }`}
               >
-                Allowed range: €
-                {bounds.min_price.toFixed(2)} – €
+                Allowed range: €{bounds.min_price.toFixed(2)} – €
                 {bounds.max_price.toFixed(2)}
                 {bounds.base_price != null && (
                   <span className="ml-1">
-                    (50%–200% of €
-                    {bounds.base_price.toFixed(2)} base)
+                    (50%–200% of €{bounds.base_price.toFixed(2)} base)
                   </span>
                 )}
               </p>
@@ -299,9 +284,7 @@ function TestTenantPlansPanel() {
           </div>
 
           <div className="space-y-1.5">
-            <label htmlFor="plan-max-apt">
-              Max appointments
-            </label>
+            <label htmlFor="plan-max-apt">Max appointments</label>
             <input
               id="plan-max-apt"
               data-testid="plan-max-apartments-input"
@@ -318,9 +301,7 @@ function TestTenantPlansPanel() {
           </div>
 
           <div className="space-y-1.5">
-            <label htmlFor="plan-max-con">
-              Max consultations
-            </label>
+            <label htmlFor="plan-max-con">Max consultations</label>
             <input
               id="plan-max-con"
               data-testid="plan-max-consultations-input"
@@ -400,9 +381,7 @@ function TestTenantPlansPanel() {
                 </button>
                 <button
                   data-testid={`toggle-visibility-btn-${plan.id}`}
-                  onClick={() =>
-                    handleToggleVisibility(plan.id)
-                  }
+                  onClick={() => handleToggleVisibility(plan.id)}
                   className="bg-orange-500 text-white px-3 py-1 rounded text-sm"
                 >
                   {plan.is_active ? 'Hide' : 'Show'}
@@ -444,24 +423,18 @@ describe('FUL-75: TenantPlansPanel Management Screen', () => {
   describe('Pricing bounds display (FUL-75 requirement)', () => {
     it('displays pricing bounds hint with min, max, and base price', () => {
       renderPanel();
-      const hint = screen.getByTestId(
-        'pricing-bounds-hint'
-      );
+      const hint = screen.getByTestId('pricing-bounds-hint');
 
       expect(hint).toBeInTheDocument();
       expect(hint).toHaveTextContent(
         'Allowed range: €50.00 – €200.00'
       );
-      expect(hint).toHaveTextContent(
-        '(50%–200% of €100.00 base)'
-      );
+      expect(hint).toHaveTextContent('(50%–200% of €100.00 base)');
     });
 
     it('shows hint text in muted-foreground color when price is valid', () => {
       renderPanel();
-      const hint = screen.getByTestId(
-        'pricing-bounds-hint'
-      );
+      const hint = screen.getByTestId('pricing-bounds-hint');
 
       expect(hint).toHaveClass('text-muted-foreground');
       expect(hint).not.toHaveClass('text-destructive');
@@ -473,16 +446,11 @@ describe('FUL-75: TenantPlansPanel Management Screen', () => {
       const user = userEvent.setup();
       renderPanel();
 
-      const priceInput = screen.getByTestId(
-        'plan-price-input'
-      );
+      const priceInput = screen.getByTestId('plan-price-input');
       await user.type(priceInput, '25'); // Below min (50)
 
       await waitFor(() => {
-        expect(priceInput).toHaveAttribute(
-          'aria-invalid',
-          'true'
-        );
+        expect(priceInput).toHaveAttribute('aria-invalid', 'true');
       });
     });
 
@@ -490,16 +458,11 @@ describe('FUL-75: TenantPlansPanel Management Screen', () => {
       const user = userEvent.setup();
       renderPanel();
 
-      const priceInput = screen.getByTestId(
-        'plan-price-input'
-      );
+      const priceInput = screen.getByTestId('plan-price-input');
       await user.type(priceInput, '250'); // Above max (200)
 
       await waitFor(() => {
-        expect(priceInput).toHaveAttribute(
-          'aria-invalid',
-          'true'
-        );
+        expect(priceInput).toHaveAttribute('aria-invalid', 'true');
       });
     });
 
@@ -507,16 +470,11 @@ describe('FUL-75: TenantPlansPanel Management Screen', () => {
       const user = userEvent.setup();
       renderPanel();
 
-      const priceInput = screen.getByTestId(
-        'plan-price-input'
-      );
+      const priceInput = screen.getByTestId('plan-price-input');
       await user.type(priceInput, '100'); // Within bounds
 
       await waitFor(() => {
-        expect(priceInput).toHaveAttribute(
-          'aria-invalid',
-          'false'
-        );
+        expect(priceInput).toHaveAttribute('aria-invalid', 'false');
       });
     });
 
@@ -524,12 +482,8 @@ describe('FUL-75: TenantPlansPanel Management Screen', () => {
       const user = userEvent.setup();
       renderPanel();
 
-      const priceInput = screen.getByTestId(
-        'plan-price-input'
-      );
-      const hint = screen.getByTestId(
-        'pricing-bounds-hint'
-      );
+      const priceInput = screen.getByTestId('plan-price-input');
+      const hint = screen.getByTestId('pricing-bounds-hint');
 
       await user.type(priceInput, '25');
 
@@ -542,12 +496,8 @@ describe('FUL-75: TenantPlansPanel Management Screen', () => {
       const user = userEvent.setup();
       renderPanel();
 
-      const priceInput = screen.getByTestId(
-        'plan-price-input'
-      );
-      const hint = screen.getByTestId(
-        'pricing-bounds-hint'
-      );
+      const priceInput = screen.getByTestId('plan-price-input');
+      const hint = screen.getByTestId('pricing-bounds-hint');
 
       await user.type(priceInput, '25');
       await waitFor(() =>
@@ -569,12 +519,8 @@ describe('FUL-75: TenantPlansPanel Management Screen', () => {
       const user = userEvent.setup();
       renderPanel();
 
-      const nameInput = screen.getByTestId(
-        'plan-name-input'
-      );
-      const priceInput = screen.getByTestId(
-        'plan-price-input'
-      );
+      const nameInput = screen.getByTestId('plan-name-input');
+      const priceInput = screen.getByTestId('plan-price-input');
       const submitBtn = screen.getByTestId('submit-button');
 
       await user.type(nameInput, 'Too Cheap');
@@ -582,9 +528,7 @@ describe('FUL-75: TenantPlansPanel Management Screen', () => {
       await user.click(submitBtn);
 
       await waitFor(() => {
-        expect(
-          screen.getByTestId('submit-error')
-        ).toHaveTextContent(
+        expect(screen.getByTestId('submit-error')).toHaveTextContent(
           'Price must be between €50.00 and €200.00'
         );
       });
@@ -594,12 +538,8 @@ describe('FUL-75: TenantPlansPanel Management Screen', () => {
       const user = userEvent.setup();
       renderPanel();
 
-      const nameInput = screen.getByTestId(
-        'plan-name-input'
-      );
-      const priceInput = screen.getByTestId(
-        'plan-price-input'
-      );
+      const nameInput = screen.getByTestId('plan-name-input');
+      const priceInput = screen.getByTestId('plan-price-input');
       const submitBtn = screen.getByTestId('submit-button');
 
       await user.type(nameInput, 'Too Expensive');
@@ -607,9 +547,7 @@ describe('FUL-75: TenantPlansPanel Management Screen', () => {
       await user.click(submitBtn);
 
       await waitFor(() => {
-        expect(
-          screen.getByTestId('submit-error')
-        ).toHaveTextContent(
+        expect(screen.getByTestId('submit-error')).toHaveTextContent(
           'Price must be between €50.00 and €200.00'
         );
       });
@@ -619,12 +557,8 @@ describe('FUL-75: TenantPlansPanel Management Screen', () => {
       const user = userEvent.setup();
       renderPanel();
 
-      const nameInput = screen.getByTestId(
-        'plan-name-input'
-      );
-      const priceInput = screen.getByTestId(
-        'plan-price-input'
-      );
+      const nameInput = screen.getByTestId('plan-name-input');
+      const priceInput = screen.getByTestId('plan-price-input');
       const submitBtn = screen.getByTestId('submit-button');
 
       await user.type(nameInput, 'Mid Range');
@@ -633,19 +567,11 @@ describe('FUL-75: TenantPlansPanel Management Screen', () => {
 
       await waitFor(() => {
         // Plan should be added to the list
-        expect(
-          screen.getByText('Mid Range')
-        ).toBeInTheDocument();
-        expect(
-          screen.getByText('€125.50')
-        ).toBeInTheDocument();
+        expect(screen.getByText('Mid Range')).toBeInTheDocument();
+        expect(screen.getByText('€125.50')).toBeInTheDocument();
         // Form should be reset
-        expect((nameInput as HTMLInputElement).value).toBe(
-          ''
-        );
-        expect((priceInput as HTMLInputElement).value).toBe(
-          ''
-        );
+        expect((nameInput as HTMLInputElement).value).toBe('');
+        expect((priceInput as HTMLInputElement).value).toBe('');
       });
     });
 
@@ -653,12 +579,8 @@ describe('FUL-75: TenantPlansPanel Management Screen', () => {
       const user = userEvent.setup();
       renderPanel();
 
-      const nameInput = screen.getByTestId(
-        'plan-name-input'
-      );
-      const priceInput = screen.getByTestId(
-        'plan-price-input'
-      );
+      const nameInput = screen.getByTestId('plan-name-input');
+      const priceInput = screen.getByTestId('plan-price-input');
       const submitBtn = screen.getByTestId('submit-button');
 
       // First attempt: invalid
@@ -692,9 +614,7 @@ describe('FUL-75: TenantPlansPanel Management Screen', () => {
       const user = userEvent.setup();
       renderPanel();
 
-      const toggleBtn = screen.getByTestId(
-        'toggle-visibility-btn-1'
-      );
+      const toggleBtn = screen.getByTestId('toggle-visibility-btn-1');
       const status = screen.getByTestId('plan-status-1');
 
       expect(status).toHaveTextContent('Active');
@@ -710,22 +630,16 @@ describe('FUL-75: TenantPlansPanel Management Screen', () => {
       const user = userEvent.setup();
       renderPanel();
 
-      const toggleBtn = screen.getByTestId(
-        'toggle-visibility-btn-1'
-      );
+      const toggleBtn = screen.getByTestId('toggle-visibility-btn-1');
       const status = screen.getByTestId('plan-status-1');
 
       // First hide
       await user.click(toggleBtn);
-      await waitFor(() =>
-        expect(status).toHaveTextContent('Hidden')
-      );
+      await waitFor(() => expect(status).toHaveTextContent('Hidden'));
 
       // Then show
       await user.click(toggleBtn);
-      await waitFor(() =>
-        expect(status).toHaveTextContent('Active')
-      );
+      await waitFor(() => expect(status).toHaveTextContent('Active'));
     });
 
     it('updates style on hidden plan (gray background)', async () => {
@@ -735,9 +649,7 @@ describe('FUL-75: TenantPlansPanel Management Screen', () => {
       const status = screen.getByTestId('plan-status-1');
       expect(status).toHaveClass('bg-green-100');
 
-      await user.click(
-        screen.getByTestId('toggle-visibility-btn-1')
-      );
+      await user.click(screen.getByTestId('toggle-visibility-btn-1'));
 
       await waitFor(() => {
         expect(status).toHaveClass('bg-gray-100');
@@ -766,9 +678,9 @@ describe('FUL-75: TenantPlansPanel Management Screen', () => {
         expect(priceInput.value).toBe('99.99');
       });
 
-      expect(
-        screen.getByTestId('submit-button')
-      ).toHaveTextContent('Update Plan');
+      expect(screen.getByTestId('submit-button')).toHaveTextContent(
+        'Update Plan'
+      );
     });
 
     it('prevents update if new price is out of bounds', async () => {
@@ -778,18 +690,14 @@ describe('FUL-75: TenantPlansPanel Management Screen', () => {
       const editBtn = screen.getByTestId('edit-btn-1');
       await user.click(editBtn);
 
-      const priceInput = screen.getByTestId(
-        'plan-price-input'
-      );
+      const priceInput = screen.getByTestId('plan-price-input');
       await user.clear(priceInput);
       await user.type(priceInput, '250'); // Out of bounds
 
       await user.click(screen.getByTestId('submit-button'));
 
       await waitFor(() => {
-        expect(
-          screen.getByTestId('submit-error')
-        ).toHaveTextContent(
+        expect(screen.getByTestId('submit-error')).toHaveTextContent(
           'Price must be between €50.00 and €200.00'
         );
       });
@@ -802,18 +710,16 @@ describe('FUL-75: TenantPlansPanel Management Screen', () => {
       const editBtn = screen.getByTestId('edit-btn-1');
       await user.click(editBtn);
 
-      const priceInput = screen.getByTestId(
-        'plan-price-input'
-      );
+      const priceInput = screen.getByTestId('plan-price-input');
       await user.clear(priceInput);
       await user.type(priceInput, '175.99');
 
       await user.click(screen.getByTestId('submit-button'));
 
       await waitFor(() => {
-        expect(
-          screen.getByTestId('plan-price-1')
-        ).toHaveTextContent('€175.99');
+        expect(screen.getByTestId('plan-price-1')).toHaveTextContent(
+          '€175.99'
+        );
       });
     });
   });
@@ -823,29 +729,19 @@ describe('FUL-75: TenantPlansPanel Management Screen', () => {
       renderPanel();
 
       expect(screen.getByText('Basic')).toBeInTheDocument();
-      expect(
-        screen.getByText('Premium')
-      ).toBeInTheDocument();
-      expect(
-        screen.getByText('€99.99')
-      ).toBeInTheDocument();
-      expect(
-        screen.getByText('€149.99')
-      ).toBeInTheDocument();
+      expect(screen.getByText('Premium')).toBeInTheDocument();
+      expect(screen.getByText('€99.99')).toBeInTheDocument();
+      expect(screen.getByText('€149.99')).toBeInTheDocument();
     });
 
     it('shows action buttons for each plan (edit, toggle)', () => {
       renderPanel();
 
-      expect(
-        screen.getByTestId('edit-btn-1')
-      ).toBeInTheDocument();
+      expect(screen.getByTestId('edit-btn-1')).toBeInTheDocument();
       expect(
         screen.getByTestId('toggle-visibility-btn-1')
       ).toBeInTheDocument();
-      expect(
-        screen.getByTestId('edit-btn-2')
-      ).toBeInTheDocument();
+      expect(screen.getByTestId('edit-btn-2')).toBeInTheDocument();
       expect(
         screen.getByTestId('toggle-visibility-btn-2')
       ).toBeInTheDocument();

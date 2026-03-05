@@ -6,14 +6,9 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { IconLayout } from '@tabler/icons-react';
-import {
-  createFileRoute,
-  Link,
-} from '@tanstack/react-router';
+import { createFileRoute, Link } from '@tanstack/react-router';
 
-export const Route = createFileRoute(
-  '/dashboard/landing-pages/'
-)({
+export const Route = createFileRoute('/dashboard/landing-pages/')({
   component: LandingPagesIndexPage,
 });
 
@@ -58,9 +53,7 @@ function LandingPagesIndexPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <span className="text-sm text-primary">
-                  View →
-                </span>
+                <span className="text-sm text-primary">View →</span>
               </CardContent>
             </Card>
           </Link>

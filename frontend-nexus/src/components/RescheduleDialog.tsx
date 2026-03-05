@@ -28,12 +28,8 @@ export function RescheduleDialog({
   onReschedule,
   isPending,
 }: RescheduleDialogProps) {
-  const [date, setDate] = useState<Date | undefined>(
-    undefined
-  );
-  const formattedDate = date
-    ? format(date, 'yyyy-MM-dd')
-    : '';
+  const [date, setDate] = useState<Date | undefined>(undefined);
+  const formattedDate = date ? format(date, 'yyyy-MM-dd') : '';
   const {
     data: availability,
     isLoading,
@@ -54,14 +50,11 @@ export function RescheduleDialog({
         <DialogHeader>
           <DialogTitle>Reschedule Appointment</DialogTitle>
           <DialogDescription>
-            Select a new date and time slot for your
-            appointment.
+            Select a new date and time slot for your appointment.
           </DialogDescription>
         </DialogHeader>
         <div>
-          <span className="font-medium">
-            Select a date:
-          </span>
+          <span className="font-medium">Select a date:</span>
           <div className="mt-2">
             <Calendar
               mode="single"
@@ -73,9 +66,7 @@ export function RescheduleDialog({
         </div>
         {date && (
           <div>
-            <span className="font-medium">
-              Available time slots:
-            </span>
+            <span className="font-medium">Available time slots:</span>
             <div className="mt-2 flex flex-wrap gap-2">
               {isLoading && <span>Loading...</span>}
               {isError && (
@@ -88,45 +79,29 @@ export function RescheduleDialog({
                 !isError &&
                 availability &&
                 availability.slots.length === 0 && (
-                  <span>
-                    No slots available for this date.
-                  </span>
+                  <span>No slots available for this date.</span>
                 )}
               {!isLoading &&
                 !isError &&
                 availability &&
                 availability.slots.length > 0 &&
                 availability.slots.map((slot) => {
-                  const naiveDt = buildNaiveDatetime(
-                    slot.time
-                  );
+                  const naiveDt = buildNaiveDatetime(slot.time);
                   const slotDate = new Date(date);
-                  const [h, m] = slot.time
-                    .split(':')
-                    .map(Number);
+                  const [h, m] = slot.time.split(':').map(Number);
                   slotDate.setHours(h, m, 0, 0);
                   const isPast = slotDate < new Date();
                   return (
                     <Button
                       key={slot.time}
-                      variant={
-                        slot.available
-                          ? 'default'
-                          : 'outline'
-                      }
+                      variant={slot.available ? 'default' : 'outline'}
                       disabled={
-                        !slot.available ||
-                        isPending ||
-                        isPast
+                        !slot.available || isPending || isPast
                       }
                       type="button"
                       className="min-w-[90px]"
                       onClick={() => {
-                        if (
-                          !slot.available ||
-                          isPending ||
-                          isPast
-                        )
+                        if (!slot.available || isPending || isPast)
                           return;
                         onReschedule(naiveDt);
                       }}

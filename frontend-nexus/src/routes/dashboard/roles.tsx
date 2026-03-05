@@ -123,9 +123,7 @@ function RolesPage() {
             )}
             disabled={createMutation.isPending}
           >
-            {createMutation.isPending
-              ? 'Creating...'
-              : 'Create'}
+            {createMutation.isPending ? 'Creating...' : 'Create'}
           </Button>
         </>
       ),
@@ -162,9 +160,7 @@ function RolesPage() {
             )}
             disabled={updateMutation.isPending}
           >
-            {updateMutation.isPending
-              ? 'Saving...'
-              : 'Save'}
+            {updateMutation.isPending ? 'Saving...' : 'Save'}
           </Button>
         </>
       ),
@@ -190,9 +186,7 @@ function RolesPage() {
             onClick={() => deleteMutation.mutate(role.id)}
             disabled={deleteMutation.isPending}
           >
-            {deleteMutation.isPending
-              ? 'Deleting...'
-              : 'Delete'}
+            {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
           </Button>
         </>
       ),
@@ -243,15 +237,10 @@ function RolesPage() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button
-            variant="outline"
-            onClick={() => refetch()}
-          >
+          <Button variant="outline" onClick={() => refetch()}>
             Refresh
           </Button>
-          <Button onClick={openCreateDialog}>
-            Create role
-          </Button>
+          <Button onClick={openCreateDialog}>Create role</Button>
         </div>
       </div>
 
@@ -259,8 +248,8 @@ function RolesPage() {
         <CardHeader>
           <CardTitle>All roles</CardTitle>
           <CardDescription>
-            List, create, edit, and delete roles. Changes
-            hit the backend.
+            List, create, edit, and delete roles. Changes hit the
+            backend.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -288,27 +277,21 @@ function RolesPage() {
                       {role.name}
                     </TableCell>
                     <TableCell className="text-muted-foreground">
-                      {new Date(
-                        role.created_at
-                      ).toLocaleDateString()}
+                      {new Date(role.created_at).toLocaleDateString()}
                     </TableCell>
                     <TableCell>
                       <div className="flex justify-end gap-2">
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() =>
-                            openEditDialog(role)
-                          }
+                          onClick={() => openEditDialog(role)}
                         >
                           Edit
                         </Button>
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() =>
-                            openDeleteDialog(role)
-                          }
+                          onClick={() => openDeleteDialog(role)}
                         >
                           Delete
                         </Button>

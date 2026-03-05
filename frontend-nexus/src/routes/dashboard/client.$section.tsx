@@ -5,9 +5,7 @@ import {
 } from '@/routes/dashboard/client';
 import { createFileRoute } from '@tanstack/react-router';
 
-export const Route = createFileRoute(
-  '/dashboard/client/$section'
-)({
+export const Route = createFileRoute('/dashboard/client/$section')({
   beforeLoad: requireAuth({
     routeKey: 'DASHBOARD_CLIENTS',
   }),

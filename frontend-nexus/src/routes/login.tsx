@@ -27,9 +27,7 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 
 /** Default post-login path: dashboard if user can access DASHBOARD_HOME, otherwise tenant selector. */
-function getDefaultPostLoginPath(
-  role: Role | undefined
-): string {
+function getDefaultPostLoginPath(role: Role | undefined): string {
   return can({ role: role ?? undefined }, 'DASHBOARD_HOME')
     ? '/dashboard'
     : '/tenants';
@@ -37,8 +35,7 @@ function getDefaultPostLoginPath(
 
 export const Route = createFileRoute('/login')({
   beforeLoad: async () => {
-    const { ensureAuth, isAuthenticated } =
-      useAuthStore.getState();
+    const { ensureAuth, isAuthenticated } = useAuthStore.getState();
     if (!isAuthenticated) await ensureAuth();
     const state = useAuthStore.getState();
     if (state.isAuthenticated) {
@@ -49,9 +46,7 @@ export const Route = createFileRoute('/login')({
   /** Parses ?reason=expired|revoked and ?redirect= for post-login redirect. */
   validateSearch: (search: Record<string, unknown>) => {
     const reason =
-      typeof search.reason === 'string'
-        ? search.reason
-        : undefined;
+      typeof search.reason === 'string' ? search.reason : undefined;
     const redirect =
       typeof search.redirect === 'string' &&
       search.redirect.startsWith('/') &&
@@ -75,11 +70,8 @@ function LoginPage() {
   const login = useAuthStore((s) => s.login);
   const status = useAuthStore((s) => s.status);
   const storeError = useAuthStore((s) => s.error);
-  const { reason, redirect: redirectTo } =
-    Route.useSearch();
-  const [submitError, setSubmitError] = useState<
-    string | null
-  >(null);
+  const { reason, redirect: redirectTo } = Route.useSearch();
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const loginError = storeError ?? submitError;
   /** Shown when user was redirected with ?reason=expired or ?reason=revoked (e.g. after global 401 handler). */
   const reasonMessage =
@@ -117,9 +109,7 @@ function LoginPage() {
       }
 
       // Dashboard-capable roles use the standard path helper
-      if (
-        can({ role: role ?? undefined }, 'DASHBOARD_HOME')
-      ) {
+      if (can({ role: role ?? undefined }, 'DASHBOARD_HOME')) {
         // Doctors land directly on their appointments management page
         if (role === 'DOCTOR') {
           await navigate({
@@ -160,9 +150,7 @@ function LoginPage() {
     >
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl">
-            Sign in
-          </CardTitle>
+          <CardTitle className="text-2xl">Sign in</CardTitle>
           <CardDescription>
             Use your backend account credentials.
           </CardDescription>
@@ -196,17 +184,13 @@ function LoginPage() {
               id="password"
               label="Password"
               autoComplete="current-password"
-              error={
-                form.formState.errors.password?.message
-              }
+              error={form.formState.errors.password?.message}
               required
               {...form.register('password')}
             />
 
             {loginError ? (
-              <p className="text-sm text-destructive">
-                {loginError}
-              </p>
+              <p className="text-sm text-destructive">{loginError}</p>
             ) : null}
 
             <Button
@@ -229,10 +213,7 @@ function LoginPage() {
                 Register
               </Link>
             </p>
-            <Link
-              to="/"
-              className="underline underline-offset-4"
-            >
+            <Link to="/" className="underline underline-offset-4">
               Back to home
             </Link>
           </div>

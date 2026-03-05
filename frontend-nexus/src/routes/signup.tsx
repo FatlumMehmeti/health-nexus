@@ -30,9 +30,7 @@ import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { z } from 'zod';
 
-function getDefaultPostLoginPath(
-  role: Role | undefined
-): string {
+function getDefaultPostLoginPath(role: Role | undefined): string {
   return can({ role: role ?? undefined }, 'DASHBOARD_HOME')
     ? '/dashboard'
     : '/tenants';
@@ -40,8 +38,7 @@ function getDefaultPostLoginPath(
 
 export const Route = createFileRoute('/signup')({
   beforeLoad: async () => {
-    const { ensureAuth, isAuthenticated } =
-      useAuthStore.getState();
+    const { ensureAuth, isAuthenticated } = useAuthStore.getState();
     if (!isAuthenticated) await ensureAuth();
     const state = useAuthStore.getState();
     if (state.isAuthenticated) {
@@ -60,33 +57,20 @@ const signupSchema = z
     password: z
       .string()
       .min(8, 'Password must be at least 8 characters')
-      .regex(
-        /[a-zA-Z]/,
-        'Password must contain at least one letter'
-      )
-      .regex(
-        /\d/,
-        'Password must contain at least one number'
-      ),
-    confirmPassword: z
-      .string()
-      .min(1, 'Confirm your password'),
+      .regex(/[a-zA-Z]/, 'Password must contain at least one letter')
+      .regex(/\d/, 'Password must contain at least one number'),
+    confirmPassword: z.string().min(1, 'Confirm your password'),
   })
-  .refine(
-    (data) => data.password === data.confirmPassword,
-    {
-      message: 'Passwords do not match',
-      path: ['confirmPassword'],
-    }
-  );
+  .refine((data) => data.password === data.confirmPassword, {
+    message: 'Passwords do not match',
+    path: ['confirmPassword'],
+  });
 
 type SignupValues = z.infer<typeof signupSchema>;
 
 function SignupPage() {
   const navigate = useNavigate();
-  const [submitError, setSubmitError] = useState<
-    string | null
-  >(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const form = useForm<SignupValues>({
@@ -112,8 +96,7 @@ function SignupPage() {
         role: 'client',
       });
       toast.success('Account created!', {
-        description:
-          'You can now sign in with your new account.',
+        description: 'You can now sign in with your new account.',
       });
       await navigate({
         to: '/login',
@@ -124,9 +107,7 @@ function SignupPage() {
       });
     } catch (err) {
       if (err instanceof ApiError && err.status === 409) {
-        setSubmitError(
-          'An account with this email already exists.'
-        );
+        setSubmitError('An account with this email already exists.');
       } else if (err instanceof ApiError) {
         setSubmitError(err.displayMessage);
       } else {
@@ -148,8 +129,7 @@ function SignupPage() {
             Create an account
           </CardTitle>
           <CardDescription>
-            Join Health Nexus as a patient to access tenant
-            services.
+            Join Health Nexus as a patient to access tenant services.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -163,9 +143,7 @@ function SignupPage() {
                 id="signup-first-name"
                 label="First name"
                 autoComplete="given-name"
-                error={
-                  form.formState.errors.first_name?.message
-                }
+                error={form.formState.errors.first_name?.message}
                 required
                 {...form.register('first_name')}
               />
@@ -173,9 +151,7 @@ function SignupPage() {
                 id="signup-last-name"
                 label="Last name"
                 autoComplete="family-name"
-                error={
-                  form.formState.errors.last_name?.message
-                }
+                error={form.formState.errors.last_name?.message}
                 required
                 {...form.register('last_name')}
               />
@@ -195,9 +171,7 @@ function SignupPage() {
               id="signup-password"
               label="Password"
               autoComplete="new-password"
-              error={
-                form.formState.errors.password?.message
-              }
+              error={form.formState.errors.password?.message}
               required
               {...form.register('password')}
             />
@@ -206,19 +180,13 @@ function SignupPage() {
               id="signup-confirm-password"
               label="Confirm password"
               autoComplete="new-password"
-              error={
-                form.formState.errors.confirmPassword
-                  ?.message
-              }
+              error={form.formState.errors.confirmPassword?.message}
               required
               {...form.register('confirmPassword')}
             />
 
             {submitError ? (
-              <p
-                className="text-sm text-destructive"
-                role="alert"
-              >
+              <p className="text-sm text-destructive" role="alert">
                 {submitError}
               </p>
             ) : null}
@@ -247,10 +215,7 @@ function SignupPage() {
                 Sign in
               </Link>
             </p>
-            <Link
-              to="/"
-              className="underline underline-offset-4"
-            >
+            <Link to="/" className="underline underline-offset-4">
               Back to home
             </Link>
           </div>

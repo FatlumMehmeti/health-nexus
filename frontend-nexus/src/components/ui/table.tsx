@@ -13,10 +13,7 @@ function Table({
     >
       <table
         data-slot="table"
-        className={cn(
-          'w-full caption-bottom text-sm',
-          className
-        )}
+        className={cn('w-full caption-bottom text-sm', className)}
         {...props}
       />
     </div>
@@ -43,10 +40,7 @@ function TableBody({
   return (
     <tbody
       data-slot="table-body"
-      className={cn(
-        '[&_tr:last-child]:border-0',
-        className
-      )}
+      className={cn('[&_tr:last-child]:border-0', className)}
       {...props}
     />
   );
@@ -123,10 +117,7 @@ function TableCaption({
   return (
     <caption
       data-slot="table-caption"
-      className={cn(
-        'text-muted-foreground mt-4 text-sm',
-        className
-      )}
+      className={cn('text-muted-foreground mt-4 text-sm', className)}
       {...props}
     />
   );

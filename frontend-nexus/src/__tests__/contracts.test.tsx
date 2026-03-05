@@ -7,8 +7,8 @@ import {
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
-import * as ContractsPageModule from '@/components/contracts/ContractsPage';
 import type { Contract } from '@/interfaces/contract';
+import * as ContractsPageModule from '@/routes/dashboard/tenant/contracts/index';
 import { contractsService } from '@/services/contracts.service';
 import { useAuthStore } from '@/stores/auth.store';
 
@@ -26,9 +26,7 @@ function setTenantContext(tenantId: string) {
   }));
 }
 
-function makeContract(
-  overrides: Partial<Contract>
-): Contract {
+function makeContract(overrides: Partial<Contract>): Contract {
   return {
     id: 100,
     tenant_id: 1,
@@ -72,15 +70,7 @@ describe('ContractsPage', () => {
     );
 
     const user = userEvent.setup();
-    render(
-      <ContractsPageModule.ContractsPage
-        pickFile={async () =>
-          new File(['signature'], 'signature.png', {
-            type: 'image/png',
-          })
-        }
-      />
-    );
+    render(<ContractsPageModule.ContractsPage />);
 
     await screen.findByText(
       'Doctor booking eligibility: 0 eligible / 1 not eligible'
@@ -92,12 +82,9 @@ describe('ContractsPage', () => {
     expect(row).not.toBeNull();
 
     await user.click(
-      within(row as HTMLTableRowElement).getByRole(
-        'button',
-        {
-          name: /open menu/i,
-        }
-      )
+      within(row as HTMLTableRowElement).getByRole('button', {
+        name: /open menu/i,
+      })
     );
 
     const activateItem = screen.getByRole('menuitem', {
@@ -160,15 +147,7 @@ describe('ContractsPage', () => {
       .mockResolvedValue(activeEligible);
 
     const user = userEvent.setup();
-    render(
-      <ContractsPageModule.ContractsPage
-        pickFile={async () =>
-          new File(['signature'], 'signature.png', {
-            type: 'image/png',
-          })
-        }
-      />
-    );
+    render(<ContractsPageModule.ContractsPage />);
 
     await screen.findByText(
       'Doctor booking eligibility: 0 eligible / 1 not eligible'
@@ -180,12 +159,9 @@ describe('ContractsPage', () => {
     expect(row).not.toBeNull();
 
     await user.click(
-      within(row as HTMLTableRowElement).getByRole(
-        'button',
-        {
-          name: /open menu/i,
-        }
-      )
+      within(row as HTMLTableRowElement).getByRole('button', {
+        name: /open menu/i,
+      })
     );
     await user.click(
       screen.getByRole('menuitem', {
@@ -201,12 +177,9 @@ describe('ContractsPage', () => {
     });
 
     await user.click(
-      within(row as HTMLTableRowElement).getByRole(
-        'button',
-        {
-          name: /open menu/i,
-        }
-      )
+      within(row as HTMLTableRowElement).getByRole('button', {
+        name: /open menu/i,
+      })
     );
     await user.click(
       screen.getByRole('menuitem', {
@@ -222,20 +195,15 @@ describe('ContractsPage', () => {
     });
 
     await user.click(
-      within(row as HTMLTableRowElement).getByRole(
-        'button',
-        {
-          name: /open menu/i,
-        }
-      )
+      within(row as HTMLTableRowElement).getByRole('button', {
+        name: /open menu/i,
+      })
     );
 
     const activateItem = screen.getByRole('menuitem', {
       name: 'Activate',
     });
-    expect(activateItem).not.toHaveAttribute(
-      'data-disabled'
-    );
+    expect(activateItem).not.toHaveAttribute('data-disabled');
     await user.click(activateItem);
 
     await waitFor(() => {

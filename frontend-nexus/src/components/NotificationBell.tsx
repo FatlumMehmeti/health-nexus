@@ -32,23 +32,15 @@ import { useAuthStore } from '@/stores/auth.store';
 function notificationIcon(type: string) {
   switch (type) {
     case 'APPOINTMENT_CONFIRMED':
-      return (
-        <IconCheck className="size-4 text-green-400" />
-      );
+      return <IconCheck className="size-4 text-green-400" />;
     case 'APPOINTMENT_REJECTED':
     case 'APPOINTMENT_CANCELLED':
-      return (
-        <IconCalendarEvent className="size-4 text-red-400" />
-      );
+      return <IconCalendarEvent className="size-4 text-red-400" />;
     case 'APPOINTMENT_CREATED':
     case 'APPOINTMENT_RESCHEDULED':
-      return (
-        <IconCalendarEvent className="size-4 text-blue-400" />
-      );
+      return <IconCalendarEvent className="size-4 text-blue-400" />;
     case 'APPOINTMENT_COMPLETED':
-      return (
-        <IconChecks className="size-4 text-green-400" />
-      );
+      return <IconChecks className="size-4 text-green-400" />;
     default:
       return <IconBell className="size-4" />;
   }
@@ -85,12 +77,9 @@ function NotificationRow({
         </p>
         <p className="text-[11px] text-muted-foreground/60 mt-1">
           {notification.created_at
-            ? formatDistanceToNow(
-                new Date(notification.created_at),
-                {
-                  addSuffix: true,
-                }
-              )
+            ? formatDistanceToNow(new Date(notification.created_at), {
+                addSuffix: true,
+              })
             : ''}
         </p>
       </div>
@@ -139,11 +128,7 @@ export function NotificationBell() {
       }}
     >
       <DropdownMenuTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="relative"
-        >
+        <Button variant="ghost" size="icon" className="relative">
           {count > 0 ? (
             <IconBellFilled className="size-5" />
           ) : (

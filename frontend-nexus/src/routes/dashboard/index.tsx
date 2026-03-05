@@ -1,8 +1,5 @@
 import { ChartAreaInteractive } from '@/components/molecules/chart-area-interactive';
-import {
-  DataTable,
-  schema,
-} from '@/components/molecules/data-table';
+import { DataTable, schema } from '@/components/molecules/data-table';
 import { SectionCards } from '@/components/molecules/section-cards';
 import dashboardData from '@/lib/dashboard-data.json';
 import { requireAuth } from '@/lib/guards/requireAuth';

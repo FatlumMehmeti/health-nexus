@@ -10,10 +10,7 @@ import {
   SidebarProvider,
 } from '@/components/ui/sidebar';
 import { requireAuth } from '@/lib/guards/requireAuth';
-import {
-  Outlet,
-  createFileRoute,
-} from '@tanstack/react-router';
+import { Outlet, createFileRoute } from '@tanstack/react-router';
 
 export const Route = createFileRoute('/dashboard')({
   beforeLoad: requireAuth(),

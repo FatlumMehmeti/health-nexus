@@ -82,26 +82,17 @@ const usdFormatter = new Intl.NumberFormat('en-US', {
 });
 
 function formatCurrency(value: number): string {
-  return usdFormatter.format(
-    Number.isFinite(value) ? value : 0
-  );
+  return usdFormatter.format(Number.isFinite(value) ? value : 0);
 }
 
-function getApiDetailCode(
-  err: unknown
-): string | undefined {
-  if (
-    !isApiError(err) ||
-    !err.data ||
-    typeof err.data !== 'object'
-  )
+function getApiDetailCode(err: unknown): string | undefined {
+  if (!isApiError(err) || !err.data || typeof err.data !== 'object')
     return undefined;
   const detail =
     'detail' in err.data
       ? (err.data as { detail?: unknown }).detail
       : undefined;
-  if (!detail || typeof detail !== 'object')
-    return undefined;
+  if (!detail || typeof detail !== 'object') return undefined;
   const code =
     'code' in detail
       ? (detail as { code?: unknown }).code
@@ -109,21 +100,16 @@ function getApiDetailCode(
   return typeof code === 'string' ? code : undefined;
 }
 
-export function TenantLanding({
-  landingData,
-}: TenantLandingProps) {
+export function TenantLanding({ landingData }: TenantLandingProps) {
   const [activeTab, setActiveTab] = useState('home');
-  const [selectedPlanId, setSelectedPlanId] = useState<
-    number | null
-  >(null);
-  const [registeredOverride, setRegisteredOverride] =
-    useState(false);
+  const [selectedPlanId, setSelectedPlanId] = useState<number | null>(
+    null
+  );
+  const [registeredOverride, setRegisteredOverride] = useState(false);
 
   const user = useAuthStore((s) => s.user);
   const role = useAuthStore((s) => s.role);
-  const isAuthenticated = useAuthStore(
-    (s) => s.isAuthenticated
-  );
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
 
   const tenantId = landingData?.tenant?.id;
 
@@ -134,8 +120,7 @@ export function TenantLanding({
   // can click "Change plan" without it snapping back immediately.
   const { data: enrollmentData } = useQuery({
     queryKey: ['my-enrollment', tenantId],
-    queryFn: () =>
-      tenantPlansService.myEnrollment(tenantId!),
+    queryFn: () => tenantPlansService.myEnrollment(tenantId!),
     enabled: !!tenantId && isAuthenticated,
     retry: false,
   });
@@ -187,13 +172,8 @@ export function TenantLanding({
   const registerEmail =
     authEmail || meQuery.data?.email?.trim() || '';
   const registrationStatusQuery = useQuery({
-    queryKey: [
-      'tenant-patient-registration',
-      tenantId,
-      user?.id,
-    ],
-    queryFn: () =>
-      patientsService.getMyTenantProfile(tenantId!),
+    queryKey: ['tenant-patient-registration', tenantId, user?.id],
+    queryFn: () => patientsService.getMyTenantProfile(tenantId!),
     enabled: !!tenantId && isAuthenticated,
     retry: false,
   });
@@ -202,8 +182,7 @@ export function TenantLanding({
     setRegisteredOverride(false);
   }, [tenantId, isAuthenticated, user?.id]);
 
-  const registrationStatusError =
-    registrationStatusQuery.error;
+  const registrationStatusError = registrationStatusQuery.error;
   const isRegistrationStatusExpectedNotRegistered =
     isApiError(registrationStatusError) &&
     (registrationStatusError.status === 403 ||
@@ -297,10 +276,7 @@ export function TenantLanding({
   });
   const logout = useAuthStore((s) => s.logout);
   const navigate = useNavigate();
-  const canOpenTenantDashboard = can(
-    { role },
-    'DASHBOARD_TENANT'
-  );
+  const canOpenTenantDashboard = can({ role }, 'DASHBOARD_TENANT');
 
   const handleLogout = async () => {
     await logout();
@@ -330,27 +306,21 @@ export function TenantLanding({
   if (!landingData) {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <p className="text-muted-foreground text-sm">
-          Loading…
-        </p>
+        <p className="text-muted-foreground text-sm">Loading…</p>
       </div>
     );
   }
 
-  const { tenant, details, departments, products } =
-    landingData;
+  const { tenant, details, departments, products } = landingData;
   const plans = (landingData.plans ?? []).filter(
     (p) => p.is_active !== false
   );
   const title = details?.title ?? tenant.name;
-  const subtitle =
-    details?.slogan ?? 'Welcome to our landing page.';
+  const subtitle = details?.slogan ?? 'Welcome to our landing page.';
   const logo = resolveMediaUrl(details?.logo);
   const heroImage = resolveMediaUrl(details?.image);
-  const moto =
-    details?.moto ?? 'Your health, our priority.';
-  const about =
-    details?.about_text ?? 'No description available.';
+  const moto = details?.moto ?? 'Your health, our priority.';
+  const about = details?.about_text ?? 'No description available.';
   const slug = tenant.slug ?? '';
   const brand = buildBrandStyles(details);
   const fontHeaderStyle = brand.headerStyle;
@@ -359,19 +329,18 @@ export function TenantLanding({
   const availableProducts = products.filter(
     (product) => product.is_available !== false
   );
-  const accountButtonStyle: CSSProperties | undefined =
-    brand.primary
+  const accountButtonStyle: CSSProperties | undefined = brand.primary
+    ? {
+        backgroundColor: brand.primary,
+        borderColor: brand.primary,
+        color: brand.foreground ?? '#ffffff',
+      }
+    : brand.secondary
       ? {
-          backgroundColor: brand.primary,
-          borderColor: brand.primary,
-          color: brand.foreground ?? '#ffffff',
+          borderColor: brand.secondary,
+          color: brand.secondary,
         }
-      : brand.secondary
-        ? {
-            borderColor: brand.secondary,
-            color: brand.secondary,
-          }
-        : undefined;
+      : undefined;
 
   return (
     <Tabs
@@ -431,9 +400,7 @@ export function TenantLanding({
               <TabsTrigger value="departments">
                 DEPARTMENTS
               </TabsTrigger>
-              <TabsTrigger value="products">
-                PRODUCTS
-              </TabsTrigger>
+              <TabsTrigger value="products">PRODUCTS</TabsTrigger>
               <TabsTrigger value="plans">PLANS</TabsTrigger>
             </TabsList>
             {isAuthenticated && user ? (
@@ -450,16 +417,11 @@ export function TenantLanding({
                     {userInitial}
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent
-                  align="end"
-                  className="min-w-40"
-                >
+                <DropdownMenuContent align="end" className="min-w-40">
                   <DropdownMenuLabel className="text-xs sm:text-sm">
                     Signed in as
                     <br />
-                    <span className="font-medium">
-                      {user.email}
-                    </span>
+                    <span className="font-medium">{user.email}</span>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   {canOpenTenantDashboard ? (
@@ -473,9 +435,7 @@ export function TenantLanding({
                     </>
                   ) : null}
                   <DropdownMenuItem onClick={handleLogout}>
-                    <span className="text-destructive">
-                      Log out
-                    </span>
+                    <span className="text-destructive">Log out</span>
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -525,8 +485,7 @@ export function TenantLanding({
                             style={
                               brand.primary
                                 ? {
-                                    backgroundColor:
-                                      brand.primary,
+                                    backgroundColor: brand.primary,
                                   }
                                 : undefined
                             }
@@ -541,9 +500,7 @@ export function TenantLanding({
                 <div className="mt-5 flex flex-wrap gap-3">
                   <Button
                     size="sm"
-                    onClick={() =>
-                      setActiveTab('departments')
-                    }
+                    onClick={() => setActiveTab('departments')}
                     style={
                       brand.primary
                         ? {
@@ -600,8 +557,8 @@ export function TenantLanding({
                       {isRegistered ? (
                         <>
                           <p className="text-xs text-muted-foreground">
-                            You&apos;re registered. Add
-                            details in your Profile.
+                            You&apos;re registered. Add details in
+                            your Profile.
                           </p>
                           <Button
                             size="sm"
@@ -618,8 +575,8 @@ export function TenantLanding({
                       ) : null}
                       {hasUnexpectedRegistrationStatusError ? (
                         <p className="text-xs text-destructive">
-                          Unable to verify registration
-                          status right now.
+                          Unable to verify registration status right
+                          now.
                         </p>
                       ) : null}
                     </div>
@@ -690,8 +647,8 @@ export function TenantLanding({
                   </p>
                   {departments.length > 0 && (
                     <p className="text-muted-foreground">
-                      {departments.length} department(s)
-                      with services listed below.
+                      {departments.length} department(s) with services
+                      listed below.
                     </p>
                   )}
                 </div>
@@ -699,10 +656,7 @@ export function TenantLanding({
             </section>
           </TabsContent>
 
-          <TabsContent
-            value="departments"
-            className="mt-0 flex-1"
-          >
+          <TabsContent value="departments" className="mt-0 flex-1">
             <section className="mx-auto max-w-5xl space-y-4">
               <div className="space-y-1">
                 <h2 className="text-xl font-semibold tracking-tight sm:text-2xl">
@@ -733,15 +687,12 @@ export function TenantLanding({
                             </p>
                           )}
                         </div>
-                        {(dept.phone_number ||
-                          dept.email) && (
+                        {(dept.phone_number || dept.email) && (
                           <div className="space-y-0.5 text-right text-[0.7rem] text-muted-foreground">
                             {dept.phone_number && (
                               <p>{dept.phone_number}</p>
                             )}
-                            {dept.email && (
-                              <p>{dept.email}</p>
-                            )}
+                            {dept.email && <p>{dept.email}</p>}
                           </div>
                         )}
                       </div>
@@ -755,8 +706,7 @@ export function TenantLanding({
                               style={
                                 brand.primary
                                   ? {
-                                      borderColor:
-                                        brand.primary,
+                                      borderColor: brand.primary,
                                       color: brand.primary,
                                     }
                                   : undefined
@@ -772,9 +722,7 @@ export function TenantLanding({
                         )}
                       </div>
 
-                      {dept.services.some(
-                        (s) => s.description
-                      ) && (
+                      {dept.services.some((s) => s.description) && (
                         <p className="mt-3 text-xs text-muted-foreground">
                           {dept.services
                             .filter((s) => s.description)
@@ -794,10 +742,7 @@ export function TenantLanding({
             </section>
           </TabsContent>
 
-          <TabsContent
-            value="products"
-            className="mt-0 flex-1"
-          >
+          <TabsContent value="products" className="mt-0 flex-1">
             <section className="mx-auto max-w-5xl space-y-4">
               <div className="space-y-1">
                 <h2 className="text-xl font-semibold tracking-tight sm:text-2xl">
@@ -826,8 +771,7 @@ export function TenantLanding({
                           style={
                             brand.primary
                               ? {
-                                  borderColor:
-                                    brand.primary,
+                                  borderColor: brand.primary,
                                   color: brand.primary,
                                 }
                               : undefined
@@ -851,10 +795,7 @@ export function TenantLanding({
             </section>
           </TabsContent>
 
-          <TabsContent
-            value="plans"
-            className="mt-0 flex-1"
-          >
+          <TabsContent value="plans" className="mt-0 flex-1">
             <section className="mx-auto max-w-5xl space-y-4">
               <div className="space-y-1">
                 <h2 className="text-xl font-semibold tracking-tight sm:text-2xl">
@@ -877,8 +818,7 @@ export function TenantLanding({
                     <div
                       className="flex items-center justify-between rounded-xl border-2 p-4"
                       style={{
-                        borderColor:
-                          brand.primary ?? undefined,
+                        borderColor: brand.primary ?? undefined,
                         backgroundColor: `${brand.primary ?? '#2563eb'}10`,
                       }}
                     >
@@ -897,10 +837,7 @@ export function TenantLanding({
                             {selected.name}
                           </p>
                           <p className="text-xs text-muted-foreground">
-                            €
-                            {Number(selected.price).toFixed(
-                              2
-                            )}
+                            €{Number(selected.price).toFixed(2)}
                             {selected.duration
                               ? ` / ${selected.duration} days`
                               : ''}
@@ -927,8 +864,7 @@ export function TenantLanding({
               {plans.length > 0 ? (
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                   {plans.map((plan) => {
-                    const isSelected =
-                      selectedPlanId === plan.id;
+                    const isSelected = selectedPlanId === plan.id;
                     return (
                       <article
                         key={plan.id}
@@ -941,11 +877,9 @@ export function TenantLanding({
                           isSelected
                             ? {
                                 borderColor:
-                                  brand.primary ??
-                                  undefined,
+                                  brand.primary ?? undefined,
                                 outlineColor:
-                                  brand.primary ??
-                                  undefined,
+                                  brand.primary ?? undefined,
                               }
                             : undefined
                         }
@@ -955,9 +889,7 @@ export function TenantLanding({
                             {plan.name}
                           </h3>
                           <span className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
-                            {isSelected
-                              ? 'Active'
-                              : 'Available'}
+                            {isSelected ? 'Active' : 'Available'}
                           </span>
                         </div>
 
@@ -967,10 +899,7 @@ export function TenantLanding({
                         {plan.duration && (
                           <p className="text-xs text-muted-foreground">
                             {plan.duration} day
-                            {plan.duration !== 1
-                              ? 's'
-                              : ''}{' '}
-                            duration
+                            {plan.duration !== 1 ? 's' : ''} duration
                           </p>
                         )}
 
@@ -995,8 +924,7 @@ export function TenantLanding({
                               Consultations
                             </span>
                             <span className="font-medium">
-                              {plan.max_consultations !=
-                              null
+                              {plan.max_consultations != null
                                 ? plan.max_consultations
                                 : 'Unlimited'}
                             </span>
@@ -1006,31 +934,21 @@ export function TenantLanding({
                         <Button
                           size="sm"
                           className="mt-4 w-full"
-                          variant={
-                            isSelected
-                              ? 'outline'
-                              : 'default'
-                          }
+                          variant={isSelected ? 'outline' : 'default'}
                           disabled={
-                            isSelected ||
-                            enrollMutation.isPending
+                            isSelected || enrollMutation.isPending
                           }
                           style={
                             isSelected
                               ? {
                                   borderColor:
-                                    brand.primary ??
-                                    undefined,
-                                  color:
-                                    brand.primary ??
-                                    undefined,
+                                    brand.primary ?? undefined,
+                                  color: brand.primary ?? undefined,
                                 }
                               : brand.primary
                                 ? {
-                                    backgroundColor:
-                                      brand.primary,
-                                    borderColor:
-                                      brand.primary,
+                                    backgroundColor: brand.primary,
+                                    borderColor: brand.primary,
                                   }
                                 : undefined
                           }

@@ -9,9 +9,7 @@ export async function checkEnrollment(
     const { apiFetch } = await import('@/lib/api-client');
     const data = await apiFetch<{
       enrolled: boolean;
-    }>(
-      `/appointments/enrollment-status?tenant_id=${tenantId}`
-    );
+    }>(`/appointments/enrollment-status?tenant_id=${tenantId}`);
     return !!data.enrolled;
   } catch {
     return false;

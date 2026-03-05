@@ -13,7 +13,7 @@ import type {
   ProductFormState,
   ServiceFormState,
   TenantDetailsFormState,
-} from './constants';
+} from './-constants';
 
 export async function getCurrentTenantWithFallback(
   tenantIdFromStore?: string
@@ -36,8 +36,7 @@ export async function getCurrentTenantWithFallback(
       throw error;
     }
 
-    const publicTenants =
-      await tenantsService.listPublicTenants();
+    const publicTenants = await tenantsService.listPublicTenants();
     const matchedTenant = publicTenants.find(
       (tenant) => tenant.id === parsedTenantId
     );
@@ -138,9 +137,7 @@ export function diffTenantDetailsPayload(
     payload.moto = current.moto;
   if ((original?.title ?? null) !== current.title)
     payload.title = current.title;
-  if (
-    (original?.about_text ?? null) !== current.about_text
-  ) {
+  if ((original?.about_text ?? null) !== current.about_text) {
     payload.about_text = current.about_text;
   }
   if ((original?.brand_id ?? null) !== current.brand_id)
@@ -273,15 +270,9 @@ function mixHex(
   const overlay = hexToRgb(overlayHex);
   if (!base || !overlay) return baseHex;
   const ratio = Math.min(1, Math.max(0, amount));
-  const r = Math.round(
-    base.r + (overlay.r - base.r) * ratio
-  );
-  const g = Math.round(
-    base.g + (overlay.g - base.g) * ratio
-  );
-  const b = Math.round(
-    base.b + (overlay.b - base.b) * ratio
-  );
+  const r = Math.round(base.r + (overlay.r - base.r) * ratio);
+  const g = Math.round(base.g + (overlay.g - base.g) * ratio);
+  const b = Math.round(base.b + (overlay.b - base.b) * ratio);
   return rgbToHex(r, g, b);
 }
 
@@ -294,18 +285,13 @@ export function buildPaletteCardColors(
   isSelected = false
 ): CSSProperties {
   const background =
-    normalizeHexColor(brand.brand_color_background) ??
-    '#f8fafc';
+    normalizeHexColor(brand.brand_color_background) ?? '#f8fafc';
   const preferredText = normalizeHexColor(
     brand.brand_color_foreground
   );
   const selectedAccent =
-    normalizeHexColor(brand.brand_color_primary) ??
-    '#2563eb';
-  const text = pickReadableTextColor(
-    background,
-    preferredText
-  );
+    normalizeHexColor(brand.brand_color_primary) ?? '#2563eb';
+  const text = pickReadableTextColor(background, preferredText);
   const border = mixHex(background, text, 0.18);
   const gradientEnd = mixHex(background, text, 0.06);
   const selectedBorder = mixHex(selectedAccent, text, 0.2);

@@ -23,8 +23,8 @@ if (typeof globalThis.Response !== 'undefined') {
     }
   ).Response = ResponseConstructor;
   if (
-    typeof (global as unknown as { window?: unknown })
-      .window !== 'undefined'
+    typeof (global as unknown as { window?: unknown }).window !==
+    'undefined'
   ) {
     (
       (global as unknown as { window: unknown })
@@ -41,16 +41,14 @@ const ResizeObserverMock = class ResizeObserver {
   unobserve = () => {};
   disconnect = () => {};
 };
-(
-  global as unknown as { ResizeObserver: unknown }
-).ResizeObserver = ResizeObserverMock;
+(global as unknown as { ResizeObserver: unknown }).ResizeObserver =
+  ResizeObserverMock;
 if (
-  typeof (global as unknown as { window?: unknown })
-    .window !== 'undefined'
+  typeof (global as unknown as { window?: unknown }).window !==
+  'undefined'
 ) {
   (
-    (global as unknown as { window: unknown })
-      .window as unknown as {
+    (global as unknown as { window: unknown }).window as unknown as {
       ResizeObserver: unknown;
     }
   ).ResizeObserver = ResizeObserverMock;
@@ -73,8 +71,8 @@ const matchMediaMock = () => ({
   }
 ).matchMedia = matchMediaMock;
 if (
-  typeof (global as unknown as { window?: unknown })
-    .window !== 'undefined'
+  typeof (global as unknown as { window?: unknown }).window !==
+  'undefined'
 ) {
   (
     (

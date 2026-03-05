@@ -6,10 +6,7 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { useAuthStore } from '@/stores/auth.store';
-import {
-  createFileRoute,
-  useNavigate,
-} from '@tanstack/react-router';
+import { createFileRoute, useNavigate } from '@tanstack/react-router';
 
 export const Route = createFileRoute('/enrollment')({
   component: EnrollmentRequiredPage,
@@ -29,16 +26,11 @@ function EnrollmentRequiredPage() {
           <CardTitle>Enrollment Required</CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col gap-4 text-sm text-muted-foreground">
-          <p>
-            You need an active enrollment to book
-            appointments.
-          </p>
+          <p>You need an active enrollment to book appointments.</p>
           <div className="flex gap-2">
             <Button
               type="button"
-              onClick={() =>
-                navigate({ to: '/contact-admin' })
-              }
+              onClick={() => navigate({ to: '/contact-admin' })}
             >
               Contact Admin
             </Button>

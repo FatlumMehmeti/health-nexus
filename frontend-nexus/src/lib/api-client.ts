@@ -7,8 +7,7 @@
  * - On 401, invokes setUnauthorizedHandler (auth store session expiry).
  */
 export const API_BASE_URL =
-  import.meta.env?.VITE_API_BASE_URL ??
-  'http://localhost:8000';
+  import.meta.env?.VITE_API_BASE_URL ?? 'http://localhost:8000';
 
 /** Validation error from FastAPI (422 Unprocessable Entity) */
 export interface ValidationError {
@@ -40,10 +39,7 @@ export class ApiError extends Error {
   /** Human-readable message for display (FastAPI detail or validation errors) */
   get displayMessage(): string {
     if (typeof this.detail === 'string') return this.detail;
-    if (
-      Array.isArray(this.detail) &&
-      this.detail.length > 0
-    ) {
+    if (Array.isArray(this.detail) && this.detail.length > 0) {
       return this.detail.map((e) => e.msg).join('; ');
     }
     return this.message;
@@ -51,9 +47,7 @@ export class ApiError extends Error {
 
   /** Whether this is a validation error (422) */
   get isValidation(): boolean {
-    return (
-      this.status === 422 && Array.isArray(this.detail)
-    );
+    return this.status === 422 && Array.isArray(this.detail);
   }
 }
 
@@ -74,26 +68,19 @@ function safeGetStorageItem(key: string): string | null {
   }
 }
 
-function safeSetStorageItem(
-  key: string,
-  value: string | null
-) {
+function safeSetStorageItem(key: string, value: string | null) {
   try {
     if (!globalThis.localStorage) return;
-    if (value === null)
-      globalThis.localStorage.removeItem(key);
+    if (value === null) globalThis.localStorage.removeItem(key);
     else globalThis.localStorage.setItem(key, value);
   } catch {
     // ignore
   }
 }
 
-let accessToken: string | null = safeGetStorageItem(
-  ACCESS_TOKEN_KEY
-);
-let refreshToken: string | null = safeGetStorageItem(
-  REFRESH_TOKEN_KEY
-);
+let accessToken: string | null = safeGetStorageItem(ACCESS_TOKEN_KEY);
+let refreshToken: string | null =
+  safeGetStorageItem(REFRESH_TOKEN_KEY);
 
 export function getAccessToken(): string | null {
   return accessToken;
@@ -175,11 +162,7 @@ function buildError(
 ): ApiError {
   let message = 'Request failed';
   let detail: string | ValidationError[] | undefined;
-  if (
-    data &&
-    typeof data === 'object' &&
-    'detail' in data
-  ) {
+  if (data && typeof data === 'object' && 'detail' in data) {
     const d = (data as ApiErrorPayload).detail;
     if (typeof d === 'string') {
       message = d;
@@ -201,16 +184,12 @@ function buildError(
   const isAuthOwnPath = AUTH_OWN_401_PATHS.some((p) =>
     url.includes(p)
   );
-  if (res.status === 401 && !isAuthOwnPath)
-    onUnauthorized?.(err);
+  if (res.status === 401 && !isAuthOwnPath) onUnauthorized?.(err);
   return err;
 }
 
 /** Options for apiFetch */
-export interface ApiFetchOptions extends Omit<
-  RequestInit,
-  'body'
-> {
+export interface ApiFetchOptions extends Omit<RequestInit, 'body'> {
   body?: unknown;
   skipJson?: boolean;
 }
@@ -253,9 +232,7 @@ export async function apiFetch<T>(
     res = await fetch(url, init);
   } catch (err) {
     throw new ApiError(
-      err instanceof Error
-        ? err.message
-        : 'Network request failed',
+      err instanceof Error ? err.message : 'Network request failed',
       0,
       'Unable to reach the server. Check your connection.'
     );
@@ -263,9 +240,7 @@ export async function apiFetch<T>(
 
   const data = await parseJsonSafely(res);
   const text =
-    data === undefined
-      ? await readTextSafely(res)
-      : undefined;
+    data === undefined ? await readTextSafely(res) : undefined;
 
   if (!res.ok) {
     throw buildError(res, data, text, url);
@@ -314,31 +289,19 @@ export async function request<TResponse = unknown>(
 export const api = {
   get: <T>(path: string, init?: RequestInit) =>
     apiFetch<T>(path, { ...init, method: 'GET' }),
-  post: <T>(
-    path: string,
-    body?: unknown,
-    init?: RequestInit
-  ) =>
+  post: <T>(path: string, body?: unknown, init?: RequestInit) =>
     apiFetch<T>(path, {
       ...init,
       method: 'POST',
       body,
     }),
-  put: <T>(
-    path: string,
-    body?: unknown,
-    init?: RequestInit
-  ) =>
+  put: <T>(path: string, body?: unknown, init?: RequestInit) =>
     apiFetch<T>(path, {
       ...init,
       method: 'PUT',
       body,
     }),
-  patch: <T>(
-    path: string,
-    body?: unknown,
-    init?: RequestInit
-  ) =>
+  patch: <T>(path: string, body?: unknown, init?: RequestInit) =>
     apiFetch<T>(path, {
       ...init,
       method: 'PATCH',

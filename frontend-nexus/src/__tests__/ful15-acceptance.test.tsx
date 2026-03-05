@@ -22,16 +22,8 @@ import {
   QueryClient,
   QueryClientProvider,
 } from '@tanstack/react-query';
-import {
-  createRouter,
-  RouterProvider,
-} from '@tanstack/react-router';
-import {
-  act,
-  render,
-  screen,
-  waitFor,
-} from '@testing-library/react';
+import { createRouter, RouterProvider } from '@tanstack/react-router';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import { routeTree } from '../routeTree.gen';
 
 jest.mock(
@@ -111,9 +103,7 @@ function createTestRouter() {
   });
 }
 
-function renderApp(
-  router: ReturnType<typeof createTestRouter>
-) {
+function renderApp(router: ReturnType<typeof createTestRouter>) {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
@@ -130,58 +120,53 @@ beforeEach(() => {
   meStatus = 200;
   meRole = 'admin';
 
-  globalThis.fetch = jest.fn(
-    async (input: RequestInfo | URL) => {
-      const url =
-        typeof input === 'string'
-          ? input
-          : input.toString();
-      if (url.includes('/auth/me')) {
-        if (meStatus === 401)
-          return new Response(null, {
-            status: 401,
-          });
-        return new Response(
-          JSON.stringify({
-            message: 'You are authenticated',
-            user: {
-              user_id: '1',
-              email: 'test@example.com',
-              role: meRole,
-            },
-          }),
-          {
-            status: 200,
-            headers: {
-              'Content-Type': 'application/json',
-            },
-          }
-        );
-      }
-      if (url.startsWith('https://dummyjson.com/users')) {
-        return new Response(
-          JSON.stringify({
-            users: [],
-            total: 0,
-            skip: 0,
-            limit: 30,
-          }),
-          {
-            status: 200,
-            headers: {
-              'Content-Type': 'application/json',
-            },
-          }
-        );
-      }
-      return new Response(JSON.stringify({}), {
-        status: 200,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
+  globalThis.fetch = jest.fn(async (input: RequestInfo | URL) => {
+    const url = typeof input === 'string' ? input : input.toString();
+    if (url.includes('/auth/me')) {
+      if (meStatus === 401)
+        return new Response(null, {
+          status: 401,
+        });
+      return new Response(
+        JSON.stringify({
+          message: 'You are authenticated',
+          user: {
+            user_id: '1',
+            email: 'test@example.com',
+            role: meRole,
+          },
+        }),
+        {
+          status: 200,
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }
+      );
     }
-  ) as unknown as typeof fetch;
+    if (url.startsWith('https://dummyjson.com/users')) {
+      return new Response(
+        JSON.stringify({
+          users: [],
+          total: 0,
+          skip: 0,
+          limit: 30,
+        }),
+        {
+          status: 200,
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+    }
+    return new Response(JSON.stringify({}), {
+      status: 200,
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+  }) as unknown as typeof fetch;
 });
 
 describe('FUL-15 acceptance', () => {
@@ -194,9 +179,7 @@ describe('FUL-15 acceptance', () => {
     });
 
     await waitFor(() => {
-      expect(
-        screen.getByTestId('login-page')
-      ).toBeInTheDocument();
+      expect(screen.getByTestId('login-page')).toBeInTheDocument();
     });
   });
 
@@ -258,17 +241,13 @@ describe('FUL-15 acceptance', () => {
     });
 
     await waitFor(() => {
-      expect(
-        screen.getByTestId('login-page')
-      ).toBeInTheDocument();
+      expect(screen.getByTestId('login-page')).toBeInTheDocument();
       expect(
         screen.getByTestId('session-reason-message')
       ).toHaveTextContent(/Session expired/i);
     });
 
-    expect(useAuthStore.getState().isAuthenticated).toBe(
-      false
-    );
+    expect(useAuthStore.getState().isAuthenticated).toBe(false);
   });
 });
 

@@ -1,12 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import {
-  Area,
-  AreaChart,
-  CartesianGrid,
-  XAxis,
-} from 'recharts';
+import { Area, AreaChart, CartesianGrid, XAxis } from 'recharts';
 
 import {
   Card,
@@ -541,9 +536,7 @@ export function ChartAreaInteractive() {
           <span className="hidden @[540px]/card:block">
             Total for the last 3 months
           </span>
-          <span className="@[540px]/card:hidden">
-            Last 3 months
-          </span>
+          <span className="@[540px]/card:hidden">Last 3 months</span>
         </CardDescription>
         <CardAction>
           <ToggleGroup
@@ -559,14 +552,9 @@ export function ChartAreaInteractive() {
             <ToggleGroupItem value="30d">
               Last 30 days
             </ToggleGroupItem>
-            <ToggleGroupItem value="7d">
-              Last 7 days
-            </ToggleGroupItem>
+            <ToggleGroupItem value="7d">Last 7 days</ToggleGroupItem>
           </ToggleGroup>
-          <Select
-            value={timeRange}
-            onValueChange={setTimeRange}
-          >
+          <Select value={timeRange} onValueChange={setTimeRange}>
             <SelectTrigger
               className="flex w-40 **:data-[slot=select-value]:block **:data-[slot=select-value]:truncate @[767px]/card:hidden"
               size="sm"
@@ -575,16 +563,10 @@ export function ChartAreaInteractive() {
               <SelectValue placeholder="Last 3 months" />
             </SelectTrigger>
             <SelectContent className="rounded-xl">
-              <SelectItem
-                value="90d"
-                className="rounded-lg"
-              >
+              <SelectItem value="90d" className="rounded-lg">
                 Last 3 months
               </SelectItem>
-              <SelectItem
-                value="30d"
-                className="rounded-lg"
-              >
+              <SelectItem value="30d" className="rounded-lg">
                 Last 30 days
               </SelectItem>
               <SelectItem value="7d" className="rounded-lg">
@@ -658,12 +640,13 @@ export function ChartAreaInteractive() {
               content={
                 <ChartTooltipContent
                   labelFormatter={(value) => {
-                    return new Date(
-                      value
-                    ).toLocaleDateString('en-US', {
-                      month: 'short',
-                      day: 'numeric',
-                    });
+                    return new Date(value).toLocaleDateString(
+                      'en-US',
+                      {
+                        month: 'short',
+                        day: 'numeric',
+                      }
+                    );
                   }}
                   indicator="dot"
                 />

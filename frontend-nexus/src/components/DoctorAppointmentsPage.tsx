@@ -71,21 +71,18 @@ function Pagination({
 }
 
 export default function DoctorAppointmentsPage() {
-  const { data, isLoading, isError, error } =
-    useDoctorAppointments();
+  const { data, isLoading, isError, error } = useDoctorAppointments();
   const approveMutation = useApproveAppointment();
   const completeMutation = useCompleteAppointment();
   const rejectMutation = useRejectAppointment();
   const [requestedPage, setRequestedPage] = useState(1);
   const [confirmedPage, setConfirmedPage] = useState(1);
 
-  if (isLoading)
-    return <div className="p-8">Loading...</div>;
+  if (isLoading) return <div className="p-8">Loading...</div>;
   if (isError)
     return (
       <div className="p-8 text-red-500">
-        {(error as Error)?.message ||
-          'Error loading appointments'}
+        {(error as Error)?.message || 'Error loading appointments'}
       </div>
     );
 
@@ -123,23 +120,16 @@ export default function DoctorAppointmentsPage() {
                   rejectMutation.isPending &&
                   rejectMutation.variables === appt.id;
                 return (
-                  <Card
-                    key={appt.id}
-                    className="border-border"
-                  >
+                  <Card key={appt.id} className="border-border">
                     <CardHeader className="flex flex-row items-center justify-between">
-                      <CardTitle>
-                        {appt.patient_name}
-                      </CardTitle>
+                      <CardTitle>{appt.patient_name}</CardTitle>
                       <StatusBadge status={appt.status} />
                     </CardHeader>
                     <CardContent className="flex flex-col gap-2">
                       <span>
                         Date:{' '}
                         {format(
-                          toNaiveDate(
-                            appt.appointment_datetime
-                          ),
+                          toNaiveDate(appt.appointment_datetime),
                           'PPpp'
                         )}
                       </span>
@@ -151,40 +141,29 @@ export default function DoctorAppointmentsPage() {
                       <div className="flex gap-2 mt-2">
                         <Button
                           variant="default"
-                          disabled={
-                            isApproving || isRejecting
-                          }
+                          disabled={isApproving || isRejecting}
                           onClick={async () => {
-                            if (appt.status !== 'REQUESTED')
-                              return;
+                            if (appt.status !== 'REQUESTED') return;
                             try {
                               await approveMutation.mutateAsync(
                                 appt.id
                               );
-                              toast.success(
-                                'Appointment approved'
-                              );
+                              toast.success('Appointment approved');
                             } catch (err: any) {
                               toast.error(
-                                err?.message ||
-                                  'Failed to approve'
+                                err?.message || 'Failed to approve'
                               );
                             }
                           }}
                         >
-                          {isApproving
-                            ? 'Approving...'
-                            : 'Approve'}
+                          {isApproving ? 'Approving...' : 'Approve'}
                         </Button>
                         <Button
                           variant="outline"
-                          disabled={
-                            isApproving || isRejecting
-                          }
+                          disabled={isApproving || isRejecting}
                           className="border-destructive/30 text-destructive hover:bg-destructive/10"
                           onClick={async () => {
-                            if (appt.status !== 'REQUESTED')
-                              return;
+                            if (appt.status !== 'REQUESTED') return;
                             try {
                               await rejectMutation.mutateAsync(
                                 appt.id
@@ -194,15 +173,12 @@ export default function DoctorAppointmentsPage() {
                               );
                             } catch (err: any) {
                               toast.error(
-                                err?.message ||
-                                  'Failed to reject'
+                                err?.message || 'Failed to reject'
                               );
                             }
                           }}
                         >
-                          {isRejecting
-                            ? 'Rejecting...'
-                            : 'Reject'}
+                          {isRejecting ? 'Rejecting...' : 'Reject'}
                         </Button>
                       </div>
                     </CardContent>
@@ -233,18 +209,14 @@ export default function DoctorAppointmentsPage() {
                 return (
                   <Card key={appt.id}>
                     <CardHeader className="flex flex-row items-center justify-between">
-                      <CardTitle>
-                        {appt.patient_name}
-                      </CardTitle>
+                      <CardTitle>{appt.patient_name}</CardTitle>
                       <StatusBadge status={appt.status} />
                     </CardHeader>
                     <CardContent className="flex flex-col gap-2">
                       <span>
                         Date:{' '}
                         {format(
-                          toNaiveDate(
-                            appt.appointment_datetime
-                          ),
+                          toNaiveDate(appt.appointment_datetime),
                           'PPpp'
                         )}
                       </span>
@@ -258,19 +230,15 @@ export default function DoctorAppointmentsPage() {
                           variant="default"
                           disabled={isCompleting}
                           onClick={async () => {
-                            if (appt.status !== 'CONFIRMED')
-                              return;
+                            if (appt.status !== 'CONFIRMED') return;
                             try {
                               await completeMutation.mutateAsync(
                                 appt.id
                               );
-                              toast.success(
-                                'Appointment completed'
-                              );
+                              toast.success('Appointment completed');
                             } catch (err: any) {
                               toast.error(
-                                err?.message ||
-                                  'Failed to complete'
+                                err?.message || 'Failed to complete'
                               );
                             }
                           }}

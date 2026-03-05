@@ -1,11 +1,7 @@
 /**
  * Centralized RBAC using the route–role matrix. Use can() for guards and UI.
  */
-import {
-  canAccess,
-  type Role,
-  type RouteKey,
-} from './rbacMatrix';
+import { canAccess, type Role, type RouteKey } from './rbacMatrix';
 
 /** User shape with optional role (e.g. auth store user + role). */
 export interface UserWithRole {

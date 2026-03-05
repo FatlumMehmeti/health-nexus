@@ -2,12 +2,10 @@ import { requireAuth } from '@/lib/guards/requireAuth';
 import {
   normalizeTenantSection,
   TenantManagerPageContent,
-} from '@/routes/dashboard/tenant/index';
+} from '@/routes/dashboard/tenant/-index';
 import { createFileRoute } from '@tanstack/react-router';
 
-export const Route = createFileRoute(
-  '/dashboard/tenant/$section'
-)({
+export const Route = createFileRoute('/dashboard/tenant/$section')({
   beforeLoad: requireAuth({
     routeKey: 'DASHBOARD_TENANT',
   }),

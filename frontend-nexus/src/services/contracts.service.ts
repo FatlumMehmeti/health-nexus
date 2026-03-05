@@ -1,7 +1,4 @@
-import type {
-  Contract,
-  ContractStatus,
-} from '@/interfaces/contract';
+import type { Contract, ContractStatus } from '@/interfaces/contract';
 import {
   API_BASE_URL,
   ApiError,
@@ -11,26 +8,19 @@ import {
 } from '@/lib/api-client';
 
 // Transition matrix mirrors backend domain rules.
-const ALLOWED_TRANSITIONS: Record<
-  ContractStatus,
-  ContractStatus[]
-> = {
-  DRAFT: ['ACTIVE', 'TERMINATED'],
-  ACTIVE: ['EXPIRED', 'TERMINATED'],
-  EXPIRED: [],
-  TERMINATED: [],
-};
+const ALLOWED_TRANSITIONS: Record<ContractStatus, ContractStatus[]> =
+  {
+    DRAFT: ['ACTIVE', 'TERMINATED'],
+    ACTIVE: ['EXPIRED', 'TERMINATED'],
+    EXPIRED: [],
+    TERMINATED: [],
+  };
 
 /** Build a full API URL for direct fetch usage (multipart uploads). */
 function toApiUrl(path: string): string {
-  if (
-    path.startsWith('http://') ||
-    path.startsWith('https://')
-  )
+  if (path.startsWith('http://') || path.startsWith('https://'))
     return path;
-  const normalizedPath = path.startsWith('/')
-    ? path
-    : `/${path}`;
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
   return `${API_BASE_URL.replace(/\/+$/, '')}${normalizedPath}`;
 }
 
@@ -38,24 +28,17 @@ function toApiUrl(path: string): string {
  * Parse FastAPI-style error payloads for non-JSON and JSON responses alike.
  * We keep this local to ensure multipart requests return the same error style as apiFetch.
  */
-async function parseUploadError(
-  response: Response
-): Promise<{
+async function parseUploadError(response: Response): Promise<{
   detail?: string | ValidationError[];
   data?: unknown;
 }> {
-  const contentType =
-    response.headers.get('content-type') ?? '';
+  const contentType = response.headers.get('content-type') ?? '';
 
-  if (
-    contentType.toLowerCase().includes('application/json')
-  ) {
+  if (contentType.toLowerCase().includes('application/json')) {
     try {
       const data = (await response.json()) as unknown;
       const detail =
-        typeof data === 'object' &&
-        data !== null &&
-        'detail' in data
+        typeof data === 'object' && data !== null && 'detail' in data
           ? (
               data as {
                 detail?: string | ValidationError[];
@@ -105,8 +88,7 @@ async function uploadSignature(
   });
 
   if (!response.ok) {
-    const { detail, data } =
-      await parseUploadError(response);
+    const { detail, data } = await parseUploadError(response);
     throw new ApiError(
       `Request failed: ${response.status} ${response.statusText}`,
       response.status,
@@ -122,15 +104,10 @@ export const contractsService = {
   /**
    * Backend already returns snake_case fields; we keep them unchanged in the frontend contract type.
    */
-  async getContract(
-    contractId: number | string
-  ): Promise<Contract> {
-    return apiFetch<Contract>(
-      `/api/contracts/${contractId}`,
-      {
-        method: 'GET',
-      }
-    );
+  async getContract(contractId: number | string): Promise<Contract> {
+    return apiFetch<Contract>(`/api/contracts/${contractId}`, {
+      method: 'GET',
+    });
   },
 
   async getContracts(
@@ -160,13 +137,10 @@ export const contractsService = {
       end_date: string;
     }
   ): Promise<Contract> {
-    return apiFetch<Contract>(
-      `/api/tenants/${tenantId}/contracts`,
-      {
-        method: 'POST',
-        body: input,
-      }
-    );
+    return apiFetch<Contract>(`/api/tenants/${tenantId}/contracts`, {
+      method: 'POST',
+      body: input,
+    });
   },
 
   async updateContract(
@@ -174,20 +148,14 @@ export const contractsService = {
     patch: Partial<
       Pick<
         Contract,
-        | 'salary'
-        | 'terms_content'
-        | 'start_date'
-        | 'end_date'
+        'salary' | 'terms_content' | 'start_date' | 'end_date'
       >
     >
   ): Promise<Contract> {
-    return apiFetch<Contract>(
-      `/api/contracts/${contractId}`,
-      {
-        method: 'PATCH',
-        body: patch,
-      }
-    );
+    return apiFetch<Contract>(`/api/contracts/${contractId}`, {
+      method: 'PATCH',
+      body: patch,
+    });
   },
 
   async transitionContract(
@@ -213,9 +181,7 @@ export const contractsService = {
         body: {
           // Backend transition endpoint expects snake_case body keys.
           next_status: nextStatus,
-          ...(reason?.trim()
-            ? { reason: reason.trim() }
-            : {}),
+          ...(reason?.trim() ? { reason: reason.trim() } : {}),
         },
       }
     );

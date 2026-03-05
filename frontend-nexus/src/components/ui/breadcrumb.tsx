@@ -4,15 +4,9 @@ import * as React from 'react';
 
 import { cn } from '@/lib/utils';
 
-function Breadcrumb({
-  ...props
-}: React.ComponentProps<'nav'>) {
+function Breadcrumb({ ...props }: React.ComponentProps<'nav'>) {
   return (
-    <nav
-      aria-label="breadcrumb"
-      data-slot="breadcrumb"
-      {...props}
-    />
+    <nav aria-label="breadcrumb" data-slot="breadcrumb" {...props} />
   );
 }
 
@@ -39,10 +33,7 @@ function BreadcrumbItem({
   return (
     <li
       data-slot="breadcrumb-item"
-      className={cn(
-        'inline-flex items-center gap-1.5',
-        className
-      )}
+      className={cn('inline-flex items-center gap-1.5', className)}
       {...props}
     />
   );
@@ -79,10 +70,7 @@ function BreadcrumbPage({
       role="link"
       aria-disabled="true"
       aria-current="page"
-      className={cn(
-        'text-foreground font-normal',
-        className
-      )}
+      className={cn('text-foreground font-normal', className)}
       {...props}
     />
   );

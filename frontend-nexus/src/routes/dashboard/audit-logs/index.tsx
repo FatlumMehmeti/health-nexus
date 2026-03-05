@@ -22,9 +22,7 @@ import { createFileRoute } from '@tanstack/react-router';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useState } from 'react';
 
-export const Route = createFileRoute(
-  '/dashboard/audit-logs/'
-)({
+export const Route = createFileRoute('/dashboard/audit-logs/')({
   beforeLoad: requireAuth({
     routeKey: 'DASHBOARD_AUDIT_LOGS',
   }),
@@ -70,8 +68,7 @@ function AuditLogsPage() {
       <div>
         <h1 className="text-3xl font-bold">Audit Logs</h1>
         <p className="text-muted-foreground mt-2">
-          Track all tenant lifecycle changes across the
-          platform
+          Track all tenant lifecycle changes across the platform
         </p>
       </div>
 
@@ -123,9 +120,7 @@ function AuditLogsPage() {
 
                         <TableCell>
                           <Badge
-                            variant={getEventBadge(
-                              log.event_type
-                            )}
+                            variant={getEventBadge(log.event_type)}
                           >
                             {log.event_type}
                           </Badge>
@@ -150,8 +145,7 @@ function AuditLogsPage() {
                                   Old Status
                                 </div>
                                 <div className="text-sm font-mono">
-                                  {typeof log.old_value ===
-                                  'object'
+                                  {typeof log.old_value === 'object'
                                     ? JSON.stringify(
                                         log.old_value,
                                         null,
@@ -168,8 +162,7 @@ function AuditLogsPage() {
                                   New Status
                                 </div>
                                 <div className="text-sm font-semibold text-foreground">
-                                  {typeof log.new_value ===
-                                  'object'
+                                  {typeof log.new_value === 'object'
                                     ? JSON.stringify(
                                         log.new_value,
                                         null,
@@ -198,8 +191,7 @@ function AuditLogsPage() {
                           )}
                           {log.performed_by_user_id && (
                             <div className="text-xs text-muted-foreground">
-                              User #
-                              {log.performed_by_user_id}
+                              User #{log.performed_by_user_id}
                             </div>
                           )}
                         </TableCell>
@@ -219,17 +211,14 @@ function AuditLogsPage() {
               <div className="flex items-center justify-between border-t pt-4 mt-4">
                 <div className="text-sm text-muted-foreground">
                   Showing {(page - 1) * pageSize + 1}-
-                  {Math.min(page * pageSize, total)} of{' '}
-                  {total}
+                  {Math.min(page * pageSize, total)} of {total}
                 </div>
 
                 <div className="flex items-center gap-3">
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() =>
-                      setPage((p) => Math.max(1, p - 1))
-                    }
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
                     disabled={page === 1 || isLoading}
                   >
                     <ChevronLeft className="h-4 w-4" />
@@ -244,13 +233,9 @@ function AuditLogsPage() {
                     variant="outline"
                     size="sm"
                     onClick={() =>
-                      setPage((p) =>
-                        Math.min(totalPages, p + 1)
-                      )
+                      setPage((p) => Math.min(totalPages, p + 1))
                     }
-                    disabled={
-                      page === totalPages || isLoading
-                    }
+                    disabled={page === totalPages || isLoading}
                   >
                     Next
                     <ChevronRight className="h-4 w-4" />

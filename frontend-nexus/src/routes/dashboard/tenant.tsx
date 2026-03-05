@@ -1,8 +1,5 @@
 import { requireAuth } from '@/lib/guards/requireAuth';
-import {
-  createFileRoute,
-  redirect,
-} from '@tanstack/react-router';
+import { createFileRoute, redirect } from '@tanstack/react-router';
 
 export const Route = createFileRoute('/dashboard/tenant')({
   beforeLoad: requireAuth({

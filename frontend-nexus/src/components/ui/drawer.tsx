@@ -6,9 +6,7 @@ import { cn } from '@/lib/utils';
 function Drawer({
   ...props
 }: React.ComponentProps<typeof DrawerPrimitive.Root>) {
-  return (
-    <DrawerPrimitive.Root data-slot="drawer" {...props} />
-  );
+  return <DrawerPrimitive.Root data-slot="drawer" {...props} />;
 }
 
 function DrawerTrigger({
@@ -28,10 +26,7 @@ function DrawerPortal({
   ...props
 }: React.ComponentProps<typeof DrawerPrimitive.Portal>) {
   return (
-    <DrawerPrimitive.Portal
-      data-slot="drawer-portal"
-      {...props}
-    />
+    <DrawerPrimitive.Portal data-slot="drawer-portal" {...props} />
   );
 }
 
@@ -114,10 +109,7 @@ function DrawerFooter({
   return (
     <div
       data-slot="drawer-footer"
-      className={cn(
-        'mt-auto flex flex-col gap-2 p-4',
-        className
-      )}
+      className={cn('mt-auto flex flex-col gap-2 p-4', className)}
       {...props}
     />
   );
@@ -130,10 +122,7 @@ function DrawerTitle({
   return (
     <DrawerPrimitive.Title
       data-slot="drawer-title"
-      className={cn(
-        'text-foreground font-semibold',
-        className
-      )}
+      className={cn('text-foreground font-semibold', className)}
       {...props}
     />
   );
@@ -142,16 +131,11 @@ function DrawerTitle({
 function DrawerDescription({
   className,
   ...props
-}: React.ComponentProps<
-  typeof DrawerPrimitive.Description
->) {
+}: React.ComponentProps<typeof DrawerPrimitive.Description>) {
   return (
     <DrawerPrimitive.Description
       data-slot="drawer-description"
-      className={cn(
-        'text-muted-foreground text-sm',
-        className
-      )}
+      className={cn('text-muted-foreground text-sm', className)}
       {...props}
     />
   );

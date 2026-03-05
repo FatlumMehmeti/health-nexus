@@ -10,9 +10,7 @@ interface ConfirmationSearch {
   appointmentId?: string;
 }
 
-export const Route = createFileRoute(
-  '/appointments/confirmation'
-)({
+export const Route = createFileRoute('/appointments/confirmation')({
   validateSearch: (
     search: Record<string, unknown>
   ): ConfirmationSearch => ({
@@ -56,9 +54,8 @@ function AppointmentConfirmationPage() {
               Appointment Requested
             </h1>
             <p className="text-muted-foreground">
-              Your appointment has been submitted
-              successfully. A doctor will shortly review and
-              confirm your request.
+              Your appointment has been submitted successfully. A
+              doctor will shortly review and confirm your request.
             </p>
           </div>
 
@@ -79,9 +76,7 @@ function AppointmentConfirmationPage() {
             )}
             <Link to="/appointments/book">
               <Button
-                variant={
-                  appointmentId ? 'outline' : 'default'
-                }
+                variant={appointmentId ? 'outline' : 'default'}
                 className="w-full"
                 size="lg"
               >
@@ -89,20 +84,12 @@ function AppointmentConfirmationPage() {
               </Button>
             </Link>
             <Link to="/appointments/my">
-              <Button
-                variant="outline"
-                className="w-full"
-                size="lg"
-              >
+              <Button variant="outline" className="w-full" size="lg">
                 My Appointments
               </Button>
             </Link>
             <Link to="/">
-              <Button
-                variant="outline"
-                className="w-full"
-                size="lg"
-              >
+              <Button variant="outline" className="w-full" size="lg">
                 Go Back to Home
               </Button>
             </Link>

@@ -128,9 +128,7 @@ export function PlanCard({
 
       {/* Action button - disabled if this is the current plan or too small */}
       <Button
-        disabled={
-          isCurrentPlan || isChanging || !canFitStats
-        }
+        disabled={isCurrentPlan || isChanging || !canFitStats}
         onClick={() => onChangePlan?.(plan.id)}
         className={`w-full mt-6 ${
           isCurrentPlan

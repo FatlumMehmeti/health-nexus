@@ -22,9 +22,7 @@ export interface PatientProfileUpdate {
 
 export const patientsService = {
   listMyTenants: () =>
-    api.get<PatientTenantMembership[]>(
-      '/api/patients/me/tenants'
-    ),
+    api.get<PatientTenantMembership[]>('/api/patients/me/tenants'),
 
   getMyTenantProfile: (tenantId: number) =>
     api.get<PatientProfileRead>(

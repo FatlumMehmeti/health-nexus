@@ -7,10 +7,7 @@ import {
   type ProtectedRedirect,
   type RequireAuthOptions,
 } from '@/lib/guards/requireAuth';
-import {
-  Navigate,
-  useRouterState,
-} from '@tanstack/react-router';
+import { Navigate, useRouterState } from '@tanstack/react-router';
 import { useEffect, useState, type ReactNode } from 'react';
 
 export interface ProtectedRouteProps extends RequireAuthOptions {
@@ -50,12 +47,8 @@ export function ProtectedRoute({
   if (redirect === undefined) return <>{fallback}</>;
   if (redirect) {
     const search =
-      redirect.to === '/login'
-        ? redirect.search
-        : undefined;
-    return (
-      <Navigate to={redirect.to} search={search} replace />
-    );
+      redirect.to === '/login' ? redirect.search : undefined;
+    return <Navigate to={redirect.to} search={search} replace />;
   }
   return <>{children}</>;
 }

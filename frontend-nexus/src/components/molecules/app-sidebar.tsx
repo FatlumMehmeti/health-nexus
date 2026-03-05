@@ -101,7 +101,7 @@ const superAdminDocuments = [
 
 const tenantManagerDocuments = [
   {
-    title: 'Tenant Details',
+    title: 'Settings',
     url: '/dashboard/tenant/settings',
     icon: IconSettings,
   },
@@ -166,8 +166,7 @@ export function AppSidebar({
   const userWithRole: UserWithRole = { role };
   const navMain = React.useMemo(() => {
     const baseItems = navMainAll.filter(
-      (item) =>
-        !item.routeKey || can(userWithRole, item.routeKey)
+      (item) => !item.routeKey || can(userWithRole, item.routeKey)
     );
     if (role === 'DOCTOR' && user?.id) {
       baseItems.push({
@@ -179,10 +178,8 @@ export function AppSidebar({
     return baseItems;
   }, [role, user?.id, userWithRole]);
   const documentItems = React.useMemo(() => {
-    if (role === 'SUPER_ADMIN')
-      return [...superAdminDocuments];
-    if (role === 'TENANT_MANAGER')
-      return [...tenantManagerDocuments];
+    if (role === 'SUPER_ADMIN') return [...superAdminDocuments];
+    if (role === 'TENANT_MANAGER') return [...tenantManagerDocuments];
     if (role === 'CLIENT') return [...clientsDocuments];
     return [];
   }, [role]);
@@ -226,10 +223,7 @@ export function AppSidebar({
       <SidebarContent>
         <NavMain items={navMain} />
         {documentItems.length > 0 ? (
-          <NavMain
-            items={documentItems}
-            label={documentsLabel}
-          />
+          <NavMain items={documentItems} label={documentsLabel} />
         ) : null}
       </SidebarContent>
       <SidebarFooter>

@@ -22,12 +22,8 @@ function RootLayout() {
   const pathname = useRouterState({
     select: (s) => s.location.pathname,
   });
-  const isAuthenticated = useAuthStore(
-    (s) => s.isAuthenticated
-  );
-  const authErrorReason = useAuthStore(
-    (s) => s.authErrorReason
-  );
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const authErrorReason = useAuthStore((s) => s.authErrorReason);
   const ensureAuth = useAuthStore((s) => s.ensureAuth);
 
   // Bootstrap: rehydrate from persisted token (load user via /auth/me).
@@ -47,8 +43,7 @@ function RootLayout() {
     if (isPublicPage) return;
     if (
       !isAuthenticated &&
-      (authErrorReason === 'expired' ||
-        authErrorReason === 'revoked')
+      (authErrorReason === 'expired' || authErrorReason === 'revoked')
     ) {
       navigate({
         to: '/login',

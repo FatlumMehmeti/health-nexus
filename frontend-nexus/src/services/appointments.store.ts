@@ -9,11 +9,7 @@ const STORAGE_KEY = 'health-nexus.myAppointments';
 export interface SavedAppointment {
   id: string;
   appointment_datetime: string; // naive ISO e.g. "2026-03-10T09:00:00"
-  status:
-    | 'REQUESTED'
-    | 'CONFIRMED'
-    | 'COMPLETED'
-    | 'CANCELLED';
+  status: 'REQUESTED' | 'CONFIRMED' | 'COMPLETED' | 'CANCELLED';
   doctor_id: string;
   tenant_id: string;
   bookedAt: string; // ISO timestamp of when it was stored
@@ -30,10 +26,7 @@ function read(): SavedAppointment[] {
 }
 
 function write(appointments: SavedAppointment[]) {
-  localStorage.setItem(
-    STORAGE_KEY,
-    JSON.stringify(appointments)
-  );
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(appointments));
 }
 
 /** Add or update an appointment in the local list */

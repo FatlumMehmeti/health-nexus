@@ -32,18 +32,14 @@ const PasswordField = React.forwardRef<
     },
     ref
   ) => {
-    const [showPassword, setShowPassword] =
-      React.useState(false);
+    const [showPassword, setShowPassword] = React.useState(false);
 
     return (
       <div className={cn('space-y-2', wrapperClassName)}>
         <Label htmlFor={id}>
           {label}
           {required && (
-            <span
-              className="text-destructive -ml-0.5"
-              aria-hidden
-            >
+            <span className="text-destructive -ml-0.5" aria-hidden>
               *
             </span>
           )}
@@ -55,9 +51,7 @@ const PasswordField = React.forwardRef<
             type={showPassword ? 'text' : 'password'}
             aria-invalid={!!error}
             aria-required={required}
-            aria-describedby={
-              error ? `${id}-error` : undefined
-            }
+            aria-describedby={error ? `${id}-error` : undefined}
             className={cn('pr-10', className)}
             required={required}
             {...inputProps}
@@ -69,9 +63,7 @@ const PasswordField = React.forwardRef<
             className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
             onClick={() => setShowPassword((p) => !p)}
             aria-label={
-              showPassword
-                ? 'Hide password'
-                : 'Show password'
+              showPassword ? 'Hide password' : 'Show password'
             }
           >
             {showPassword ? (

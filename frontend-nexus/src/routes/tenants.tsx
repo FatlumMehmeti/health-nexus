@@ -8,10 +8,7 @@ import { TenantBrandPreview } from '@/components/molecules/tenant-brand-preview'
 import { requireAuth } from '@/lib/guards/requireAuth';
 import { tenantsService } from '@/services/tenants.service';
 import { useQuery } from '@tanstack/react-query';
-import {
-  createFileRoute,
-  Link,
-} from '@tanstack/react-router';
+import { createFileRoute, Link } from '@tanstack/react-router';
 
 export const Route = createFileRoute('/tenants')({
   beforeLoad: requireAuth({
@@ -42,9 +39,8 @@ function TenantSelectorPage() {
       <main className="container mx-auto flex-1 px-4 py-6 sm:px-6 sm:py-10">
         <section className="mx-auto max-w-5xl space-y-6">
           <p className="text-sm text-muted-foreground sm:text-base">
-            Select which organization you want to use with
-            Health Nexus. You can switch tenants at any
-            time.
+            Select which organization you want to use with Health
+            Nexus. You can switch tenants at any time.
           </p>
 
           {isLoading && (
@@ -59,19 +55,16 @@ function TenantSelectorPage() {
             </p>
           )}
 
-          {!isLoading &&
-            !isError &&
-            tenants.length === 0 && (
-              <p className="text-muted-foreground text-sm">
-                No tenants available.
-              </p>
-            )}
+          {!isLoading && !isError && tenants.length === 0 && (
+            <p className="text-muted-foreground text-sm">
+              No tenants available.
+            </p>
+          )}
 
           {!isLoading && tenants.length > 0 && (
             <div className="grid gap-4 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3">
               {tenants.map((tenant) => {
-                const slug =
-                  tenant.slug ?? String(tenant.id);
+                const slug = tenant.slug ?? String(tenant.id);
                 return (
                   <Link
                     key={tenant.id}
@@ -94,8 +87,7 @@ function TenantSelectorPage() {
                           tenant.brand_color_background,
                         foregroundColor:
                           tenant.brand_color_foreground,
-                        borderColor:
-                          tenant.brand_color_muted,
+                        borderColor: tenant.brand_color_muted,
                         accentColor:
                           tenant.brand_color_secondary ??
                           tenant.brand_color_primary,

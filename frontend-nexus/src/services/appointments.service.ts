@@ -16,13 +16,10 @@ export interface TenantDoctor {
   department_id: string;
 }
 
-export async function getTenantDoctors(): Promise<
-  TenantDoctor[]
-> {
-  return apiFetch<TenantDoctor[]>(
-    '/appointments/tenant-doctors',
-    { method: 'GET' }
-  );
+export async function getTenantDoctors(): Promise<TenantDoctor[]> {
+  return apiFetch<TenantDoctor[]>('/appointments/tenant-doctors', {
+    method: 'GET',
+  });
 }
 
 export async function getDoctorAvailability(

@@ -10,16 +10,10 @@ export function StandardTable({
   children: ReactNode;
   minWidthClass?: string;
 }) {
-  return (
-    <Table className={minWidthClass}>{children}</Table>
-  );
+  return <Table className={minWidthClass}>{children}</Table>;
 }
 
-export function RowActions({
-  children,
-}: {
-  children: ReactNode;
-}) {
+export function RowActions({ children }: { children: ReactNode }) {
   return (
     <div className="flex flex-nowrap items-center gap-2">
       {children}
@@ -64,9 +58,7 @@ export function InfoPill({
       <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
         {label}
       </p>
-      <p className="mt-1 truncate text-sm font-medium">
-        {value}
-      </p>
+      <p className="mt-1 truncate text-sm font-medium">{value}</p>
     </div>
   );
 }
@@ -80,9 +72,7 @@ export function Field({
 }) {
   return (
     <div
-      className={['space-y-2', className]
-        .filter(Boolean)
-        .join(' ')}
+      className={['space-y-2', className].filter(Boolean).join(' ')}
     >
       {children}
     </div>
