@@ -72,10 +72,9 @@ export interface EnrollmentApi {
 // Thin client for the user_tenant_plan FastAPI router.
 export const tenantPlansService = {
   listByTenant: (tenantId: number) =>
-    apiFetch<TenantPlanApi[]>(
-      `${BASE}/tenant/${tenantId}`,
-      { method: 'GET' }
-    ),
+    apiFetch<TenantPlanApi[]>(`${BASE}/tenant/${tenantId}`, {
+      method: 'GET',
+    }),
 
   create: (data: TenantPlanCreateApi) =>
     apiFetch<TenantPlanApi>(BASE + '/', {

@@ -119,8 +119,7 @@ export function RegisterPatientDialog({
     } catch (err) {
       if (isApiError(err) && err.status === 409) {
         toast.error('Already registered in this tenant', {
-          description:
-            'Your account is already a patient here.',
+          description: 'Your account is already a patient here.',
         });
         onOpenChange(false);
         onRegistered();
@@ -158,8 +157,8 @@ export function RegisterPatientDialog({
             <span className="font-medium text-foreground">
               {userEmail}
             </span>
-            . Fill in your details to become a patient at
-            this organization.
+            . Fill in your details to become a patient at this
+            organization.
           </DialogDescription>
         </DialogHeader>
 
@@ -174,9 +173,7 @@ export function RegisterPatientDialog({
               id="patient-first-name"
               label="First name"
               autoComplete="given-name"
-              error={
-                form.formState.errors.first_name?.message
-              }
+              error={form.formState.errors.first_name?.message}
               required
               {...form.register('first_name')}
             />
@@ -184,9 +181,7 @@ export function RegisterPatientDialog({
               id="patient-last-name"
               label="Last name"
               autoComplete="family-name"
-              error={
-                form.formState.errors.last_name?.message
-              }
+              error={form.formState.errors.last_name?.message}
               required
               {...form.register('last_name')}
             />
@@ -217,10 +212,7 @@ export function RegisterPatientDialog({
               </SelectTrigger>
               <SelectContent>
                 {GENDER_OPTIONS.map((opt) => (
-                  <SelectItem
-                    key={opt.value}
-                    value={opt.value}
-                  >
+                  <SelectItem key={opt.value} value={opt.value}>
                     {opt.label}
                   </SelectItem>
                 ))}
@@ -230,9 +222,7 @@ export function RegisterPatientDialog({
 
           {/* Blood type */}
           <div className="space-y-2">
-            <Label htmlFor="patient-blood-type">
-              Blood type
-            </Label>
+            <Label htmlFor="patient-blood-type">Blood type</Label>
             <Select
               value={form.watch('blood_type') ?? ''}
               onValueChange={(val) =>

@@ -1,8 +1,5 @@
 import { apiFetch } from '@/lib/api-client';
-import {
-  useMutation,
-  useQueryClient,
-} from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 export function useApproveAppointment() {
   const queryClient = useQueryClient();

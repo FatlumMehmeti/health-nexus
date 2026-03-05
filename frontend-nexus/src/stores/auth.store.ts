@@ -100,8 +100,7 @@ function mapBackendRole(role: unknown): Role | undefined {
     lower === 'tenant-manager'
   )
     return 'TENANT_MANAGER';
-  if (upper === 'DOCTOR' || lower === 'doctor')
-    return 'DOCTOR';
+  if (upper === 'DOCTOR' || lower === 'doctor') return 'DOCTOR';
   if (
     upper === 'SALES' ||
     lower === 'sales' ||
@@ -125,9 +124,7 @@ let ensureAuthPromise: Promise<boolean> | null = null;
 
 /** Decode base64url (JWT payload segment). Works in browser (atob) and Node (Buffer). */
 function base64UrlDecode(input: string): string {
-  const base64 = input
-    .replace(/-/g, '+')
-    .replace(/_/g, '/');
+  const base64 = input.replace(/-/g, '+').replace(/_/g, '/');
   const padLength = (4 - (base64.length % 4)) % 4;
   const padded = base64 + '='.repeat(padLength);
 
@@ -151,211 +148,197 @@ function decodeJwtPayload(
   }
 }
 
-export const useAuthStore = create<AuthState>(
-  (set, get) => ({
-    ...initialState,
-    /** Clears token (and persistence), user, and all auth state. No redirect; call from logout or reset. */
-    clearAuth: () => {
-      clearTokens();
-      ensureAuthPromise = null;
-      set(initialState);
-    },
-    /** Call when access token is invalid/expired (e.g. after 401). Clears token/user, sets authErrorReason; guard redirects to /login?reason=expired. */
-    expireSession: () => {
-      clearTokens();
-      ensureAuthPromise = null;
-      set({
-        ...initialState,
-        authErrorReason: 'expired',
-      });
-    },
-    /** Call when session was explicitly revoked (e.g. after refresh returns 401). Redirects get /login?reason=revoked. */
-    revokeSession: () => {
-      clearTokens();
-      ensureAuthPromise = null;
-      set({
-        ...initialState,
-        authErrorReason: 'revoked',
-      });
-    },
-    /**
-     * Resolve to true if the user is authenticated (either already in store or after loading from /auth/me).
-     * Reads token from storage; if present, calls /auth/me to hydrate user/role (or decodes JWT on 403).
-     * Used on bootstrap and by dashboard beforeLoad.
-     */
-    ensureAuth: async () => {
-      const { isAuthenticated, status } = get();
-      if (isAuthenticated) return true;
+export const useAuthStore = create<AuthState>((set, get) => ({
+  ...initialState,
+  /** Clears token (and persistence), user, and all auth state. No redirect; call from logout or reset. */
+  clearAuth: () => {
+    clearTokens();
+    ensureAuthPromise = null;
+    set(initialState);
+  },
+  /** Call when access token is invalid/expired (e.g. after 401). Clears token/user, sets authErrorReason; guard redirects to /login?reason=expired. */
+  expireSession: () => {
+    clearTokens();
+    ensureAuthPromise = null;
+    set({
+      ...initialState,
+      authErrorReason: 'expired',
+    });
+  },
+  /** Call when session was explicitly revoked (e.g. after refresh returns 401). Redirects get /login?reason=revoked. */
+  revokeSession: () => {
+    clearTokens();
+    ensureAuthPromise = null;
+    set({
+      ...initialState,
+      authErrorReason: 'revoked',
+    });
+  },
+  /**
+   * Resolve to true if the user is authenticated (either already in store or after loading from /auth/me).
+   * Reads token from storage; if present, calls /auth/me to hydrate user/role (or decodes JWT on 403).
+   * Used on bootstrap and by dashboard beforeLoad.
+   */
+  ensureAuth: async () => {
+    const { isAuthenticated, status } = get();
+    if (isAuthenticated) return true;
 
-      const token = getAccessToken();
-      if (!token) {
-        if (status !== 'unauthenticated')
-          set({ ...initialState });
-        return false;
-      }
+    const token = getAccessToken();
+    if (!token) {
+      if (status !== 'unauthenticated') set({ ...initialState });
+      return false;
+    }
 
-      if (ensureAuthPromise) return ensureAuthPromise;
+    if (ensureAuthPromise) return ensureAuthPromise;
 
-      ensureAuthPromise = (async () => {
-        set({ status: 'loading', error: null });
-        try {
-          const res = await authService.me();
-          const role = mapBackendRole(res.user?.role);
-          const tenantIdRaw = res.user?.tenant_id;
-          set({
-            status: 'authenticated',
-            user: {
-              id: String(res.user.user_id),
-              email: String(res.user.email),
-            },
-            token,
-            role,
-            tenantId:
-              tenantIdRaw !== undefined &&
-              tenantIdRaw !== null
-                ? String(tenantIdRaw)
-                : undefined,
-            isAuthenticated: true,
-            error: null,
-            authErrorReason: null,
-          });
-          return true;
-        } catch (err) {
-          // eslint-disable-next-line no-console
-          console.error(
-            '[ensureAuth] Error:',
-            err instanceof ApiError
-              ? `${err.status} - ${err.message}`
-              : err
-          );
-
-          /** Backend may return 403 for /auth/me for some roles; token is still valid so we derive user/role from JWT. */
-          if (
-            err instanceof ApiError &&
-            err.status === 403
-          ) {
-            const payload = decodeJwtPayload(token);
-            if (
-              payload &&
-              typeof payload.email === 'string'
-            ) {
-              const role = mapBackendRole(payload.role);
-              const tenantIdRaw = payload.tenant_id;
-              set({
-                status: 'authenticated',
-                user: {
-                  id:
-                    payload.user_id !== undefined
-                      ? String(payload.user_id)
-                      : 'unknown',
-                  email: payload.email,
-                },
-                token,
-                role,
-                tenantId:
-                  tenantIdRaw !== undefined &&
-                  tenantIdRaw !== null
-                    ? String(tenantIdRaw)
-                    : undefined,
-                isAuthenticated: true,
-                error: null,
-                authErrorReason: null,
-              });
-              return true;
-            }
-          }
-
-          /** On 401, the client's onUnauthorized already ran (expireSession + toast); don't overwrite state again. */
-          if (
-            !(err instanceof ApiError && err.status === 401)
-          ) {
-            set({
-              ...initialState,
-              error:
-                err instanceof Error
-                  ? err.message
-                  : 'Failed to load session',
-            });
-          }
-          return false;
-        } finally {
-          ensureAuthPromise = null;
-        }
-      })();
-
-      return ensureAuthPromise;
-    },
-    /** POST /auth/login, persist tokens, then ensureAuth(). Sets error and rethrows if profile cannot be loaded. */
-    login: async (credentials) => {
-      set({
-        status: 'loading',
-        error: null,
-        authErrorReason: null,
-      });
+    ensureAuthPromise = (async () => {
+      set({ status: 'loading', error: null });
       try {
-        const tokenRes =
-          await authService.login(credentials);
-        setTokens({
-          accessToken: tokenRes.access_token,
-          refreshToken: tokenRes.refresh_token,
-        });
-        await get().ensureAuth();
-        if (!get().isAuthenticated) {
-          clearTokens();
-          set({
-            ...initialState,
-            error: 'Failed to load profile',
-          });
-          throw new Error('Failed to load profile');
-        }
-      } catch (err) {
-        const message =
-          err instanceof ApiError
-            ? err.displayMessage
-            : err instanceof Error
-              ? err.message
-              : 'Sign in failed';
-        set({ ...initialState, error: message });
-        throw err;
-      }
-    },
-    /** POST /auth/logout (best-effort), then clear token/user and reset state. */
-    logout: async () => {
-      const rt = getRefreshToken();
-      try {
-        if (rt) await authService.logout(rt);
-      } catch {
-        // ignore backend logout failures (we still clear local session)
-      } finally {
-        get().clearAuth();
-      }
-    },
-    /** Try to get a new access token; on 401 revoke session and return false. Used by other API layers for retries. */
-    refresh: async () => {
-      const rt = getRefreshToken();
-      if (!rt) return false;
-
-      try {
-        const res = await authService.refresh(rt);
-        setTokens({
-          accessToken: res.access_token,
+        const res = await authService.me();
+        const role = mapBackendRole(res.user?.role);
+        const tenantIdRaw = res.user?.tenant_id;
+        set({
+          status: 'authenticated',
+          user: {
+            id: String(res.user.user_id),
+            email: String(res.user.email),
+          },
+          token,
+          role,
+          tenantId:
+            tenantIdRaw !== undefined && tenantIdRaw !== null
+              ? String(tenantIdRaw)
+              : undefined,
+          isAuthenticated: true,
+          error: null,
+          authErrorReason: null,
         });
         return true;
       } catch (err) {
-        if (err instanceof ApiError && err.status === 401) {
-          clearTokens();
-          ensureAuthPromise = null;
-          get().revokeSession();
-          return false;
+        // eslint-disable-next-line no-console
+        console.error(
+          '[ensureAuth] Error:',
+          err instanceof ApiError
+            ? `${err.status} - ${err.message}`
+            : err
+        );
+
+        /** Backend may return 403 for /auth/me for some roles; token is still valid so we derive user/role from JWT. */
+        if (err instanceof ApiError && err.status === 403) {
+          const payload = decodeJwtPayload(token);
+          if (payload && typeof payload.email === 'string') {
+            const role = mapBackendRole(payload.role);
+            const tenantIdRaw = payload.tenant_id;
+            set({
+              status: 'authenticated',
+              user: {
+                id:
+                  payload.user_id !== undefined
+                    ? String(payload.user_id)
+                    : 'unknown',
+                email: payload.email,
+              },
+              token,
+              role,
+              tenantId:
+                tenantIdRaw !== undefined && tenantIdRaw !== null
+                  ? String(tenantIdRaw)
+                  : undefined,
+              isAuthenticated: true,
+              error: null,
+              authErrorReason: null,
+            });
+            return true;
+          }
+        }
+
+        /** On 401, the client's onUnauthorized already ran (expireSession + toast); don't overwrite state again. */
+        if (!(err instanceof ApiError && err.status === 401)) {
+          set({
+            ...initialState,
+            error:
+              err instanceof Error
+                ? err.message
+                : 'Failed to load session',
+          });
         }
         return false;
+      } finally {
+        ensureAuthPromise = null;
       }
-    },
-    loadProfile: async () => {
+    })();
+
+    return ensureAuthPromise;
+  },
+  /** POST /auth/login, persist tokens, then ensureAuth(). Sets error and rethrows if profile cannot be loaded. */
+  login: async (credentials) => {
+    set({
+      status: 'loading',
+      error: null,
+      authErrorReason: null,
+    });
+    try {
+      const tokenRes = await authService.login(credentials);
+      setTokens({
+        accessToken: tokenRes.access_token,
+        refreshToken: tokenRes.refresh_token,
+      });
       await get().ensureAuth();
-    },
-  })
-);
+      if (!get().isAuthenticated) {
+        clearTokens();
+        set({
+          ...initialState,
+          error: 'Failed to load profile',
+        });
+        throw new Error('Failed to load profile');
+      }
+    } catch (err) {
+      const message =
+        err instanceof ApiError
+          ? err.displayMessage
+          : err instanceof Error
+            ? err.message
+            : 'Sign in failed';
+      set({ ...initialState, error: message });
+      throw err;
+    }
+  },
+  /** POST /auth/logout (best-effort), then clear token/user and reset state. */
+  logout: async () => {
+    const rt = getRefreshToken();
+    try {
+      if (rt) await authService.logout(rt);
+    } catch {
+      // ignore backend logout failures (we still clear local session)
+    } finally {
+      get().clearAuth();
+    }
+  },
+  /** Try to get a new access token; on 401 revoke session and return false. Used by other API layers for retries. */
+  refresh: async () => {
+    const rt = getRefreshToken();
+    if (!rt) return false;
+
+    try {
+      const res = await authService.refresh(rt);
+      setTokens({
+        accessToken: res.access_token,
+      });
+      return true;
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 401) {
+        clearTokens();
+        ensureAuthPromise = null;
+        get().revokeSession();
+        return false;
+      }
+      return false;
+    }
+  },
+  loadProfile: async () => {
+    await get().ensureAuth();
+  },
+}));
 
 /** On any API 401: clear token/user, set authErrorReason (so guards redirect to /login?reason=expired), and show toast. */
 setUnauthorizedHandler(() => {

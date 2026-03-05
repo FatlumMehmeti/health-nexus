@@ -14,10 +14,7 @@ export interface FormFieldProps extends Omit<
   required?: boolean;
 }
 
-const FormField = React.forwardRef<
-  HTMLInputElement,
-  FormFieldProps
->(
+const FormField = React.forwardRef<HTMLInputElement, FormFieldProps>(
   (
     {
       id,
@@ -34,10 +31,7 @@ const FormField = React.forwardRef<
       <Label htmlFor={id}>
         {label}
         {required && (
-          <span
-            className="text-destructive -ml-0.5"
-            aria-hidden
-          >
+          <span className="text-destructive -ml-0.5" aria-hidden>
             *
           </span>
         )}

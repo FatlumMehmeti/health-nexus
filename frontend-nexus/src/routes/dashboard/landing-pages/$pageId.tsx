@@ -4,10 +4,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import {
-  createFileRoute,
-  Link,
-} from '@tanstack/react-router';
+import { createFileRoute, Link } from '@tanstack/react-router';
 
 export const Route = createFileRoute(
   '/dashboard/landing-pages/$pageId'
@@ -32,8 +29,7 @@ function LandingPageDetail() {
         </CardHeader>
         <CardContent>
           <p className="text-muted-foreground">
-            Dynamic route – placeholder for Landing {pageId}{' '}
-            content.
+            Dynamic route – placeholder for Landing {pageId} content.
           </p>
         </CardContent>
       </Card>

@@ -11,10 +11,7 @@ import {
 } from './notifications.service';
 
 const NOTIFICATIONS_KEY = ['notifications'] as const;
-const UNREAD_COUNT_KEY = [
-  'notifications',
-  'unread-count',
-] as const;
+const UNREAD_COUNT_KEY = ['notifications', 'unread-count'] as const;
 
 export function useNotifications(unreadOnly = false) {
   return useQuery({

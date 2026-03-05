@@ -9,11 +9,7 @@ export interface DoctorAppointment {
   patient_user_id: number;
   patient_name: string;
   tenant_id: number;
-  status:
-    | 'REQUESTED'
-    | 'CONFIRMED'
-    | 'COMPLETED'
-    | 'CANCELLED';
+  status: 'REQUESTED' | 'CONFIRMED' | 'COMPLETED' | 'CANCELLED';
   created_at: string;
   updated_at: string;
 }
@@ -22,9 +18,7 @@ export function useDoctorAppointments() {
   return useQuery<DoctorAppointment[]>({
     queryKey: ['doctor-appointments'],
     queryFn: () =>
-      apiFetch<DoctorAppointment[]>(
-        '/appointments/doctor/me'
-      ),
+      apiFetch<DoctorAppointment[]>('/appointments/doctor/me'),
     refetchInterval: 15_000,
     staleTime: 10_000,
   });

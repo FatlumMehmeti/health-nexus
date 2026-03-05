@@ -11,15 +11,10 @@ import type {
 } from '@/services/enrollments.service';
 import { useApprovedTenants } from '@/services/enrollments.service';
 import { useAuthStore } from '@/stores/auth.store';
-import {
-  createFileRoute,
-  useNavigate,
-} from '@tanstack/react-router';
+import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { useState } from 'react';
 
-export const Route = createFileRoute(
-  '/appointments/select-tenant'
-)({
+export const Route = createFileRoute('/appointments/select-tenant')({
   beforeLoad: async () => {
     const { ensureAuth } = useAuthStore.getState();
     await ensureAuth();
@@ -67,9 +62,7 @@ function SelectTenantPage() {
       <div className="border-b bg-linear-to-r from-primary/5 to-transparent py-6 px-4 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-5xl">
           <h1 className="text-3xl font-bold tracking-tight text-foreground">
-            {selectedTenant
-              ? selectedTenant.name
-              : 'Select a Clinic'}
+            {selectedTenant ? selectedTenant.name : 'Select a Clinic'}
           </h1>
           <p className="mt-2 text-sm text-muted-foreground">
             {selectedTenant
@@ -96,68 +89,64 @@ function SelectTenantPage() {
               Failed to load clinics
             </p>
             <p className="mt-1 text-sm text-destructive/80">
-              {(error as Error)?.message ||
-                'Please try again later.'}
+              {(error as Error)?.message || 'Please try again later.'}
             </p>
           </div>
         )}
 
         {/* Tenant Cards Grid */}
-        {!isLoading &&
-          !isError &&
-          tenants &&
-          !selectedTenant && (
-            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-              {tenants.map((tenant) => (
-                <Card
-                  key={tenant.id}
-                  className="cursor-pointer transition-all hover:border-primary/50 hover:shadow-md hover:shadow-primary/5"
-                  onClick={() => handleTenantSelect(tenant)}
-                >
-                  <CardHeader className="pb-3">
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary font-bold text-sm">
-                        {tenant.name.charAt(0)}
-                      </div>
-                      <div className="min-w-0">
-                        <CardTitle className="text-base truncate">
-                          {tenant.name}
-                        </CardTitle>
-                        {tenant.moto && (
-                          <p className="text-xs text-muted-foreground mt-0.5 truncate">
-                            {tenant.moto}
-                          </p>
-                        )}
-                      </div>
+        {!isLoading && !isError && tenants && !selectedTenant && (
+          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {tenants.map((tenant) => (
+              <Card
+                key={tenant.id}
+                className="cursor-pointer transition-all hover:border-primary/50 hover:shadow-md hover:shadow-primary/5"
+                onClick={() => handleTenantSelect(tenant)}
+              >
+                <CardHeader className="pb-3">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary font-bold text-sm">
+                      {tenant.name.charAt(0)}
                     </div>
-                  </CardHeader>
-                  <CardContent className="pt-0">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-muted-foreground">
-                        {tenant.doctors.length === 0
-                          ? 'No doctors available'
-                          : `${tenant.doctors.length} doctor${tenant.doctors.length > 1 ? 's' : ''} available`}
-                      </span>
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        className="h-4 w-4 text-muted-foreground"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M9 5l7 7-7 7"
-                        />
-                      </svg>
+                    <div className="min-w-0">
+                      <CardTitle className="text-base truncate">
+                        {tenant.name}
+                      </CardTitle>
+                      {tenant.moto && (
+                        <p className="text-xs text-muted-foreground mt-0.5 truncate">
+                          {tenant.moto}
+                        </p>
+                      )}
                     </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
+                  </div>
+                </CardHeader>
+                <CardContent className="pt-0">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground">
+                      {tenant.doctors.length === 0
+                        ? 'No doctors available'
+                        : `${tenant.doctors.length} doctor${tenant.doctors.length > 1 ? 's' : ''} available`}
+                    </span>
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-4 w-4 text-muted-foreground"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9 5l7 7-7 7"
+                      />
+                    </svg>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
 
         {/* Doctor Selection for Selected Tenant */}
         {!isLoading && !isError && selectedTenant && (
@@ -207,9 +196,8 @@ function SelectTenantPage() {
                   No Doctors Available
                 </h2>
                 <p className="mt-2 text-sm text-muted-foreground max-w-md">
-                  This clinic doesn't have any doctors
-                  available at the moment. Please try
-                  another clinic.
+                  This clinic doesn't have any doctors available at
+                  the moment. Please try another clinic.
                 </p>
                 <Button
                   className="mt-4"
@@ -226,10 +214,7 @@ function SelectTenantPage() {
                     key={doctor.user_id}
                     className="cursor-pointer transition-all hover:border-primary/50 hover:shadow-md hover:shadow-primary/5"
                     onClick={() =>
-                      handleDoctorSelect(
-                        selectedTenant,
-                        doctor
-                      )
+                      handleDoctorSelect(selectedTenant, doctor)
                     }
                   >
                     <CardContent className="flex items-center justify-between p-4">
@@ -250,9 +235,7 @@ function SelectTenantPage() {
                           </p>
                         </div>
                       </div>
-                      <Button size="sm">
-                        Book Appointment
-                      </Button>
+                      <Button size="sm">Book Appointment</Button>
                     </CardContent>
                   </Card>
                 ))}

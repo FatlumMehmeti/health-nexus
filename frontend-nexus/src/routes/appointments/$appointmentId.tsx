@@ -43,9 +43,7 @@ interface AppointmentSearch {
   datetime?: string;
 }
 
-export const Route = createFileRoute(
-  '/appointments/$appointmentId'
-)({
+export const Route = createFileRoute('/appointments/$appointmentId')({
   validateSearch: (
     search: Record<string, unknown>
   ): AppointmentSearch => ({
@@ -75,13 +73,10 @@ function AppointmentDetailRoute() {
     (a) => String(a.id) === appointmentId
   );
 
-  const cancelMutation =
-    useCancelAppointment(appointmentId);
-  const rescheduleMutation =
-    useRescheduleAppointment(appointmentId);
+  const cancelMutation = useCancelAppointment(appointmentId);
+  const rescheduleMutation = useRescheduleAppointment(appointmentId);
   const [cancelOpen, setCancelOpen] = React.useState(false);
-  const [rescheduleOpen, setRescheduleOpen] =
-    React.useState(false);
+  const [rescheduleOpen, setRescheduleOpen] = React.useState(false);
 
   /* ── Track status transitions for toasts ── */
   const prevStatusRef = React.useRef<string | null>(null);
@@ -107,17 +102,14 @@ function AppointmentDetailRoute() {
   if (isError)
     return (
       <div className="p-8 text-destructive">
-        {(error as Error)?.message ||
-          'Error loading appointment'}
+        {(error as Error)?.message || 'Error loading appointment'}
       </div>
     );
 
   const canCancel =
-    currentStatus === 'REQUESTED' ||
-    currentStatus === 'CONFIRMED';
+    currentStatus === 'REQUESTED' || currentStatus === 'CONFIRMED';
   const canReschedule =
-    currentStatus === 'REQUESTED' ||
-    currentStatus === 'CONFIRMED';
+    currentStatus === 'REQUESTED' || currentStatus === 'CONFIRMED';
 
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-col gap-6 px-4 py-10">
@@ -131,12 +123,8 @@ function AppointmentDetailRoute() {
           {/* Booked datetime (from search param) */}
           {datetime && (
             <div className="flex items-center gap-4">
-              <span className="font-medium">
-                Date &amp; Time:
-              </span>
-              <span>
-                {format(toNaiveDate(datetime), 'PPpp')}
-              </span>
+              <span className="font-medium">Date &amp; Time:</span>
+              <span>{format(toNaiveDate(datetime), 'PPpp')}</span>
             </div>
           )}
 
@@ -146,9 +134,7 @@ function AppointmentDetailRoute() {
             {currentStatus ? (
               <StatusBadge status={currentStatus} />
             ) : (
-              <span className="text-muted-foreground">
-                —
-              </span>
+              <span className="text-muted-foreground">—</span>
             )}
           </div>
 
@@ -156,10 +142,7 @@ function AppointmentDetailRoute() {
           <div className="flex gap-2 mt-4">
             {/* ── Cancel ── */}
             {canCancel && (
-              <Dialog
-                open={cancelOpen}
-                onOpenChange={setCancelOpen}
-              >
+              <Dialog open={cancelOpen} onOpenChange={setCancelOpen}>
                 <DialogTrigger asChild>
                   <Button
                     variant="destructive"
@@ -172,13 +155,10 @@ function AppointmentDetailRoute() {
                 </DialogTrigger>
                 <DialogContent>
                   <DialogHeader>
-                    <DialogTitle>
-                      Cancel Appointment
-                    </DialogTitle>
+                    <DialogTitle>Cancel Appointment</DialogTitle>
                     <DialogDescription>
                       Are you sure you want to cancel this
-                      appointment? This action cannot be
-                      undone.
+                      appointment? This action cannot be undone.
                     </DialogDescription>
                   </DialogHeader>
                   <DialogFooter>
@@ -195,9 +175,7 @@ function AppointmentDetailRoute() {
                       onClick={async () => {
                         try {
                           await cancelMutation.mutateAsync();
-                          toast.success(
-                            'Appointment cancelled'
-                          );
+                          toast.success('Appointment cancelled');
                           setCancelOpen(false);
                           refetch();
                         } catch (err: any) {
@@ -224,9 +202,7 @@ function AppointmentDetailRoute() {
                 <RescheduleDialog
                   open={rescheduleOpen}
                   onOpenChange={setRescheduleOpen}
-                  doctorId={String(
-                    apptContext?.doctor_user_id ?? ''
-                  )}
+                  doctorId={String(apptContext?.doctor_user_id ?? '')}
                   isPending={rescheduleMutation.isPending}
                   onReschedule={async (startIso) => {
                     if (!apptContext) {
@@ -242,16 +218,12 @@ function AppointmentDetailRoute() {
                     try {
                       await rescheduleMutation.mutateAsync({
                         tenant_id: apptContext.tenant_id,
-                        doctor_id:
-                          apptContext.doctor_user_id,
-                        department_id:
-                          apptContext.department_id ?? 0,
+                        doctor_id: apptContext.doctor_user_id,
+                        department_id: apptContext.department_id ?? 0,
                         appointment_datetime: naive,
                         duration_minutes: 30,
                       });
-                      toast.success(
-                        'Appointment rescheduled'
-                      );
+                      toast.success('Appointment rescheduled');
                       setRescheduleOpen(false);
                       refetch();
                     } catch (err: any) {
@@ -279,23 +251,16 @@ function AppointmentDetailRoute() {
           {/* Status History timeline */}
           {history.length > 0 && (
             <div className="mt-8">
-              <span className="font-medium">
-                Status History
-              </span>
+              <span className="font-medium">Status History</span>
               <ul className="mt-3 space-y-3">
                 {history.map((entry) => (
                   <li
                     key={entry.id}
                     className="flex items-center gap-3 text-sm"
                   >
-                    <StatusBadge
-                      status={entry.new_status}
-                    />
+                    <StatusBadge status={entry.new_status} />
                     <span className="text-muted-foreground">
-                      {format(
-                        toNaiveDate(entry.changed_at),
-                        'PPpp'
-                      )}
+                      {format(toNaiveDate(entry.changed_at), 'PPpp')}
                     </span>
                   </li>
                 ))}

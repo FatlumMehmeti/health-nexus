@@ -41,8 +41,7 @@ export async function getProtectedRedirect(
       reason?: 'expired' | 'revoked';
       redirect?: string;
     } = {};
-    if (state.authErrorReason)
-      search.reason = state.authErrorReason;
+    if (state.authErrorReason) search.reason = state.authErrorReason;
     const rawPath =
       currentPath ??
       (typeof window !== 'undefined'
@@ -64,8 +63,7 @@ export async function getProtectedRedirect(
     const user: UserWithRole = {
       role: state.role,
     };
-    if (!can(user, options.routeKey))
-      return { to: '/unauthorized' };
+    if (!can(user, options.routeKey)) return { to: '/unauthorized' };
   }
   return null;
 }

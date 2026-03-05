@@ -1,19 +1,14 @@
 import { PublicAuthHeader } from '@/components/molecules/public-auth-header';
 import { Button } from '@/components/ui/button';
 import { useAuthStore } from '@/stores/auth.store';
-import {
-  createFileRoute,
-  Link,
-} from '@tanstack/react-router';
+import { createFileRoute, Link } from '@tanstack/react-router';
 
 export const Route = createFileRoute('/')({
   component: LandingPage,
 });
 
 function LandingPage() {
-  const isAuthenticated = useAuthStore(
-    (s) => s.isAuthenticated
-  );
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
 
   return (
     <div className="relative flex min-h-screen flex-col overflow-hidden">
@@ -30,19 +25,13 @@ function LandingPage() {
         rightSlot={
           isAuthenticated ? (
             <Link to="/tenants">
-              <Button
-                size="sm"
-                className="font-medium shadow-sm"
-              >
+              <Button size="sm" className="font-medium shadow-sm">
                 Go to tenants
               </Button>
             </Link>
           ) : (
             <Link to="/register">
-              <Button
-                size="sm"
-                className="font-medium shadow-sm"
-              >
+              <Button size="sm" className="font-medium shadow-sm">
                 Join Platform
               </Button>
             </Link>
@@ -62,9 +51,8 @@ function LandingPage() {
             </span>
           </h1>
           <p className="mx-auto max-w-lg text-lg leading-relaxed text-muted-foreground">
-            A unified platform for healthcare teams to
-            coordinate care, share insights, and deliver
-            better outcomes.
+            A unified platform for healthcare teams to coordinate
+            care, share insights, and deliver better outcomes.
           </p>
           <div className="flex flex-wrap justify-center gap-3 pt-2">
             <Link to="/register">
@@ -80,8 +68,7 @@ function LandingPage() {
                 size="lg"
                 className="min-w-[180px] shadow-md transition-all hover:shadow-lg bg-primary text-primary-foreground border-2 border-primary/70 ring-2 ring-primary/10 hover:bg-primary/90 hover:ring-primary/20 focus:ring-4 focus:ring-primary/30"
                 style={{
-                  boxShadow:
-                    '0 4px 24px 0 rgba(80, 72, 229, 0.10)',
+                  boxShadow: '0 4px 24px 0 rgba(80, 72, 229, 0.10)',
                 }}
               >
                 Book Appointment

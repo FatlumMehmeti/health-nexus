@@ -1,7 +1,4 @@
-import {
-  cva,
-  type VariantProps,
-} from 'class-variance-authority';
+import { cva, type VariantProps } from 'class-variance-authority';
 import {
   AlertTriangle,
   CheckCircle,
@@ -33,8 +30,7 @@ const badgeVariants = cva(
           'bg-destructive/30 text-white [a&]:hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:bg-destructive/60',
         success:
           'bg-success/30 text-success [a&]:hover:bg-success/90',
-        neutral:
-          'bg-neutral/30 text-white [a&]:hover:bg-neutral/90',
+        neutral: 'bg-neutral/30 text-white [a&]:hover:bg-neutral/90',
         expired:
           'bg-red-500/15 text-red-600 dark:bg-red-500/25 dark:text-red-400 [a&]:hover:bg-red-500/30',
         warning:
@@ -73,13 +69,9 @@ function Badge({
   const Comp = asChild ? Slot.Root : 'span';
   const resolvedVariant = color ?? variant ?? 'default';
   const showVariantIcon =
-    showIcon &&
-    !asChild &&
-    resolvedVariant in VARIANT_ICONS;
+    showIcon && !asChild && resolvedVariant in VARIANT_ICONS;
   const Icon = showVariantIcon
-    ? VARIANT_ICONS[
-        resolvedVariant as keyof typeof VARIANT_ICONS
-      ]
+    ? VARIANT_ICONS[resolvedVariant as keyof typeof VARIANT_ICONS]
     : null;
 
   return (
@@ -94,9 +86,7 @@ function Badge({
       )}
       {...props}
     >
-      {Icon ? (
-        <Icon className="size-3 shrink-0" aria-hidden />
-      ) : null}
+      {Icon ? <Icon className="size-3 shrink-0" aria-hidden /> : null}
       {children}
     </Comp>
   );

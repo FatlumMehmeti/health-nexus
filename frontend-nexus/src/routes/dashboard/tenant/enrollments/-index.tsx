@@ -28,11 +28,11 @@ import {
 } from '@tanstack/react-query';
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { QUERY_KEYS } from './constants';
+import { QUERY_KEYS } from '../-constants';
 import {
   getCurrentTenantWithFallback,
   getErrorMessage,
-} from './utils';
+} from '../-utils';
 
 type TenantStatusTab = EnrollmentStatus | 'HISTORY';
 
@@ -52,12 +52,7 @@ const STATUS_TABS: Array<{
 
 function statusVariant(
   status: string
-):
-  | 'success'
-  | 'warning'
-  | 'destructive'
-  | 'expired'
-  | 'neutral' {
+): 'success' | 'warning' | 'destructive' | 'expired' | 'neutral' {
   if (status === 'ACTIVE') return 'success';
   if (status === 'PENDING') return 'warning';
   if (status === 'CANCELLED') return 'destructive';
@@ -65,9 +60,7 @@ function statusVariant(
   return 'neutral';
 }
 
-function formatDateTime(
-  value: string | null | undefined
-): string {
+function formatDateTime(value: string | null | undefined): string {
   if (!value) return '—';
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
@@ -82,16 +75,13 @@ function formatDateTime(
 
 export function TenantEnrollmentsPanel() {
   const queryClient = useQueryClient();
-  const tenantIdFromStore = useAuthStore(
-    (state) => state.tenantId
-  );
+  const tenantIdFromStore = useAuthStore((state) => state.tenantId);
   const [activeStatus, setActiveStatus] =
     useState<TenantStatusTab>('ACTIVE');
 
   const tenantQuery = useQuery({
     queryKey: QUERY_KEYS.current,
-    queryFn: () =>
-      getCurrentTenantWithFallback(tenantIdFromStore),
+    queryFn: () => getCurrentTenantWithFallback(tenantIdFromStore),
   });
   const tenantId = tenantQuery.data?.id;
 
@@ -102,11 +92,7 @@ export function TenantEnrollmentsPanel() {
   });
 
   const historyQuery = useQuery({
-    queryKey: [
-      'tenant-manager',
-      'enrollment-history',
-      tenantId,
-    ],
+    queryKey: ['tenant-manager', 'enrollment-history', tenantId],
     queryFn: () => enrollmentsService.getHistory(tenantId!),
     enabled: !!tenantId && activeStatus === 'HISTORY',
   });
@@ -130,18 +116,10 @@ export function TenantEnrollmentsPanel() {
     onSuccess: () => {
       toast.success('Enrollment updated');
       void queryClient.invalidateQueries({
-        queryKey: [
-          'tenant-manager',
-          'enrollments',
-          tenantId,
-        ],
+        queryKey: ['tenant-manager', 'enrollments', tenantId],
       });
       void queryClient.invalidateQueries({
-        queryKey: [
-          'tenant-manager',
-          'enrollment-history',
-          tenantId,
-        ],
+        queryKey: ['tenant-manager', 'enrollment-history', tenantId],
       });
     },
     onError: (err) => {
@@ -172,9 +150,7 @@ export function TenantEnrollmentsPanel() {
     enrollmentsQuery.isError ||
     (activeStatus === 'HISTORY' && historyQuery.isError);
   const error =
-    tenantQuery.error ??
-    enrollmentsQuery.error ??
-    historyQuery.error;
+    tenantQuery.error ?? enrollmentsQuery.error ?? historyQuery.error;
 
   const allEnrollments = enrollmentsQuery.data ?? [];
   const filteredEnrollments = allEnrollments.filter(
@@ -184,24 +160,23 @@ export function TenantEnrollmentsPanel() {
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>Enrollments</CardTitle>
-        <CardDescription>
-          View and manage tenant enrollments, statuses, and
-          full history.
-        </CardDescription>
-      </CardHeader>
-
-      <CardContent className="space-y-4">
+      <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold sm:text-3xl">
+            Enrollments
+          </h1>
+          <p className="text-muted-foreground">
+            View and manage tenant enrollments, statuses, and full
+            history.
+          </p>
+        </div>
         <div className="flex flex-wrap gap-2">
           {STATUS_TABS.map((tab) => (
             <Button
               key={tab.value}
               type="button"
               variant={
-                activeStatus === tab.value
-                  ? 'default'
-                  : 'outline'
+                activeStatus === tab.value ? 'default' : 'outline'
               }
               size="sm"
               onClick={() => setActiveStatus(tab.value)}
@@ -210,7 +185,9 @@ export function TenantEnrollmentsPanel() {
             </Button>
           ))}
         </div>
+      </CardHeader>
 
+      <CardContent className="space-y-4">
         {isLoading ? (
           <div className="space-y-2">
             {Array.from({ length: 5 }).map((_, i) => (
@@ -219,8 +196,7 @@ export function TenantEnrollmentsPanel() {
           </div>
         ) : isError ? (
           <div className="py-8 text-center text-destructive">
-            Error loading enrollments:{' '}
-            {getErrorMessage(error)}
+            Error loading enrollments: {getErrorMessage(error)}
           </div>
         ) : activeStatus === 'HISTORY' ? (
           historyItems.length === 0 ? (
@@ -248,9 +224,7 @@ export function TenantEnrollmentsPanel() {
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <Badge
-                            variant={statusVariant(
-                              item.old_status
-                            )}
+                            variant={statusVariant(item.old_status)}
                           >
                             {item.old_status}
                           </Badge>
@@ -258,9 +232,7 @@ export function TenantEnrollmentsPanel() {
                             →
                           </span>
                           <Badge
-                            variant={statusVariant(
-                              item.new_status
-                            )}
+                            variant={statusVariant(item.new_status)}
                           >
                             {item.new_status}
                           </Badge>
@@ -294,8 +266,7 @@ export function TenantEnrollmentsPanel() {
           )
         ) : filteredEnrollments.length === 0 ? (
           <div className="py-12 text-center text-muted-foreground">
-            No {activeStatus.toLowerCase()} enrollments
-            found.
+            No {activeStatus.toLowerCase()} enrollments found.
           </div>
         ) : (
           <div className="overflow-x-auto rounded-md border">
@@ -319,9 +290,7 @@ export function TenantEnrollmentsPanel() {
                     </TableCell>
                     <TableCell>
                       <Badge
-                        variant={statusVariant(
-                          enrollment.status
-                        )}
+                        variant={statusVariant(enrollment.status)}
                       >
                         {enrollment.status}
                       </Badge>
@@ -330,36 +299,25 @@ export function TenantEnrollmentsPanel() {
                       {enrollment.patient_user_id}
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
-                      {formatDateTime(
-                        enrollment.activated_at
-                      )}
+                      {formatDateTime(enrollment.activated_at)}
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
                       {enrollment.status === 'CANCELLED'
-                        ? formatDateTime(
-                            enrollment.cancelled_at
-                          )
-                        : formatDateTime(
-                            enrollment.expires_at
-                          )}
+                        ? formatDateTime(enrollment.cancelled_at)
+                        : formatDateTime(enrollment.expires_at)}
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
-                      {formatDateTime(
-                        enrollment.updated_at
-                      )}
+                      {formatDateTime(enrollment.updated_at)}
                     </TableCell>
                     <TableCell>
                       <div className="flex gap-2">
                         {enrollment.status !== 'ACTIVE' &&
-                          enrollment.status !==
-                            'CANCELLED' && (
+                          enrollment.status !== 'CANCELLED' && (
                             <Button
                               type="button"
                               size="sm"
                               variant="outline"
-                              disabled={
-                                transitionMutation.isPending
-                              }
+                              disabled={transitionMutation.isPending}
                               onClick={() =>
                                 handleTransition(
                                   enrollment.id,
@@ -370,17 +328,13 @@ export function TenantEnrollmentsPanel() {
                               Approve
                             </Button>
                           )}
-                        {enrollment.status !==
-                          'CANCELLED' &&
-                          enrollment.status !==
-                            'EXPIRED' && (
+                        {enrollment.status !== 'CANCELLED' &&
+                          enrollment.status !== 'EXPIRED' && (
                             <Button
                               type="button"
                               size="sm"
                               variant="destructive"
-                              disabled={
-                                transitionMutation.isPending
-                              }
+                              disabled={transitionMutation.isPending}
                               onClick={() =>
                                 handleTransition(
                                   enrollment.id,

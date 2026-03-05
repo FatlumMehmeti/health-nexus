@@ -5,14 +5,11 @@ import { isApiError } from '@/lib/api-client';
 import { tenantsService } from '@/services/tenants.service';
 import { useDialogStore } from '@/stores/use-dialog-store';
 import { zodResolver } from '@hookform/resolvers/zod';
-import {
-  useMutation,
-  useQueryClient,
-} from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { z } from 'zod';
-import { TENANTS_QUERY_KEY } from './constants';
+import { TENANTS_QUERY_KEY } from './-constants';
 
 const tenantSchema = z.object({
   name: z
@@ -31,10 +28,7 @@ const tenantSchema = z.object({
     .string()
     .trim()
     .min(1, 'Licence number is required')
-    .max(
-      255,
-      'Licence number must be 255 characters or less'
-    ),
+    .max(255, 'Licence number must be 255 characters or less'),
 });
 
 type TenantFormValues = z.infer<typeof tenantSchema>;
@@ -85,9 +79,7 @@ export function TenantForm() {
   return (
     <form
       noValidate
-      onSubmit={form.handleSubmit((v) =>
-        createMutation.mutate(v)
-      )}
+      onSubmit={form.handleSubmit((v) => createMutation.mutate(v))}
       className="space-y-4"
     >
       <FormField
@@ -130,13 +122,8 @@ export function TenantForm() {
         >
           Cancel
         </Button>
-        <Button
-          type="submit"
-          disabled={createMutation.isPending}
-        >
-          {createMutation.isPending
-            ? 'Creating...'
-            : 'Create'}
+        <Button type="submit" disabled={createMutation.isPending}>
+          {createMutation.isPending ? 'Creating...' : 'Create'}
         </Button>
       </div>
     </form>

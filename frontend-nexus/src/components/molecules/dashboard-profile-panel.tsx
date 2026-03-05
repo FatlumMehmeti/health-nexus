@@ -30,10 +30,7 @@ import {
   usersService,
   type UserRead,
 } from '@/services/users.service';
-import {
-  useMutation,
-  useQuery,
-} from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
@@ -75,8 +72,7 @@ function toText(value: unknown): string {
 }
 
 function toDateInput(value: unknown): string {
-  if (typeof value !== 'string' || value.length === 0)
-    return '';
+  if (typeof value !== 'string' || value.length === 0) return '';
   return value.slice(0, 10);
 }
 
@@ -102,25 +98,23 @@ function toPatientForm(
 
 export function DashboardProfilePanel() {
   const navigate = useNavigate();
-  const [nexusForm, setNexusForm] =
-    useState<NexusFormValues>({
-      first_name: '',
-      last_name: '',
-      contact: '',
-      address: '',
-      email: '',
-    });
+  const [nexusForm, setNexusForm] = useState<NexusFormValues>({
+    first_name: '',
+    last_name: '',
+    contact: '',
+    address: '',
+    email: '',
+  });
   const [nexusInitial, setNexusInitial] =
     useState<NexusFormValues | null>(null);
 
   const [selectedTenantId, setSelectedTenantId] =
     useState<string>('');
-  const [patientForm, setPatientForm] =
-    useState<PatientFormValues>({
-      birthdate: '',
-      gender: '',
-      blood_type: '',
-    });
+  const [patientForm, setPatientForm] = useState<PatientFormValues>({
+    birthdate: '',
+    gender: '',
+    blood_type: '',
+  });
   const [patientInitial, setPatientInitial] =
     useState<PatientFormValues | null>(null);
 
@@ -159,9 +153,7 @@ export function DashboardProfilePanel() {
   const patientProfileQuery = useQuery({
     queryKey: ['patient-profile', selectedTenantId],
     queryFn: () =>
-      patientsService.getMyTenantProfile(
-        Number(selectedTenantId)
-      ),
+      patientsService.getMyTenantProfile(Number(selectedTenantId)),
     enabled: Boolean(selectedTenantId),
     retry: false,
   });
@@ -232,9 +224,7 @@ export function DashboardProfilePanel() {
 
   const onSaveNexus = () => {
     if (!nexusInitial) return;
-    const payload: Parameters<
-      typeof usersService.updateMe
-    >[0] = {};
+    const payload: Parameters<typeof usersService.updateMe>[0] = {};
     if (nexusForm.first_name !== nexusInitial.first_name)
       payload.first_name = nexusForm.first_name;
     if (nexusForm.last_name !== nexusInitial.last_name)
@@ -251,17 +241,13 @@ export function DashboardProfilePanel() {
   const onSavePatient = () => {
     if (!patientInitial || !selectedTenantId) return;
     const payload: PatientProfileUpdate = {};
-    if (
-      patientForm.birthdate !== patientInitial.birthdate
-    ) {
+    if (patientForm.birthdate !== patientInitial.birthdate) {
       payload.birthdate = patientForm.birthdate || null;
     }
     if (patientForm.gender !== patientInitial.gender) {
       payload.gender = patientForm.gender || null;
     }
-    if (
-      patientForm.blood_type !== patientInitial.blood_type
-    ) {
+    if (patientForm.blood_type !== patientInitial.blood_type) {
       payload.blood_type = patientForm.blood_type || null;
     }
 
@@ -275,17 +261,13 @@ export function DashboardProfilePanel() {
       patientProfileQuery.error.status === 404);
 
   const selectedTenant = tenantMembershipsQuery.data?.find(
-    (tenant) =>
-      String(tenant.tenant_id) === selectedTenantId
+    (tenant) => String(tenant.tenant_id) === selectedTenantId
   );
 
-  const genderSelectValue =
-    patientForm.gender || NONE_VALUE;
-  const bloodTypeSelectValue =
-    patientForm.blood_type || NONE_VALUE;
+  const genderSelectValue = patientForm.gender || NONE_VALUE;
+  const bloodTypeSelectValue = patientForm.blood_type || NONE_VALUE;
   const genderChoices =
-    patientForm.gender &&
-    !GENDER_OPTIONS.includes(patientForm.gender)
+    patientForm.gender && !GENDER_OPTIONS.includes(patientForm.gender)
       ? [...GENDER_OPTIONS, patientForm.gender]
       : GENDER_OPTIONS;
   const bloodTypeChoices =
@@ -296,14 +278,8 @@ export function DashboardProfilePanel() {
 
   return (
     <div className="space-y-4">
-      <Tabs
-        defaultValue="nexus-profile"
-        className="space-y-4"
-      >
-        <TabsList
-          variant="line"
-          className="grid w-full grid-cols-2"
-        >
+      <Tabs defaultValue="nexus-profile" className="space-y-4">
+        <TabsList variant="line" className="grid w-full grid-cols-2">
           <TabsTrigger value="nexus-profile">
             Nexus Profile
           </TabsTrigger>
@@ -338,9 +314,7 @@ export function DashboardProfilePanel() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="profile-last-name">
-                    Last name
-                  </Label>
+                  <Label htmlFor="profile-last-name">Last name</Label>
                   <Input
                     id="profile-last-name"
                     value={nexusForm.last_name}
@@ -366,9 +340,7 @@ export function DashboardProfilePanel() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="profile-contact">
-                  Contact
-                </Label>
+                <Label htmlFor="profile-contact">Contact</Label>
                 <Input
                   id="profile-contact"
                   value={nexusForm.contact}
@@ -383,9 +355,7 @@ export function DashboardProfilePanel() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="profile-address">
-                  Address
-                </Label>
+                <Label htmlFor="profile-address">Address</Label>
                 <Input
                   id="profile-address"
                   value={nexusForm.address}
@@ -424,10 +394,7 @@ export function DashboardProfilePanel() {
           </Card>
         </TabsContent>
 
-        <TabsContent
-          value="patient-profile"
-          className="mt-0"
-        >
+        <TabsContent value="patient-profile" className="mt-0">
           <Card>
             <CardHeader>
               <CardTitle className="text-base">
@@ -436,9 +403,7 @@ export function DashboardProfilePanel() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="patient-tenant-select">
-                  Tenant
-                </Label>
+                <Label htmlFor="patient-tenant-select">Tenant</Label>
                 <Select
                   value={selectedTenantId}
                   onValueChange={setSelectedTenantId}
@@ -447,16 +412,16 @@ export function DashboardProfilePanel() {
                     <SelectValue placeholder="Select tenant" />
                   </SelectTrigger>
                   <SelectContent>
-                    {(
-                      tenantMembershipsQuery.data ?? []
-                    ).map((tenant) => (
-                      <SelectItem
-                        key={tenant.tenant_id}
-                        value={String(tenant.tenant_id)}
-                      >
-                        {tenant.name}
-                      </SelectItem>
-                    ))}
+                    {(tenantMembershipsQuery.data ?? []).map(
+                      (tenant) => (
+                        <SelectItem
+                          key={tenant.tenant_id}
+                          value={String(tenant.tenant_id)}
+                        >
+                          {tenant.name}
+                        </SelectItem>
+                      )
+                    )}
                   </SelectContent>
                 </Select>
               </div>
@@ -470,24 +435,21 @@ export function DashboardProfilePanel() {
               {tenantMembershipsQuery.isError ? (
                 <p className="text-sm text-destructive">
                   {isApiError(tenantMembershipsQuery.error)
-                    ? tenantMembershipsQuery.error
-                        .displayMessage
+                    ? tenantMembershipsQuery.error.displayMessage
                     : 'Failed to load tenant memberships.'}
                 </p>
               ) : null}
 
               {!tenantMembershipsQuery.isLoading &&
               !tenantMembershipsQuery.isError &&
-              (tenantMembershipsQuery.data?.length ?? 0) ===
-                0 ? (
+              (tenantMembershipsQuery.data?.length ?? 0) === 0 ? (
                 <p className="text-sm text-muted-foreground">
-                  You do not have tenant memberships
-                  available for patient profile updates.
+                  You do not have tenant memberships available for
+                  patient profile updates.
                 </p>
               ) : null}
 
-              {selectedTenantId &&
-              patientProfileQuery.isLoading ? (
+              {selectedTenantId && patientProfileQuery.isLoading ? (
                 <p className="text-sm text-muted-foreground">
                   Loading patient profile...
                 </p>
@@ -496,8 +458,8 @@ export function DashboardProfilePanel() {
               {selectedTenantId && patientNotRegistered ? (
                 <div className="space-y-3 rounded-md border p-3">
                   <p className="text-sm">
-                    You are not registered as a patient in
-                    this tenant.
+                    You are not registered as a patient in this
+                    tenant.
                   </p>
                   <Button
                     variant="outline"
@@ -524,8 +486,7 @@ export function DashboardProfilePanel() {
               !patientNotRegistered ? (
                 <p className="text-sm text-destructive">
                   {isApiError(patientProfileQuery.error)
-                    ? patientProfileQuery.error
-                        .displayMessage
+                    ? patientProfileQuery.error.displayMessage
                     : 'Failed to load patient profile.'}
                 </p>
               ) : null}
@@ -553,18 +514,13 @@ export function DashboardProfilePanel() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="patient-gender">
-                      Gender
-                    </Label>
+                    <Label htmlFor="patient-gender">Gender</Label>
                     <Select
                       value={genderSelectValue}
                       onValueChange={(value) =>
                         setPatientForm((prev) => ({
                           ...prev,
-                          gender:
-                            value === NONE_VALUE
-                              ? ''
-                              : value,
+                          gender: value === NONE_VALUE ? '' : value,
                         }))
                       }
                     >
@@ -576,10 +532,7 @@ export function DashboardProfilePanel() {
                           Not specified
                         </SelectItem>
                         {genderChoices.map((value) => (
-                          <SelectItem
-                            key={value}
-                            value={value}
-                          >
+                          <SelectItem key={value} value={value}>
                             {value}
                           </SelectItem>
                         ))}
@@ -597,9 +550,7 @@ export function DashboardProfilePanel() {
                         setPatientForm((prev) => ({
                           ...prev,
                           blood_type:
-                            value === NONE_VALUE
-                              ? ''
-                              : value,
+                            value === NONE_VALUE ? '' : value,
                         }))
                       }
                     >
@@ -611,10 +562,7 @@ export function DashboardProfilePanel() {
                           Not specified
                         </SelectItem>
                         {bloodTypeChoices.map((value) => (
-                          <SelectItem
-                            key={value}
-                            value={value}
-                          >
+                          <SelectItem key={value} value={value}>
                             {value}
                           </SelectItem>
                         ))}
@@ -625,12 +573,9 @@ export function DashboardProfilePanel() {
                   <div className="flex justify-end">
                     <Button
                       onClick={onSavePatient}
-                      loading={
-                        savePatientMutation.isPending
-                      }
+                      loading={savePatientMutation.isPending}
                       disabled={
-                        !patientDirty ||
-                        savePatientMutation.isPending
+                        !patientDirty || savePatientMutation.isPending
                       }
                     >
                       Save

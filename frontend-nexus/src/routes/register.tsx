@@ -10,10 +10,7 @@ import {
 import { tenantsService } from '@/services/tenants.service';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation } from '@tanstack/react-query';
-import {
-  createFileRoute,
-  useNavigate,
-} from '@tanstack/react-router';
+import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { z } from 'zod';
@@ -25,13 +22,8 @@ export const Route = createFileRoute('/register')({
 const tenantFormSchema = z.object({
   name: z
     .string()
-    .min(
-      2,
-      'Organization name must be at least 2 characters'
-    ),
-  email: z
-    .string()
-    .email('Please enter a valid email address'),
+    .min(2, 'Organization name must be at least 2 characters'),
+  email: z.string().email('Please enter a valid email address'),
   licence_number: z
     .string()
     .min(3, 'Licence number must be at least 3 characters'),
@@ -88,9 +80,8 @@ function TenantRegistrationPage() {
             Join Health Nexus
           </CardTitle>
           <CardDescription>
-            Submit your application to join our healthcare
-            platform. We'll review your information and get
-            back to you shortly.
+            Submit your application to join our healthcare platform.
+            We'll review your information and get back to you shortly.
           </CardDescription>
         </CardHeader>
         <CardContent>

@@ -63,22 +63,15 @@ export const enrollmentsService = {
     ),
 
   create: (tenantId: number, body: EnrollmentCreateApi) =>
-    apiFetch<EnrollmentStatusApi>(
-      ENROLLMENTS_BASE(tenantId),
-      {
-        method: 'POST',
-        body,
-      }
-    ),
+    apiFetch<EnrollmentStatusApi>(ENROLLMENTS_BASE(tenantId), {
+      method: 'POST',
+      body,
+    }),
 
   transition: (
     tenantId: number,
     enrollmentId: number,
-    target_status:
-      | 'PENDING'
-      | 'ACTIVE'
-      | 'CANCELLED'
-      | 'EXPIRED',
+    target_status: 'PENDING' | 'ACTIVE' | 'CANCELLED' | 'EXPIRED',
     reason?: string
   ) =>
     apiFetch<EnrollmentStatusApi>(
@@ -89,10 +82,7 @@ export const enrollmentsService = {
       }
     ),
 
-  operationalStatus: (
-    tenantId: number,
-    enrollmentId: number
-  ) =>
+  operationalStatus: (tenantId: number, enrollmentId: number) =>
     apiFetch<EnrollmentOperationalStatusApi>(
       `${ENROLLMENTS_BASE(tenantId)}/${enrollmentId}/status`,
       { method: 'GET' }
@@ -125,14 +115,9 @@ export interface ApprovedTenant {
   doctors: EnrollmentDoctor[];
 }
 
-async function fetchApprovedTenants(): Promise<
-  ApprovedTenant[]
-> {
-  const res = await apiFetch(
-    '/enrollments/approved-tenants'
-  );
-  if (!res.ok)
-    throw new Error('Failed to load approved tenants');
+async function fetchApprovedTenants(): Promise<ApprovedTenant[]> {
+  const res = await apiFetch('/enrollments/approved-tenants');
+  if (!res.ok) throw new Error('Failed to load approved tenants');
   return res.json();
 }
 

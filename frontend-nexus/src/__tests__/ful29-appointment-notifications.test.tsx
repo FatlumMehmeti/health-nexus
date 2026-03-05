@@ -14,16 +14,8 @@ import {
   QueryClient,
   QueryClientProvider,
 } from '@tanstack/react-query';
-import {
-  createRouter,
-  RouterProvider,
-} from '@tanstack/react-router';
-import {
-  act,
-  render,
-  screen,
-  waitFor,
-} from '@testing-library/react';
+import { createRouter, RouterProvider } from '@tanstack/react-router';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import { routeTree } from '../routeTree.gen';
 
 jest.mock(
@@ -100,8 +92,7 @@ function seedNotifications() {
       id: 2,
       type: 'APPOINTMENT_RESCHEDULED',
       title: 'Appointment Rescheduled',
-      message:
-        'A patient has rescheduled their appointment.',
+      message: 'A patient has rescheduled their appointment.',
       is_read: true,
       entity_type: 'appointment',
       entity_id: 43,
@@ -130,121 +121,107 @@ beforeEach(() => {
   clearTokens();
 
   // @ts-expect-error jest global mock
-  globalThis.fetch = jest.fn(
-    async (input: RequestInfo | URL) => {
-      const url =
-        typeof input === 'string'
-          ? input
-          : input.toString();
+  globalThis.fetch = jest.fn(async (input: RequestInfo | URL) => {
+    const url = typeof input === 'string' ? input : input.toString();
 
-      // /auth/me
-      if (url.includes('/auth/me')) {
-        if (meStatus !== 200) {
-          return new Response(
-            JSON.stringify({
-              detail: 'Unauthorized',
-            }),
-            { status: 401 }
-          );
+    // /auth/me
+    if (url.includes('/auth/me')) {
+      if (meStatus !== 200) {
+        return new Response(
+          JSON.stringify({
+            detail: 'Unauthorized',
+          }),
+          { status: 401 }
+        );
+      }
+      return new Response(
+        JSON.stringify({
+          user_id: 1,
+          email: 'test@test.com',
+          first_name: 'Test',
+          last_name: 'User',
+          role: meRole,
+        }),
+        {
+          status: 200,
+          headers: {
+            'Content-Type': 'application/json',
+          },
         }
-        return new Response(
-          JSON.stringify({
-            user_id: 1,
-            email: 'test@test.com',
-            first_name: 'Test',
-            last_name: 'User',
-            role: meRole,
-          }),
-          {
-            status: 200,
-            headers: {
-              'Content-Type': 'application/json',
-            },
-          }
-        );
-      }
+      );
+    }
 
-      // Notifications list
-      if (
-        url.includes('/notifications/me') &&
-        !url.includes('unread-count') &&
-        !url.includes('read-all')
-      ) {
-        return new Response(
-          JSON.stringify(mockNotifications),
-          {
-            status: 200,
-            headers: {
-              'Content-Type': 'application/json',
-            },
-          }
-        );
-      }
-
-      // Unread count
-      if (url.includes('/notifications/me/unread-count')) {
-        return new Response(
-          JSON.stringify({
-            count: mockUnreadCount,
-          }),
-          {
-            status: 200,
-            headers: {
-              'Content-Type': 'application/json',
-            },
-          }
-        );
-      }
-
-      // Mark all read
-      if (url.includes('/notifications/me/read-all')) {
-        const marked = mockUnreadCount;
-        mockUnreadCount = 0;
-        mockNotifications = mockNotifications.map((n) => ({
-          ...n,
-          is_read: true,
-        }));
-        return new Response(
-          JSON.stringify({ marked_read: marked }),
-          {
-            status: 200,
-            headers: {
-              'Content-Type': 'application/json',
-            },
-          }
-        );
-      }
-
-      // Mark single read
-      if (url.match(/\/notifications\/\d+\/read/)) {
-        const id = parseInt(
-          url.match(/\/notifications\/(\d+)\/read/)![1],
-          10
-        );
-        mockNotifications = mockNotifications.map((n) =>
-          n.id === id ? { ...n, is_read: true } : n
-        );
-        if (mockUnreadCount > 0) mockUnreadCount--;
-        return new Response(
-          JSON.stringify({ id, is_read: true }),
-          {
-            status: 200,
-            headers: {
-              'Content-Type': 'application/json',
-            },
-          }
-        );
-      }
-
-      // Default – any other API call returns empty success
-      return new Response(JSON.stringify([]), {
+    // Notifications list
+    if (
+      url.includes('/notifications/me') &&
+      !url.includes('unread-count') &&
+      !url.includes('read-all')
+    ) {
+      return new Response(JSON.stringify(mockNotifications), {
         status: 200,
         headers: {
           'Content-Type': 'application/json',
         },
       });
     }
-  ) as unknown as typeof fetch;
+
+    // Unread count
+    if (url.includes('/notifications/me/unread-count')) {
+      return new Response(
+        JSON.stringify({
+          count: mockUnreadCount,
+        }),
+        {
+          status: 200,
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+    }
+
+    // Mark all read
+    if (url.includes('/notifications/me/read-all')) {
+      const marked = mockUnreadCount;
+      mockUnreadCount = 0;
+      mockNotifications = mockNotifications.map((n) => ({
+        ...n,
+        is_read: true,
+      }));
+      return new Response(JSON.stringify({ marked_read: marked }), {
+        status: 200,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+    }
+
+    // Mark single read
+    if (url.match(/\/notifications\/\d+\/read/)) {
+      const id = parseInt(
+        url.match(/\/notifications\/(\d+)\/read/)![1],
+        10
+      );
+      mockNotifications = mockNotifications.map((n) =>
+        n.id === id ? { ...n, is_read: true } : n
+      );
+      if (mockUnreadCount > 0) mockUnreadCount--;
+      return new Response(JSON.stringify({ id, is_read: true }), {
+        status: 200,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+    }
+
+    // Default – any other API call returns empty success
+    return new Response(JSON.stringify([]), {
+      status: 200,
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+  }) as unknown as typeof fetch;
 });
 
 afterEach(() => {
@@ -332,9 +309,7 @@ describe('FUL-29: Notification bell on dashboard (doctor)', () => {
       () => {
         // The badge renders the count as text content
         const badge = screen.queryByText('1');
-        expect(
-          badge || screen.queryByText('99+')
-        ).toBeTruthy();
+        expect(badge || screen.queryByText('99+')).toBeTruthy();
       },
       { timeout: 5000 }
     );
@@ -387,8 +362,6 @@ describe('FUL-29: Notification data shape', () => {
       is_read: true,
     }));
     expect(mockUnreadCount).toBe(0);
-    expect(mockNotifications.every((n) => n.is_read)).toBe(
-      true
-    );
+    expect(mockNotifications.every((n) => n.is_read)).toBe(true);
   });
 });

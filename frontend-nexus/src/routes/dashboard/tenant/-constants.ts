@@ -2,6 +2,7 @@ export const QUERY_KEYS = {
   current: ['tenant-manager', 'current'] as const,
   details: ['tenant-manager', 'details'] as const,
   doctors: ['tenant-manager', 'doctors'] as const,
+  contracts: ['tenant-manager', 'contracts'] as const,
   departments: ['tenant-manager', 'departments'] as const,
   products: ['tenant-manager', 'products'] as const,
   fonts: ['tenant-manager', 'fonts'] as const,
@@ -13,16 +14,26 @@ export const QUERY_KEYS = {
 };
 
 export const TENANT_SECTION_KEYS = [
+  'contracts',
   'departments-services',
   'doctors',
-  'products',
-  'plans',
   'enrollments',
+  'plans',
+  'products',
   'settings',
 ] as const;
 
-export type TenantSectionKey =
-  (typeof TENANT_SECTION_KEYS)[number];
+export type TenantSectionKey = (typeof TENANT_SECTION_KEYS)[number];
+
+export function normalizeTenantSection(
+  rawSection: string | null | undefined
+): TenantSectionKey {
+  const section = (rawSection ?? '').trim();
+  if ((TENANT_SECTION_KEYS as readonly string[]).includes(section)) {
+    return section as TenantSectionKey;
+  }
+  return 'departments-services';
+}
 
 export interface TenantDetailsFormState {
   logo: string;

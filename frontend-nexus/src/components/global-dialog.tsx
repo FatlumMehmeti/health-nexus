@@ -11,10 +11,7 @@ export function GlobalDialog() {
   const { isOpen, config, close } = useDialogStore();
 
   return (
-    <Dialog
-      open={isOpen}
-      onOpenChange={(open) => !open && close()}
-    >
+    <Dialog open={isOpen} onOpenChange={(open) => !open && close()}>
       <DialogContent
         showCloseButton={config?.showCloseButton ?? true}
         className="max-w-6xl max-h-screen overflow-y-auto"

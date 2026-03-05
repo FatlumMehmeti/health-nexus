@@ -1,9 +1,6 @@
 import { apiFetch } from '@/lib/api-client';
 import { updateAppointmentDatetime } from '@/services/appointments.store';
-import {
-  useMutation,
-  useQueryClient,
-} from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 export interface ReschedulePayload {
   tenant_id: number;
@@ -14,9 +11,7 @@ export interface ReschedulePayload {
   description?: string;
 }
 
-export function useRescheduleAppointment(
-  appointmentId: string
-) {
+export function useRescheduleAppointment(appointmentId: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (payload: ReschedulePayload) => {
@@ -29,8 +24,7 @@ export function useRescheduleAppointment(
           tenant_id: payload.tenant_id,
           doctor_id: payload.doctor_id,
           department_id: payload.department_id,
-          appointment_datetime:
-            payload.appointment_datetime,
+          appointment_datetime: payload.appointment_datetime,
           duration_minutes: payload.duration_minutes ?? 30,
           description: payload.description ?? null,
         },
@@ -42,10 +36,7 @@ export function useRescheduleAppointment(
         variables.appointment_datetime
       );
       queryClient.invalidateQueries({
-        queryKey: [
-          'appointment-status-history',
-          appointmentId,
-        ],
+        queryKey: ['appointment-status-history', appointmentId],
       });
     },
   });

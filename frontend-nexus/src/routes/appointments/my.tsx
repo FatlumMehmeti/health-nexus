@@ -111,9 +111,7 @@ function MyAppointmentsPage() {
   const [page, setPage] = useState(1);
 
   const user = useAuthStore((s) => s.user);
-  const isAuthenticated = useAuthStore(
-    (s) => s.isAuthenticated
-  );
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const logout = useAuthStore((s) => s.logout);
   const navigate = useNavigate();
 
@@ -150,11 +148,7 @@ function MyAppointmentsPage() {
   }, [appointments, filter]);
 
   const paginated = useMemo(
-    () =>
-      filtered.slice(
-        (page - 1) * PAGE_SIZE,
-        page * PAGE_SIZE
-      ),
+    () => filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
     [filtered, page]
   );
 
@@ -176,8 +170,7 @@ function MyAppointmentsPage() {
   if (isError)
     return (
       <div className="p-8 text-destructive">
-        {(error as Error)?.message ||
-          'Error loading appointments'}
+        {(error as Error)?.message || 'Error loading appointments'}
       </div>
     );
 
@@ -244,16 +237,11 @@ function MyAppointmentsPage() {
                     {userInitial}
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent
-                  align="end"
-                  className="min-w-40"
-                >
+                <DropdownMenuContent align="end" className="min-w-40">
                   <DropdownMenuLabel className="text-xs sm:text-sm">
                     Signed in as
                     <br />
-                    <span className="font-medium">
-                      {user?.email}
-                    </span>
+                    <span className="font-medium">{user?.email}</span>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleProfile}>
@@ -267,9 +255,7 @@ function MyAppointmentsPage() {
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleLogout}>
-                    <span className="text-destructive">
-                      Log out
-                    </span>
+                    <span className="text-destructive">Log out</span>
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -351,10 +337,7 @@ function MyAppointmentsPage() {
         ) : (
           <div className="space-y-3">
             {paginated.map((appt) => (
-              <AppointmentRow
-                key={appt.id}
-                appointment={appt}
-              />
+              <AppointmentRow key={appt.id} appointment={appt} />
             ))}
             <Pagination
               total={filtered.length}
@@ -401,9 +384,7 @@ function AppointmentRow({
             </div>
 
             <div>
-              <p className="font-medium text-foreground">
-                {dateStr}
-              </p>
+              <p className="font-medium text-foreground">{dateStr}</p>
               <p className="text-sm text-muted-foreground">
                 {timeStr} · 30 min
               </p>

@@ -17,11 +17,9 @@ interface DialogState {
   close: () => void;
 }
 
-export const useDialogStore = create<DialogState>(
-  (set) => ({
-    isOpen: false,
-    config: null,
-    open: (config) => set({ isOpen: true, config }),
-    close: () => set({ isOpen: false, config: null }),
-  })
-);
+export const useDialogStore = create<DialogState>((set) => ({
+  isOpen: false,
+  config: null,
+  open: (config) => set({ isOpen: true, config }),
+  close: () => set({ isOpen: false, config: null }),
+}));

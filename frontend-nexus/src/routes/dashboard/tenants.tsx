@@ -22,18 +22,15 @@ import {
   TabsList,
   TabsTrigger,
 } from '@/components/ui/tabs';
-import {
-  TenantStatus,
-  type TenantRead,
-} from '@/interfaces';
+import { TenantStatus, type TenantRead } from '@/interfaces';
 import { requireAuth } from '@/lib/guards/requireAuth';
 import {
   ICON_SIZE,
   STATUS_ACTIONS,
   STATUS_TABS,
   TENANTS_QUERY_KEY,
-} from '@/routes/dashboard/tenants/constants';
-import { TenantForm } from '@/routes/dashboard/tenants/tenant-form';
+} from '@/routes/dashboard/tenants/-constants';
+import { TenantForm } from '@/routes/dashboard/tenants/-tenant-form';
 import { tenantsService } from '@/services/tenants.service';
 import {
   useMutation,
@@ -41,11 +38,7 @@ import {
   useQueryClient,
 } from '@tanstack/react-query';
 import { createFileRoute } from '@tanstack/react-router';
-import {
-  ChevronLeft,
-  ChevronRight,
-  Search,
-} from 'lucide-react';
+import { ChevronLeft, ChevronRight, Search } from 'lucide-react';
 import { useMemo, useState } from 'react';
 // Added for search input
 import {
@@ -67,15 +60,15 @@ export const Route = createFileRoute('/dashboard/tenants')({
 function TenantsPage() {
   const queryClient = useQueryClient();
   const dialog = useDialogStore();
-  const [activeStatus, setActiveStatus] =
-    useState<TenantStatus>(TenantStatus.PENDING);
+  const [activeStatus, setActiveStatus] = useState<TenantStatus>(
+    TenantStatus.PENDING
+  );
   // State for pagination
   const [currentPage, setCurrentPage] = useState(1);
   // State for search functionality
   const [searchQuery, setSearchQuery] = useState('');
   // Track page before search to restore when clearing search
-  const [pageBeforeSearch, setPageBeforeSearch] =
-    useState(1);
+  const [pageBeforeSearch, setPageBeforeSearch] = useState(1);
 
   const {
     data: response = {
@@ -155,9 +148,7 @@ function TenantsPage() {
     },
   });
 
-  const getTenantActions = (
-    tenant: TenantRead
-  ): ActionItem[] => {
+  const getTenantActions = (tenant: TenantRead): ActionItem[] => {
     const openConfirmDialog = (
       status: TenantStatus,
       label: string,
@@ -173,23 +164,17 @@ function TenantsPage() {
         title: `${label} tenant`,
         content: (
           <p className="text-muted-foreground">
-            Are you sure you want to {label.toLowerCase()}{' '}
-            &quot;
+            Are you sure you want to {label.toLowerCase()} &quot;
             {tenant.name}&quot;?
           </p>
         ),
         footer: (
           <>
-            <Button
-              variant="outline"
-              onClick={dialog.close}
-            >
+            <Button variant="outline" onClick={dialog.close}>
               Cancel
             </Button>
             <Button
-              variant={
-                isDestructive ? 'destructive' : 'default'
-              }
+              variant={isDestructive ? 'destructive' : 'default'}
               onClick={doUpdate}
               disabled={updateStatusMutation.isPending}
             >
@@ -207,11 +192,7 @@ function TenantsPage() {
         label,
         icon: <Icon {...ICON_SIZE} />,
         onClick: () =>
-          openConfirmDialog(
-            target,
-            label,
-            variant === 'destructive'
-          ),
+          openConfirmDialog(target, label, variant === 'destructive'),
         variant,
         separatorBefore: true,
       })
@@ -226,16 +207,13 @@ function TenantsPage() {
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString(
-      'en-US',
-      {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-      }
-    );
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
   };
 
   const getStatusBadgeVariant = (status: TenantStatus) => {
@@ -259,16 +237,12 @@ function TenantsPage() {
     <div className="space-y-6 p-8">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold">
-            Tenant Management
-          </h1>
+          <h1 className="text-3xl font-bold">Tenant Management</h1>
           <p className="mt-2 text-muted-foreground">
             Manage tenant applications and subscriptions
           </p>
         </div>
-        <Button onClick={openCreateDialog}>
-          Create tenant
-        </Button>
+        <Button onClick={openCreateDialog}>Create tenant</Button>
       </div>
 
       {/* Search input with icon for filtering tenant names */}
@@ -319,22 +293,17 @@ function TenantsPage() {
                     {Array.from({
                       length: 5,
                     }).map((_, i) => (
-                      <Skeleton
-                        key={i}
-                        className="h-16 w-full"
-                      />
+                      <Skeleton key={i} className="h-16 w-full" />
                     ))}
                   </div>
                 ) : isError ? (
                   <div className="py-8 text-center text-destructive">
                     Error loading tenants:{' '}
-                    {(error as Error)?.message ||
-                      'Unknown error'}
+                    {(error as Error)?.message || 'Unknown error'}
                   </div>
                 ) : tenants.length === 0 ? (
                   <div className="py-12 text-center text-muted-foreground">
-                    No {tab.label.toLowerCase()} tenants
-                    found
+                    No {tab.label.toLowerCase()} tenants found
                   </div>
                 ) : (
                   <div className="space-y-4">
@@ -358,9 +327,7 @@ function TenantsPage() {
                               <TableCell className="font-medium">
                                 {tenant.id}
                               </TableCell>
-                              <TableCell>
-                                {tenant.name}
-                              </TableCell>
+                              <TableCell>{tenant.name}</TableCell>
                               <TableCell className="text-muted-foreground">
                                 {tenant.email}
                               </TableCell>
@@ -377,23 +344,16 @@ function TenantsPage() {
                                 </Badge>
                               </TableCell>
                               <TableCell className="text-muted-foreground text-sm">
-                                {formatDate(
-                                  tenant.created_at
-                                )}
+                                {formatDate(tenant.created_at)}
                               </TableCell>
                               <TableCell className="text-muted-foreground text-sm">
-                                {formatDate(
-                                  tenant.updated_at
-                                )}
+                                {formatDate(tenant.updated_at)}
                               </TableCell>
                               <TableCell>
                                 {(() => {
                                   const actions =
-                                    getTenantActions(
-                                      tenant
-                                    );
-                                  return actions.length >
-                                    0 ? (
+                                    getTenantActions(tenant);
+                                  return actions.length > 0 ? (
                                     <div className="flex justify-end">
                                       <ActionsDropdown
                                         actions={actions}
@@ -414,10 +374,7 @@ function TenantsPage() {
                     <div className="flex items-center justify-between border-t pt-4">
                       <div className="text-sm text-muted-foreground">
                         Showing{' '}
-                        {(currentPage - 1) *
-                          response.page_size +
-                          1}
-                        -
+                        {(currentPage - 1) * response.page_size + 1}-
                         {Math.min(
                           currentPage * response.page_size,
                           response.total
@@ -429,13 +386,9 @@ function TenantsPage() {
                           variant="outline"
                           size="sm"
                           onClick={() =>
-                            setCurrentPage((p) =>
-                              Math.max(1, p - 1)
-                            )
+                            setCurrentPage((p) => Math.max(1, p - 1))
                           }
-                          disabled={
-                            currentPage === 1 || isLoading
-                          }
+                          disabled={currentPage === 1 || isLoading}
                         >
                           <ChevronLeft className="h-4 w-4" />
                           Previous
@@ -452,8 +405,7 @@ function TenantsPage() {
                             )
                           }
                           disabled={
-                            currentPage === totalPages ||
-                            isLoading
+                            currentPage === totalPages || isLoading
                           }
                         >
                           Next

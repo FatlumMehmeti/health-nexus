@@ -7,10 +7,7 @@ import {
   SidebarMenuItem,
 } from '@/components/ui/sidebar';
 import { type Icon } from '@tabler/icons-react';
-import {
-  Link,
-  useRouterState,
-} from '@tanstack/react-router';
+import { Link, useRouterState } from '@tanstack/react-router';
 
 export function NavMain({
   items,
@@ -29,9 +26,7 @@ export function NavMain({
 
   return (
     <SidebarGroup>
-      {label ? (
-        <SidebarGroupLabel>{label}</SidebarGroupLabel>
-      ) : null}
+      {label ? <SidebarGroupLabel>{label}</SidebarGroupLabel> : null}
       <SidebarGroupContent className="flex flex-col gap-2">
         <SidebarMenu>
           {items.map((item) => {

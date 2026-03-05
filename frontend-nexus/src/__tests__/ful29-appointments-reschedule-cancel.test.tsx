@@ -22,11 +22,7 @@ import {
   QueryClientProvider,
 } from '@tanstack/react-query';
 import '@testing-library/jest-dom';
-import {
-  render,
-  screen,
-  waitFor,
-} from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
 import { Toaster } from 'sonner';
@@ -41,29 +37,26 @@ function TestAppointmentDetail() {
   const [status, setStatus] = React.useState<
     'REQUESTED' | 'CONFIRMED' | 'CANCELLED' | 'COMPLETED'
   >('REQUESTED');
-  const [cancelError, setCancelError] = React.useState<
+  const [cancelError, setCancelError] = React.useState<string | null>(
+    null
+  );
+  const [rescheduleError, setRescheduleError] = React.useState<
     string | null
   >(null);
-  const [rescheduleError, setRescheduleError] =
-    React.useState<string | null>(null);
-  const [isCancelPending, setIsCancelPending] =
-    React.useState(false);
+  const [isCancelPending, setIsCancelPending] = React.useState(false);
   const [isReschedulePending, setIsReschedulePending] =
     React.useState(false);
 
   const canReschedule =
     status === 'REQUESTED' || status === 'CONFIRMED';
-  const canCancel =
-    status !== 'CANCELLED' && status !== 'COMPLETED';
+  const canCancel = status !== 'CANCELLED' && status !== 'COMPLETED';
 
   const handleCancel = async () => {
     setCancelError(null);
     setIsCancelPending(true);
     try {
       // Simulate API call
-      await new Promise((resolve) =>
-        setTimeout(resolve, 100)
-      );
+      await new Promise((resolve) => setTimeout(resolve, 100));
       setStatus('CANCELLED');
       setCancel(false);
     } catch (err) {
@@ -82,9 +75,7 @@ function TestAppointmentDetail() {
     setIsReschedulePending(true);
     try {
       // Simulate API call
-      await new Promise((resolve) =>
-        setTimeout(resolve, 100)
-      );
+      await new Promise((resolve) => setTimeout(resolve, 100));
       setStatus('REQUESTED'); // Reschedule resets to REQUESTED
       setReschedule(false);
     } catch (err) {
@@ -101,9 +92,7 @@ function TestAppointmentDetail() {
   return (
     <div data-testid="appointment-detail">
       <h1>Appointment Detail</h1>
-      <div data-testid="appointment-status">
-        Status: {status}
-      </div>
+      <div data-testid="appointment-status">Status: {status}</div>
 
       {/* Cancel Button */}
       {canCancel && (
@@ -124,8 +113,8 @@ function TestAppointmentDetail() {
         >
           <h2>Cancel Appointment</h2>
           <p>
-            Are you sure you want to cancel this
-            appointment? This action cannot be undone.
+            Are you sure you want to cancel this appointment? This
+            action cannot be undone.
           </p>
           {cancelError && (
             <div
@@ -141,9 +130,7 @@ function TestAppointmentDetail() {
             disabled={isCancelPending}
             className="bg-red-600 text-white px-4 py-2 rounded"
           >
-            {isCancelPending
-              ? 'Cancelling…'
-              : 'Confirm Cancel'}
+            {isCancelPending ? 'Cancelling…' : 'Confirm Cancel'}
           </button>
           <button
             data-testid="cancel-close-button"
@@ -194,9 +181,7 @@ function TestRescheduleDialog({
   error: string | null;
   onClose: () => void;
 }) {
-  const [date, setDate] = React.useState<Date | undefined>(
-    undefined
-  );
+  const [date, setDate] = React.useState<Date | undefined>(undefined);
   const [availabilityLoading, setAvailabilityLoading] =
     React.useState(false);
   const [slots, setSlots] = React.useState<string[]>([]);
@@ -205,9 +190,7 @@ function TestRescheduleDialog({
     setDate(selectedDate);
     setAvailabilityLoading(true);
     // Simulate API call to fetch availability
-    await new Promise((resolve) =>
-      setTimeout(resolve, 100)
-    );
+    await new Promise((resolve) => setTimeout(resolve, 100));
     setSlots(['09:00', '09:30', '10:00', '10:30', '11:00']);
     setAvailabilityLoading(false);
   };
@@ -228,10 +211,7 @@ function TestRescheduleDialog({
       className="border p-4 rounded"
     >
       <h2>Reschedule Appointment</h2>
-      <p>
-        Select a new date and time slot for your
-        appointment.
-      </p>
+      <p>Select a new date and time slot for your appointment.</p>
 
       {error && (
         <div
@@ -252,9 +232,7 @@ function TestRescheduleDialog({
               const [year, month, day] = e.target.value
                 .split('-')
                 .map(Number);
-              handleDateSelect(
-                new Date(year, month - 1, day)
-              );
+              handleDateSelect(new Date(year, month - 1, day));
             }
           }}
         />
@@ -264,9 +242,7 @@ function TestRescheduleDialog({
         <div data-testid="slots-section">
           <span>Available time slots:</span>
           {availabilityLoading && (
-            <span data-testid="slots-loading">
-              Loading...
-            </span>
+            <span data-testid="slots-loading">Loading...</span>
           )}
           {!availabilityLoading && slots.length === 0 && (
             <span data-testid="no-slots">
@@ -280,9 +256,7 @@ function TestRescheduleDialog({
                   key={slot}
                   data-testid={`slot-${slot}`}
                   onClick={() => handleSlotClick(slot)}
-                  disabled={
-                    isPending || availabilityLoading
-                  }
+                  disabled={isPending || availabilityLoading}
                   className="bg-blue-500 text-white px-3 py-1 rounded disabled:bg-gray-300"
                 >
                   {slot}
@@ -333,9 +307,7 @@ describe('FUL-29: Appointment Reschedule & Cancel UI', () => {
   describe('Cancel Appointment Dialog', () => {
     it('shows cancel button when status is REQUESTED', () => {
       renderAppointmentDetail();
-      expect(
-        screen.getByTestId('cancel-button')
-      ).toBeInTheDocument();
+      expect(screen.getByTestId('cancel-button')).toBeInTheDocument();
     });
 
     it('hides cancel button when status is CANCELLED', async () => {
@@ -375,9 +347,7 @@ describe('FUL-29: Appointment Reschedule & Cancel UI', () => {
 
       await waitFor(() => {
         expect(
-          screen.getByText(
-            /Are you sure you want to cancel/i
-          )
+          screen.getByText(/Are you sure you want to cancel/i)
         ).toBeInTheDocument();
       });
     });
@@ -395,9 +365,7 @@ describe('FUL-29: Appointment Reschedule & Cancel UI', () => {
         ).toBeInTheDocument();
       });
 
-      const closeBtn = screen.getByTestId(
-        'cancel-close-button'
-      );
+      const closeBtn = screen.getByTestId('cancel-close-button');
       await user.click(closeBtn);
 
       await waitFor(() => {
@@ -414,12 +382,8 @@ describe('FUL-29: Appointment Reschedule & Cancel UI', () => {
       const cancelBtn = screen.getByTestId('cancel-button');
       await user.click(cancelBtn);
 
-      const confirmBtn = screen.getByTestId(
-        'cancel-confirm-button'
-      );
-      expect(confirmBtn).toHaveTextContent(
-        'Confirm Cancel'
-      );
+      const confirmBtn = screen.getByTestId('cancel-confirm-button');
+      expect(confirmBtn).toHaveTextContent('Confirm Cancel');
 
       await user.click(confirmBtn);
 
@@ -435,12 +399,8 @@ describe('FUL-29: Appointment Reschedule & Cancel UI', () => {
       const cancelBtn = screen.getByTestId('cancel-button');
       await user.click(cancelBtn);
 
-      const confirmBtn = screen.getByTestId(
-        'cancel-confirm-button'
-      );
-      const closeBtn = screen.getByTestId(
-        'cancel-close-button'
-      );
+      const confirmBtn = screen.getByTestId('cancel-confirm-button');
+      const closeBtn = screen.getByTestId('cancel-close-button');
 
       await user.click(confirmBtn);
 
@@ -454,28 +414,18 @@ describe('FUL-29: Appointment Reschedule & Cancel UI', () => {
       const user = userEvent.setup();
       renderAppointmentDetail();
 
-      const statusBefore = screen.getByTestId(
-        'appointment-status'
-      );
-      expect(statusBefore).toHaveTextContent(
-        'Status: REQUESTED'
-      );
+      const statusBefore = screen.getByTestId('appointment-status');
+      expect(statusBefore).toHaveTextContent('Status: REQUESTED');
 
       const cancelBtn = screen.getByTestId('cancel-button');
       await user.click(cancelBtn);
 
-      const confirmBtn = screen.getByTestId(
-        'cancel-confirm-button'
-      );
+      const confirmBtn = screen.getByTestId('cancel-confirm-button');
       await user.click(confirmBtn);
 
       await waitFor(() => {
-        const statusAfter = screen.getByTestId(
-          'appointment-status'
-        );
-        expect(statusAfter).toHaveTextContent(
-          'Status: CANCELLED'
-        );
+        const statusAfter = screen.getByTestId('appointment-status');
+        expect(statusAfter).toHaveTextContent('Status: CANCELLED');
       });
     });
 
@@ -486,9 +436,7 @@ describe('FUL-29: Appointment Reschedule & Cancel UI', () => {
       const cancelBtn = screen.getByTestId('cancel-button');
       await user.click(cancelBtn);
 
-      const confirmBtn = screen.getByTestId(
-        'cancel-confirm-button'
-      );
+      const confirmBtn = screen.getByTestId('cancel-confirm-button');
       await user.click(confirmBtn);
 
       await waitFor(() => {
@@ -522,9 +470,7 @@ describe('FUL-29: Appointment Reschedule & Cancel UI', () => {
         screen.queryByTestId('reschedule-dialog')
       ).not.toBeInTheDocument();
 
-      const rescheduleBtn = screen.getByTestId(
-        'reschedule-button'
-      );
+      const rescheduleBtn = screen.getByTestId('reschedule-button');
       await user.click(rescheduleBtn);
 
       await waitFor(() => {
@@ -538,15 +484,11 @@ describe('FUL-29: Appointment Reschedule & Cancel UI', () => {
       const user = userEvent.setup();
       renderAppointmentDetail();
 
-      const rescheduleBtn = screen.getByTestId(
-        'reschedule-button'
-      );
+      const rescheduleBtn = screen.getByTestId('reschedule-button');
       await user.click(rescheduleBtn);
 
       await waitFor(() => {
-        expect(
-          screen.getByTestId('date-input')
-        ).toBeInTheDocument();
+        expect(screen.getByTestId('date-input')).toBeInTheDocument();
       });
     });
 
@@ -554,9 +496,7 @@ describe('FUL-29: Appointment Reschedule & Cancel UI', () => {
       const user = userEvent.setup();
       renderAppointmentDetail();
 
-      const rescheduleBtn = screen.getByTestId(
-        'reschedule-button'
-      );
+      const rescheduleBtn = screen.getByTestId('reschedule-button');
       await user.click(rescheduleBtn);
 
       const dateInput = screen.getByTestId('date-input');
@@ -573,24 +513,16 @@ describe('FUL-29: Appointment Reschedule & Cancel UI', () => {
       const user = userEvent.setup();
       renderAppointmentDetail();
 
-      const rescheduleBtn = screen.getByTestId(
-        'reschedule-button'
-      );
+      const rescheduleBtn = screen.getByTestId('reschedule-button');
       await user.click(rescheduleBtn);
 
       const dateInput = screen.getByTestId('date-input');
       await user.type(dateInput, '2026-03-15');
 
       await waitFor(() => {
-        expect(
-          screen.getByTestId('slot-09:00')
-        ).toBeInTheDocument();
-        expect(
-          screen.getByTestId('slot-09:30')
-        ).toBeInTheDocument();
-        expect(
-          screen.getByTestId('slot-10:00')
-        ).toBeInTheDocument();
+        expect(screen.getByTestId('slot-09:00')).toBeInTheDocument();
+        expect(screen.getByTestId('slot-09:30')).toBeInTheDocument();
+        expect(screen.getByTestId('slot-10:00')).toBeInTheDocument();
       });
     });
 
@@ -598,18 +530,14 @@ describe('FUL-29: Appointment Reschedule & Cancel UI', () => {
       const user = userEvent.setup();
       renderAppointmentDetail();
 
-      const rescheduleBtn = screen.getByTestId(
-        'reschedule-button'
-      );
+      const rescheduleBtn = screen.getByTestId('reschedule-button');
       await user.click(rescheduleBtn);
 
       const dateInput = screen.getByTestId('date-input');
       await user.type(dateInput, '2026-03-15');
 
       await waitFor(() => {
-        expect(
-          screen.getByTestId('slot-09:00')
-        ).toBeInTheDocument();
+        expect(screen.getByTestId('slot-09:00')).toBeInTheDocument();
       });
 
       const slotBtn = screen.getByTestId('slot-09:00');
@@ -625,18 +553,14 @@ describe('FUL-29: Appointment Reschedule & Cancel UI', () => {
       const user = userEvent.setup();
       renderAppointmentDetail();
 
-      const rescheduleBtn = screen.getByTestId(
-        'reschedule-button'
-      );
+      const rescheduleBtn = screen.getByTestId('reschedule-button');
       await user.click(rescheduleBtn);
 
       const dateInput = screen.getByTestId('date-input');
       await user.type(dateInput, '2026-03-15');
 
       await waitFor(() => {
-        expect(
-          screen.getByTestId('slot-09:00')
-        ).toBeInTheDocument();
+        expect(screen.getByTestId('slot-09:00')).toBeInTheDocument();
       });
 
       const slotBtn = screen.getByTestId('slot-09:00');
@@ -653,30 +577,22 @@ describe('FUL-29: Appointment Reschedule & Cancel UI', () => {
       const user = userEvent.setup();
       renderAppointmentDetail();
 
-      const rescheduleBtn = screen.getByTestId(
-        'reschedule-button'
-      );
+      const rescheduleBtn = screen.getByTestId('reschedule-button');
       await user.click(rescheduleBtn);
 
       const dateInput = screen.getByTestId('date-input');
       await user.type(dateInput, '2026-03-15');
 
       await waitFor(() => {
-        expect(
-          screen.getByTestId('slot-09:00')
-        ).toBeInTheDocument();
+        expect(screen.getByTestId('slot-09:00')).toBeInTheDocument();
       });
 
       const slotBtn = screen.getByTestId('slot-09:00');
       await user.click(slotBtn);
 
       await waitFor(() => {
-        const status = screen.getByTestId(
-          'appointment-status'
-        );
-        expect(status).toHaveTextContent(
-          'Status: REQUESTED'
-        );
+        const status = screen.getByTestId('appointment-status');
+        expect(status).toHaveTextContent('Status: REQUESTED');
       });
     });
 
@@ -684,14 +600,10 @@ describe('FUL-29: Appointment Reschedule & Cancel UI', () => {
       const user = userEvent.setup();
       renderAppointmentDetail();
 
-      const rescheduleBtn = screen.getByTestId(
-        'reschedule-button'
-      );
+      const rescheduleBtn = screen.getByTestId('reschedule-button');
       await user.click(rescheduleBtn);
 
-      const closeBtn = screen.getByTestId(
-        'reschedule-close-button'
-      );
+      const closeBtn = screen.getByTestId('reschedule-close-button');
       await user.click(closeBtn);
 
       await waitFor(() => {
@@ -705,9 +617,7 @@ describe('FUL-29: Appointment Reschedule & Cancel UI', () => {
       const user = userEvent.setup();
       renderAppointmentDetail();
 
-      const rescheduleBtn = screen.getByTestId(
-        'reschedule-button'
-      );
+      const rescheduleBtn = screen.getByTestId('reschedule-button');
       await user.click(rescheduleBtn);
 
       const dateInput = screen.getByTestId('date-input');
@@ -723,26 +633,20 @@ describe('FUL-29: Appointment Reschedule & Cancel UI', () => {
       const user = userEvent.setup();
       renderAppointmentDetail();
 
-      const rescheduleBtn = screen.getByTestId(
-        'reschedule-button'
-      );
+      const rescheduleBtn = screen.getByTestId('reschedule-button');
       await user.click(rescheduleBtn);
 
       const dateInput = screen.getByTestId('date-input');
       await user.type(dateInput, '2026-03-15');
 
       await waitFor(() => {
-        expect(
-          screen.getByTestId('slot-09:00')
-        ).toBeInTheDocument();
+        expect(screen.getByTestId('slot-09:00')).toBeInTheDocument();
       });
 
       const slotBtn = screen.getByTestId('slot-09:00');
       await user.click(slotBtn);
 
-      const closeBtn = screen.getByTestId(
-        'reschedule-close-button'
-      );
+      const closeBtn = screen.getByTestId('reschedule-close-button');
 
       await waitFor(() => {
         expect(closeBtn).toBeDisabled();
@@ -755,9 +659,7 @@ describe('FUL-29: Appointment Reschedule & Cancel UI', () => {
       // Would need state manipulation to test full status flow
       // For now, testing with initial REQUESTED status
       renderAppointmentDetail();
-      expect(
-        screen.getByTestId('cancel-button')
-      ).toBeInTheDocument();
+      expect(screen.getByTestId('cancel-button')).toBeInTheDocument();
     });
 
     it('hides reschedule button when appointment is CANCELLED', () => {

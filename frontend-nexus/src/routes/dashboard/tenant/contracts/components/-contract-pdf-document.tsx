@@ -41,10 +41,7 @@ export function stripHtmlToPlainText(html: string): string {
       /<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi,
       ''
     )
-    .replace(
-      /<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi,
-      ''
-    )
+    .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '')
     .replace(/<[^>]+>/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
@@ -97,8 +94,8 @@ function renderHtmlToPdf(
     }
     if (el.nodeType !== Node.ELEMENT_NODE) return [];
     const tag = (el as Element).tagName.toLowerCase();
-    const children = Array.from(el.childNodes).flatMap(
-      (c) => walk(c)
+    const children = Array.from(el.childNodes).flatMap((c) =>
+      walk(c)
     );
     const getStyle = (): Record<string, unknown> => {
       if (tag === 'strong' || tag === 'b')
@@ -144,9 +141,7 @@ function renderHtmlToPdf(
         };
       const style = (el as HTMLElement).style;
       if (style?.fontSize) {
-        const m = style.fontSize.match(
-          /^(\d+(?:\.\d+)?)px$/
-        );
+        const m = style.fontSize.match(/^(\d+(?:\.\d+)?)px$/);
         if (m)
           return {
             ...baseStyle,
@@ -221,10 +216,7 @@ function renderHtmlToPdf(
       ].includes(tag)
     ) {
       return [
-        <Text
-          key={`${tag}-${_htmlKey++}`}
-          style={getStyle()}
-        >
+        <Text key={`${tag}-${_htmlKey++}`} style={getStyle()}>
           {children}
         </Text>,
       ];
@@ -232,8 +224,8 @@ function renderHtmlToPdf(
     return children;
   };
 
-  const result = Array.from(doc.body.childNodes).flatMap(
-    (n) => walk(n)
+  const result = Array.from(doc.body.childNodes).flatMap((n) =>
+    walk(n)
   );
   return result.length
     ? result
@@ -248,14 +240,9 @@ function renderHtmlToPdf(
  * Backend may return relative signature paths (e.g. /uploads/signatures/file.png).
  * PDF renderer needs absolute URLs, so we prepend API_BASE_URL when needed.
  */
-function resolveAssetUrl(
-  url?: string | null
-): string | null {
+function resolveAssetUrl(url?: string | null): string | null {
   if (!url) return null;
-  if (
-    url.startsWith('http://') ||
-    url.startsWith('https://')
-  )
+  if (url.startsWith('http://') || url.startsWith('https://'))
     return url;
   if (url.startsWith('/')) {
     return `${API_BASE_URL.replace(/\/+$/, '')}${url}`;
@@ -399,21 +386,16 @@ export function ContractPdfDocument({
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionLabel}>
-            Contract Details
-          </Text>
+          <Text style={styles.sectionLabel}>Contract Details</Text>
           <View style={styles.row}>
             <Text style={styles.rowLabel}>Tenant:</Text>
             <Text>
-              {contract.tenant_name ||
-                `ID ${contract.tenant_id}`}
+              {contract.tenant_name || `ID ${contract.tenant_id}`}
             </Text>
           </View>
           <View style={styles.row}>
             <Text style={styles.rowLabel}>Doctor:</Text>
-            <Text>
-              {contract.doctor_name || 'Assigned doctor'}
-            </Text>
+            <Text>{contract.doctor_name || 'Assigned doctor'}</Text>
           </View>
           <View style={styles.row}>
             <Text style={styles.rowLabel}>Salary:</Text>
@@ -446,9 +428,7 @@ export function ContractPdfDocument({
           </View>
           {contract.terminated_reason ? (
             <View style={styles.row}>
-              <Text style={styles.rowLabel}>
-                Terminated:
-              </Text>
+              <Text style={styles.rowLabel}>Terminated:</Text>
               <Text>{contract.terminated_reason}</Text>
             </View>
           ) : null}
@@ -488,8 +468,7 @@ export function ContractPdfDocument({
               Hospital Signature
             </Text>
             <Text style={styles.signatureDate}>
-              {formatDate(contract.hospital_signed_at) ||
-                '—'}
+              {formatDate(contract.hospital_signed_at) || '—'}
             </Text>
             {hospitalSignatureUrl ? (
               <Image

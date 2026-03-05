@@ -21,11 +21,7 @@ import {
   QueryClientProvider,
 } from '@tanstack/react-query';
 import '@testing-library/jest-dom';
-import {
-  fireEvent,
-  render,
-  screen,
-} from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import { TenantLanding } from '../components/tenant-landing';
 import type { TenantLandingPageResponse } from '../interfaces';
@@ -140,28 +136,21 @@ describe('FUL-26 plan visibility on landing page', () => {
     // Stub fetch so useQuery calls don't fail uncontrollably
     global.fetch = jest.fn(
       async () =>
-        new Response(
-          JSON.stringify({ detail: 'Not found' }),
-          {
-            status: 404,
-            headers: {
-              'Content-Type': 'application/json',
-            },
-          }
-        )
+        new Response(JSON.stringify({ detail: 'Not found' }), {
+          status: 404,
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        })
     ) as unknown as typeof fetch;
   });
 
   it('renders only active plans and hides inactive ones', () => {
     const landing = buildLanding();
-    renderWithQuery(
-      <TenantLanding landingData={landing} />
-    );
+    renderWithQuery(<TenantLanding landingData={landing} />);
 
     // Switch to PLANS tab
-    fireEvent.click(
-      screen.getByRole('tab', { name: /plans/i })
-    );
+    fireEvent.click(screen.getByRole('tab', { name: /plans/i }));
 
     // Active plans should be visible
     expect(screen.getByText('Basic')).toBeTruthy();
@@ -186,28 +175,18 @@ describe('FUL-26 plan visibility on landing page', () => {
         },
       ],
     });
-    renderWithQuery(
-      <TenantLanding landingData={landing} />
-    );
+    renderWithQuery(<TenantLanding landingData={landing} />);
 
-    fireEvent.click(
-      screen.getByRole('tab', { name: /plans/i })
-    );
+    fireEvent.click(screen.getByRole('tab', { name: /plans/i }));
 
-    expect(
-      screen.getByText(/No plans configured yet/i)
-    ).toBeTruthy();
+    expect(screen.getByText(/No plans configured yet/i)).toBeTruthy();
   });
 
   it('displays plan price, duration and limits for active plans', () => {
     const landing = buildLanding();
-    renderWithQuery(
-      <TenantLanding landingData={landing} />
-    );
+    renderWithQuery(<TenantLanding landingData={landing} />);
 
-    fireEvent.click(
-      screen.getByRole('tab', { name: /plans/i })
-    );
+    fireEvent.click(screen.getByRole('tab', { name: /plans/i }));
 
     // Basic plan price
     expect(screen.getByText('€29.99')).toBeTruthy();
@@ -216,22 +195,15 @@ describe('FUL-26 plan visibility on landing page', () => {
     // Appointments limit for Basic
     expect(screen.getByText('5')).toBeTruthy();
     // Unlimited for Premium
-    const unlimitedElements =
-      screen.getAllByText('Unlimited');
-    expect(unlimitedElements.length).toBeGreaterThanOrEqual(
-      2
-    );
+    const unlimitedElements = screen.getAllByText('Unlimited');
+    expect(unlimitedElements.length).toBeGreaterThanOrEqual(2);
   });
 
   it("labels visible plans as 'Available' not 'Active'", () => {
     const landing = buildLanding();
-    renderWithQuery(
-      <TenantLanding landingData={landing} />
-    );
+    renderWithQuery(<TenantLanding landingData={landing} />);
 
-    fireEvent.click(
-      screen.getByRole('tab', { name: /plans/i })
-    );
+    fireEvent.click(screen.getByRole('tab', { name: /plans/i }));
 
     const badges = screen.getAllByText('Available');
     // One badge per active plan (Basic + Premium)
@@ -249,27 +221,20 @@ describe('FUL-26 enrollment subscribe button', () => {
     useAuthStore.getState().clearAuth();
     global.fetch = jest.fn(
       async () =>
-        new Response(
-          JSON.stringify({ detail: 'Not found' }),
-          {
-            status: 404,
-            headers: {
-              'Content-Type': 'application/json',
-            },
-          }
-        )
+        new Response(JSON.stringify({ detail: 'Not found' }), {
+          status: 404,
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        })
     ) as unknown as typeof fetch;
   });
 
   it('shows subscribe buttons for each active plan', () => {
     const landing = buildLanding();
-    renderWithQuery(
-      <TenantLanding landingData={landing} />
-    );
+    renderWithQuery(<TenantLanding landingData={landing} />);
 
-    fireEvent.click(
-      screen.getByRole('tab', { name: /plans/i })
-    );
+    fireEvent.click(screen.getByRole('tab', { name: /plans/i }));
 
     const subscribeButtons = screen.getAllByRole('button', {
       name: /subscribe to this plan/i,
@@ -304,9 +269,7 @@ describe('FUL-26 cross-tenant isolation (service-level)', () => {
 
     const calledUrl = (mockFetch as jest.Mock).mock
       .calls[0]?.[0] as string;
-    expect(calledUrl).toContain(
-      '/user-tenant-plans/tenant/42'
-    );
+    expect(calledUrl).toContain('/user-tenant-plans/tenant/42');
   });
 
   it("tenantPlansService propagates 403 when accessing another tenant's plans", async () => {
@@ -419,8 +382,7 @@ describe('FUL-26 pricing validation (service-level)', () => {
     const { tenantPlansService } =
       await import('../services/tenant-plans.service');
 
-    const bounds =
-      await tenantPlansService.pricingBounds(1);
+    const bounds = await tenantPlansService.pricingBounds(1);
     expect(bounds.min_price).toBe(50);
     expect(bounds.max_price).toBe(200);
     expect(bounds.base_price).toBe(100);
@@ -447,8 +409,7 @@ describe('FUL-26 pricing validation (service-level)', () => {
     const { tenantPlansService } =
       await import('../services/tenant-plans.service');
 
-    const bounds =
-      await tenantPlansService.pricingBounds(1);
+    const bounds = await tenantPlansService.pricingBounds(1);
     expect(bounds.min_price).toBeNull();
     expect(bounds.max_price).toBeNull();
     expect(bounds.base_price).toBeNull();

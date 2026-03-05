@@ -15,8 +15,8 @@ function DashboardProfilePage() {
           Profile
         </h1>
         <p className="text-sm text-muted-foreground">
-          Manage your global account details and tenant
-          patient profile details.
+          Manage your global account details and tenant patient
+          profile details.
         </p>
       </div>
       <DashboardProfilePanel />

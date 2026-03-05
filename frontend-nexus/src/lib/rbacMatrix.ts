@@ -40,17 +40,9 @@ const rbacMatrix: Record<RouteKey, Role[]> = {
     'SALES',
   ],
   DASHBOARD_DATA: ['SUPER_ADMIN', 'TENANT_MANAGER'],
-  DASHBOARD_FORMS: [
-    'SUPER_ADMIN',
-    'TENANT_MANAGER',
-    'DOCTOR',
-  ],
+  DASHBOARD_FORMS: ['SUPER_ADMIN', 'TENANT_MANAGER', 'DOCTOR'],
   DASHBOARD_GLOBAL_STATE: ['SUPER_ADMIN'],
-  DASHBOARD_LANDING_PAGES: [
-    'SUPER_ADMIN',
-    'TENANT_MANAGER',
-    'SALES',
-  ],
+  DASHBOARD_LANDING_PAGES: ['SUPER_ADMIN', 'TENANT_MANAGER', 'SALES'],
   DASHBOARD_TENANT: ['TENANT_MANAGER'],
   DASHBOARD_TENANTS: ['SUPER_ADMIN'],
   DASHBOARD_CLIENTS: ['CLIENT'],
@@ -70,8 +62,6 @@ export function canAccess(
 }
 
 // Returns all roles that are allowed to access the given route key.
-export function getAllowedRoles(
-  routeKey: RouteKey
-): Role[] {
+export function getAllowedRoles(routeKey: RouteKey): Role[] {
   return rbacMatrix[routeKey] ?? [];
 }

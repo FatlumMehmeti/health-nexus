@@ -73,10 +73,7 @@ export function HtmlTermsEditor({
   React.useEffect(() => {
     if (!editor) return;
     const current = editor.getHTML();
-    if (
-      value !== current &&
-      (value || current !== '<p></p>')
-    ) {
+    if (value !== current && (value || current !== '<p></p>')) {
       editor.commands.setContent(value || '', {
         emitUpdate: false,
       });
@@ -168,11 +165,7 @@ export function HtmlTermsEditor({
             size="sm"
             className="h-8 min-w-8 px-1.5 font-mono text-xs"
             onClick={() =>
-              editor
-                .chain()
-                .focus()
-                .setFontSize(`${px}px`)
-                .run()
+              editor.chain().focus().setFontSize(`${px}px`).run()
             }
             disabled={disabled}
             aria-label={`Font size ${px}px`}
@@ -189,11 +182,7 @@ export function HtmlTermsEditor({
             textAlign: 'left',
           })}
           onPressedChange={() =>
-            editor
-              .chain()
-              .focus()
-              .setTextAlign('left')
-              .run()
+            editor.chain().focus().setTextAlign('left').run()
           }
           disabled={disabled}
           aria-label="Align left"
@@ -207,11 +196,7 @@ export function HtmlTermsEditor({
             textAlign: 'center',
           })}
           onPressedChange={() =>
-            editor
-              .chain()
-              .focus()
-              .setTextAlign('center')
-              .run()
+            editor.chain().focus().setTextAlign('center').run()
           }
           disabled={disabled}
           aria-label="Align center"
@@ -225,11 +210,7 @@ export function HtmlTermsEditor({
             textAlign: 'right',
           })}
           onPressedChange={() =>
-            editor
-              .chain()
-              .focus()
-              .setTextAlign('right')
-              .run()
+            editor.chain().focus().setTextAlign('right').run()
           }
           disabled={disabled}
           aria-label="Align right"
@@ -243,11 +224,7 @@ export function HtmlTermsEditor({
             textAlign: 'justify',
           })}
           onPressedChange={() =>
-            editor
-              .chain()
-              .focus()
-              .setTextAlign('justify')
-              .run()
+            editor.chain().focus().setTextAlign('justify').run()
           }
           disabled={disabled}
           aria-label="Justify"

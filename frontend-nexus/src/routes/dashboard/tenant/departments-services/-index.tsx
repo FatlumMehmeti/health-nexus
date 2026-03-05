@@ -46,13 +46,13 @@ import {
   type DepartmentDraft,
   type DepartmentFormModalState,
   type ServiceFormState,
-} from './constants';
+} from '../-constants';
 import {
   Field,
   RowActions,
   RowIconActionButton,
   StandardTable,
-} from './shared';
+} from '../-shared';
 import {
   createLocalId,
   emptyDepartmentForm,
@@ -61,16 +61,11 @@ import {
   getErrorMessage,
   mapTenantDepartmentToDraft,
   nullIfBlank,
-} from './utils';
+} from '../-utils';
 
-export function TenantDepartmentsManager({
-  onSaved,
-}: {
-  onSaved: () => void;
-}) {
+export function TenantDepartmentsManager() {
   const queryClient = useQueryClient();
-  const { open: openDialog, close: closeDialog } =
-    useDialogStore();
+  const { open: openDialog, close: closeDialog } = useDialogStore();
 
   const catalogQuery = useQuery({
     queryKey: QUERY_KEYS.departmentCatalog,
@@ -94,23 +89,16 @@ export function TenantDepartmentsManager({
     id: number;
     name: string;
   } | null>(null);
-  const [departmentFormOpen, setDepartmentFormOpen] =
-    useState(false);
+  const [departmentFormOpen, setDepartmentFormOpen] = useState(false);
   const [departmentForm, setDepartmentForm] =
-    useState<DepartmentFormModalState>(
-      emptyDepartmentForm()
-    );
-  const [
-    editingDepartmentLocalId,
-    setEditingDepartmentLocalId,
-  ] = useState<string | null>(null);
+    useState<DepartmentFormModalState>(emptyDepartmentForm());
+  const [editingDepartmentLocalId, setEditingDepartmentLocalId] =
+    useState<string | null>(null);
 
   useEffect(() => {
     if (!tenantDepartmentsQuery.data) return;
     setRows(
-      tenantDepartmentsQuery.data.map(
-        mapTenantDepartmentToDraft
-      )
+      tenantDepartmentsQuery.data.map(mapTenantDepartmentToDraft)
     );
   }, [tenantDepartmentsQuery.data]);
 
@@ -130,7 +118,6 @@ export function TenantDepartmentsManager({
       void queryClient.invalidateQueries({
         queryKey: QUERY_KEYS.departments,
       });
-      onSaved();
     },
     onError: (err) => {
       toast.error('Failed to save departments', {
@@ -145,9 +132,7 @@ export function TenantDepartmentsManager({
     const seen = new Set<number>();
     for (const row of candidateRows) {
       if (!row.department_id) {
-        toast.error(
-          'Each department row must select a department'
-        );
+        toast.error('Each department row must select a department');
         return false;
       }
       if (seen.has(row.department_id)) {
@@ -162,9 +147,7 @@ export function TenantDepartmentsManager({
     return true;
   };
 
-  const persistRows = (
-    candidateRows: DepartmentDraft[]
-  ) => {
+  const persistRows = (candidateRows: DepartmentDraft[]) => {
     if (!validateRows(candidateRows)) return false;
     saveMutation.mutate(candidateRows);
     return true;
@@ -178,14 +161,12 @@ export function TenantDepartmentsManager({
     if (
       rows.some(
         (row) =>
-          row.department_id ===
-            departmentForm.department_id &&
+          row.department_id === departmentForm.department_id &&
           row.local_id !== editingDepartmentLocalId
       )
     ) {
       toast.error('Duplicate department selected', {
-        description:
-          'Each department can appear only once.',
+        description: 'Each department can appear only once.',
       });
       return;
     }
@@ -225,17 +206,14 @@ export function TenantDepartmentsManager({
     setDepartmentFormOpen(false);
   };
 
-  const confirmRemoveDepartment = (
-    row: DepartmentDraft
-  ) => {
-    const deptName =
-      row.department_name || 'selected department';
+  const confirmRemoveDepartment = (row: DepartmentDraft) => {
+    const deptName = row.department_name || 'selected department';
     openDialog({
       title: 'Remove Department?',
       content: (
         <p className="text-muted-foreground text-sm">
-          Remove "{deptName}" from the list? This action
-          saves immediately.
+          Remove "{deptName}" from the list? This action saves
+          immediately.
         </p>
       ),
       footer: (
@@ -267,18 +245,33 @@ export function TenantDepartmentsManager({
   const loadError =
     catalogQuery.error ?? tenantDepartmentsQuery.error;
   const isLoading =
-    catalogQuery.isLoading ||
-    tenantDepartmentsQuery.isLoading;
+    catalogQuery.isLoading || tenantDepartmentsQuery.isLoading;
 
   return (
     <>
       <Card>
-        <CardHeader>
-          <CardTitle>Departments + Services</CardTitle>
-          <CardDescription>
-            Add, edit, and remove departments. Confirmed
-            actions save immediately.
-          </CardDescription>
+        <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h1 className="text-2xl font-bold sm:text-3xl">
+              Departments + Services
+            </h1>
+            <p className="text-muted-foreground">
+              Add, edit, and remove departments. Confirmed actions save
+              immediately.
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              disabled={saveMutation.isPending}
+              onClick={() => {
+                setEditingDepartmentLocalId(null);
+                setDepartmentForm(emptyDepartmentForm());
+                setDepartmentFormOpen(true);
+              }}
+            >
+              + Add department
+            </Button>
+          </div>
         </CardHeader>
         <CardContent className="space-y-4">
           {isLoading ? (
@@ -289,22 +282,6 @@ export function TenantDepartmentsManager({
             </p>
           ) : (
             <>
-              <div className="flex justify-end">
-                <Button
-                  variant="outline"
-                  disabled={saveMutation.isPending}
-                  onClick={() => {
-                    setEditingDepartmentLocalId(null);
-                    setDepartmentForm(
-                      emptyDepartmentForm()
-                    );
-                    setDepartmentFormOpen(true);
-                  }}
-                >
-                  + Add department
-                </Button>
-              </div>
-
               <StandardTable minWidthClass="min-w-[820px]">
                 <TableHeader>
                   <TableRow>
@@ -362,8 +339,7 @@ export function TenantDepartmentsManager({
                                 variant="outline"
                                 size="sm"
                                 disabled={
-                                  !row.id ||
-                                  saveMutation.isPending
+                                  !row.id || saveMutation.isPending
                                 }
                                 onClick={() =>
                                   row.id
@@ -379,36 +355,26 @@ export function TenantDepartmentsManager({
                               <RowIconActionButton
                                 mode="edit"
                                 label="Edit department"
-                                disabled={
-                                  saveMutation.isPending
-                                }
+                                disabled={saveMutation.isPending}
                                 onClick={() => {
                                   setEditingDepartmentLocalId(
                                     row.local_id
                                   );
                                   setDepartmentForm({
-                                    department_id:
-                                      row.department_id,
-                                    phone_number:
-                                      row.phone_number,
+                                    department_id: row.department_id,
+                                    phone_number: row.phone_number,
                                     email: row.email,
                                     location: row.location,
                                   });
-                                  setDepartmentFormOpen(
-                                    true
-                                  );
+                                  setDepartmentFormOpen(true);
                                 }}
                               />
                               <RowIconActionButton
                                 mode="delete"
                                 label="Remove department"
-                                disabled={
-                                  saveMutation.isPending
-                                }
+                                disabled={saveMutation.isPending}
                                 onClick={() =>
-                                  confirmRemoveDepartment(
-                                    row
-                                  )
+                                  confirmRemoveDepartment(row)
                                 }
                               />
                             </RowActions>
@@ -420,8 +386,8 @@ export function TenantDepartmentsManager({
                 </TableBody>
               </StandardTable>
               <p className="text-xs text-muted-foreground">
-                Departments are saved automatically after
-                Add, Edit, and Remove actions.
+                Departments are saved automatically after Add, Edit,
+                and Remove actions.
               </p>
             </>
           )}
@@ -439,7 +405,6 @@ export function TenantDepartmentsManager({
           void queryClient.invalidateQueries({
             queryKey: QUERY_KEYS.departments,
           });
-          onSaved();
         }}
       />
 
@@ -468,9 +433,7 @@ export function TenantDepartmentsManager({
           </DialogHeader>
           <div className="grid gap-3 md:grid-cols-2">
             <Field className="md:col-span-2">
-              <Label htmlFor="dept-modal-select">
-                Department
-              </Label>
+              <Label htmlFor="dept-modal-select">Department</Label>
               <select
                 id="dept-modal-select"
                 className="border-input bg-background h-9 w-full rounded-md border px-3 text-sm"
@@ -493,9 +456,7 @@ export function TenantDepartmentsManager({
               </select>
             </Field>
             <Field>
-              <Label htmlFor="dept-modal-phone">
-                Phone
-              </Label>
+              <Label htmlFor="dept-modal-phone">Phone</Label>
               <Input
                 id="dept-modal-phone"
                 value={departmentForm.phone_number}
@@ -509,9 +470,7 @@ export function TenantDepartmentsManager({
               />
             </Field>
             <Field>
-              <Label htmlFor="dept-modal-email">
-                Email
-              </Label>
+              <Label htmlFor="dept-modal-email">Email</Label>
               <Input
                 id="dept-modal-email"
                 type="email"
@@ -526,9 +485,7 @@ export function TenantDepartmentsManager({
               />
             </Field>
             <Field className="md:col-span-2">
-              <Label htmlFor="dept-modal-location">
-                Location
-              </Label>
+              <Label htmlFor="dept-modal-location">Location</Label>
               <Input
                 id="dept-modal-location"
                 value={departmentForm.location}
@@ -583,11 +540,8 @@ function ServicesModal({
   onChanged: () => void;
 }) {
   const queryClient = useQueryClient();
-  const { open: openDialog, close: closeDialog } =
-    useDialogStore();
-  const [mode, setMode] = useState<
-    'create' | 'edit' | null
-  >(null);
+  const { open: openDialog, close: closeDialog } = useDialogStore();
+  const [mode, setMode] = useState<'create' | 'edit' | null>(null);
   const [editingServiceId, setEditingServiceId] = useState<
     number | null
   >(null);
@@ -604,15 +558,9 @@ function ServicesModal({
   }, [open]);
 
   const servicesQuery = useQuery({
-    queryKey: [
-      'tenant-manager',
-      'services',
-      tenantDepartmentId,
-    ],
+    queryKey: ['tenant-manager', 'services', tenantDepartmentId],
     queryFn: () =>
-      tenantsService.listServices(
-        tenantDepartmentId as number
-      ),
+      tenantsService.listServices(tenantDepartmentId as number),
     enabled: open && !!tenantDepartmentId,
   });
 
@@ -700,15 +648,13 @@ function ServicesModal({
     },
   });
 
-  const confirmDeleteService = (
-    service: ServiceLandingItem
-  ) => {
+  const confirmDeleteService = (service: ServiceLandingItem) => {
     openDialog({
       title: 'Delete Service?',
       content: (
         <p className="text-muted-foreground text-sm">
-          Are you sure you want to delete "{service.name}"?
-          This action cannot be undone.
+          Are you sure you want to delete "{service.name}"? This
+          action cannot be undone.
         </p>
       ),
       footer: (
@@ -719,9 +665,7 @@ function ServicesModal({
           <Button
             variant="destructive"
             loading={deleteMutation.isPending}
-            onClick={() =>
-              deleteMutation.mutate(service.id)
-            }
+            onClick={() => deleteMutation.mutate(service.id)}
           >
             Yes, delete
           </Button>
@@ -800,9 +744,8 @@ function ServicesModal({
             {departmentName || 'Department'} Services
           </DialogTitle>
           <DialogDescription>
-            Manage services for this department. These
-            changes appear under departments on the public
-            landing page.
+            Manage services for this department. These changes appear
+            under departments on the public landing page.
           </DialogDescription>
         </DialogHeader>
 
@@ -831,9 +774,7 @@ function ServicesModal({
                   <TableHead>Name</TableHead>
                   <TableHead>Price</TableHead>
                   <TableHead>Description</TableHead>
-                  <TableHead className="w-0">
-                    Actions
-                  </TableHead>
+                  <TableHead className="w-0">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -852,8 +793,7 @@ function ServicesModal({
                       {getErrorMessage(servicesQuery.error)}
                     </TableCell>
                   </TableRow>
-                ) : (servicesQuery.data?.length ?? 0) ===
-                  0 ? (
+                ) : (servicesQuery.data?.length ?? 0) === 0 ? (
                   <TableRow>
                     <TableCell
                       colSpan={4}
@@ -863,41 +803,35 @@ function ServicesModal({
                     </TableCell>
                   </TableRow>
                 ) : (
-                  (servicesQuery.data ?? []).map(
-                    (service) => (
-                      <TableRow key={service.id}>
-                        <TableCell className="font-medium">
-                          {service.name}
-                        </TableCell>
-                        <TableCell>
-                          {formatCurrency(service.price)}
-                        </TableCell>
-                        <TableCell className="max-w-sm truncate text-muted-foreground">
-                          {service.description || '-'}
-                        </TableCell>
-                        <TableCell>
-                          <RowActions>
-                            <RowIconActionButton
-                              mode="edit"
-                              label="Edit service"
-                              onClick={() =>
-                                startEdit(service)
-                              }
-                            />
-                            <RowIconActionButton
-                              mode="delete"
-                              label="Delete service"
-                              onClick={() =>
-                                confirmDeleteService(
-                                  service
-                                )
-                              }
-                            />
-                          </RowActions>
-                        </TableCell>
-                      </TableRow>
-                    )
-                  )
+                  (servicesQuery.data ?? []).map((service) => (
+                    <TableRow key={service.id}>
+                      <TableCell className="font-medium">
+                        {service.name}
+                      </TableCell>
+                      <TableCell>
+                        {formatCurrency(service.price)}
+                      </TableCell>
+                      <TableCell className="max-w-sm truncate text-muted-foreground">
+                        {service.description || '-'}
+                      </TableCell>
+                      <TableCell>
+                        <RowActions>
+                          <RowIconActionButton
+                            mode="edit"
+                            label="Edit service"
+                            onClick={() => startEdit(service)}
+                          />
+                          <RowIconActionButton
+                            mode="delete"
+                            label="Delete service"
+                            onClick={() =>
+                              confirmDeleteService(service)
+                            }
+                          />
+                        </RowActions>
+                      </TableCell>
+                    </TableRow>
+                  ))
                 )}
               </TableBody>
             </StandardTable>
@@ -923,9 +857,7 @@ function ServicesModal({
         <DialogContent className="max-h-[85vh] w-[calc(100vw-2rem)] max-w-2xl overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              {mode === 'create'
-                ? 'Add Service'
-                : 'Edit Service'}
+              {mode === 'create' ? 'Add Service' : 'Edit Service'}
             </DialogTitle>
             <DialogDescription>
               {mode === 'create'
@@ -964,9 +896,7 @@ function ServicesModal({
               />
             </Field>
             <Field className="md:col-span-2">
-              <Label htmlFor="service-description">
-                Description
-              </Label>
+              <Label htmlFor="service-description">Description</Label>
               <textarea
                 id="service-description"
                 className="border-input bg-background min-h-20 w-full rounded-md border px-3 py-2 text-sm"
@@ -994,16 +924,11 @@ function ServicesModal({
             </label>
           </div>
           <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={closeServiceForm}
-            >
+            <Button variant="outline" onClick={closeServiceForm}>
               Cancel
             </Button>
             <Button onClick={submit} loading={isSubmitting}>
-              {mode === 'create'
-                ? 'Create service'
-                : 'Save service'}
+              {mode === 'create' ? 'Create service' : 'Save service'}
             </Button>
           </DialogFooter>
         </DialogContent>

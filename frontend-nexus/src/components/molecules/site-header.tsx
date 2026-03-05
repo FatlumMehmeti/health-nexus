@@ -24,16 +24,12 @@ export function SiteHeader() {
           {isDark ? (
             <>
               <SunIcon className="size-4" />
-              <span className="sr-only">
-                Switch to light theme
-              </span>
+              <span className="sr-only">Switch to light theme</span>
             </>
           ) : (
             <>
               <MoonIcon className="size-4" />
-              <span className="sr-only">
-                Switch to dark theme
-              </span>
+              <span className="sr-only">Switch to dark theme</span>
             </>
           )}
         </Button>

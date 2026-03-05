@@ -1,8 +1,4 @@
-import type {
-  Role,
-  RoleCreate,
-  RoleUpdate,
-} from '@/interfaces';
+import type { Role, RoleCreate, RoleUpdate } from '@/interfaces';
 import { apiFetch } from '@/lib/api-client';
 
 const BASE = '/roles';
@@ -10,8 +6,7 @@ const BASE = '/roles';
 export const rolesService = {
   list: (params?: { skip?: number; limit?: number }) => {
     const search = new URLSearchParams();
-    if (params?.skip != null)
-      search.set('skip', String(params.skip));
+    if (params?.skip != null) search.set('skip', String(params.skip));
     if (params?.limit != null)
       search.set('limit', String(params.limit));
     const qs = search.toString();

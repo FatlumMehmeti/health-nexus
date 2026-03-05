@@ -16,16 +16,8 @@ import {
   QueryClient,
   QueryClientProvider,
 } from '@tanstack/react-query';
-import {
-  createRouter,
-  RouterProvider,
-} from '@tanstack/react-router';
-import {
-  act,
-  render,
-  screen,
-  waitFor,
-} from '@testing-library/react';
+import { createRouter, RouterProvider } from '@tanstack/react-router';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import { routeTree } from '../routeTree.gen';
 
 jest.mock(
@@ -79,9 +71,7 @@ function createTestRouter() {
   });
 }
 
-function renderApp(
-  router: ReturnType<typeof createTestRouter>
-) {
+function renderApp(router: ReturnType<typeof createTestRouter>) {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
@@ -96,86 +86,81 @@ beforeEach(() => {
   useAuthStore.getState().clearAuth();
   clearTokens();
 
-  globalThis.fetch = jest.fn(
-    async (input: RequestInfo | URL) => {
-      const url =
-        typeof input === 'string'
-          ? input
-          : input.toString();
-      if (url.includes('/auth/me')) {
-        return new Response(
-          JSON.stringify({
-            message: 'You are authenticated',
-            user: {
-              user_id: '1',
-              email: 'test@example.com',
-              role: 'admin',
-            },
-          }),
-          {
-            status: 200,
-            headers: {
-              'Content-Type': 'application/json',
-            },
-          }
-        );
-      }
-      if (
-        url.includes('/api/superadmin/tenants') ||
-        url.includes('/superadmin/tenants')
-      ) {
-        return new Response(
-          JSON.stringify([
-            {
-              id: 1,
-              name: 'Test Clinic',
-              email: 'test@clinic.com',
-              licence_number: 'TST-001',
-              status: 'pending',
-              created_at: '2026-02-01T00:00:00Z',
-              updated_at: '2026-02-01T00:00:00Z',
-            },
-          ]),
-          {
-            status: 200,
-            headers: {
-              'Content-Type': 'application/json',
-            },
-          }
-        );
-      }
-      if (url.includes('/audit-logs')) {
-        return new Response(
-          JSON.stringify([
-            {
-              id: 1,
-              tenant_id: 1,
-              event_type: 'STATUS_CHANGE',
-              entity_name: 'tenant',
-              entity_id: 1,
-              old_value: { status: 'pending' },
-              new_value: { status: 'approved' },
-              performed_by_role: 'SUPER_ADMIN',
-              reason: null,
-              created_at: '2026-02-01T00:00:00Z',
-            },
-          ]),
-          {
-            status: 200,
-            headers: {
-              'Content-Type': 'application/json',
-            },
-          }
-        );
-      }
-      return new Response(JSON.stringify({}), {
-        status: 200,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
+  globalThis.fetch = jest.fn(async (input: RequestInfo | URL) => {
+    const url = typeof input === 'string' ? input : input.toString();
+    if (url.includes('/auth/me')) {
+      return new Response(
+        JSON.stringify({
+          message: 'You are authenticated',
+          user: {
+            user_id: '1',
+            email: 'test@example.com',
+            role: 'admin',
+          },
+        }),
+        {
+          status: 200,
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }
+      );
     }
-  ) as unknown as typeof fetch;
+    if (
+      url.includes('/api/superadmin/tenants') ||
+      url.includes('/superadmin/tenants')
+    ) {
+      return new Response(
+        JSON.stringify([
+          {
+            id: 1,
+            name: 'Test Clinic',
+            email: 'test@clinic.com',
+            licence_number: 'TST-001',
+            status: 'pending',
+            created_at: '2026-02-01T00:00:00Z',
+            updated_at: '2026-02-01T00:00:00Z',
+          },
+        ]),
+        {
+          status: 200,
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+    }
+    if (url.includes('/audit-logs')) {
+      return new Response(
+        JSON.stringify([
+          {
+            id: 1,
+            tenant_id: 1,
+            event_type: 'STATUS_CHANGE',
+            entity_name: 'tenant',
+            entity_id: 1,
+            old_value: { status: 'pending' },
+            new_value: { status: 'approved' },
+            performed_by_role: 'SUPER_ADMIN',
+            reason: null,
+            created_at: '2026-02-01T00:00:00Z',
+          },
+        ]),
+        {
+          status: 200,
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+    }
+    return new Response(JSON.stringify({}), {
+      status: 200,
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+  }) as unknown as typeof fetch;
 });
 
 describe('FUL-12 tenant management and audit logs', () => {
@@ -200,9 +185,7 @@ describe('FUL-12 tenant management and audit logs', () => {
         globalThis.fetch = jest.fn(
           async (input: RequestInfo | URL) => {
             const url =
-              typeof input === 'string'
-                ? input
-                : input.toString();
+              typeof input === 'string' ? input : input.toString();
             if (url.includes('/auth/me')) {
               return new Response(
                 JSON.stringify({

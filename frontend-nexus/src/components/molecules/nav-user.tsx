@@ -65,9 +65,7 @@ export function NavUser({
   const handleOpenPlans = () => {
     dialog.open({
       content: (
-        <SubscriptionPlansModal
-          onClose={() => dialog.close()}
-        />
+        <SubscriptionPlansModal onClose={() => dialog.close()} />
       ),
       showCloseButton: true,
     });
@@ -103,8 +101,7 @@ export function NavUser({
                   alt={display.name}
                 />
                 <AvatarFallback className="rounded-lg">
-                  {display.name.slice(0, 2).toUpperCase() ||
-                    '?'}
+                  {display.name.slice(0, 2).toUpperCase() || '?'}
                 </AvatarFallback>
               </Avatar>
               <div className="grid flex-1 text-left text-sm leading-tight">
@@ -132,9 +129,7 @@ export function NavUser({
                     alt={display.name}
                   />
                   <AvatarFallback className="rounded-lg">
-                    {display.name
-                      .slice(0, 2)
-                      .toUpperCase() || '?'}
+                    {display.name.slice(0, 2).toUpperCase() || '?'}
                   </AvatarFallback>
                 </Avatar>
                 <div className="grid flex-1 text-left text-sm leading-tight">

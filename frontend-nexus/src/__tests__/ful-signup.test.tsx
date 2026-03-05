@@ -17,10 +17,7 @@ import {
   QueryClient,
   QueryClientProvider,
 } from '@tanstack/react-query';
-import {
-  createRouter,
-  RouterProvider,
-} from '@tanstack/react-router';
+import { createRouter, RouterProvider } from '@tanstack/react-router';
 import '@testing-library/jest-dom';
 import {
   act,
@@ -70,33 +67,29 @@ beforeEach(() => {
 
 describe('FUL-Signup form', () => {
   it('navigates to /login after successful signup (201)', async () => {
-    global.fetch = jest.fn(
-      async (input: RequestInfo | URL) => {
-        const url =
-          typeof input === 'string'
-            ? input
-            : input.toString();
-        if (url.includes('/api/auth/signup')) {
-          return new Response(
-            JSON.stringify({
-              user_id: '99',
-              email: 'new@test.com',
-              role: 'client',
-            }),
-            {
-              status: 201,
-              headers: {
-                'Content-Type': 'application/json',
-              },
-            }
-          );
-        }
-        // /auth/me → unauthenticated (so login page doesn't auto-redirect)
-        return new Response(null, {
-          status: 401,
-        });
+    global.fetch = jest.fn(async (input: RequestInfo | URL) => {
+      const url =
+        typeof input === 'string' ? input : input.toString();
+      if (url.includes('/api/auth/signup')) {
+        return new Response(
+          JSON.stringify({
+            user_id: '99',
+            email: 'new@test.com',
+            role: 'client',
+          }),
+          {
+            status: 201,
+            headers: {
+              'Content-Type': 'application/json',
+            },
+          }
+        );
       }
-    ) as unknown as typeof fetch;
+      // /auth/me → unauthenticated (so login page doesn't auto-redirect)
+      return new Response(null, {
+        status: 401,
+      });
+    }) as unknown as typeof fetch;
 
     const router = createTestRouter();
     renderWithProviders(router);
@@ -106,9 +99,7 @@ describe('FUL-Signup form', () => {
     });
 
     await waitFor(() => {
-      expect(
-        screen.getByTestId('signup-page')
-      ).toBeTruthy();
+      expect(screen.getByTestId('signup-page')).toBeTruthy();
     });
 
     fireEvent.change(screen.getByLabelText(/first name/i), {
@@ -123,12 +114,9 @@ describe('FUL-Signup form', () => {
     fireEvent.change(screen.getByLabelText(/^password/i), {
       target: { value: 'secret1234' },
     });
-    fireEvent.change(
-      screen.getByLabelText(/confirm password/i),
-      {
-        target: { value: 'secret1234' },
-      }
-    );
+    fireEvent.change(screen.getByLabelText(/confirm password/i), {
+      target: { value: 'secret1234' },
+    });
 
     await act(async () => {
       fireEvent.click(
@@ -144,30 +132,26 @@ describe('FUL-Signup form', () => {
   });
 
   it('shows inline error on 409 duplicate email without redirecting', async () => {
-    global.fetch = jest.fn(
-      async (input: RequestInfo | URL) => {
-        const url =
-          typeof input === 'string'
-            ? input
-            : input.toString();
-        if (url.includes('/api/auth/signup')) {
-          return new Response(
-            JSON.stringify({
-              detail: 'Email already registered',
-            }),
-            {
-              status: 409,
-              headers: {
-                'Content-Type': 'application/json',
-              },
-            }
-          );
-        }
-        return new Response(null, {
-          status: 401,
-        });
+    global.fetch = jest.fn(async (input: RequestInfo | URL) => {
+      const url =
+        typeof input === 'string' ? input : input.toString();
+      if (url.includes('/api/auth/signup')) {
+        return new Response(
+          JSON.stringify({
+            detail: 'Email already registered',
+          }),
+          {
+            status: 409,
+            headers: {
+              'Content-Type': 'application/json',
+            },
+          }
+        );
       }
-    ) as unknown as typeof fetch;
+      return new Response(null, {
+        status: 401,
+      });
+    }) as unknown as typeof fetch;
 
     const router = createTestRouter();
     renderWithProviders(router);
@@ -177,9 +161,7 @@ describe('FUL-Signup form', () => {
     });
 
     await waitFor(() => {
-      expect(
-        screen.getByTestId('signup-page')
-      ).toBeTruthy();
+      expect(screen.getByTestId('signup-page')).toBeTruthy();
     });
 
     fireEvent.change(screen.getByLabelText(/first name/i), {
@@ -194,12 +176,9 @@ describe('FUL-Signup form', () => {
     fireEvent.change(screen.getByLabelText(/^password/i), {
       target: { value: 'secret1234' },
     });
-    fireEvent.change(
-      screen.getByLabelText(/confirm password/i),
-      {
-        target: { value: 'secret1234' },
-      }
-    );
+    fireEvent.change(screen.getByLabelText(/confirm password/i), {
+      target: { value: 'secret1234' },
+    });
 
     await act(async () => {
       fireEvent.click(
@@ -233,9 +212,7 @@ describe('FUL-Signup form', () => {
     });
 
     await waitFor(() => {
-      expect(
-        screen.getByTestId('signup-page')
-      ).toBeTruthy();
+      expect(screen.getByTestId('signup-page')).toBeTruthy();
     });
 
     fireEvent.change(screen.getByLabelText(/first name/i), {
@@ -250,12 +227,9 @@ describe('FUL-Signup form', () => {
     fireEvent.change(screen.getByLabelText(/^password/i), {
       target: { value: 'secret1234' },
     });
-    fireEvent.change(
-      screen.getByLabelText(/confirm password/i),
-      {
-        target: { value: 'differentpassword' },
-      }
-    );
+    fireEvent.change(screen.getByLabelText(/confirm password/i), {
+      target: { value: 'differentpassword' },
+    });
 
     await act(async () => {
       fireEvent.click(

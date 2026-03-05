@@ -47,12 +47,7 @@ import {
   type VisibilityState,
 } from '@tanstack/react-table';
 import * as React from 'react';
-import {
-  Area,
-  AreaChart,
-  CartesianGrid,
-  XAxis,
-} from 'recharts';
+import { Area, AreaChart, CartesianGrid, XAxis } from 'recharts';
 import { toast } from 'sonner';
 import { z } from 'zod';
 
@@ -152,8 +147,7 @@ const columns: ColumnDef<z.infer<typeof schema>>[] = [
         <Checkbox
           checked={
             table.getIsAllPageRowsSelected() ||
-            (table.getIsSomePageRowsSelected() &&
-              'indeterminate')
+            (table.getIsSomePageRowsSelected() && 'indeterminate')
           }
           onCheckedChange={(value) =>
             table.toggleAllPageRowsSelected(!!value)
@@ -166,9 +160,7 @@ const columns: ColumnDef<z.infer<typeof schema>>[] = [
       <div className="flex items-center justify-center">
         <Checkbox
           checked={row.getIsSelected()}
-          onCheckedChange={(value) =>
-            row.toggleSelected(!!value)
-          }
+          onCheckedChange={(value) => row.toggleSelected(!!value)}
           aria-label="Select row"
         />
       </div>
@@ -217,17 +209,13 @@ const columns: ColumnDef<z.infer<typeof schema>>[] = [
   },
   {
     accessorKey: 'target',
-    header: () => (
-      <div className="w-full text-right">Target</div>
-    ),
+    header: () => <div className="w-full text-right">Target</div>,
     cell: ({ row }) => (
       <form
         onSubmit={(e) => {
           e.preventDefault();
           toast.promise(
-            new Promise((resolve) =>
-              setTimeout(resolve, 1000)
-            ),
+            new Promise((resolve) => setTimeout(resolve, 1000)),
             {
               loading: `Saving ${row.original.header}`,
               success: 'Done',
@@ -252,17 +240,13 @@ const columns: ColumnDef<z.infer<typeof schema>>[] = [
   },
   {
     accessorKey: 'limit',
-    header: () => (
-      <div className="w-full text-right">Limit</div>
-    ),
+    header: () => <div className="w-full text-right">Limit</div>,
     cell: ({ row }) => (
       <form
         onSubmit={(e) => {
           e.preventDefault();
           toast.promise(
-            new Promise((resolve) =>
-              setTimeout(resolve, 1000)
-            ),
+            new Promise((resolve) => setTimeout(resolve, 1000)),
             {
               loading: `Saving ${row.original.header}`,
               success: 'Done',
@@ -289,8 +273,7 @@ const columns: ColumnDef<z.infer<typeof schema>>[] = [
     accessorKey: 'reviewer',
     header: 'Reviewer',
     cell: ({ row }) => {
-      const isAssigned =
-        row.original.reviewer !== 'Assign reviewer';
+      const isAssigned = row.original.reviewer !== 'Assign reviewer';
 
       if (isAssigned) {
         return row.original.reviewer;
@@ -313,9 +296,7 @@ const columns: ColumnDef<z.infer<typeof schema>>[] = [
               <SelectValue placeholder="Assign reviewer" />
             </SelectTrigger>
             <SelectContent align="end">
-              <SelectItem value="Eddie Lake">
-                Eddie Lake
-              </SelectItem>
+              <SelectItem value="Eddie Lake">Eddie Lake</SelectItem>
               <SelectItem value="Jamik Tashpulatov">
                 Jamik Tashpulatov
               </SelectItem>
@@ -353,11 +334,7 @@ const columns: ColumnDef<z.infer<typeof schema>>[] = [
   },
 ];
 
-function DraggableRow({
-  row,
-}: {
-  row: Row<z.infer<typeof schema>>;
-}) {
+function DraggableRow({ row }: { row: Row<z.infer<typeof schema>> }) {
   const { transform, transition, setNodeRef, isDragging } =
     useSortable({
       id: row.original.id,
@@ -376,10 +353,7 @@ function DraggableRow({
     >
       {row.getVisibleCells().map((cell) => (
         <TableCell key={cell.id}>
-          {flexRender(
-            cell.column.columnDef.cell,
-            cell.getContext()
-          )}
+          {flexRender(cell.column.columnDef.cell, cell.getContext())}
         </TableCell>
       ))}
     </TableRow>
@@ -392,15 +366,12 @@ export function DataTable({
   data: z.infer<typeof schema>[];
 }) {
   const [data, setData] = React.useState(() => initialData);
-  const [rowSelection, setRowSelection] = React.useState(
-    {}
-  );
+  const [rowSelection, setRowSelection] = React.useState({});
   const [columnVisibility, setColumnVisibility] =
     React.useState<VisibilityState>({});
   const [columnFilters, setColumnFilters] =
     React.useState<ColumnFiltersState>([]);
-  const [sorting, setSorting] =
-    React.useState<SortingState>([]);
+  const [sorting, setSorting] = React.useState<SortingState>([]);
   const [pagination, setPagination] = React.useState({
     pageIndex: 0,
     pageSize: 10,
@@ -486,12 +457,10 @@ export function DataTable({
         <TabsList className="**:data-[slot=badge]:bg-muted-foreground/30 hidden **:data-[slot=badge]:size-5 **:data-[slot=badge]:rounded-full **:data-[slot=badge]:px-1 @4xl/main:flex">
           <TabsTrigger value="outline">Outline</TabsTrigger>
           <TabsTrigger value="past-performance">
-            Past Performance{' '}
-            <Badge variant="secondary">3</Badge>
+            Past Performance <Badge variant="secondary">3</Badge>
           </TabsTrigger>
           <TabsTrigger value="key-personnel">
-            Key Personnel{' '}
-            <Badge variant="secondary">2</Badge>
+            Key Personnel <Badge variant="secondary">2</Badge>
           </TabsTrigger>
           <TabsTrigger value="focus-documents">
             Focus Documents
@@ -509,16 +478,13 @@ export function DataTable({
                 <IconChevronDown />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent
-              align="end"
-              className="w-56"
-            >
+            <DropdownMenuContent align="end" className="w-56">
               {table
                 .getAllColumns()
                 .filter(
                   (column) =>
-                    typeof column.accessorFn !==
-                      'undefined' && column.getCanHide()
+                    typeof column.accessorFn !== 'undefined' &&
+                    column.getCanHide()
                 )
                 .map((column) => {
                   return (
@@ -538,9 +504,7 @@ export function DataTable({
           </DropdownMenu>
           <Button variant="outline" size="sm">
             <IconPlus />
-            <span className="hidden lg:inline">
-              Add Section
-            </span>
+            <span className="hidden lg:inline">Add Section</span>
           </Button>
         </div>
       </div>
@@ -558,28 +522,25 @@ export function DataTable({
           >
             <Table>
               <TableHeader className="bg-muted sticky top-0 z-10">
-                {table
-                  .getHeaderGroups()
-                  .map((headerGroup) => (
-                    <TableRow key={headerGroup.id}>
-                      {headerGroup.headers.map((header) => {
-                        return (
-                          <TableHead
-                            key={header.id}
-                            colSpan={header.colSpan}
-                          >
-                            {header.isPlaceholder
-                              ? null
-                              : flexRender(
-                                  header.column.columnDef
-                                    .header,
-                                  header.getContext()
-                                )}
-                          </TableHead>
-                        );
-                      })}
-                    </TableRow>
-                  ))}
+                {table.getHeaderGroups().map((headerGroup) => (
+                  <TableRow key={headerGroup.id}>
+                    {headerGroup.headers.map((header) => {
+                      return (
+                        <TableHead
+                          key={header.id}
+                          colSpan={header.colSpan}
+                        >
+                          {header.isPlaceholder
+                            ? null
+                            : flexRender(
+                                header.column.columnDef.header,
+                                header.getContext()
+                              )}
+                        </TableHead>
+                      );
+                    })}
+                  </TableRow>
+                ))}
               </TableHeader>
               <TableBody className="**:data-[slot=table-cell]:first:w-8">
                 {table.getRowModel().rows?.length ? (
@@ -588,10 +549,7 @@ export function DataTable({
                     strategy={verticalListSortingStrategy}
                   >
                     {table.getRowModel().rows.map((row) => (
-                      <DraggableRow
-                        key={row.id}
-                        row={row}
-                      />
+                      <DraggableRow key={row.id} row={row} />
                     ))}
                   </SortableContext>
                 ) : (
@@ -610,12 +568,8 @@ export function DataTable({
         </div>
         <div className="flex items-center justify-between px-4">
           <div className="text-muted-foreground hidden flex-1 text-sm lg:flex">
-            {
-              table.getFilteredSelectedRowModel().rows
-                .length
-            }{' '}
-            of {table.getFilteredRowModel().rows.length}{' '}
-            row(s) selected.
+            {table.getFilteredSelectedRowModel().rows.length} of{' '}
+            {table.getFilteredRowModel().rows.length} row(s) selected.
           </div>
           <div className="flex w-full items-center gap-8 lg:w-fit">
             <div className="hidden items-center gap-2 lg:flex">
@@ -637,17 +591,12 @@ export function DataTable({
                   id="rows-per-page"
                 >
                   <SelectValue
-                    placeholder={
-                      table.getState().pagination.pageSize
-                    }
+                    placeholder={table.getState().pagination.pageSize}
                   />
                 </SelectTrigger>
                 <SelectContent side="top">
                   {[10, 20, 30, 40, 50].map((pageSize) => (
-                    <SelectItem
-                      key={pageSize}
-                      value={`${pageSize}`}
-                    >
+                    <SelectItem key={pageSize} value={`${pageSize}`}>
                       {pageSize}
                     </SelectItem>
                   ))}
@@ -655,8 +604,7 @@ export function DataTable({
               </Select>
             </div>
             <div className="flex w-fit items-center justify-center text-sm font-medium">
-              Page{' '}
-              {table.getState().pagination.pageIndex + 1} of{' '}
+              Page {table.getState().pagination.pageIndex + 1} of{' '}
               {table.getPageCount()}
             </div>
             <div className="ml-auto flex items-center gap-2 lg:ml-0">
@@ -666,9 +614,7 @@ export function DataTable({
                 onClick={() => table.setPageIndex(0)}
                 disabled={!table.getCanPreviousPage()}
               >
-                <span className="sr-only">
-                  Go to first page
-                </span>
+                <span className="sr-only">Go to first page</span>
                 <IconChevronsLeft />
               </Button>
               <Button
@@ -678,9 +624,7 @@ export function DataTable({
                 onClick={() => table.previousPage()}
                 disabled={!table.getCanPreviousPage()}
               >
-                <span className="sr-only">
-                  Go to previous page
-                </span>
+                <span className="sr-only">Go to previous page</span>
                 <IconChevronLeft />
               </Button>
               <Button
@@ -690,9 +634,7 @@ export function DataTable({
                 onClick={() => table.nextPage()}
                 disabled={!table.getCanNextPage()}
               >
-                <span className="sr-only">
-                  Go to next page
-                </span>
+                <span className="sr-only">Go to next page</span>
                 <IconChevronRight />
               </Button>
               <Button
@@ -700,15 +642,11 @@ export function DataTable({
                 className="hidden size-8 lg:flex"
                 size="icon"
                 onClick={() =>
-                  table.setPageIndex(
-                    table.getPageCount() - 1
-                  )
+                  table.setPageIndex(table.getPageCount() - 1)
                 }
                 disabled={!table.getCanNextPage()}
               >
-                <span className="sr-only">
-                  Go to last page
-                </span>
+                <span className="sr-only">Go to last page</span>
                 <IconChevronsRight />
               </Button>
             </div>
@@ -761,11 +699,7 @@ const chartConfig = {
   },
 } satisfies ChartConfig;
 
-function TableCellViewer({
-  item,
-}: {
-  item: z.infer<typeof schema>;
-}) {
+function TableCellViewer({ item }: { item: z.infer<typeof schema> }) {
   const isMobile = useIsMobile();
 
   return (
@@ -803,16 +737,12 @@ function TableCellViewer({
                     tickLine={false}
                     axisLine={false}
                     tickMargin={8}
-                    tickFormatter={(value) =>
-                      value.slice(0, 3)
-                    }
+                    tickFormatter={(value) => value.slice(0, 3)}
                     hide
                   />
                   <ChartTooltip
                     cursor={false}
-                    content={
-                      <ChartTooltipContent indicator="dot" />
-                    }
+                    content={<ChartTooltipContent indicator="dot" />}
                   />
                   <Area
                     dataKey="mobile"
@@ -839,10 +769,9 @@ function TableCellViewer({
                   <IconTrendingUp className="size-4" />
                 </div>
                 <div className="text-muted-foreground">
-                  Showing total visitors for the last 6
-                  months. This is just some random text to
-                  test the layout. It spans multiple lines
-                  and should wrap around.
+                  Showing total visitors for the last 6 months. This
+                  is just some random text to test the layout. It
+                  spans multiple lines and should wrap around.
                 </div>
               </div>
               <Separator />
@@ -851,19 +780,13 @@ function TableCellViewer({
           <form className="flex flex-col gap-4">
             <div className="flex flex-col gap-3">
               <Label htmlFor="header">Header</Label>
-              <Input
-                id="header"
-                defaultValue={item.header}
-              />
+              <Input id="header" defaultValue={item.header} />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="flex flex-col gap-3">
                 <Label htmlFor="type">Type</Label>
                 <Select defaultValue={item.type}>
-                  <SelectTrigger
-                    id="type"
-                    className="w-full"
-                  >
+                  <SelectTrigger id="type" className="w-full">
                     <SelectValue placeholder="Select a type" />
                   </SelectTrigger>
                   <SelectContent>
@@ -876,9 +799,7 @@ function TableCellViewer({
                     <SelectItem value="Technical Approach">
                       Technical Approach
                     </SelectItem>
-                    <SelectItem value="Design">
-                      Design
-                    </SelectItem>
+                    <SelectItem value="Design">Design</SelectItem>
                     <SelectItem value="Capabilities">
                       Capabilities
                     </SelectItem>
@@ -897,16 +818,11 @@ function TableCellViewer({
               <div className="flex flex-col gap-3">
                 <Label htmlFor="status">Status</Label>
                 <Select defaultValue={item.status}>
-                  <SelectTrigger
-                    id="status"
-                    className="w-full"
-                  >
+                  <SelectTrigger id="status" className="w-full">
                     <SelectValue placeholder="Select a status" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Done">
-                      Done
-                    </SelectItem>
+                    <SelectItem value="Done">Done</SelectItem>
                     <SelectItem value="In Progress">
                       In Progress
                     </SelectItem>
@@ -920,26 +836,17 @@ function TableCellViewer({
             <div className="grid grid-cols-2 gap-4">
               <div className="flex flex-col gap-3">
                 <Label htmlFor="target">Target</Label>
-                <Input
-                  id="target"
-                  defaultValue={item.target}
-                />
+                <Input id="target" defaultValue={item.target} />
               </div>
               <div className="flex flex-col gap-3">
                 <Label htmlFor="limit">Limit</Label>
-                <Input
-                  id="limit"
-                  defaultValue={item.limit}
-                />
+                <Input id="limit" defaultValue={item.limit} />
               </div>
             </div>
             <div className="flex flex-col gap-3">
               <Label htmlFor="reviewer">Reviewer</Label>
               <Select defaultValue={item.reviewer}>
-                <SelectTrigger
-                  id="reviewer"
-                  className="w-full"
-                >
+                <SelectTrigger id="reviewer" className="w-full">
                   <SelectValue placeholder="Select a reviewer" />
                 </SelectTrigger>
                 <SelectContent>
