@@ -70,8 +70,8 @@ def enforce_tenant_pricing_rules(db: Session, tenant_id: int, price: Decimal):
     if base_price <= 0:
         return
 
-    min_allowed = (base_price * Decimal("0.50")).quantize(Decimal("0.01"))
-    max_allowed = (base_price * Decimal("2.00")).quantize(Decimal("0.01"))
+    min_allowed = (base_price * Decimal("0.05")).quantize(Decimal("0.01"))
+    max_allowed = (base_price * Decimal("0.35")).quantize(Decimal("0.01"))
 
     if price < min_allowed or price > max_allowed:
         raise HTTPException(
@@ -92,7 +92,7 @@ def get_pricing_bounds(
 ):
     """
     Return the allowed price range for plans in this tenant, derived from the
-    active subscription's base price (50%–200%).  Returns null bounds if no
+    active subscription's base price (5%–35%).  Returns null bounds if no
     active paid subscription exists (i.e. only global schema limits apply).
     """
     user_id = current_user.get("user_id")
@@ -120,8 +120,8 @@ def get_pricing_bounds(
         return {"min_price": None, "max_price": None, "base_price": None}
 
     base_price = Decimal(str(active_subscription.subscription_plan.price))
-    min_allowed = (base_price * Decimal("0.50")).quantize(Decimal("0.01"))
-    max_allowed = (base_price * Decimal("2.00")).quantize(Decimal("0.01"))
+    min_allowed = (base_price * Decimal("0.05")).quantize(Decimal("0.01"))
+    max_allowed = (base_price * Decimal("0.35")).quantize(Decimal("0.01"))
 
     return {
         "min_price": float(min_allowed),

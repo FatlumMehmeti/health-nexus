@@ -20,7 +20,8 @@ export function useNotifications(unreadOnly = false) {
   return useQuery({
     queryKey: [...NOTIFICATIONS_KEY, { unreadOnly }],
     queryFn: () => getMyNotifications(unreadOnly),
-    staleTime: 30_000,
+    staleTime: 10_000,
+    refetchInterval: 15_000,
     refetchOnWindowFocus: true,
     refetchOnReconnect: true,
   });
@@ -30,7 +31,8 @@ export function useUnreadCount() {
   return useQuery({
     queryKey: UNREAD_COUNT_KEY,
     queryFn: getUnreadCount,
-    staleTime: 30_000,
+    staleTime: 5_000,
+    refetchInterval: 15_000,
     refetchOnWindowFocus: true,
     refetchOnReconnect: true,
   });

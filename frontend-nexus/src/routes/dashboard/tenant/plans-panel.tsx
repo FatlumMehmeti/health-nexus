@@ -64,6 +64,14 @@ export function TenantPlansPanel() {
     enabled: !!tenantId,
   });
 
+  const pricingBoundsQuery = useQuery({
+    queryKey: ['tenant-manager', 'pricing-bounds', tenantId],
+    queryFn: () =>
+      tenantPlansService.getPricingBounds(tenantId!),
+    enabled: !!tenantId,
+  });
+  const bounds = pricingBoundsQuery.data;
+
   const [formState, setFormState] = useState({
     name: '',
     description: '',
@@ -100,7 +108,7 @@ export function TenantPlansPanel() {
     onError: (err) =>
       toast.error(
         isApiError(err)
-          ? err.message
+          ? err.displayMessage
           : 'Failed to create plan'
       ),
   });
@@ -123,7 +131,7 @@ export function TenantPlansPanel() {
     onError: (err) =>
       toast.error(
         isApiError(err)
-          ? err.message
+          ? err.displayMessage
           : 'Failed to update plan'
       ),
   });
@@ -141,7 +149,7 @@ export function TenantPlansPanel() {
     onError: (err) =>
       toast.error(
         isApiError(err)
-          ? err.message
+          ? err.displayMessage
           : 'Failed to delete plan'
       ),
   });
@@ -191,7 +199,7 @@ export function TenantPlansPanel() {
     onError: (err) =>
       toast.error(
         isApiError(err)
-          ? err.message
+          ? err.displayMessage
           : 'Failed to toggle plan'
       ),
   });
@@ -202,6 +210,16 @@ export function TenantPlansPanel() {
     if (!formState.name.trim() || price <= 0) {
       toast.error(
         'Plan name and a valid price > 0 are required'
+      );
+      return;
+    }
+    if (
+      bounds?.min_price != null &&
+      bounds?.max_price != null &&
+      (price < bounds.min_price || price > bounds.max_price)
+    ) {
+      toast.error(
+        `Price must be between €${bounds.min_price.toFixed(2)} and €${bounds.max_price.toFixed(2)} for your subscription tier.`
       );
       return;
     }
@@ -308,6 +326,17 @@ export function TenantPlansPanel() {
                   }))
                 }
               />
+              {bounds?.min_price != null &&
+              bounds?.max_price != null ? (
+                <p
+                  data-testid="pricing-bounds-hint"
+                  className="text-xs text-muted-foreground"
+                >
+                  Allowed range for your subscription: €
+                  {bounds.min_price.toFixed(2)} – €
+                  {bounds.max_price.toFixed(2)}
+                </p>
+              ) : null}
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="plan-max-apt">

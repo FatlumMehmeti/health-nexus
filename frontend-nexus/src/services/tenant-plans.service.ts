@@ -108,6 +108,12 @@ export const tenantPlansService = {
       }
     ),
 
+  getPricingBounds: (tenantId: number) =>
+    apiFetch<PricingBoundsApi>(
+      `${BASE}/pricing-bounds?tenant_id=${tenantId}`,
+      { method: 'GET' }
+    ),
+
   myEnrollment: (tenantId: number) =>
     apiFetch<EnrollmentApi>(
       `${BASE}/my-enrollment?tenant_id=${tenantId}`,

@@ -3,6 +3,7 @@ node_modules
 .vite
 .DS_Store
 .cursor
+.claude
 
 # Env
 .env
