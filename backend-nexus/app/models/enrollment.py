@@ -26,11 +26,6 @@ class Enrollment(Base, TimestampMixin):
             name="fk_enrollments_patient_tenant_user",
         ),
         UniqueConstraint("tenant_id", "patient_user_id", name="uq_enrollment_patient_tenant"),
-        ForeignKeyConstraint(
-            ["tenant_id", "patient_user_id"],
-            ["patients.tenant_id", "patients.user_id"],
-            name="fk_enrollments_patient_tenant_user",
-        ),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
