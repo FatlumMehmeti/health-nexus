@@ -7,10 +7,12 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import { isApiError } from '@/lib/api-client';
 import { tenantsService } from '@/services/tenants.service';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation } from '@tanstack/react-query';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
+import * as React from 'react';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { z } from 'zod';
@@ -33,6 +35,9 @@ type TenantFormValues = z.infer<typeof tenantFormSchema>;
 
 function TenantRegistrationPage() {
   const navigate = useNavigate();
+  const [submitError, setSubmitError] = React.useState<string | null>(
+    null
+  );
 
   const mutation = useMutation({
     mutationFn: tenantsService.createApplication,
@@ -40,16 +45,18 @@ function TenantRegistrationPage() {
       toast.success('Application submitted successfully!', {
         description: `Your application is under review. Application ID: ${data.id}`,
       });
+      setSubmitError(null);
       form.reset();
-      // Navigate to home or confirmation page after 2 seconds
+      // Navigate to home or confirmation page after 3 seconds
       setTimeout(() => {
         navigate({ to: '/' });
-      }, 2000);
+      }, 3000);
     },
     onError: (err) => {
-      toast.error('Failed to submit application', {
-        description: (err as Error).message,
-      });
+      const errorMessage = isApiError(err)
+        ? err.displayMessage
+        : (err as Error).message || 'Unknown error';
+      setSubmitError(errorMessage);
     },
   });
 
@@ -69,6 +76,7 @@ function TenantRegistrationPage() {
   } = form;
 
   const onSubmit = (data: TenantFormValues) => {
+    setSubmitError(null);
     mutation.mutate(data);
   };
 
@@ -111,6 +119,11 @@ function TenantRegistrationPage() {
               placeholder="MED-123456"
               {...register('licence_number')}
             />
+            {submitError && (
+              <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
+                {submitError}
+              </div>
+            )}
             <div className="flex gap-3 pt-2">
               <Button
                 type="button"
