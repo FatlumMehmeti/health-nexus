@@ -1,6 +1,6 @@
 import enum
 
-from sqlalchemy import ForeignKey, Enum, DECIMAL, Integer, Text
+from sqlalchemy import ForeignKey, Enum, DECIMAL, Integer, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .base import Base, TimestampMixin
@@ -23,6 +23,15 @@ class PaymentType(str, enum.Enum):
 
 class Payment(Base, TimestampMixin):
     __tablename__ = "payments"
+    __table_args__ = (
+        UniqueConstraint(
+            "tenant_id",
+            "payment_type",
+            "reference_id",
+            "idempotency_key",
+            name="uq_payment_idempotency",
+        ),
+    )
 
     payment_id: Mapped[int] = mapped_column(primary_key=True)
 
@@ -42,6 +51,8 @@ class Payment(Base, TimestampMixin):
 
     reference_id: Mapped[int | None] = mapped_column(Integer)
     reference_type: Mapped[str | None] = mapped_column(Text)
+
+    idempotency_key: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     # Relationships
     tenant = relationship("Tenant", back_populates="payments")
