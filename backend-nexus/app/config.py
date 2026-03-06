@@ -35,3 +35,18 @@ def get_api_base_url() -> str:
     port = os.getenv("API_PORT", "8000")
     scheme = "https" if os.getenv("API_SCHEME") == "https" else "http"
     return f"{scheme}://{host}:{port}"
+
+
+def get_stripe_secret_key() -> str | None:
+    """Stripe secret API key used for PaymentIntent creation."""
+    return os.getenv("STRIPE_SECRET_KEY")
+
+
+def get_stripe_webhook_secret() -> str | None:
+    """Stripe webhook signing secret used for signature verification."""
+    return os.getenv("STRIPE_WEBHOOK_SECRET")
+
+
+def get_stripe_currency() -> str:
+    """Default checkout currency for Stripe PaymentIntent creation."""
+    return (os.getenv("STRIPE_CURRENCY") or "usd").strip().lower()
