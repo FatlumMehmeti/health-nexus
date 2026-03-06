@@ -36,3 +36,17 @@ class PaymentRead(PaymentBase):
     status: PaymentStatus
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class CheckoutInitiateRequest(BaseModel):
+    order_id: int
+
+
+class CheckoutInitiateResponse(BaseModel):
+    payment_id: int
+    status: PaymentStatus
+    stripe_payment_intent_id: Optional[str] = None
+    amount: float
+    tenant_id: int
+
+    model_config = ConfigDict(from_attributes=True)
