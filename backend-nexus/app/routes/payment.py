@@ -17,7 +17,9 @@ from app.schemas.payment import (
 )
 from app.services.payment_service import (
     PaymentServiceError,
+    create_or_get_enrollment_payment,
     create_or_get_order_payment,
+    create_or_get_tenant_subscription_payment,
     process_stripe_webhook,
 )
 from app.models.payment import PaymentStatus
@@ -53,13 +55,7 @@ def checkout_initiate(
     db: Session = Depends(get_db),
     user: Dict[str, Any] = Depends(get_current_user),
 ):
-    """
-    Create or return existing Payment for an Order (idempotent by Idempotency-Key).
-
-    Order must exist, belong to the authenticated patient user, be PENDING,
-    and have total_amount > 0. Same Idempotency-Key for the same order returns
-    the same Payment (same payment_id and stripe_payment_intent_id).
-    """
+    """Create or return an idempotent checkout Payment for order/enrollment/subscription."""
     user_id = user.get("user_id")
     if user_id is None:
         raise HTTPException(status_code=401, detail="Invalid token: missing user_id")
@@ -71,13 +67,51 @@ def checkout_initiate(
             detail="Idempotency-Key header is required and must be non-empty",
         )
 
-    try:
-        payment = create_or_get_order_payment(
-            db=db,
-            order_id=payload.order_id,
-            user_id=int(user_id),
-            idempotency_key=key,
+    target_count = sum(
+        value is not None
+        for value in (
+            payload.order_id,
+            payload.enrollment_id,
+            payload.tenant_subscription_id,
         )
+    )
+    if target_count != 1:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Exactly one checkout reference is required: "
+                "order_id, enrollment_id, or tenant_subscription_id"
+            ),
+        )
+
+    try:
+        if payload.order_id is not None:
+            payment, stripe_client_secret = create_or_get_order_payment(
+                db=db,
+                order_id=payload.order_id,
+                user_id=int(user_id),
+                idempotency_key=key,
+            )
+        elif payload.enrollment_id is not None:
+            payment, stripe_client_secret = create_or_get_enrollment_payment(
+                db=db,
+                enrollment_id=payload.enrollment_id,
+                user_id=int(user_id),
+                idempotency_key=key,
+            )
+        else:
+            tenant_subscription_id = payload.tenant_subscription_id
+            if tenant_subscription_id is None:
+                raise HTTPException(
+                    status_code=400,
+                    detail="tenant_subscription_id is required for tenant subscription checkout",
+                )
+            payment, stripe_client_secret = create_or_get_tenant_subscription_payment(
+                db=db,
+                tenant_subscription_id=tenant_subscription_id,
+                user_id=int(user_id),
+                idempotency_key=key,
+            )
     except PaymentServiceError as exc:
         return _error_response(exc)
 
@@ -90,6 +124,7 @@ def checkout_initiate(
         payment_id=payment.payment_id,
         status=status_value,
         stripe_payment_intent_id=payment.stripe_payment_intent_id,
+        stripe_client_secret=stripe_client_secret,
         amount=float(payment.price),
         tenant_id=payment.tenant_id,
     )

@@ -21,6 +21,7 @@ from app.models.enrollment import Enrollment, EnrollmentStatus
 from app.models.order import Order, OrderStatus
 from app.models.payment import Payment, PaymentStatus, PaymentType
 from app.models.subscription_plan import SubscriptionPlan
+from app.models.tenant_manager import TenantManager
 from app.models.tenant_subscription import SubscriptionStatus, TenantSubscription
 from app.models.user_tenant_plan import UserTenantPlan
 
@@ -54,9 +55,9 @@ def _amount_to_minor_units(amount: float) -> int:
     return int((major * 100).quantize(Decimal("1"), rounding=ROUND_HALF_UP))
 
 
-def _create_stripe_payment_intent(payment: Payment) -> str:
+def _create_stripe_payment_intent(payment: Payment) -> tuple[str, Optional[str]]:
     """
-    Create a real Stripe PaymentIntent and return its id.
+    Create a real Stripe PaymentIntent and return (id, client_secret).
 
     Idempotency is handled by passing a deterministic key to Stripe.
     """
@@ -111,7 +112,33 @@ def _create_stripe_payment_intent(payment: Payment) -> str:
             "Stripe PaymentIntent response did not include an id",
             http_status=502,
         )
-    return str(intent_id)
+    return str(intent_id), intent.get("client_secret")
+
+
+def _get_stripe_payment_intent_client_secret(intent_id: str) -> Optional[str]:
+    """Fetch client_secret for an existing Stripe PaymentIntent."""
+    secret_key = get_stripe_secret_key()
+    if not secret_key:
+        raise PaymentServiceError(
+            PaymentErrorCode.PAYMENT_PROVIDER_ERROR,
+            "Stripe is not configured: STRIPE_SECRET_KEY is missing",
+            http_status=500,
+        )
+
+    try:
+        stripe.api_key = secret_key
+        intent = stripe.PaymentIntent.retrieve(intent_id)
+    except stripe.error.StripeError as exc:
+        raise PaymentServiceError(
+            PaymentErrorCode.PAYMENT_PROVIDER_ERROR,
+            "Failed to retrieve Stripe PaymentIntent",
+            http_status=502,
+            details={"stripe_error": str(exc), "stripe_payment_intent_id": intent_id},
+        ) from exc
+
+    if not intent:
+        return None
+    return intent.get("client_secret")
 
 
 def _activate_order_if_applicable(db: Session, order_id: int) -> None:
@@ -255,12 +282,86 @@ def process_stripe_webhook(db: Session, payload: bytes, signature: str | None) -
     return {"processed": False, "reason": "event_ignored", "event_type": event_type}
 
 
+def _create_or_get_payment_record(
+    db: Session,
+    *,
+    tenant_id: int,
+    payment_type: PaymentType,
+    reference_id: int,
+    reference_type: str,
+    amount: float,
+    idempotency_key: str,
+) -> tuple[Payment, Optional[str]]:
+    # Idempotency: return existing payment if one exists for this key
+    existing = (
+        db.query(Payment)
+        .filter(
+            Payment.tenant_id == tenant_id,
+            Payment.payment_type == payment_type,
+            Payment.reference_id == reference_id,
+            Payment.idempotency_key == idempotency_key,
+        )
+        .first()
+    )
+    if existing is not None:
+        if not existing.stripe_payment_intent_id:
+            intent_id, client_secret = _create_stripe_payment_intent(existing)
+            existing.stripe_payment_intent_id = intent_id
+            db.commit()
+            db.refresh(existing)
+            return existing, client_secret
+        return existing, _get_stripe_payment_intent_client_secret(existing.stripe_payment_intent_id)
+
+    # Create new payment (concurrency-safe: on unique violation, fetch and return existing)
+    try:
+        payment = Payment(
+            payment_type=payment_type,
+            price=amount,
+            tenant_id=tenant_id,
+            reference_id=reference_id,
+            reference_type=reference_type,
+            idempotency_key=idempotency_key,
+            status=PaymentStatus.INITIATED,
+        )
+        db.add(payment)
+        db.flush()
+        intent_id, client_secret = _create_stripe_payment_intent(payment)
+        payment.stripe_payment_intent_id = intent_id
+        db.commit()
+        db.refresh(payment)
+        return payment, client_secret
+    except IntegrityError:
+        db.rollback()
+        existing = (
+            db.query(Payment)
+            .filter(
+                Payment.tenant_id == tenant_id,
+                Payment.payment_type == payment_type,
+                Payment.reference_id == reference_id,
+                Payment.idempotency_key == idempotency_key,
+            )
+            .first()
+        )
+        if existing is not None:
+            if not existing.stripe_payment_intent_id:
+                intent_id, client_secret = _create_stripe_payment_intent(existing)
+                existing.stripe_payment_intent_id = intent_id
+                db.commit()
+                db.refresh(existing)
+                return existing, client_secret
+            return existing, _get_stripe_payment_intent_client_secret(existing.stripe_payment_intent_id)
+        raise
+    except PaymentServiceError:
+        db.rollback()
+        raise
+
+
 def create_or_get_order_payment(
     db: Session,
     order_id: int,
     user_id: int,
     idempotency_key: str,
-) -> Payment:
+) -> tuple[Payment, Optional[str]]:
     """
     Create or return existing Payment for an Order, with idempotency.
 
@@ -271,8 +372,10 @@ def create_or_get_order_payment(
 
     Tenant is derived from the order (order.tenant_id). If a Payment already exists
     for (tenant_id, ORDER, order_id, idempotency_key), returns it without creating
-    a new row. Otherwise creates a new Payment with status INITIATED and a stub
-    stripe_payment_intent_id.
+    a new row. Otherwise creates a new Payment with status INITIATED.
+
+    Returns:
+        tuple[Payment, Optional[str]]: (payment, stripe_client_secret)
 
     Raises:
         PaymentServiceError: NOT_FOUND (404), FORBIDDEN (403), CONFLICT (409), VALIDATION_ERROR (400).
@@ -313,53 +416,174 @@ def create_or_get_order_payment(
 
     tenant_id = order.tenant_id
 
-    # Idempotency: return existing payment if one exists for this key
-    existing = (
-        db.query(Payment)
+    return _create_or_get_payment_record(
+        db,
+        tenant_id=tenant_id,
+        payment_type=PaymentType.ORDER,
+        reference_id=order_id,
+        reference_type="order",
+        amount=amount,
+        idempotency_key=idempotency_key,
+    )
+
+
+def create_or_get_enrollment_payment(
+    db: Session,
+    enrollment_id: int,
+    user_id: int,
+    idempotency_key: str,
+) -> tuple[Payment, Optional[str]]:
+    enrollment = db.get(Enrollment, enrollment_id)
+    if enrollment is None:
+        raise PaymentServiceError(
+            PaymentErrorCode.NOT_FOUND,
+            "Enrollment not found",
+            http_status=404,
+            details={"enrollment_id": enrollment_id},
+        )
+
+    if enrollment.patient_user_id != user_id:
+        raise PaymentServiceError(
+            PaymentErrorCode.FORBIDDEN,
+            "Enrollment does not belong to the authenticated user",
+            http_status=403,
+            details={"enrollment_id": enrollment_id},
+        )
+
+    if enrollment.status != EnrollmentStatus.PENDING:
+        raise PaymentServiceError(
+            PaymentErrorCode.CONFLICT,
+            f"Enrollment is not PENDING (current status: {enrollment.status.value}); cannot initiate checkout",
+            http_status=409,
+            details={"enrollment_id": enrollment_id, "enrollment_status": enrollment.status.value},
+        )
+
+    plan = db.get(UserTenantPlan, enrollment.user_tenant_plan_id)
+    if plan is None:
+        raise PaymentServiceError(
+            PaymentErrorCode.NOT_FOUND,
+            "Enrollment plan not found",
+            http_status=404,
+            details={
+                "enrollment_id": enrollment_id,
+                "user_tenant_plan_id": enrollment.user_tenant_plan_id,
+            },
+        )
+
+    amount = float(plan.price)
+    if amount <= 0:
+        raise PaymentServiceError(
+            PaymentErrorCode.VALIDATION_ERROR,
+            "Enrollment plan amount must be greater than zero",
+            http_status=400,
+            details={
+                "enrollment_id": enrollment_id,
+                "user_tenant_plan_id": enrollment.user_tenant_plan_id,
+                "plan_price": amount,
+            },
+        )
+
+    return _create_or_get_payment_record(
+        db,
+        tenant_id=enrollment.tenant_id,
+        payment_type=PaymentType.ENROLLMENT,
+        reference_id=enrollment_id,
+        reference_type="enrollment",
+        amount=amount,
+        idempotency_key=idempotency_key,
+    )
+
+
+def create_or_get_tenant_subscription_payment(
+    db: Session,
+    tenant_subscription_id: int,
+    user_id: int,
+    idempotency_key: str,
+) -> tuple[Payment, Optional[str]]:
+    tenant_subscription = db.get(TenantSubscription, tenant_subscription_id)
+    if tenant_subscription is None:
+        raise PaymentServiceError(
+            PaymentErrorCode.NOT_FOUND,
+            "Tenant subscription not found",
+            http_status=404,
+            details={"tenant_subscription_id": tenant_subscription_id},
+        )
+
+    manager = (
+        db.query(TenantManager)
         .filter(
-            Payment.tenant_id == tenant_id,
-            Payment.payment_type == PaymentType.ORDER,
-            Payment.reference_id == order_id,
-            Payment.idempotency_key == idempotency_key,
+            TenantManager.user_id == user_id,
+            TenantManager.tenant_id == tenant_subscription.tenant_id,
         )
         .first()
     )
-    if existing is not None:
-        if not existing.stripe_payment_intent_id:
-            existing.stripe_payment_intent_id = _create_stripe_payment_intent(existing)
-            db.commit()
-            db.refresh(existing)
-        return existing
+    if manager is None:
+        raise PaymentServiceError(
+            PaymentErrorCode.FORBIDDEN,
+            "Tenant subscription does not belong to the authenticated tenant manager",
+            http_status=403,
+            details={"tenant_subscription_id": tenant_subscription_id},
+        )
 
-    # Create new payment (concurrency-safe: on unique violation, fetch and return existing)
-    try:
-        payment = Payment(
-            payment_type=PaymentType.ORDER,
-            price=amount,
-            tenant_id=tenant_id,
-            reference_id=order_id,
-            reference_type="order",
-            idempotency_key=idempotency_key,
-            status=PaymentStatus.INITIATED,
+    if tenant_subscription.status == SubscriptionStatus.ACTIVE:
+        raise PaymentServiceError(
+            PaymentErrorCode.CONFLICT,
+            "Tenant subscription is already ACTIVE; cannot initiate checkout",
+            http_status=409,
+            details={
+                "tenant_subscription_id": tenant_subscription_id,
+                "subscription_status": tenant_subscription.status.value,
+            },
         )
-        db.add(payment)
-        db.flush()
-        payment.stripe_payment_intent_id = _create_stripe_payment_intent(payment)
-        db.commit()
-        db.refresh(payment)
-        return payment
-    except IntegrityError:
-        db.rollback()
-        existing = (
-            db.query(Payment)
-            .filter(
-                Payment.tenant_id == tenant_id,
-                Payment.payment_type == PaymentType.ORDER,
-                Payment.reference_id == order_id,
-                Payment.idempotency_key == idempotency_key,
-            )
-            .first()
+
+    allowed_statuses = {SubscriptionStatus.EXPIRED}
+    if tenant_subscription.status not in allowed_statuses:
+        allowed_status_values = [status.value for status in sorted(allowed_statuses, key=lambda s: s.value)]
+        raise PaymentServiceError(
+            PaymentErrorCode.CONFLICT,
+            (
+                "Tenant subscription status does not allow checkout initiation "
+                f"(current status: {tenant_subscription.status.value}; allowed: {allowed_status_values})"
+            ),
+            http_status=409,
+            details={
+                "tenant_subscription_id": tenant_subscription_id,
+                "subscription_status": tenant_subscription.status.value,
+                "allowed_statuses": allowed_status_values,
+            },
         )
-        if existing is not None:
-            return existing
-        raise
+
+    plan = db.get(SubscriptionPlan, tenant_subscription.subscription_plan_id)
+    if plan is None:
+        raise PaymentServiceError(
+            PaymentErrorCode.NOT_FOUND,
+            "Subscription plan not found",
+            http_status=404,
+            details={
+                "tenant_subscription_id": tenant_subscription_id,
+                "subscription_plan_id": tenant_subscription.subscription_plan_id,
+            },
+        )
+
+    amount = float(plan.price)
+    if amount <= 0:
+        raise PaymentServiceError(
+            PaymentErrorCode.VALIDATION_ERROR,
+            "Subscription plan amount must be greater than zero",
+            http_status=400,
+            details={
+                "tenant_subscription_id": tenant_subscription_id,
+                "subscription_plan_id": tenant_subscription.subscription_plan_id,
+                "plan_price": amount,
+            },
+        )
+
+    return _create_or_get_payment_record(
+        db,
+        tenant_id=tenant_subscription.tenant_id,
+        payment_type=PaymentType.TENANT_SUBSCRIPTION,
+        reference_id=tenant_subscription_id,
+        reference_type="tenant_subscription",
+        amount=amount,
+        idempotency_key=idempotency_key,
+    )
