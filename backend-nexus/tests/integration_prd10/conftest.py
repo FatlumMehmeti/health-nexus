@@ -21,10 +21,20 @@ def stub_stripe(monkeypatch):
     os.environ.setdefault("STRIPE_CURRENCY", "usd")
 
     counter = {"value": 0}
+    client_secrets: dict[str, str] = {}
 
     def fake_payment_intent_create(**kwargs):
         counter["value"] += 1
-        return {"id": f"pi_test_prd10_{counter['value']}"}
+        intent_id = f"pi_test_prd10_{counter['value']}"
+        client_secret = f"{intent_id}_secret_test"
+        client_secrets[intent_id] = client_secret
+        return {"id": intent_id, "client_secret": client_secret}
+
+    def fake_payment_intent_retrieve(intent_id, **kwargs):
+        return {
+            "id": intent_id,
+            "client_secret": client_secrets.get(intent_id, f"{intent_id}_secret_test"),
+        }
 
     def fake_construct_event(payload, sig_header, secret):
         return json.loads(payload.decode("utf-8"))
@@ -32,6 +42,10 @@ def stub_stripe(monkeypatch):
     monkeypatch.setattr(
         "app.services.payment_service.stripe.PaymentIntent.create",
         fake_payment_intent_create,
+    )
+    monkeypatch.setattr(
+        "app.services.payment_service.stripe.PaymentIntent.retrieve",
+        fake_payment_intent_retrieve,
     )
     monkeypatch.setattr(
         "app.services.payment_service.stripe.Webhook.construct_event",

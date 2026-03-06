@@ -16,6 +16,7 @@ from tests.integration_prd10.fixtures import (
     login_client,
     create_order_in_db,
     checkout_initiate_via_api,
+    create_tenant_manager_user,
 )
 
 
@@ -56,6 +57,7 @@ def test_checkout_initiate_happy_path_creates_payment(
     assert data["status"] == "INITIATED"
     assert data["stripe_payment_intent_id"] is not None
     assert data["stripe_payment_intent_id"].startswith("pi_")
+    assert data["stripe_client_secret"] is not None
     assert data["amount"] == 50.0
     assert data["tenant_id"] == tenant_a.id
 
@@ -91,12 +93,15 @@ def test_checkout_initiate_idempotency_replay_returns_same_payment(
     data1 = resp1.json()
     payment_id1 = data1["payment_id"]
     intent_id1 = data1["stripe_payment_intent_id"]
+    client_secret1 = data1["stripe_client_secret"]
 
     resp2 = checkout_initiate_via_api(prd10_client, order.id, key, auth)
     assert resp2.status_code == 200, (resp2.status_code, resp2.text)
     data2 = resp2.json()
     assert data2["payment_id"] == payment_id1
     assert data2["stripe_payment_intent_id"] == intent_id1
+    assert data2["stripe_client_secret"] is not None
+    assert data2["stripe_client_secret"] == client_secret1
     assert data2["status"] == "INITIATED"
     assert data2["amount"] == 25.0
 
@@ -111,6 +116,127 @@ def test_checkout_initiate_idempotency_replay_returns_same_payment(
         .count()
     )
     assert count == 1, f"Expected exactly one Payment for order_id={order.id} and idempotency_key={key!r}, got {count}"
+
+
+@pytest.mark.prd10
+def test_checkout_initiate_enrollment_creates_payment(
+    prd10_client,
+    db_session,
+    tenant_a,
+    role_patient,
+):
+    reg = register_client_via_api(
+        prd10_client,
+        tenant_a.id,
+        email="patient-enroll-init@prd10.example.com",
+        password="PassPRD10!",
+        db_session=db_session,
+        role=role_patient,
+    )
+    auth = login_client(prd10_client, "patient-enroll-init@prd10.example.com", "PassPRD10!")
+
+    user_plan = UserTenantPlan(
+        tenant_id=tenant_a.id,
+        name="PRD10 Enrollment Checkout Plan",
+        description="Plan for enrollment checkout initiation test",
+        price=39.99,
+        duration=30,
+        max_appointments=10,
+        max_consultations=10,
+        is_active=True,
+    )
+    db_session.add(user_plan)
+    db_session.flush()
+
+    enrollment = Enrollment(
+        tenant_id=tenant_a.id,
+        patient_user_id=reg["user_id"],
+        user_tenant_plan_id=user_plan.id,
+        created_by=reg["user_id"],
+        status=EnrollmentStatus.PENDING,
+    )
+    db_session.add(enrollment)
+    db_session.commit()
+    db_session.refresh(enrollment)
+
+    resp = checkout_initiate_via_api(
+        prd10_client,
+        order_id=None,
+        enrollment_id=enrollment.id,
+        idempotency_key="key-enrollment-init-001",
+        auth_headers=auth,
+    )
+    assert resp.status_code == 200, (resp.status_code, resp.text)
+    data = resp.json()
+    assert data["status"] == "INITIATED"
+    assert data["stripe_payment_intent_id"] is not None
+    assert data["stripe_client_secret"] is not None
+    assert data["tenant_id"] == tenant_a.id
+    assert data["amount"] == 39.99
+
+    payment = db_session.query(Payment).filter(Payment.payment_id == data["payment_id"]).first()
+    assert payment is not None
+    assert payment.payment_type == PaymentType.ENROLLMENT
+    assert payment.reference_id == enrollment.id
+
+
+@pytest.mark.prd10
+def test_checkout_initiate_tenant_subscription_creates_payment(
+    prd10_client,
+    db_session,
+    tenant_a,
+    role_tenant_manager,
+):
+    create_tenant_manager_user(
+        db_session,
+        tenant_id=tenant_a.id,
+        role=role_tenant_manager,
+        email="manager-sub-init@prd10.example.com",
+        password="PassPRD10!",
+    )
+    auth = login_client(prd10_client, "manager-sub-init@prd10.example.com", "PassPRD10!")
+
+    plan = SubscriptionPlan(
+        name="PRD10 Tenant Checkout Plan",
+        price=149.00,
+        duration=30,
+        max_doctors=5,
+        max_patients=200,
+        max_departments=10,
+    )
+    db_session.add(plan)
+    db_session.flush()
+
+    tenant_subscription = TenantSubscription(
+        tenant_id=tenant_a.id,
+        subscription_plan_id=plan.id,
+        status=SubscriptionStatus.EXPIRED,
+        activated_at=None,
+        expires_at=None,
+    )
+    db_session.add(tenant_subscription)
+    db_session.commit()
+    db_session.refresh(tenant_subscription)
+
+    resp = checkout_initiate_via_api(
+        prd10_client,
+        order_id=None,
+        tenant_subscription_id=tenant_subscription.id,
+        idempotency_key="key-subscription-init-001",
+        auth_headers=auth,
+    )
+    assert resp.status_code == 200, (resp.status_code, resp.text)
+    data = resp.json()
+    assert data["status"] == "INITIATED"
+    assert data["stripe_payment_intent_id"] is not None
+    assert data["stripe_client_secret"] is not None
+    assert data["tenant_id"] == tenant_a.id
+    assert data["amount"] == 149.0
+
+    payment = db_session.query(Payment).filter(Payment.payment_id == data["payment_id"]).first()
+    assert payment is not None
+    assert payment.payment_type == PaymentType.TENANT_SUBSCRIPTION
+    assert payment.reference_id == tenant_subscription.id
 
 
 @pytest.mark.prd10
@@ -225,6 +351,114 @@ def test_checkout_initiate_cross_tenant_returns_403(
         order_id=order_a.id,
         idempotency_key="key-cross",
         auth_headers=auth_b,
+    )
+    assert resp.status_code == 403, (resp.status_code, resp.text)
+
+
+@pytest.mark.prd10
+def test_checkout_initiate_enrollment_by_another_user_returns_403(
+    prd10_client,
+    db_session,
+    tenant_a,
+    role_patient,
+):
+    reg_owner = register_client_via_api(
+        prd10_client,
+        tenant_a.id,
+        email="patient-enroll-owner@prd10.example.com",
+        password="PassPRD10!",
+        db_session=db_session,
+        role=role_patient,
+    )
+    register_client_via_api(
+        prd10_client,
+        tenant_a.id,
+        email="patient-enroll-other@prd10.example.com",
+        password="PassPRD10!",
+        db_session=db_session,
+        role=role_patient,
+    )
+    other_auth = login_client(prd10_client, "patient-enroll-other@prd10.example.com", "PassPRD10!")
+
+    user_plan = UserTenantPlan(
+        tenant_id=tenant_a.id,
+        name="PRD10 Enrollment Auth Plan",
+        description="Plan for enrollment auth negative test",
+        price=19.99,
+        duration=30,
+        max_appointments=10,
+        max_consultations=10,
+        is_active=True,
+    )
+    db_session.add(user_plan)
+    db_session.flush()
+
+    enrollment = Enrollment(
+        tenant_id=tenant_a.id,
+        patient_user_id=reg_owner["user_id"],
+        user_tenant_plan_id=user_plan.id,
+        created_by=reg_owner["user_id"],
+        status=EnrollmentStatus.PENDING,
+    )
+    db_session.add(enrollment)
+    db_session.commit()
+    db_session.refresh(enrollment)
+
+    resp = checkout_initiate_via_api(
+        prd10_client,
+        order_id=None,
+        enrollment_id=enrollment.id,
+        idempotency_key="key-enrollment-other-user-001",
+        auth_headers=other_auth,
+    )
+    assert resp.status_code == 403, (resp.status_code, resp.text)
+
+
+@pytest.mark.prd10
+def test_checkout_initiate_tenant_subscription_by_non_manager_returns_403(
+    prd10_client,
+    db_session,
+    tenant_a,
+    role_patient,
+):
+    register_client_via_api(
+        prd10_client,
+        tenant_a.id,
+        email="patient-not-manager@prd10.example.com",
+        password="PassPRD10!",
+        db_session=db_session,
+        role=role_patient,
+    )
+    non_manager_auth = login_client(prd10_client, "patient-not-manager@prd10.example.com", "PassPRD10!")
+
+    plan = SubscriptionPlan(
+        name="PRD10 Tenant Auth Plan",
+        price=129.00,
+        duration=30,
+        max_doctors=5,
+        max_patients=100,
+        max_departments=5,
+    )
+    db_session.add(plan)
+    db_session.flush()
+
+    tenant_subscription = TenantSubscription(
+        tenant_id=tenant_a.id,
+        subscription_plan_id=plan.id,
+        status=SubscriptionStatus.EXPIRED,
+        activated_at=None,
+        expires_at=None,
+    )
+    db_session.add(tenant_subscription)
+    db_session.commit()
+    db_session.refresh(tenant_subscription)
+
+    resp = checkout_initiate_via_api(
+        prd10_client,
+        order_id=None,
+        tenant_subscription_id=tenant_subscription.id,
+        idempotency_key="key-subscription-non-manager-001",
+        auth_headers=non_manager_auth,
     )
     assert resp.status_code == 403, (resp.status_code, resp.text)
 

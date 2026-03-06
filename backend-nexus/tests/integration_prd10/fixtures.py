@@ -11,6 +11,7 @@ from app.models import (
     Role,
     User,
     Order,
+    TenantManager,
 )
 from app.models.order import OrderStatus
 from app.auth.auth_utils import hash_password
@@ -44,6 +45,18 @@ def role_patient(db_session):
     role = db_session.query(Role).filter(Role.name == "PATIENT").first()
     if role is None:
         role = Role(name="PATIENT")
+        db_session.add(role)
+        db_session.commit()
+        db_session.refresh(role)
+    return role
+
+
+@pytest.fixture
+def role_tenant_manager(db_session):
+    """Ensure TENANT_MANAGER role exists."""
+    role = db_session.query(Role).filter(Role.name == "TENANT_MANAGER").first()
+    if role is None:
+        role = Role(name="TENANT_MANAGER")
         db_session.add(role)
         db_session.commit()
         db_session.refresh(role)
@@ -153,19 +166,56 @@ def create_order_in_db(
 
 def checkout_initiate_via_api(
     client,
-    order_id: int,
+    order_id: int | None,
     idempotency_key: str,
     auth_headers: dict,
+    enrollment_id: int | None = None,
+    tenant_subscription_id: int | None = None,
 ):
     """
-    POST /api/checkout/initiate with body { order_id } and Idempotency-Key header.
+    POST /api/checkout/initiate with one of:
+    { order_id } | { enrollment_id } | { tenant_subscription_id }.
     Returns the response object.
     """
+    payload = {}
+    if order_id is not None:
+        payload["order_id"] = order_id
+    if enrollment_id is not None:
+        payload["enrollment_id"] = enrollment_id
+    if tenant_subscription_id is not None:
+        payload["tenant_subscription_id"] = tenant_subscription_id
+
     return client.post(
         "/api/checkout/initiate",
-        json={"order_id": order_id},
+        json=payload,
         headers={
             **auth_headers,
             "Idempotency-Key": idempotency_key,
         },
     )
+
+
+def create_tenant_manager_user(
+    db_session,
+    tenant_id: int,
+    role,
+    *,
+    email: str,
+    password: str = "PassPRD10!",
+    first_name: str = "Tenant",
+    last_name: str = "Manager",
+):
+    user = User(
+        email=email,
+        first_name=first_name,
+        last_name=last_name,
+        password=hash_password(password),
+        role_id=role.id,
+    )
+    db_session.add(user)
+    db_session.flush()
+
+    db_session.add(TenantManager(user_id=user.id, tenant_id=tenant_id))
+    db_session.commit()
+    db_session.refresh(user)
+    return user
