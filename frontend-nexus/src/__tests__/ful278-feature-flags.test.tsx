@@ -33,28 +33,12 @@ jest.mock('../lib/feature-flags', () => ({
 
 // Import AFTER mocking so the hook receives the mock
 import { evaluateFlag } from '../lib/feature-flags';
+import { FeatureGate } from '../components/FeatureGate';
 import { useFeatureFlag } from '../stores/use-feature-flag';
 
 const mockEvaluateFlag = evaluateFlag as jest.MockedFunction<
   typeof evaluateFlag
 >;
-
-// ---------------------------------------------------------------------------
-// Minimal FeatureGate component — renders children only when flag is enabled
-// ---------------------------------------------------------------------------
-function FeatureGate({
-  featureKey,
-  children,
-  fallback = null,
-}: {
-  featureKey: string;
-  children: React.ReactNode;
-  fallback?: React.ReactNode;
-}) {
-  const { enabled, loading } = useFeatureFlag(featureKey);
-  if (loading) return <div data-testid="loading">Loading…</div>;
-  return enabled ? <>{children}</> : <>{fallback}</>;
-}
 
 // ---------------------------------------------------------------------------
 // Tests
@@ -207,7 +191,10 @@ describe('FeatureGate component', () => {
     mockEvaluateFlag.mockImplementationOnce(() => new Promise(() => {}));
 
     render(
-      <FeatureGate featureKey="ai_insights">
+      <FeatureGate
+        featureKey="ai_insights"
+        loadingFallback={<div data-testid="loading">Loading…</div>}
+      >
         <span>AI Insights</span>
       </FeatureGate>
     );
