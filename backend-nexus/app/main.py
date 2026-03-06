@@ -30,6 +30,7 @@ from app.routes import (
     patient_appointment_router,
     appointment_status_history_router,
     notification_router,
+    payment_router,
 )
 
 app = FastAPI(
@@ -105,6 +106,7 @@ app.include_router(doctor_appointment_router)
 app.include_router(patient_appointment_router)
 app.include_router(appointment_status_history_router)
 app.include_router(notification_router)
+app.include_router(payment_router, prefix="/api")
 
 
 @app.get("/")
