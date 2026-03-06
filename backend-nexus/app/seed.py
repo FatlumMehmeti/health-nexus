@@ -33,6 +33,7 @@ from app.models import (
     TenantSubscription,
     User,
     UserTenantPlan,
+    FeatureFlag,
 )
 from app.models.enrollment import EnrollmentStatus
 
@@ -457,6 +458,67 @@ SEED_SUBSCRIPTION_PLANS = [
         "max_departments": 50,
     },
 ]
+
+# Feature flag plan defaults — plan_tier must match SubscriptionPlan.name.strip().lower()
+# Keys represent features available across the platform; values are per-tier defaults.
+SEED_FEATURE_FLAGS: dict[str, dict[str, bool]] = {
+    # Base appointments — available to everyone
+    "basic_appointments": {
+        "free": True,
+        "small clinic": True,
+        "medium clinic": True,
+        "hospital": True,
+    },
+    # Reporting & analytics — not on free
+    "advanced_reports": {
+        "free": False,
+        "small clinic": True,
+        "medium clinic": True,
+        "hospital": True,
+    },
+    # Custom branding (logo, colours) — not on free
+    "custom_branding": {
+        "free": False,
+        "small clinic": True,
+        "medium clinic": True,
+        "hospital": True,
+    },
+    # Priority support — medium and above
+    "priority_support": {
+        "free": False,
+        "small clinic": False,
+        "medium clinic": True,
+        "hospital": True,
+    },
+    # Video / telemedicine consultations — medium and above
+    "telemedicine": {
+        "free": False,
+        "small clinic": False,
+        "medium clinic": True,
+        "hospital": True,
+    },
+    # Bulk data export — medium and above
+    "bulk_export": {
+        "free": False,
+        "small clinic": False,
+        "medium clinic": True,
+        "hospital": True,
+    },
+    # Direct API access for integrations — hospital only
+    "api_access": {
+        "free": False,
+        "small clinic": False,
+        "medium clinic": False,
+        "hospital": True,
+    },
+    # AI-powered insights dashboard — hospital only
+    "ai_insights": {
+        "free": False,
+        "small clinic": False,
+        "medium clinic": False,
+        "hospital": True,
+    },
+}
 
 # tenant_managers model payloads
 SEED_TENANT_MANAGERS = [
@@ -1358,6 +1420,35 @@ def seed_subscription_plans(session):
             session.add(SubscriptionPlan(**payload))
 
 
+def seed_feature_flags(session):
+    """
+    Seed plan-level feature flag defaults from SEED_FEATURE_FLAGS.
+    Idempotent: skips rows that already exist, updates enabled if they do.
+    """
+    existing: dict[tuple[str, str], FeatureFlag] = {
+        (flag.plan_tier, flag.feature_key): flag
+        for flag in session.query(FeatureFlag).filter(FeatureFlag.tenant_id.is_(None)).all()
+    }
+
+    for feature_key, tier_map in SEED_FEATURE_FLAGS.items():
+        for plan_tier, enabled in tier_map.items():
+            key = (plan_tier, feature_key)
+            if key in existing:
+                existing[key].enabled = enabled
+            else:
+                session.add(
+                    FeatureFlag(
+                        tenant_id=None,
+                        feature_key=feature_key,
+                        plan_tier=plan_tier,
+                        enabled=enabled,
+                    )
+                )
+
+    count = len(SEED_FEATURE_FLAGS) * len(next(iter(SEED_FEATURE_FLAGS.values())))
+    print(f"  [seed_feature_flags] Seeded {count} plan-level feature flag defaults.")
+
+
 def seed_tenant_subscriptions(session, tenants_by_name):
     from app.models.tenant_subscription import SubscriptionStatus
     from datetime import timedelta
@@ -1963,6 +2054,7 @@ def run_seed() -> None:
         tenants_by_name = {t.name: t for t in session.query(Tenant).all()}
         seed_tenant_details(session, tenants_by_name)
         seed_subscription_plans(session)
+        seed_feature_flags(session)
         session.flush()  # Flush to make SubscriptionPlan records available for query
         seed_tenant_subscriptions(session, tenants_by_name)
         users_by_email = seed_users(session, roles_by_name)
