@@ -1,0 +1,254 @@
+"""
+Feature Flag Routes
+===================
+
+Admin endpoints (super_admin only):
+  POST   /api/superadmin/feature-flags/defaults          — create/update a plan-level default
+  POST   /api/superadmin/feature-flags/overrides         — create/update a tenant override
+  DELETE /api/superadmin/feature-flags/defaults/{id}     — remove a plan default
+  DELETE /api/superadmin/feature-flags/overrides/{id}    — remove a tenant override
+  GET    /api/superadmin/feature-flags                   — list all flags
+
+Evaluate endpoint (any authenticated user):
+  GET    /api/feature-flags/{feature_key}                — resolve flag for the caller's tenant
+"""
+
+import logging
+from typing import Any, Dict, List, Optional
+
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel, Field
+from sqlalchemy.orm import Session
+
+from app.auth.auth_utils import get_current_user, require_role
+from app.db import get_db
+from app.models.feature_flag import FeatureFlag
+from app.services.feature_flag_engine import resolve_flag
+
+logger = logging.getLogger(__name__)
+
+router = APIRouter(tags=["feature-flags"])
+
+
+# ---------------------------------------------------------------------------
+# Schemas
+# ---------------------------------------------------------------------------
+
+
+class PlanDefaultUpsert(BaseModel):
+    plan_tier: str = Field(..., min_length=1, max_length=50)
+    feature_key: str = Field(..., min_length=1, max_length=100)
+    enabled: bool
+
+
+class TenantOverrideUpsert(BaseModel):
+    tenant_id: int
+    feature_key: str = Field(..., min_length=1, max_length=100)
+    enabled: bool
+
+
+class FeatureFlagOut(BaseModel):
+    id: int
+    tenant_id: Optional[int]
+    feature_key: str
+    enabled: bool
+    plan_tier: Optional[str]
+
+    class Config:
+        from_attributes = True
+
+
+class FlagEvalOut(BaseModel):
+    feature_key: str
+    enabled: bool
+    tenant_id: int
+
+
+# ---------------------------------------------------------------------------
+# Admin — list all flags
+# ---------------------------------------------------------------------------
+
+
+@router.get(
+    "/api/superadmin/feature-flags",
+    response_model=List[FeatureFlagOut],
+    dependencies=[Depends(require_role("SUPER_ADMIN"))],
+)
+def list_flags(db: Session = Depends(get_db)) -> List[FeatureFlag]:
+    return db.query(FeatureFlag).order_by(FeatureFlag.plan_tier, FeatureFlag.feature_key).all()
+
+
+# ---------------------------------------------------------------------------
+# Admin — plan-level defaults
+# ---------------------------------------------------------------------------
+
+
+@router.post(
+    "/api/superadmin/feature-flags/defaults",
+    response_model=FeatureFlagOut,
+    dependencies=[Depends(require_role("SUPER_ADMIN"))],
+)
+def upsert_plan_default(body: PlanDefaultUpsert, db: Session = Depends(get_db)) -> FeatureFlag:
+    """Create or update a plan-level default flag."""
+    existing = (
+        db.query(FeatureFlag)
+        .filter(
+            FeatureFlag.tenant_id.is_(None),
+            FeatureFlag.plan_tier == body.plan_tier.strip().lower(),
+            FeatureFlag.feature_key == body.feature_key,
+        )
+        .first()
+    )
+    if existing:
+        existing.enabled = body.enabled
+        db.commit()
+        db.refresh(existing)
+        return existing
+
+    flag = FeatureFlag(
+        tenant_id=None,
+        plan_tier=body.plan_tier.strip().lower(),
+        feature_key=body.feature_key,
+        enabled=body.enabled,
+    )
+    db.add(flag)
+    db.commit()
+    db.refresh(flag)
+    return flag
+
+
+@router.delete(
+    "/api/superadmin/feature-flags/defaults/{flag_id}",
+    status_code=204,
+    dependencies=[Depends(require_role("SUPER_ADMIN"))],
+)
+def delete_plan_default(flag_id: int, db: Session = Depends(get_db)) -> None:
+    flag = db.query(FeatureFlag).filter(
+        FeatureFlag.id == flag_id,
+        FeatureFlag.tenant_id.is_(None),
+    ).first()
+    if flag is None:
+        raise HTTPException(status_code=404, detail="Plan default not found")
+    db.delete(flag)
+    db.commit()
+
+
+# ---------------------------------------------------------------------------
+# Admin — tenant overrides
+# ---------------------------------------------------------------------------
+
+
+@router.post(
+    "/api/superadmin/feature-flags/overrides",
+    response_model=FeatureFlagOut,
+    dependencies=[Depends(require_role("SUPER_ADMIN"))],
+)
+def upsert_tenant_override(body: TenantOverrideUpsert, db: Session = Depends(get_db)) -> FeatureFlag:
+    """Create or update a per-tenant feature flag override."""
+    existing = (
+        db.query(FeatureFlag)
+        .filter(
+            FeatureFlag.tenant_id == body.tenant_id,
+            FeatureFlag.feature_key == body.feature_key,
+        )
+        .first()
+    )
+    if existing:
+        existing.enabled = body.enabled
+        db.commit()
+        db.refresh(existing)
+        return existing
+
+    flag = FeatureFlag(
+        tenant_id=body.tenant_id,
+        plan_tier=None,
+        feature_key=body.feature_key,
+        enabled=body.enabled,
+    )
+    db.add(flag)
+    db.commit()
+    db.refresh(flag)
+    return flag
+
+
+@router.delete(
+    "/api/superadmin/feature-flags/overrides/{flag_id}",
+    status_code=204,
+    dependencies=[Depends(require_role("SUPER_ADMIN"))],
+)
+def delete_tenant_override(flag_id: int, db: Session = Depends(get_db)) -> None:
+    flag = db.query(FeatureFlag).filter(
+        FeatureFlag.id == flag_id,
+        FeatureFlag.tenant_id.isnot(None),
+    ).first()
+    if flag is None:
+        raise HTTPException(status_code=404, detail="Tenant override not found")
+    db.delete(flag)
+    db.commit()
+
+
+# ---------------------------------------------------------------------------
+# Evaluate — any authenticated user resolves a flag for their own tenant
+# ---------------------------------------------------------------------------
+
+
+@router.get(
+    "/api/feature-flags/{feature_key}",
+    response_model=FlagEvalOut,
+)
+def evaluate_flag(
+    feature_key: str,
+    user: Dict[str, Any] = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> FlagEvalOut:
+    """
+    Resolve *feature_key* for the calling user's tenant.
+    Returns ``{"feature_key": "...", "enabled": true/false, "tenant_id": ...}``.
+    Does NOT raise 403 — access denial is expressed via ``enabled: false``.
+    The caller decides what to do with the result.
+    """
+    tenant_id_raw = user.get("tenant_id")
+    if tenant_id_raw is None:
+        raise HTTPException(status_code=403, detail="No tenant associated with this account")
+    tenant_id = int(tenant_id_raw)
+
+    enabled = resolve_flag(db, tenant_id, feature_key)
+    return FlagEvalOut(feature_key=feature_key, enabled=enabled, tenant_id=tenant_id)
+
+
+# ---------------------------------------------------------------------------
+# Guard dependency — use in other routes to gate access behind a feature flag
+# ---------------------------------------------------------------------------
+
+
+def require_feature(feature_key: str):
+    """
+    FastAPI dependency factory.  Raises 403 if the feature is not enabled for
+    the calling user's tenant.
+
+    Usage::
+
+        @router.get("/my-route", dependencies=[Depends(require_feature("telemedicine"))])
+        def my_route():
+            ...
+    """
+
+    def dependency(
+        user: Dict[str, Any] = Depends(get_current_user),
+        db: Session = Depends(get_db),
+    ) -> None:
+        tenant_id_raw = user.get("tenant_id")
+        if tenant_id_raw is None:
+            logger.warning(
+                "feature_access_denied feature_key=%s reason=no_tenant user_id=%s",
+                feature_key,
+                user.get("user_id"),
+            )
+            raise HTTPException(status_code=403, detail="Feature not available")
+
+        tenant_id = int(tenant_id_raw)
+        enabled = resolve_flag(db, tenant_id, feature_key)
+        if not enabled:
+            raise HTTPException(status_code=403, detail=f"Feature '{feature_key}' is not enabled for your plan")
+
+    return dependency

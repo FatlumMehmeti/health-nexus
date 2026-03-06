@@ -1,5 +1,7 @@
 /** Jest setup: extends matchers (e.g. toBeInTheDocument). */
 import '@testing-library/jest-dom';
+// Augments @jest/globals Matchers — required when tests import from @jest/globals
+import '@testing-library/jest-dom/jest-globals';
 import { TextDecoder, TextEncoder } from 'util';
 
 // Required by TanStack Router in jsdom.

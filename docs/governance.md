@@ -99,6 +99,7 @@ A PR is ready when:
 
 ## 6) Project Structure
 
+
 ### Backend
 
 - `backend-nexus/app`: FastAPI application code
