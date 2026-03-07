@@ -20,7 +20,9 @@ export function useFeatureFlags(
   const setTenantScope = useFeatureFlagsStore(
     (state) => state.setTenantScope
   );
-  const ensureFlags = useFeatureFlagsStore((state) => state.ensureFlags);
+  const ensureFlags = useFeatureFlagsStore(
+    (state) => state.ensureFlags
+  );
   const flags = useFeatureFlagsStore((state) => state.flags);
 
   useEffect(() => {

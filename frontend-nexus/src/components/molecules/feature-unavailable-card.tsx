@@ -41,8 +41,7 @@ export function FeatureUnavailableCard({
   showCurrentPlan = false,
 }: FeatureUnavailableCardProps) {
   const role = useAuthStore((state) => state.role);
-  const shouldLoadPlan =
-    showCurrentPlan && role === 'TENANT_MANAGER';
+  const shouldLoadPlan = showCurrentPlan && role === 'TENANT_MANAGER';
 
   const currentPlanQuery = useQuery({
     queryKey: ['subscription', 'stats'],
@@ -55,7 +54,7 @@ export function FeatureUnavailableCard({
       ? 'Current plan: loading...'
       : currentPlanQuery.isError
         ? isApiError(currentPlanQuery.error) &&
-            currentPlanQuery.error.status === 404
+          currentPlanQuery.error.status === 404
           ? 'Current plan: no active plan'
           : 'Current plan: unavailable'
         : `Current plan: ${currentPlanQuery.data.current_plan_name}`
@@ -70,7 +69,9 @@ export function FeatureUnavailableCard({
           </div>
           <div className="space-y-1">
             <CardTitle className="text-base">{title}</CardTitle>
-            <p className="text-sm text-muted-foreground">{description}</p>
+            <p className="text-sm text-muted-foreground">
+              {description}
+            </p>
           </div>
         </div>
       </CardHeader>

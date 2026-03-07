@@ -101,9 +101,7 @@ export function TenantPlansPanel() {
     },
     onError: (err) =>
       toast.error(
-        isApiError(err)
-          ? err.displayMessage
-          : 'Failed to create plan'
+        isApiError(err) ? err.displayMessage : 'Failed to create plan'
       ),
   });
 
@@ -124,9 +122,7 @@ export function TenantPlansPanel() {
     },
     onError: (err) =>
       toast.error(
-        isApiError(err)
-          ? err.displayMessage
-          : 'Failed to update plan'
+        isApiError(err) ? err.displayMessage : 'Failed to update plan'
       ),
   });
 
@@ -141,9 +137,7 @@ export function TenantPlansPanel() {
     },
     onError: (err) =>
       toast.error(
-        isApiError(err)
-          ? err.displayMessage
-          : 'Failed to delete plan'
+        isApiError(err) ? err.displayMessage : 'Failed to delete plan'
       ),
   });
 
@@ -191,9 +185,7 @@ export function TenantPlansPanel() {
     },
     onError: (err) =>
       toast.error(
-        isApiError(err)
-          ? err.displayMessage
-          : 'Failed to toggle plan'
+        isApiError(err) ? err.displayMessage : 'Failed to toggle plan'
       ),
   });
 
@@ -247,24 +239,32 @@ export function TenantPlansPanel() {
           </div>
           {payload.description && (
             <div className="flex justify-between border-b pb-2">
-              <span className="text-muted-foreground">Description</span>
+              <span className="text-muted-foreground">
+                Description
+              </span>
               <span>{payload.description}</span>
             </div>
           )}
           <div className="flex justify-between border-b pb-2">
             <span className="text-muted-foreground">Price</span>
-            <span className="font-medium">€{payload.price.toFixed(2)}</span>
+            <span className="font-medium">
+              €{payload.price.toFixed(2)}
+            </span>
           </div>
           <div className="flex justify-between border-b pb-2">
             <span className="text-muted-foreground">Duration</span>
             <span>{payload.duration} days</span>
           </div>
           <div className="flex justify-between border-b pb-2">
-            <span className="text-muted-foreground">Max appointments</span>
+            <span className="text-muted-foreground">
+              Max appointments
+            </span>
             <span>{payload.max_appointments ?? 'Unlimited'}</span>
           </div>
           <div className="flex justify-between">
-            <span className="text-muted-foreground">Max consultations</span>
+            <span className="text-muted-foreground">
+              Max consultations
+            </span>
             <span>{payload.max_consultations ?? 'Unlimited'}</span>
           </div>
         </div>

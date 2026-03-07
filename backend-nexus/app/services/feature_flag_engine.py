@@ -79,7 +79,9 @@ def resolve_flag(db: Session, tenant_id: int, feature_key: str) -> bool:
             .first()
         )
         if default is not None:
-            _log(tenant_id, feature_key, default.enabled, source="plan_default", plan_tier=plan_tier)
+            _log(
+                tenant_id, feature_key, default.enabled, source="plan_default", plan_tier=plan_tier
+            )
             return default.enabled
 
     # 3. Fallback — deny

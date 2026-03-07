@@ -54,7 +54,7 @@ function SelectTrigger({
       </SelectPrimitive.Icon>
     </SelectPrimitive.Trigger>
   );
-}   
+}
 
 function SelectContent({
   className,

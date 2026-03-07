@@ -27,7 +27,9 @@ export function useFeatureFlag(featureKey: string): FeatureFlagState {
   const setTenantScope = useFeatureFlagsStore(
     (state) => state.setTenantScope
   );
-  const ensureFlag = useFeatureFlagsStore((state) => state.ensureFlag);
+  const ensureFlag = useFeatureFlagsStore(
+    (state) => state.ensureFlag
+  );
   const entry = useFeatureFlagsStore(
     (state) => state.flags[featureKey]
   );

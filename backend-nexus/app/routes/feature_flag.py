@@ -103,9 +103,7 @@ def reset_flags_to_seed(db: Session = Depends(get_db)) -> List[FeatureFlag]:
         for plan_tier, enabled in tier_map.items():
             seed_pairs[(plan_tier.strip().lower(), feature_key)] = enabled
 
-    existing_defaults = (
-        db.query(FeatureFlag).filter(FeatureFlag.tenant_id.is_(None)).all()
-    )
+    existing_defaults = db.query(FeatureFlag).filter(FeatureFlag.tenant_id.is_(None)).all()
     existing_by_pair: dict[tuple[str, str], FeatureFlag] = {}
 
     for row in existing_defaults:
@@ -194,10 +192,14 @@ def upsert_plan_default(body: PlanDefaultUpsert, db: Session = Depends(get_db)) 
     dependencies=[Depends(require_role("SUPER_ADMIN"))],
 )
 def delete_plan_default(flag_id: int, db: Session = Depends(get_db)) -> None:
-    flag = db.query(FeatureFlag).filter(
-        FeatureFlag.id == flag_id,
-        FeatureFlag.tenant_id.is_(None),
-    ).first()
+    flag = (
+        db.query(FeatureFlag)
+        .filter(
+            FeatureFlag.id == flag_id,
+            FeatureFlag.tenant_id.is_(None),
+        )
+        .first()
+    )
     if flag is None:
         raise HTTPException(status_code=404, detail="Plan default not found")
     db.delete(flag)
@@ -214,7 +216,9 @@ def delete_plan_default(flag_id: int, db: Session = Depends(get_db)) -> None:
     response_model=FeatureFlagOut,
     dependencies=[Depends(require_role("SUPER_ADMIN"))],
 )
-def upsert_tenant_override(body: TenantOverrideUpsert, db: Session = Depends(get_db)) -> FeatureFlag:
+def upsert_tenant_override(
+    body: TenantOverrideUpsert, db: Session = Depends(get_db)
+) -> FeatureFlag:
     """Create or update a per-tenant feature flag override."""
     existing = (
         db.query(FeatureFlag)
@@ -248,10 +252,14 @@ def upsert_tenant_override(body: TenantOverrideUpsert, db: Session = Depends(get
     dependencies=[Depends(require_role("SUPER_ADMIN"))],
 )
 def delete_tenant_override(flag_id: int, db: Session = Depends(get_db)) -> None:
-    flag = db.query(FeatureFlag).filter(
-        FeatureFlag.id == flag_id,
-        FeatureFlag.tenant_id.isnot(None),
-    ).first()
+    flag = (
+        db.query(FeatureFlag)
+        .filter(
+            FeatureFlag.id == flag_id,
+            FeatureFlag.tenant_id.isnot(None),
+        )
+        .first()
+    )
     if flag is None:
         raise HTTPException(status_code=404, detail="Tenant override not found")
     db.delete(flag)
@@ -320,6 +328,8 @@ def require_feature(feature_key: str):
         tenant_id = int(tenant_id_raw)
         enabled = resolve_flag(db, tenant_id, feature_key)
         if not enabled:
-            raise HTTPException(status_code=403, detail=f"Feature '{feature_key}' is not enabled for your plan")
+            raise HTTPException(
+                status_code=403, detail=f"Feature '{feature_key}' is not enabled for your plan"
+            )
 
     return dependency

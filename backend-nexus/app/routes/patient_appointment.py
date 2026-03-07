@@ -129,7 +129,9 @@ def list_tenant_doctors(
     ]
 
 
-@router.post("/book", response_model=dict, dependencies=[Depends(require_feature("basic_appointments"))])
+@router.post(
+    "/book", response_model=dict, dependencies=[Depends(require_feature("basic_appointments"))]
+)
 def book_appointment_endpoint(
     payload: AppointmentCreate,
     db: Session = Depends(get_db),

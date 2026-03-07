@@ -1,9 +1,9 @@
-import { Card, CardContent } from '@/components/ui/card';
-import { Skeleton } from '@/components/ui/skeleton';
 import { TenantFeatureGuard } from '@/components/TenantFeatureGuard';
 import { FeatureUnavailableCard } from '@/components/molecules/feature-unavailable-card';
-import { IconPalette } from '@tabler/icons-react';
+import { Card, CardContent } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useAuthStore } from '@/stores/auth.store';
+import { IconPalette } from '@tabler/icons-react';
 import { useQuery } from '@tanstack/react-query';
 import { QUERY_KEYS, type TenantSectionKey } from './-constants';
 import { InfoPill } from './-shared';
@@ -20,8 +20,8 @@ import { ProductsManager } from './products/-index';
 import { TenantDetailsEditor } from './settings/-index';
 
 export {
-  TENANT_SECTION_KEYS,
   normalizeTenantSection,
+  TENANT_SECTION_KEYS,
   type TenantSectionKey,
 } from './-constants';
 

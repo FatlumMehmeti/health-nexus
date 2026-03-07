@@ -75,7 +75,6 @@ const superAdminRoutes = [
     url: '/dashboard/permissions',
     icon: IconLock,
   },
- 
 ] as const;
 
 const tenantManagerDocuments = [

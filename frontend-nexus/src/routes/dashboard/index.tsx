@@ -3,9 +3,9 @@ import { DataTable, schema } from '@/components/molecules/data-table';
 import { FeatureUnavailableCard } from '@/components/molecules/feature-unavailable-card';
 import { SectionCards } from '@/components/molecules/section-cards';
 import { TenantFeatureGuard } from '@/components/TenantFeatureGuard';
-import { IconSparkles } from '@tabler/icons-react';
 import dashboardData from '@/lib/dashboard-data.json';
 import { requireAuth } from '@/lib/guards/requireAuth';
+import { IconSparkles } from '@tabler/icons-react';
 import { createFileRoute } from '@tanstack/react-router';
 import { z } from 'zod';
 

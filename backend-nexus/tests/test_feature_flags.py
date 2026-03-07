@@ -26,7 +26,6 @@ from app.models import (
 from app.models.tenant_subscription import SubscriptionStatus
 from app.services.feature_flag_engine import resolve_flag
 
-
 # ---------------------------------------------------------------------------
 # Helpers / fixtures
 # ---------------------------------------------------------------------------
@@ -58,14 +57,18 @@ def _subscribe(db, tenant, plan):
 
 
 def _plan_default(db, plan_tier, feature_key, enabled):
-    flag = FeatureFlag(tenant_id=None, plan_tier=plan_tier, feature_key=feature_key, enabled=enabled)
+    flag = FeatureFlag(
+        tenant_id=None, plan_tier=plan_tier, feature_key=feature_key, enabled=enabled
+    )
     db.add(flag)
     db.flush()
     return flag
 
 
 def _tenant_override(db, tenant_id, feature_key, enabled):
-    flag = FeatureFlag(tenant_id=tenant_id, plan_tier=None, feature_key=feature_key, enabled=enabled)
+    flag = FeatureFlag(
+        tenant_id=tenant_id, plan_tier=None, feature_key=feature_key, enabled=enabled
+    )
     db.add(flag)
     db.flush()
     return flag
