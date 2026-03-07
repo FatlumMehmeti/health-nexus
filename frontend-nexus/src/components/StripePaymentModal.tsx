@@ -1,0 +1,268 @@
+import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { loadStripe } from '@stripe/stripe-js';
+import {
+  Elements,
+  useStripe,
+  useElements,
+  CardElement,
+} from '@stripe/react-stripe-js';
+import type { StripeCardElementOptions } from '@stripe/stripe-js';
+import { CreditCard, LockKeyhole, ShieldCheck } from 'lucide-react';
+import React from 'react';
+
+const stripePromise = loadStripe(
+  import.meta.env.VITE_STRIPE_PUBLIC_KEY!
+);
+
+interface StripePaymentModalProps {
+  clientSecret: string;
+  open: boolean;
+  onClose: () => void;
+  onSuccess: () => void;
+}
+
+function StripePaymentForm({
+  clientSecret,
+  onClose,
+  onSuccess,
+}: {
+  clientSecret: string;
+  onClose: () => void;
+  onSuccess: () => void;
+}) {
+  const stripe = useStripe();
+  const elements = useElements();
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const [errorMessage, setErrorMessage] = React.useState<
+    string | null
+  >(null);
+
+  const cardElementOptions: StripeCardElementOptions = {
+    hidePostalCode: true,
+    style: {
+      base: {
+        color: '#1f2937',
+        fontFamily: 'ui-sans-serif, system-ui, sans-serif',
+        fontSize: '16px',
+        fontSmoothing: 'antialiased',
+        '::placeholder': {
+          color: '#94a3b8',
+        },
+      },
+      invalid: {
+        color: '#dc2626',
+        iconColor: '#dc2626',
+      },
+    },
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!stripe || !elements || isSubmitting) return;
+
+    setIsSubmitting(true);
+    setErrorMessage(null);
+
+    const cardElement = elements.getElement(CardElement);
+    if (!cardElement) {
+      setErrorMessage(
+        'Card form is not ready yet. Please try again.'
+      );
+      setIsSubmitting(false);
+      return;
+    }
+
+    if (!clientSecret) {
+      setErrorMessage(
+        'Payment session is missing. Please reopen checkout.'
+      );
+      setIsSubmitting(false);
+      return;
+    }
+
+    const result = await stripe.confirmCardPayment(clientSecret, {
+      payment_method: {
+        card: cardElement,
+      },
+    });
+
+    if (result.error) {
+      setErrorMessage(
+        result.error.message || 'Payment failed. Please try again.'
+      );
+    } else if (result.paymentIntent?.status === 'succeeded') {
+      onSuccess();
+      onClose();
+    }
+
+    setIsSubmitting(false);
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-6">
+      <div className="grid gap-4 md:grid-cols-[1.2fr_0.8fr]">
+        <div className="rounded-2xl border bg-card p-5 shadow-sm">
+          <div className="mb-4 flex items-center gap-3">
+            <div className="flex size-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
+              <CreditCard className="size-5" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-foreground">
+                Card details
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Enter your payment information to activate the plan.
+              </p>
+            </div>
+          </div>
+
+          <div className="rounded-xl border bg-background px-4 py-4 shadow-xs transition-shadow focus-within:ring-2 focus-within:ring-primary/20">
+            <CardElement options={cardElementOptions} />
+          </div>
+
+          {errorMessage && (
+            <div className="mt-4 rounded-xl border border-destructive/20 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+              {errorMessage}
+            </div>
+          )}
+        </div>
+
+        <div className="rounded-2xl border bg-muted/30 p-5 shadow-sm">
+          <div className="space-y-4">
+            <div>
+              <p className="text-sm font-semibold text-foreground">
+                Checkout summary
+              </p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Your enrollment stays pending until Stripe confirms
+                the payment.
+              </p>
+            </div>
+
+            <div className="rounded-xl border bg-background/90 p-4">
+              <div className="flex items-start gap-3">
+                <ShieldCheck className="mt-0.5 size-4 text-primary" />
+                <div>
+                  <p className="text-sm font-medium text-foreground">
+                    Protected checkout
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    Card data is processed securely by Stripe and
+                    never stored by this app.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-xl border bg-background/90 p-4">
+              <div className="flex items-start gap-3">
+                <LockKeyhole className="mt-0.5 size-4 text-primary" />
+                <div>
+                  <p className="text-sm font-medium text-foreground">
+                    Instant activation
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    Once Stripe confirms success, your enrollment is
+                    upgraded to active automatically.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex flex-col-reverse gap-3 border-t pt-5 sm:flex-row sm:justify-end">
+        <Button
+          type="button"
+          variant="outline"
+          size="lg"
+          onClick={onClose}
+          disabled={isSubmitting}
+        >
+          Cancel
+        </Button>
+        <Button
+          type="submit"
+          size="lg"
+          className="min-w-[160px] shadow-sm"
+          loading={isSubmitting}
+          disabled={!stripe}
+        >
+          Pay securely
+        </Button>
+      </div>
+    </form>
+  );
+}
+
+function StripePaymentModalBody({
+  clientSecret,
+  onClose,
+  onSuccess,
+}: {
+  clientSecret: string;
+  onClose: () => void;
+  onSuccess: () => void;
+}) {
+  return (
+    <div className="space-y-2">
+      <DialogHeader className="space-y-3">
+        <div className="inline-flex w-fit items-center rounded-full border border-primary/15 bg-primary/5 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
+          Secure payment
+        </div>
+        <DialogTitle className="text-2xl sm:text-3xl">
+          Complete your plan checkout
+        </DialogTitle>
+        <DialogDescription className="max-w-2xl text-sm leading-6">
+          Finish payment to activate your enrollment and unlock access
+          immediately after confirmation.
+        </DialogDescription>
+      </DialogHeader>
+
+      <StripePaymentForm
+        clientSecret={clientSecret}
+        onClose={onClose}
+        onSuccess={onSuccess}
+      />
+    </div>
+  );
+}
+
+export function StripePaymentModal({
+  clientSecret,
+  open,
+  onClose,
+  onSuccess,
+}: StripePaymentModalProps) {
+  if (!clientSecret) return null;
+
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(nextOpen) => !nextOpen && onClose()}
+    >
+      <DialogContent
+        className="max-w-[920px] gap-6 overflow-hidden rounded-3xl border-border/70 p-0 shadow-2xl"
+        showCloseButton={false}
+      >
+        <div className="border-b bg-gradient-to-br from-primary/10 via-background to-background px-6 py-6 sm:px-8">
+          <Elements stripe={stripePromise} options={{ clientSecret }}>
+            <StripePaymentModalBody
+              clientSecret={clientSecret}
+              onClose={onClose}
+              onSuccess={onSuccess}
+            />
+          </Elements>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}

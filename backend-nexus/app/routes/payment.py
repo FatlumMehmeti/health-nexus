@@ -3,6 +3,7 @@ Checkout initiation and payment intent flow (PRD-10).
 """
 from __future__ import annotations
 
+import logging
 from typing import Any, Dict
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request
@@ -23,6 +24,9 @@ from app.services.payment_service import (
     process_stripe_webhook,
 )
 from app.models.payment import PaymentStatus
+
+
+logger = logging.getLogger(__name__)
 
 
 router = APIRouter(
@@ -150,6 +154,17 @@ async def stripe_webhook(
             signature=stripe_signature,
         )
     except PaymentServiceError as exc:
+        logger.warning(
+            "Stripe webhook rejected",
+            extra={
+                "code": exc.code,
+                "message": exc.message,
+                "details": exc.details,
+            },
+        )
         return _error_response(exc)
+    except Exception:
+        logger.exception("Unexpected Stripe webhook failure")
+        raise
 
     return {"received": True, **result}

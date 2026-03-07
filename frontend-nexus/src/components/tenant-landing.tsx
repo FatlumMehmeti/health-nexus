@@ -38,6 +38,8 @@ import {
 import { useNavigate } from '@tanstack/react-router';
 import type { CSSProperties } from 'react';
 import { useEffect, useState } from 'react';
+import { StripePaymentModal } from './StripePaymentModal';
+import { checkoutService } from '@/services/checkout.service';
 import { toast } from 'sonner';
 
 export interface TenantLandingProps {
@@ -101,6 +103,13 @@ function getApiDetailCode(err: unknown): string | undefined {
 }
 
 export function TenantLanding({ landingData }: TenantLandingProps) {
+  const [showStripeModal, setShowStripeModal] = useState(false);
+  const [stripeClientSecret, setStripeClientSecret] = useState<
+    string | null
+  >(null);
+  const [pendingPlanId, setPendingPlanId] = useState<number | null>(
+    null
+  );
   const [activeTab, setActiveTab] = useState('home');
   const [selectedPlanId, setSelectedPlanId] = useState<number | null>(
     null
@@ -135,24 +144,49 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
   }, [enrollmentData]);
 
   const enrollMutation = useMutation({
-    mutationFn: ({
+    mutationFn: async ({
       tenantId,
       planId,
+      price,
     }: {
       tenantId: number;
       planId: number;
-    }) => tenantPlansService.enroll(tenantId, planId),
-    onSuccess: (_data, variables) => {
-      setSelectedPlanId(variables.planId);
-      // Invalidate the cached enrollment so next hydration uses the new plan
-      queryClient.invalidateQueries({
+      price: number;
+    }) => {
+      // 1. Enroll
+      const enrollment = await tenantPlansService.enroll(
+        tenantId,
+        planId
+      );
+      if (price <= 0) {
+        return { enrollment, planId, requiresPayment: false };
+      }
+      // 2. Initiate Stripe checkout
+      const idempotencyKey = crypto.randomUUID();
+      const checkout = await checkoutService.initiate(
+        { enrollment_id: enrollment.id },
+        idempotencyKey
+      );
+      setStripeClientSecret(checkout.stripe_client_secret);
+      setShowStripeModal(true);
+      return { enrollment, planId, requiresPayment: true };
+    },
+    onSuccess: async (data) => {
+      if (data.requiresPayment) {
+        return;
+      }
+
+      setStripeClientSecret(null);
+      setShowStripeModal(false);
+      setSelectedPlanId(data.planId);
+      setPendingPlanId(null);
+      await queryClient.invalidateQueries({
         queryKey: ['my-enrollment', tenantId],
       });
-      toast.success('Successfully subscribed!', {
-        description: 'Your plan has been selected.',
-      });
+      toast.success('Free plan activated successfully.');
     },
     onError: (err) => {
+      setPendingPlanId(null);
       toast.error(
         isApiError(err)
           ? err.message
@@ -865,6 +899,10 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                   {plans.map((plan) => {
                     const isSelected = selectedPlanId === plan.id;
+                    const isCheckoutPending =
+                      enrollMutation.isPending &&
+                      pendingPlanId === plan.id;
+                    const isFreePlan = Number(plan.price) <= 0;
                     return (
                       <article
                         key={plan.id}
@@ -952,25 +990,52 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
                                   }
                                 : undefined
                           }
-                          onClick={() => {
+                          onClick={async () => {
                             if (!isAuthenticated) {
                               toast.error(
                                 'Please log in to subscribe to a plan.'
                               );
                               return;
                             }
+                            setPendingPlanId(plan.id);
                             enrollMutation.mutate({
                               tenantId: tenant.id,
                               planId: plan.id,
+                              price: Number(plan.price),
                             });
                           }}
                         >
                           {isSelected
                             ? 'You have selected this plan'
-                            : enrollMutation.isPending
-                              ? 'Subscribing…'
-                              : 'Subscribe to this plan'}
+                            : isCheckoutPending
+                              ? isFreePlan
+                                ? 'Activating free plan…'
+                                : 'Redirecting to payment…'
+                              : isFreePlan
+                                ? 'Choose this free plan'
+                                : 'Subscribe to this plan'}
                         </Button>
+                        {/* Stripe Payment Modal */}
+                        <StripePaymentModal
+                          clientSecret={stripeClientSecret ?? ''}
+                          open={
+                            showStripeModal && !!stripeClientSecret
+                          }
+                          onClose={() => setShowStripeModal(false)}
+                          onSuccess={async () => {
+                            setShowStripeModal(false);
+                            setStripeClientSecret(null);
+                            setSelectedPlanId(pendingPlanId);
+                            setPendingPlanId(null);
+                            // Invalidate enrollment cache to refresh status
+                            await queryClient.invalidateQueries({
+                              queryKey: ['my-enrollment', tenantId],
+                            });
+                            toast.success(
+                              'Payment successful! Your plan is now active.'
+                            );
+                          }}
+                        />
                       </article>
                     );
                   })}

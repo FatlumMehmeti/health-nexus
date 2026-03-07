@@ -1,5 +1,5 @@
 from decimal import Decimal
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -25,6 +25,30 @@ router = APIRouter(
     prefix="/user-tenant-plans",
     tags=["User Tenant Plans"],
 )
+
+
+def apply_enrollment_state_for_plan(
+    enrollment: Enrollment,
+    plan: UserTenantPlan,
+):
+    now = datetime.now(timezone.utc)
+    plan_price = Decimal(str(plan.price or 0))
+
+    if plan_price <= 0:
+        enrollment.status = EnrollmentStatusModel.ACTIVE
+        enrollment.activated_at = now
+        enrollment.cancelled_at = None
+        enrollment.expires_at = (
+            now + timedelta(days=int(plan.duration))
+            if plan.duration
+            else None
+        )
+        return
+
+    enrollment.status = EnrollmentStatusModel.PENDING
+    enrollment.activated_at = None
+    enrollment.cancelled_at = None
+    enrollment.expires_at = None
 
 
 def verify_tenant_manager(db: Session, user_id: int, tenant_id: int):
@@ -244,9 +268,7 @@ def enroll_in_plan(
     if existing:
         # Re-activate / switch to the new plan instead of creating a duplicate
         existing.user_tenant_plan_id = plan_id
-        existing.status = EnrollmentStatusModel.ACTIVE
-        existing.activated_at = datetime.now(timezone.utc)
-        existing.cancelled_at = None
+        apply_enrollment_state_for_plan(existing, plan)
         db.commit()
         db.refresh(existing)
         return existing
@@ -257,9 +279,10 @@ def enroll_in_plan(
         patient_user_id=user_id,
         user_tenant_plan_id=plan_id,
         created_by=user_id,
-        status=EnrollmentStatusModel.ACTIVE,
-        activated_at=datetime.now(timezone.utc),
+        status=EnrollmentStatusModel.PENDING,
+        activated_at=None,
     )
+    apply_enrollment_state_for_plan(enrollment, plan)
     db.add(enrollment)
     db.commit()
     db.refresh(enrollment)
