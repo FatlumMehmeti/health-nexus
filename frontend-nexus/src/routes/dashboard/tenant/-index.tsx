@@ -1,5 +1,8 @@
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { TenantFeatureGuard } from '@/components/TenantFeatureGuard';
+import { FeatureUnavailableCard } from '@/components/molecules/feature-unavailable-card';
+import { IconPalette } from '@tabler/icons-react';
 import { useAuthStore } from '@/stores/auth.store';
 import { useQuery } from '@tanstack/react-query';
 import { QUERY_KEYS, type TenantSectionKey } from './-constants';
@@ -111,7 +114,22 @@ export function TenantManagerPageContent({
           <TenantEnrollmentsPanel />
         )}
 
-        {activeSection === 'settings' && <TenantDetailsEditor />}
+        {activeSection === 'settings' && (
+          <TenantFeatureGuard
+            featureKey="custom_branding"
+            fallback={
+              <FeatureUnavailableCard
+                title="Custom Branding"
+                description="Custom branding settings are not available on your current plan."
+                featureLabel="custom_branding"
+                icon={IconPalette}
+                showCurrentPlan
+              />
+            }
+          >
+            <TenantDetailsEditor />
+          </TenantFeatureGuard>
+        )}
       </div>
     </div>
   );

@@ -13,8 +13,9 @@
  *   const { enabled } = useFeatureFlag('advanced_reports');
  *   if (!enabled) return <UpgradePrompt />;
  */
-import { useEffect, useState } from 'react';
-import { evaluateFlag } from '../lib/feature-flags';
+import { useAuthStore } from '@/stores/auth.store';
+import { useFeatureFlagsStore } from '@/stores/feature-flags.store';
+import { useEffect, useMemo } from 'react';
 
 interface FeatureFlagState {
   enabled: boolean;
@@ -22,30 +23,28 @@ interface FeatureFlagState {
 }
 
 export function useFeatureFlag(featureKey: string): FeatureFlagState {
-  const [state, setState] = useState<FeatureFlagState>({
-    enabled: false,
-    loading: true,
-  });
+  const tenantId = useAuthStore((state) => state.tenantId);
+  const setTenantScope = useFeatureFlagsStore(
+    (state) => state.setTenantScope
+  );
+  const ensureFlag = useFeatureFlagsStore((state) => state.ensureFlag);
+  const entry = useFeatureFlagsStore(
+    (state) => state.flags[featureKey]
+  );
 
   useEffect(() => {
-    let cancelled = false;
+    setTenantScope(tenantId);
+  }, [setTenantScope, tenantId]);
 
-    evaluateFlag(featureKey)
-      .then((result) => {
-        if (!cancelled) {
-          setState({ enabled: result.enabled, loading: false });
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setState({ enabled: false, loading: false });
-        }
-      });
+  useEffect(() => {
+    void ensureFlag(featureKey);
+  }, [ensureFlag, featureKey]);
 
-    return () => {
-      cancelled = true;
-    };
-  }, [featureKey]);
-
-  return state;
+  return useMemo(
+    () => ({
+      enabled: entry?.enabled ?? false,
+      loading: entry?.loading ?? true,
+    }),
+    [entry?.enabled, entry?.loading]
+  );
 }
