@@ -10,3 +10,4 @@ export type {
 export { rolesService } from './roles.service';
 export { tenantsService } from './tenants.service';
 export { usersService } from './users.service';
+export { featureFlagsService } from './feature-flags.service';

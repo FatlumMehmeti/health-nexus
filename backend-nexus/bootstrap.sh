@@ -17,6 +17,40 @@ while True:
 END
 
 echo "Running migrations..."
+NEEDS_STAMP="$(python << 'END'
+from sqlalchemy import create_engine, text
+from sqlalchemy.exc import SQLAlchemyError
+import os
+
+database_url = os.getenv("DATABASE_URL")
+if not database_url:
+    print("false")
+    raise SystemExit(0)
+
+engine = create_engine(database_url)
+try:
+    with engine.connect() as conn:
+        has_roles = bool(
+            conn.execute(
+                text("SELECT to_regclass('public.roles') IS NOT NULL")
+            ).scalar()
+        )
+        has_alembic_version = bool(
+            conn.execute(
+                text("SELECT to_regclass('public.alembic_version') IS NOT NULL")
+            ).scalar()
+        )
+        print("true" if has_roles and not has_alembic_version else "false")
+except SQLAlchemyError:
+    print("false")
+END
+)"
+
+if [ "$NEEDS_STAMP" = "true" ]; then
+    echo "Existing schema detected without alembic history. Stamping head..."
+    alembic stamp head
+fi
+
 MIGRATION_LOG="$(mktemp)"
 if alembic upgrade head >"$MIGRATION_LOG" 2>&1; then
     cat "$MIGRATION_LOG"

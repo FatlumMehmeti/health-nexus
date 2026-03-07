@@ -2,13 +2,11 @@ import {
   IconBuildingStore,
   IconCalendarCheck,
   IconDashboard,
-  IconDatabase,
-  IconDatabaseExport,
   IconFileDescription,
   IconFolder,
   IconHistory,
   IconInnerShadowTop,
-  IconKey,
+  IconLock,
   IconReport,
   IconSettings,
   IconStethoscope,
@@ -71,32 +69,13 @@ const navMainAll: Array<{
   },
 ];
 
-const superAdminDocuments = [
+const superAdminRoutes = [
   {
-    title: 'Forms',
-    url: '/dashboard/forms',
-    icon: IconFileDescription,
+    title: 'Permissions',
+    url: '/dashboard/permissions',
+    icon: IconLock,
   },
-  {
-    title: 'Global State',
-    url: '/dashboard/global-state',
-    icon: IconDatabase,
-  },
-  {
-    title: 'Landing Pages',
-    url: '/dashboard/landing-pages',
-    icon: IconFolder,
-  },
-  {
-    title: 'Data Fetching',
-    url: '/dashboard/data',
-    icon: IconDatabaseExport,
-  },
-  {
-    title: 'Roles',
-    url: '/dashboard/roles',
-    icon: IconKey,
-  },
+ 
 ] as const;
 
 const tenantManagerDocuments = [
@@ -178,7 +157,7 @@ export function AppSidebar({
     return baseItems;
   }, [role, user?.id, userWithRole]);
   const documentItems = React.useMemo(() => {
-    if (role === 'SUPER_ADMIN') return [...superAdminDocuments];
+    if (role === 'SUPER_ADMIN') return [...superAdminRoutes];
     if (role === 'TENANT_MANAGER') return [...tenantManagerDocuments];
     if (role === 'CLIENT') return [...clientsDocuments];
     return [];
@@ -187,7 +166,7 @@ export function AppSidebar({
   const documentsLabel = React.useMemo(() => {
     if (role === 'TENANT_MANAGER') return 'My Tenant';
     if (role === 'CLIENT') return 'Account & Services';
-    return 'Documents';
+    return 'Super Admin';
   }, [role]);
 
   const sidebarUser = React.useMemo(() => {

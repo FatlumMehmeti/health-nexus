@@ -15,6 +15,7 @@ from fastapi.testclient import TestClient
 
 from app.auth.auth_utils import get_current_user
 from app.main import app
+from app.lib.feature_flag_seed import SEED_FEATURE_FLAGS
 from app.models import (
     FeatureFlag,
     SubscriptionPlan,
@@ -214,6 +215,57 @@ def tenant_client(db_session):
 
 
 class TestAdminEndpoints:
+    def test_reset_to_seed_restores_defaults_and_clears_overrides(self, admin_client, db_session):
+        tenant = _make_tenant(db_session, name="Reset Tenant", licence="LIC-RESET")
+        db_session.add(
+            FeatureFlag(
+                tenant_id=None,
+                plan_tier="free",
+                feature_key="advanced_reports",
+                enabled=True,  # opposite of seed for free
+            )
+        )
+        db_session.add(
+            FeatureFlag(
+                tenant_id=None,
+                plan_tier="free",
+                feature_key="custom_non_seed_feature",
+                enabled=True,
+            )
+        )
+        db_session.add(
+            FeatureFlag(
+                tenant_id=tenant.id,
+                plan_tier=None,
+                feature_key="advanced_reports",
+                enabled=True,
+            )
+        )
+        db_session.commit()
+
+        res = admin_client.post("/api/superadmin/feature-flags/reset")
+        assert res.status_code == 200
+        payload = res.json()
+        assert isinstance(payload, list)
+
+        all_flags = db_session.query(FeatureFlag).all()
+        assert all(flag.tenant_id is None for flag in all_flags)
+
+        expected_total = sum(len(v) for v in SEED_FEATURE_FLAGS.values())
+        assert len(all_flags) == expected_total
+        assert len(payload) == expected_total
+
+        free_advanced = (
+            db_session.query(FeatureFlag)
+            .filter(
+                FeatureFlag.tenant_id.is_(None),
+                FeatureFlag.plan_tier == "free",
+                FeatureFlag.feature_key == "advanced_reports",
+            )
+            .one()
+        )
+        assert free_advanced.enabled is False
+
     def test_create_plan_default(self, admin_client):
         res = admin_client.post(
             "/api/superadmin/feature-flags/defaults",

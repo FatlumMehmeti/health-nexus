@@ -22,6 +22,7 @@ from sqlalchemy.orm import Session
 
 from app.auth.auth_utils import get_current_user, require_role
 from app.db import get_db
+from app.lib.feature_flag_seed import SEED_FEATURE_FLAGS
 from app.models.feature_flag import FeatureFlag
 from app.services.feature_flag_engine import resolve_flag
 
@@ -76,6 +77,76 @@ class FlagEvalOut(BaseModel):
 )
 def list_flags(db: Session = Depends(get_db)) -> List[FeatureFlag]:
     return db.query(FeatureFlag).order_by(FeatureFlag.plan_tier, FeatureFlag.feature_key).all()
+
+
+# ---------------------------------------------------------------------------
+# Admin — reset flags to canonical seed values
+# ---------------------------------------------------------------------------
+
+
+@router.post(
+    "/api/superadmin/feature-flags/reset",
+    response_model=List[FeatureFlagOut],
+    dependencies=[Depends(require_role("SUPER_ADMIN"))],
+)
+def reset_flags_to_seed(db: Session = Depends(get_db)) -> List[FeatureFlag]:
+    """
+    Reset all feature flags to canonical seed defaults.
+
+    Behavior:
+      - Delete all tenant overrides.
+      - Remove plan defaults not present in seed config.
+      - Upsert all seeded plan defaults with seeded enabled values.
+    """
+    seed_pairs: dict[tuple[str, str], bool] = {}
+    for feature_key, tier_map in SEED_FEATURE_FLAGS.items():
+        for plan_tier, enabled in tier_map.items():
+            seed_pairs[(plan_tier.strip().lower(), feature_key)] = enabled
+
+    existing_defaults = (
+        db.query(FeatureFlag).filter(FeatureFlag.tenant_id.is_(None)).all()
+    )
+    existing_by_pair: dict[tuple[str, str], FeatureFlag] = {}
+
+    for row in existing_defaults:
+        if row.plan_tier is None:
+            db.delete(row)
+            continue
+        key = (row.plan_tier.strip().lower(), row.feature_key)
+        if key in seed_pairs:
+            existing_by_pair[key] = row
+        else:
+            db.delete(row)
+
+    for (plan_tier, feature_key), enabled in seed_pairs.items():
+        existing = existing_by_pair.get((plan_tier, feature_key))
+        if existing:
+            existing.enabled = enabled
+            continue
+
+        db.add(
+            FeatureFlag(
+                tenant_id=None,
+                plan_tier=plan_tier,
+                feature_key=feature_key,
+                enabled=enabled,
+            )
+        )
+
+    (
+        db.query(FeatureFlag)
+        .filter(FeatureFlag.tenant_id.isnot(None))
+        .delete(synchronize_session=False)
+    )
+
+    db.commit()
+
+    return (
+        db.query(FeatureFlag)
+        .filter(FeatureFlag.tenant_id.is_(None))
+        .order_by(FeatureFlag.plan_tier, FeatureFlag.feature_key)
+        .all()
+    )
 
 
 # ---------------------------------------------------------------------------
