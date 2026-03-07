@@ -1,5 +1,7 @@
 import { PlanCard } from '@/components/molecules/plan-card';
+import { StripePaymentModal } from '@/components/StripePaymentModal';
 import { isApiError } from '@/lib/api-client';
+import { checkoutService } from '@/services/checkout.service';
 import {
   changePlan,
   getCurrentSubscription,
@@ -9,6 +11,7 @@ import {
   type SubscriptionStats,
   type TenantSubscription,
 } from '@/services/subscription-plans.service';
+import { toast } from 'sonner';
 import { useEffect, useState } from 'react';
 
 interface SubscriptionPlansModalProps {
@@ -31,6 +34,39 @@ export function SubscriptionPlansModal({}: SubscriptionPlansModalProps) {
     null
   );
   const [changeError, setChangeError] = useState<string | null>(null);
+  const [showStripeModal, setShowStripeModal] = useState(false);
+  const [stripeClientSecret, setStripeClientSecret] = useState<
+    string | null
+  >(null);
+  const [pendingPlanId, setPendingPlanId] = useState<number | null>(
+    null
+  );
+
+  const refreshSubscriptionData = async (
+    expectedPlanId?: number,
+    maxAttempts = 6
+  ) => {
+    for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+      const [updatedSubscription, updatedStats] = await Promise.all([
+        getCurrentSubscription(),
+        getSubscriptionStats(),
+      ]);
+
+      setCurrentSubscription(updatedSubscription);
+      setStats(updatedStats);
+
+      if (
+        expectedPlanId === undefined ||
+        updatedSubscription.subscription_plan_id === expectedPlanId
+      ) {
+        return updatedSubscription;
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+    }
+
+    return null;
+  };
 
   // Helper: Check if a plan can accommodate current stats
   const canPlanFitStats = (plan: SubscriptionPlan): boolean => {
@@ -100,10 +136,26 @@ export function SubscriptionPlansModal({}: SubscriptionPlansModalProps) {
     try {
       setChangingPlanId(planId);
       setChangeError(null);
-      await changePlan(planId);
-      // Refresh the current subscription
-      const updated = await getCurrentSubscription();
-      setCurrentSubscription(updated);
+      const selectedPlan = plans.find((plan) => plan.id === planId);
+      if (!selectedPlan) {
+        throw new Error('Selected plan not found');
+      }
+
+      const nextSubscription = await changePlan(planId);
+      if (parseFloat(selectedPlan.price) <= 0) {
+        await refreshSubscriptionData();
+        toast.success('Subscription updated successfully.');
+        return;
+      }
+
+      const idempotencyKey = crypto.randomUUID();
+      const checkout = await checkoutService.initiate(
+        { tenant_subscription_id: nextSubscription.id },
+        idempotencyKey
+      );
+      setPendingPlanId(planId);
+      setStripeClientSecret(checkout.stripe_client_secret);
+      setShowStripeModal(true);
     } catch (err) {
       let message = 'Failed to change plan';
       if (isApiError(err)) {
@@ -230,10 +282,39 @@ export function SubscriptionPlansModal({}: SubscriptionPlansModalProps) {
               canFitStats={canFit}
               onChangePlan={handleChangePlan}
               isChanging={changingPlanId === plan.id}
+              changingLabel={
+                parseFloat(plan.price) <= 0
+                  ? 'Activating…'
+                  : 'Redirecting to payment…'
+              }
+              buttonLabel={
+                parseFloat(plan.price) <= 0
+                  ? 'Choose Plan'
+                  : 'Choose Plan'
+              }
             />
           );
         })}
       </div>
+
+      <StripePaymentModal
+        clientSecret={stripeClientSecret ?? ''}
+        open={showStripeModal && !!stripeClientSecret}
+        onClose={() => {
+          setShowStripeModal(false);
+          setStripeClientSecret(null);
+          setPendingPlanId(null);
+        }}
+        onSuccess={async () => {
+          setShowStripeModal(false);
+          setStripeClientSecret(null);
+          await refreshSubscriptionData(pendingPlanId ?? undefined);
+          setPendingPlanId(null);
+          toast.success(
+            'Payment successful! Your subscription is now active.'
+          );
+        }}
+      />
     </div>
   );
 }

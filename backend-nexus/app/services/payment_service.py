@@ -171,15 +171,34 @@ def _activate_tenant_subscription_if_applicable(db: Session, tenant_subscription
         return
 
     now = datetime.now(timezone.utc)
+    replacement_plan = db.get(SubscriptionPlan, subscription.subscription_plan_id)
+
+    active_subscriptions = (
+        db.query(TenantSubscription)
+        .filter(
+            TenantSubscription.tenant_id == subscription.tenant_id,
+            TenantSubscription.id != subscription.id,
+            TenantSubscription.status == SubscriptionStatus.ACTIVE,
+        )
+        .all()
+    )
+    for active_subscription in active_subscriptions:
+        active_subscription.status = SubscriptionStatus.EXPIRED
+        active_subscription.cancelled_at = now
+        active_subscription.cancellation_reason = (
+            f"Replaced with {replacement_plan.name}"
+            if replacement_plan is not None
+            else "Replaced after successful payment"
+        )
+
     subscription.status = SubscriptionStatus.ACTIVE
     subscription.cancelled_at = None
     subscription.cancellation_reason = None
     if subscription.activated_at is None:
         subscription.activated_at = now
     if subscription.expires_at is None:
-        plan = db.get(SubscriptionPlan, subscription.subscription_plan_id)
-        if plan is not None and plan.duration:
-            subscription.expires_at = now + timedelta(days=int(plan.duration))
+        if replacement_plan is not None and replacement_plan.duration:
+            subscription.expires_at = now + timedelta(days=int(replacement_plan.duration))
 
 
 def _apply_post_payment_activation(db: Session, payment: Payment) -> None:

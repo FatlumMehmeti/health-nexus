@@ -1,7 +1,9 @@
 import { apiFetch } from '@/lib/api-client';
 
 export interface CheckoutInitiateRequest {
-  enrollment_id: number;
+  enrollment_id?: number;
+  tenant_subscription_id?: number;
+  order_id?: number;
 }
 
 export interface CheckoutInitiateResponse {
