@@ -467,57 +467,23 @@ def process_stripe_webhook(db: Session, payload: bytes, signature: str | None) -
     if payment is None:
         return {"processed": False, "reason": "payment_not_found", "event_type": event_type}
 
+
+
+    if payment is None:
+        return {"processed": False, "reason": "payment_not_found", "event_type": event_type}
+
     try:
-        return _apply_webhook_state_transition(
-            db,
-            payment,
-            event_type=event_type,
-            event_id=event_id,
-            obj=obj,
-        )
+        payment = _mark_payment_as_captured(db, payment)
     except Exception:
         db.rollback()
         raise
 
-        return {
-            "processed": True,
-            "event_type": event_type,
-            "payment_id": payment.payment_id,
-            "payment_status": payment.status.value,
-        }
-
-    if event_type in ("payment_intent.payment_failed", "payment_intent.canceled"):
-        intent_id = obj.get("id")
-        if not intent_id:
-            raise PaymentServiceError(
-                PaymentErrorCode.VALIDATION_ERROR,
-                f"{event_type} missing PaymentIntent id",
-                http_status=400,
-            )
-
-        payment = (
-            db.query(Payment)
-            .filter(Payment.stripe_payment_intent_id == str(intent_id))
-            .order_by(Payment.payment_id.desc())
-            .first()
-        )
-        if payment is None:
-            return {"processed": False, "reason": "payment_not_found", "event_type": event_type}
-
-        try:
-            payment = _mark_payment_as_failed(db, payment)
-        except Exception:
-            db.rollback()
-            raise
-
-        return {
-            "processed": True,
-            "event_type": event_type,
-            "payment_id": payment.payment_id,
-            "payment_status": payment.status.value,
-        }
-
-    return {"processed": False, "reason": "event_ignored", "event_type": event_type}
+    return {
+        "processed": True,
+        "event_type": event_type,
+        "payment_id": payment.payment_id,
+        "payment_status": payment.status.value,
+    }
 
 
 def _create_or_get_payment_record(
