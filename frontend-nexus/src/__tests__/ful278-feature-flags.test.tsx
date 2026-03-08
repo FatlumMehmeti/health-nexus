@@ -25,19 +25,138 @@ import {
   waitFor,
 } from '@testing-library/react';
 
-// Mock the feature-flags API module so tests never hit the network
-jest.mock('../lib/feature-flags', () => ({
-  evaluateFlag: jest.fn(),
-}));
+import { FeatureGate } from '@/components/FeatureGate';
+import { TenantFeatureGuard } from '@/components/TenantFeatureGuard';
+import { useAuthStore } from '@/stores/auth.store';
+import { useFeatureFlagsStore } from '@/stores/feature-flags.store';
+import { useFeatureFlag } from '@/stores/use-feature-flag';
 
-// Import AFTER mocking so the hook receives the mock
-import { FeatureGate } from '../components/FeatureGate';
-import { evaluateFlag } from '../lib/feature-flags';
-import { useFeatureFlag } from '../stores/use-feature-flag';
+type FlagBehavior =
+  | {
+      kind: 'success';
+      enabled: boolean;
+      tenantId?: number;
+    }
+  | {
+      kind: 'reject';
+      message: string;
+    }
+  | {
+      kind: 'pending';
+    }
+  | {
+      kind: 'deferred';
+      resolve?: (res: Response) => void;
+    };
 
-const mockEvaluateFlag = evaluateFlag as jest.MockedFunction<
-  typeof evaluateFlag
->;
+const flagBehaviors: Record<string, FlagBehavior> = {};
+
+function setFlagSuccess(
+  featureKey: string,
+  enabled: boolean,
+  tenantId = 1
+) {
+  flagBehaviors[featureKey] = {
+    kind: 'success',
+    enabled,
+    tenantId,
+  };
+}
+
+function setFlagReject(featureKey: string, message: string) {
+  flagBehaviors[featureKey] = {
+    kind: 'reject',
+    message,
+  };
+}
+
+function setFlagPending(featureKey: string) {
+  flagBehaviors[featureKey] = { kind: 'pending' };
+}
+
+function setFlagDeferred(
+  featureKey: string
+): (enabled: boolean, tenantId?: number) => void {
+  const behavior: FlagBehavior = { kind: 'deferred' };
+  flagBehaviors[featureKey] = behavior;
+  return (enabled: boolean, tenantId = 1) => {
+    if (behavior.kind !== 'deferred' || !behavior.resolve) return;
+    behavior.resolve(
+      new Response(
+        JSON.stringify({
+          feature_key: featureKey,
+          enabled,
+          tenant_id: tenantId,
+        }),
+        {
+          status: 200,
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }
+      )
+    );
+  };
+}
+
+function installFeatureFlagFetchMock() {
+  global.fetch = jest.fn(async (input: RequestInfo | URL) => {
+    const rawUrl =
+      typeof input === 'string' ? input : input.toString();
+    const marker = '/api/feature-flags/';
+    const idx = rawUrl.indexOf(marker);
+    if (idx === -1) {
+      return new Response('{}', {
+        status: 200,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+    }
+
+    const featureKey = decodeURIComponent(
+      rawUrl.slice(idx + marker.length).split('?')[0]
+    );
+    const behavior = flagBehaviors[featureKey] ?? {
+      kind: 'success',
+      enabled: false,
+      tenantId: 1,
+    };
+
+    if (behavior.kind === 'reject') {
+      throw new Error(behavior.message);
+    }
+    if (behavior.kind === 'pending') {
+      return new Promise(() => {}) as Promise<Response>;
+    }
+    if (behavior.kind === 'deferred') {
+      return new Promise((resolve) => {
+        behavior.resolve = resolve;
+      });
+    }
+
+    return new Response(
+      JSON.stringify({
+        feature_key: featureKey,
+        enabled: behavior.enabled,
+        tenant_id: behavior.tenantId ?? 1,
+      }),
+      {
+        status: 200,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+  }) as unknown as typeof fetch;
+}
+
+function resetFeatureFlagState() {
+  useFeatureFlagsStore.setState({
+    tenantScope: undefined,
+    flags: {},
+  });
+}
 
 // ---------------------------------------------------------------------------
 // Tests
@@ -46,14 +165,19 @@ const mockEvaluateFlag = evaluateFlag as jest.MockedFunction<
 describe('useFeatureFlag', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    Object.keys(flagBehaviors).forEach((key) => {
+      delete flagBehaviors[key];
+    });
+    resetFeatureFlagState();
+    installFeatureFlagFetchMock();
+    useAuthStore.setState({
+      role: 'TENANT_MANAGER',
+      tenantId: '1',
+    });
   });
 
   it('returns enabled=true when the API resolves the flag as enabled', async () => {
-    mockEvaluateFlag.mockResolvedValueOnce({
-      feature_key: 'advanced_reports',
-      enabled: true,
-      tenant_id: 1,
-    });
+    setFlagSuccess('advanced_reports', true);
 
     const { result } = renderHook(() =>
       useFeatureFlag('advanced_reports')
@@ -71,11 +195,7 @@ describe('useFeatureFlag', () => {
   });
 
   it('returns enabled=false when the flag is disabled', async () => {
-    mockEvaluateFlag.mockResolvedValueOnce({
-      feature_key: 'bulk_export',
-      enabled: false,
-      tenant_id: 1,
-    });
+    setFlagSuccess('bulk_export', false);
 
     const { result } = renderHook(() =>
       useFeatureFlag('bulk_export')
@@ -89,9 +209,7 @@ describe('useFeatureFlag', () => {
   });
 
   it('returns enabled=false on API error (safe deny default)', async () => {
-    mockEvaluateFlag.mockRejectedValueOnce(
-      new Error('Network error')
-    );
+    setFlagReject('telemedicine', 'Network error');
 
     const { result } = renderHook(() =>
       useFeatureFlag('telemedicine')
@@ -105,15 +223,7 @@ describe('useFeatureFlag', () => {
   });
 
   it('transitions loading from true to false after resolution', async () => {
-    let resolveFlag!: (
-      value: Awaited<ReturnType<typeof evaluateFlag>>
-    ) => void;
-    mockEvaluateFlag.mockImplementationOnce(
-      () =>
-        new Promise((res) => {
-          resolveFlag = res;
-        })
-    );
+    const resolveFlag = setFlagDeferred('ai_insights');
 
     const { result } = renderHook(() =>
       useFeatureFlag('ai_insights')
@@ -122,11 +232,7 @@ describe('useFeatureFlag', () => {
     expect(result.current.loading).toBe(true);
 
     act(() => {
-      resolveFlag({
-        feature_key: 'ai_insights',
-        enabled: true,
-        tenant_id: 2,
-      });
+      resolveFlag(true, 2);
     });
 
     await waitFor(() => {
@@ -139,14 +245,19 @@ describe('useFeatureFlag', () => {
 describe('FeatureGate component', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    Object.keys(flagBehaviors).forEach((key) => {
+      delete flagBehaviors[key];
+    });
+    resetFeatureFlagState();
+    installFeatureFlagFetchMock();
+    useAuthStore.setState({
+      role: 'TENANT_MANAGER',
+      tenantId: '1',
+    });
   });
 
   it('renders children when the flag is enabled', async () => {
-    mockEvaluateFlag.mockResolvedValueOnce({
-      feature_key: 'advanced_reports',
-      enabled: true,
-      tenant_id: 1,
-    });
+    setFlagSuccess('advanced_reports', true);
 
     render(
       <FeatureGate featureKey="advanced_reports">
@@ -162,11 +273,7 @@ describe('FeatureGate component', () => {
   });
 
   it('renders fallback when the flag is disabled', async () => {
-    mockEvaluateFlag.mockResolvedValueOnce({
-      feature_key: 'bulk_export',
-      enabled: false,
-      tenant_id: 1,
-    });
+    setFlagSuccess('bulk_export', false);
 
     render(
       <FeatureGate
@@ -186,9 +293,7 @@ describe('FeatureGate component', () => {
   });
 
   it('renders fallback when the API errors (deny by default)', async () => {
-    mockEvaluateFlag.mockRejectedValueOnce(
-      new Error('403 Forbidden')
-    );
+    setFlagReject('telemedicine', '403 Forbidden');
 
     render(
       <FeatureGate
@@ -208,10 +313,8 @@ describe('FeatureGate component', () => {
   });
 
   it('shows loading state while flag is being fetched', async () => {
-    // Never resolves during this test
-    mockEvaluateFlag.mockImplementationOnce(
-      () => new Promise(() => {})
-    );
+    // Never resolves during this test.
+    setFlagPending('ai_insights');
 
     render(
       <FeatureGate
@@ -224,5 +327,64 @@ describe('FeatureGate component', () => {
 
     expect(screen.getByTestId('loading')).toBeInTheDocument();
     expect(screen.queryByText('AI Insights')).not.toBeInTheDocument();
+  });
+});
+
+describe('TenantFeatureGuard component', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    Object.keys(flagBehaviors).forEach((key) => {
+      delete flagBehaviors[key];
+    });
+    resetFeatureFlagState();
+    installFeatureFlagFetchMock();
+  });
+
+  it('gates TENANT_MANAGER users and shows fallback when feature is disabled', async () => {
+    useAuthStore.setState({
+      role: 'TENANT_MANAGER',
+      tenantId: '1',
+    });
+    setFlagSuccess('custom_branding', false);
+
+    render(
+      <TenantFeatureGuard
+        featureKey="custom_branding"
+        fallback={<span>Custom branding unavailable</span>}
+      >
+        <span>Tenant branding controls</span>
+      </TenantFeatureGuard>
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByText('Custom branding unavailable')
+      ).toBeInTheDocument();
+    });
+    expect(
+      screen.queryByText('Tenant branding controls')
+    ).not.toBeInTheDocument();
+  });
+
+  it('bypasses flag checks for non-tenant-manager roles', () => {
+    useAuthStore.setState({
+      role: 'DOCTOR',
+      tenantId: '1',
+    });
+
+    render(
+      <TenantFeatureGuard
+        featureKey="custom_branding"
+        fallback={<span>Hidden for plans</span>}
+      >
+        <span>Always visible to doctors</span>
+      </TenantFeatureGuard>
+    );
+
+    expect(
+      screen.getByText('Always visible to doctors')
+    ).toBeInTheDocument();
+    expect(screen.queryByText('Hidden for plans')).not.toBeInTheDocument();
+    expect(global.fetch).not.toHaveBeenCalled();
   });
 });

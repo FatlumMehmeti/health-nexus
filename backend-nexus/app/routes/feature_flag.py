@@ -325,7 +325,10 @@ def evaluate_flag(
     tenant_id_raw = user.get("tenant_id")
     if tenant_id_raw is None:
         raise HTTPException(status_code=403, detail="No tenant associated with this account")
-    tenant_id = int(tenant_id_raw)
+    try:
+        tenant_id = int(tenant_id_raw)
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=403, detail="No tenant associated with this account")
 
     enabled = resolve_flag(db, tenant_id, feature_key)
     return FlagEvalOut(feature_key=feature_key, enabled=enabled, tenant_id=tenant_id)
@@ -361,7 +364,15 @@ def require_feature(feature_key: str):
             )
             raise HTTPException(status_code=403, detail="Feature not available")
 
-        tenant_id = int(tenant_id_raw)
+        try:
+            tenant_id = int(tenant_id_raw)
+        except (TypeError, ValueError):
+            logger.warning(
+                "feature_access_denied feature_key=%s reason=invalid_tenant user_id=%s",
+                feature_key,
+                user.get("user_id"),
+            )
+            raise HTTPException(status_code=403, detail="Feature not available")
         enabled = resolve_flag(db, tenant_id, feature_key)
         if not enabled:
             raise HTTPException(
