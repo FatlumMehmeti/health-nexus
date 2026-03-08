@@ -8,6 +8,7 @@ from datetime import datetime, timezone, timedelta
 
 from app.auth.auth_utils import hash_password
 from app.lib.html_sanitize import sanitize_html
+from app.lib.feature_flag_seed import SEED_FEATURE_FLAGS
 from app.db import SessionLocal
 from app.models import (
     BrandPalette,
@@ -33,6 +34,7 @@ from app.models import (
     TenantSubscription,
     User,
     UserTenantPlan,
+    FeatureFlag,
 )
 from app.models.enrollment import EnrollmentStatus
 
@@ -1358,6 +1360,35 @@ def seed_subscription_plans(session):
             session.add(SubscriptionPlan(**payload))
 
 
+def seed_feature_flags(session):
+    """
+    Seed plan-level feature flag defaults from SEED_FEATURE_FLAGS.
+    Idempotent: skips rows that already exist, updates enabled if they do.
+    """
+    existing: dict[tuple[str, str], FeatureFlag] = {
+        (flag.plan_tier, flag.feature_key): flag
+        for flag in session.query(FeatureFlag).filter(FeatureFlag.tenant_id.is_(None)).all()
+    }
+
+    for feature_key, tier_map in SEED_FEATURE_FLAGS.items():
+        for plan_tier, enabled in tier_map.items():
+            key = (plan_tier, feature_key)
+            if key in existing:
+                existing[key].enabled = enabled
+            else:
+                session.add(
+                    FeatureFlag(
+                        tenant_id=None,
+                        feature_key=feature_key,
+                        plan_tier=plan_tier,
+                        enabled=enabled,
+                    )
+                )
+
+    count = len(SEED_FEATURE_FLAGS) * len(next(iter(SEED_FEATURE_FLAGS.values())))
+    print(f"  [seed_feature_flags] Seeded {count} plan-level feature flag defaults.")
+
+
 def seed_tenant_subscriptions(session, tenants_by_name):
     from app.models.tenant_subscription import SubscriptionStatus
     from datetime import timedelta
@@ -1963,6 +1994,7 @@ def run_seed() -> None:
         tenants_by_name = {t.name: t for t in session.query(Tenant).all()}
         seed_tenant_details(session, tenants_by_name)
         seed_subscription_plans(session)
+        seed_feature_flags(session)
         session.flush()  # Flush to make SubscriptionPlan records available for query
         seed_tenant_subscriptions(session, tenants_by_name)
         users_by_email = seed_users(session, roles_by_name)

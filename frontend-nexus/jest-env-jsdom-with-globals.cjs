@@ -1,7 +1,6 @@
 'use strict';
 
-const JSDOMEnvironment =
-  require('jest-environment-jsdom').default;
+const JSDOMEnvironment = require('jest-environment-jsdom').default;
 
 /**
  * jsdom environment with Node's Response (and other globals) on window

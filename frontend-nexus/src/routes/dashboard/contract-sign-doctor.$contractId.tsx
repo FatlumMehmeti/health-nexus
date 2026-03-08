@@ -99,7 +99,9 @@ function ContractSignDoctorPage() {
       setIsPdfLoading(true);
       try {
         const reactPdf =
-          await loadReactPdfModule<ReactPdfModule<ReactPdfPrimitives>>();
+          await loadReactPdfModule<
+            ReactPdfModule<ReactPdfPrimitives>
+          >();
         const blob = await reactPdf
           .pdf(
             <ContractPdfDocument
