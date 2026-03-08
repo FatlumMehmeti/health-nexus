@@ -43,13 +43,17 @@ export interface TenantOverridePayload {
 }
 
 /** Resolve a single feature flag for the calling user's tenant. */
-export async function evaluateFlag(featureKey: string): Promise<FlagEvalResult> {
+export async function evaluateFlag(
+  featureKey: string
+): Promise<FlagEvalResult> {
   return api.get<FlagEvalResult>(`/api/feature-flags/${featureKey}`);
 }
 
 /** [Admin] List all feature flags (plan defaults + tenant overrides). */
 export async function listFlags(): Promise<FeatureFlagRecord[]> {
-  return api.get<FeatureFlagRecord[]>('/api/superadmin/feature-flags');
+  return api.get<FeatureFlagRecord[]>(
+    '/api/superadmin/feature-flags'
+  );
 }
 
 /** [Admin] Create or update a plan-level default. */
@@ -78,6 +82,8 @@ export async function deletePlanDefault(id: number): Promise<void> {
 }
 
 /** [Admin] Delete a tenant override by id. */
-export async function deleteTenantOverride(id: number): Promise<void> {
+export async function deleteTenantOverride(
+  id: number
+): Promise<void> {
   return api.delete(`/api/superadmin/feature-flags/overrides/${id}`);
 }

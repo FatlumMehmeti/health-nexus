@@ -8,6 +8,7 @@ from datetime import datetime, timezone, timedelta
 
 from app.auth.auth_utils import hash_password
 from app.lib.html_sanitize import sanitize_html
+from app.lib.feature_flag_seed import SEED_FEATURE_FLAGS
 from app.db import SessionLocal
 from app.models import (
     BrandPalette,
@@ -458,67 +459,6 @@ SEED_SUBSCRIPTION_PLANS = [
         "max_departments": 50,
     },
 ]
-
-# Feature flag plan defaults — plan_tier must match SubscriptionPlan.name.strip().lower()
-# Keys represent features available across the platform; values are per-tier defaults.
-SEED_FEATURE_FLAGS: dict[str, dict[str, bool]] = {
-    # Base appointments — available to everyone
-    "basic_appointments": {
-        "free": True,
-        "small clinic": True,
-        "medium clinic": True,
-        "hospital": True,
-    },
-    # Reporting & analytics — not on free
-    "advanced_reports": {
-        "free": False,
-        "small clinic": True,
-        "medium clinic": True,
-        "hospital": True,
-    },
-    # Custom branding (logo, colours) — not on free
-    "custom_branding": {
-        "free": False,
-        "small clinic": True,
-        "medium clinic": True,
-        "hospital": True,
-    },
-    # Priority support — medium and above
-    "priority_support": {
-        "free": False,
-        "small clinic": False,
-        "medium clinic": True,
-        "hospital": True,
-    },
-    # Video / telemedicine consultations — medium and above
-    "telemedicine": {
-        "free": False,
-        "small clinic": False,
-        "medium clinic": True,
-        "hospital": True,
-    },
-    # Bulk data export — medium and above
-    "bulk_export": {
-        "free": False,
-        "small clinic": False,
-        "medium clinic": True,
-        "hospital": True,
-    },
-    # Direct API access for integrations — hospital only
-    "api_access": {
-        "free": False,
-        "small clinic": False,
-        "medium clinic": False,
-        "hospital": True,
-    },
-    # AI-powered insights dashboard — hospital only
-    "ai_insights": {
-        "free": False,
-        "small clinic": False,
-        "medium clinic": False,
-        "hospital": True,
-    },
-}
 
 # tenant_managers model payloads
 SEED_TENANT_MANAGERS = [

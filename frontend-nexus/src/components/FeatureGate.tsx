@@ -10,8 +10,8 @@
  *     <AdvancedReports />
  *   </FeatureGate>
  */
-import type { ReactNode } from 'react';
 import { useFeatureFlag } from '@/stores/use-feature-flag';
+import type { ReactNode } from 'react';
 
 interface FeatureGateProps {
   featureKey: string;

@@ -24,7 +24,6 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
-import React from 'react';
 
 // Mock the feature-flags API module so tests never hit the network
 jest.mock('../lib/feature-flags', () => ({
@@ -32,8 +31,8 @@ jest.mock('../lib/feature-flags', () => ({
 }));
 
 // Import AFTER mocking so the hook receives the mock
-import { evaluateFlag } from '../lib/feature-flags';
 import { FeatureGate } from '../components/FeatureGate';
+import { evaluateFlag } from '../lib/feature-flags';
 import { useFeatureFlag } from '../stores/use-feature-flag';
 
 const mockEvaluateFlag = evaluateFlag as jest.MockedFunction<
@@ -56,7 +55,9 @@ describe('useFeatureFlag', () => {
       tenant_id: 1,
     });
 
-    const { result } = renderHook(() => useFeatureFlag('advanced_reports'));
+    const { result } = renderHook(() =>
+      useFeatureFlag('advanced_reports')
+    );
 
     // Initially loading
     expect(result.current.loading).toBe(true);
@@ -76,7 +77,9 @@ describe('useFeatureFlag', () => {
       tenant_id: 1,
     });
 
-    const { result } = renderHook(() => useFeatureFlag('bulk_export'));
+    const { result } = renderHook(() =>
+      useFeatureFlag('bulk_export')
+    );
 
     await waitFor(() => {
       expect(result.current.loading).toBe(false);
@@ -86,9 +89,13 @@ describe('useFeatureFlag', () => {
   });
 
   it('returns enabled=false on API error (safe deny default)', async () => {
-    mockEvaluateFlag.mockRejectedValueOnce(new Error('Network error'));
+    mockEvaluateFlag.mockRejectedValueOnce(
+      new Error('Network error')
+    );
 
-    const { result } = renderHook(() => useFeatureFlag('telemedicine'));
+    const { result } = renderHook(() =>
+      useFeatureFlag('telemedicine')
+    );
 
     await waitFor(() => {
       expect(result.current.loading).toBe(false);
@@ -98,7 +105,9 @@ describe('useFeatureFlag', () => {
   });
 
   it('transitions loading from true to false after resolution', async () => {
-    let resolveFlag!: (value: Awaited<ReturnType<typeof evaluateFlag>>) => void;
+    let resolveFlag!: (
+      value: Awaited<ReturnType<typeof evaluateFlag>>
+    ) => void;
     mockEvaluateFlag.mockImplementationOnce(
       () =>
         new Promise((res) => {
@@ -106,12 +115,18 @@ describe('useFeatureFlag', () => {
         })
     );
 
-    const { result } = renderHook(() => useFeatureFlag('ai_insights'));
+    const { result } = renderHook(() =>
+      useFeatureFlag('ai_insights')
+    );
 
     expect(result.current.loading).toBe(true);
 
     act(() => {
-      resolveFlag({ feature_key: 'ai_insights', enabled: true, tenant_id: 2 });
+      resolveFlag({
+        feature_key: 'ai_insights',
+        enabled: true,
+        tenant_id: 2,
+      });
     });
 
     await waitFor(() => {
@@ -140,7 +155,9 @@ describe('FeatureGate component', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText('Advanced Reports')).toBeInTheDocument();
+      expect(
+        screen.getByText('Advanced Reports')
+      ).toBeInTheDocument();
     });
   });
 
@@ -169,7 +186,9 @@ describe('FeatureGate component', () => {
   });
 
   it('renders fallback when the API errors (deny by default)', async () => {
-    mockEvaluateFlag.mockRejectedValueOnce(new Error('403 Forbidden'));
+    mockEvaluateFlag.mockRejectedValueOnce(
+      new Error('403 Forbidden')
+    );
 
     render(
       <FeatureGate
@@ -183,12 +202,16 @@ describe('FeatureGate component', () => {
     await waitFor(() => {
       expect(screen.getByText('Not available')).toBeInTheDocument();
     });
-    expect(screen.queryByText('Telemedicine')).not.toBeInTheDocument();
+    expect(
+      screen.queryByText('Telemedicine')
+    ).not.toBeInTheDocument();
   });
 
   it('shows loading state while flag is being fetched', async () => {
     // Never resolves during this test
-    mockEvaluateFlag.mockImplementationOnce(() => new Promise(() => {}));
+    mockEvaluateFlag.mockImplementationOnce(
+      () => new Promise(() => {})
+    );
 
     render(
       <FeatureGate

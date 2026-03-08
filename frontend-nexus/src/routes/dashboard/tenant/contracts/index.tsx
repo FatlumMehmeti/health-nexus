@@ -1,4 +1,3 @@
-import { createFileRoute } from '@tanstack/react-router';
 import { RefreshCw } from 'lucide-react';
 import * as React from 'react';
 import { toast } from 'sonner';
@@ -7,12 +6,6 @@ import {
   ActionsDropdown,
   type ActionItem,
 } from '@/components/molecules/actions-dropdown';
-import {
-  downloadBlob,
-  formatDateTime,
-  loadReactPdfModule,
-} from '@/lib/utils';
-import type { ReactPdfModule } from '@/lib/pdf';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -20,7 +13,6 @@ import {
   CardContent,
   CardDescription,
   CardHeader,
-  CardTitle,
 } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import {
@@ -33,6 +25,12 @@ import {
 } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
 import type { Contract, ContractStatus } from '@/interfaces/contract';
+import type { ReactPdfModule } from '@/lib/pdf';
+import {
+  downloadBlob,
+  formatDateTime,
+  loadReactPdfModule,
+} from '@/lib/utils';
 import { getCurrentTenantWithFallback } from '@/routes/dashboard/tenant/-utils';
 import { contractsService } from '@/services/contracts.service';
 import { useAuthStore } from '@/stores/auth.store';

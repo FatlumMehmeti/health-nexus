@@ -1,12 +1,6 @@
 import { TenantBrandPreview } from '@/components/molecules/tenant-brand-preview';
 import { Button } from '@/components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -145,8 +139,8 @@ export function TenantDetailsEditor() {
         <div>
           <h1 className="text-2xl font-bold sm:text-3xl">Settings</h1>
           <p className="text-muted-foreground">
-            Edit logo, imagery, title, moto, brand palette, fonts,
-            and about text used by the landing page.
+            Edit logo, imagery, title, moto, brand palette, fonts, and
+            about text used by the landing page.
           </p>
         </div>
         <div className="flex items-center gap-2">
