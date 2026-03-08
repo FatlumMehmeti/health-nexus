@@ -224,6 +224,19 @@ def _mark_payment_as_captured(db: Session, payment: Payment) -> Payment:
     return payment
 
 
+def _mark_payment_as_failed(db: Session, payment: Payment) -> Payment:
+    """Set payment status to FAILED. No activation logic. Idempotent if already FAILED."""
+    if payment.status == PaymentStatus.CAPTURED:
+        return payment
+    if payment.status == PaymentStatus.FAILED:
+        return payment
+
+    payment.status = PaymentStatus.FAILED
+    db.commit()
+    db.refresh(payment)
+    return payment
+
+
 def _verify_stripe_webhook_event(payload: bytes, signature: str | None) -> dict:
     webhook_secret = get_stripe_webhook_secret()
     if not webhook_secret:
@@ -287,6 +300,37 @@ def process_stripe_webhook(db: Session, payload: bytes, signature: str | None) -
 
         try:
             payment = _mark_payment_as_captured(db, payment)
+        except Exception:
+            db.rollback()
+            raise
+
+        return {
+            "processed": True,
+            "event_type": event_type,
+            "payment_id": payment.payment_id,
+            "payment_status": payment.status.value,
+        }
+
+    if event_type in ("payment_intent.payment_failed", "payment_intent.canceled"):
+        intent_id = obj.get("id")
+        if not intent_id:
+            raise PaymentServiceError(
+                PaymentErrorCode.VALIDATION_ERROR,
+                f"{event_type} missing PaymentIntent id",
+                http_status=400,
+            )
+
+        payment = (
+            db.query(Payment)
+            .filter(Payment.stripe_payment_intent_id == str(intent_id))
+            .order_by(Payment.payment_id.desc())
+            .first()
+        )
+        if payment is None:
+            return {"processed": False, "reason": "payment_not_found", "event_type": event_type}
+
+        try:
+            payment = _mark_payment_as_failed(db, payment)
         except Exception:
             db.rollback()
             raise
