@@ -84,7 +84,7 @@ def create_public_lead(
         contact_email=payload.contact_email,
         source="WEBSITE",
         status=LeadStatus.NEW,
-        notes=payload.description,
+        initial_message=payload.description,
     )
 
     db.add(lead)

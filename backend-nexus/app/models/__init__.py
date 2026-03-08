@@ -18,9 +18,9 @@ from .service import Service
 from .doctor import Doctor
 from .patient import Patient
 from .tenant_manager import TenantManager
-from .lead import Lead
+from .lead import Lead, LeadStatus
 from .lead_status_history import LeadStatusHistory
-from .consultation_booking import ConsultationBooking, ConsultationStatus
+from .consultation_booking import ConsultationBooking, ConsultationStatus, CancelledByActor
 from .appointment import Appointment
 from .appointment import AppointmentStatus
 from .appointment_status_history import AppointmentStatusHistory
@@ -63,6 +63,7 @@ __all__ = [
     "Payment",
     "TenantManager",
     "Lead",
+    "LeadStatus",
     "LeadStatusHistory",
     "ConsultationBooking",
     "Appointment",
@@ -82,6 +83,7 @@ __all__ = [
     "SubscriptionPlan",
     "TenantSubscription",
     "ConsultationStatus",
+    "CancelledByActor",
     "Session",
     "TenantAuditLog",
     "Contract",
