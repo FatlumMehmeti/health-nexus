@@ -218,6 +218,34 @@ def tenant_client(db_session):
 
 
 class TestAdminEndpoints:
+    def test_list_flags_can_filter_by_tenant(self, admin_client, db_session):
+        tenant_a = _make_tenant(db_session, name="Tenant A", licence="LIC-A")
+        tenant_b = _make_tenant(db_session, name="Tenant B", licence="LIC-B")
+        plan = _make_plan(db_session, name="pro")
+        _subscribe(db_session, tenant_a, plan)
+        _plan_default(db_session, "pro", "advanced_reports", True)
+        _tenant_override(db_session, tenant_a.id, "advanced_reports", False)
+        _tenant_override(db_session, tenant_b.id, "advanced_reports", True)
+        db_session.commit()
+
+        res = admin_client.get(f"/api/superadmin/feature-flags?tenant_id={tenant_a.id}")
+        assert res.status_code == 200
+        payload = res.json()
+        assert any(item["tenant_id"] is None for item in payload)
+        assert any(item["tenant_id"] == tenant_a.id for item in payload)
+        assert all(item["tenant_id"] in (None, tenant_a.id) for item in payload)
+
+    def test_list_feature_flag_tenants(self, admin_client, db_session):
+        tenant_b = _make_tenant(db_session, name="Beta Clinic", licence="LIC-BETA")
+        tenant_a = _make_tenant(db_session, name="Alpha Clinic", licence="LIC-ALPHA")
+        db_session.commit()
+
+        res = admin_client.get("/api/superadmin/feature-flags/tenants")
+        assert res.status_code == 200
+        payload = res.json()
+        assert [item["id"] for item in payload][:2] == [tenant_a.id, tenant_b.id]
+        assert payload[0]["name"] == tenant_a.name
+
     def test_reset_to_seed_restores_defaults_and_clears_overrides(self, admin_client, db_session):
         tenant = _make_tenant(db_session, name="Reset Tenant", licence="LIC-RESET")
         db_session.add(
@@ -305,6 +333,13 @@ class TestAdminEndpoints:
         data = res.json()
         assert data["tenant_id"] == tenant.id
         assert data["enabled"] is True
+
+    def test_create_tenant_override_returns_404_for_unknown_tenant(self, admin_client):
+        res = admin_client.post(
+            "/api/superadmin/feature-flags/overrides",
+            json={"tenant_id": 999999, "feature_key": "bulk_export", "enabled": True},
+        )
+        assert res.status_code == 404
 
     def test_delete_plan_default(self, admin_client):
         res = admin_client.post(
