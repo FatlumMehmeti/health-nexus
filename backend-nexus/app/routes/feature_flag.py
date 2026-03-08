@@ -18,13 +18,15 @@ from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from app.auth.auth_utils import get_current_user, require_role
 from app.db import get_db
 from app.lib.feature_flag_seed import SEED_FEATURE_FLAGS
 from app.models.feature_flag import FeatureFlag
-from app.services.feature_flag_engine import resolve_flag
+from app.models.tenant import Tenant
+from app.services.feature_flag_engine import _get_active_plan_tier, resolve_flag
 
 logger = logging.getLogger(__name__)
 
@@ -59,6 +61,14 @@ class FeatureFlagOut(BaseModel):
         from_attributes = True
 
 
+class FeatureFlagTenantOption(BaseModel):
+    id: int
+    name: str
+
+    class Config:
+        from_attributes = True
+
+
 class FlagEvalOut(BaseModel):
     feature_key: str
     enabled: bool
@@ -75,8 +85,30 @@ class FlagEvalOut(BaseModel):
     response_model=List[FeatureFlagOut],
     dependencies=[Depends(require_role("SUPER_ADMIN"))],
 )
-def list_flags(db: Session = Depends(get_db)) -> List[FeatureFlag]:
+def list_flags(
+    tenant_id: Optional[int] = None,
+    db: Session = Depends(get_db),
+) -> List[FeatureFlag]:
+    if tenant_id is not None:
+        plan_tier = _get_active_plan_tier(db, tenant_id)
+        query = db.query(FeatureFlag).filter(
+            or_(
+                FeatureFlag.tenant_id == tenant_id,
+                (FeatureFlag.tenant_id.is_(None) & (FeatureFlag.plan_tier == plan_tier)),
+            )
+        )
+        return query.order_by(FeatureFlag.plan_tier, FeatureFlag.feature_key).all()
+
     return db.query(FeatureFlag).order_by(FeatureFlag.plan_tier, FeatureFlag.feature_key).all()
+
+
+@router.get(
+    "/api/superadmin/feature-flags/tenants",
+    response_model=List[FeatureFlagTenantOption],
+    dependencies=[Depends(require_role("SUPER_ADMIN"))],
+)
+def list_feature_flag_tenants(db: Session = Depends(get_db)) -> List[Tenant]:
+    return db.query(Tenant).order_by(Tenant.name.asc(), Tenant.id.asc()).all()
 
 
 # ---------------------------------------------------------------------------
@@ -220,6 +252,10 @@ def upsert_tenant_override(
     body: TenantOverrideUpsert, db: Session = Depends(get_db)
 ) -> FeatureFlag:
     """Create or update a per-tenant feature flag override."""
+    tenant = db.query(Tenant).filter(Tenant.id == body.tenant_id).first()
+    if tenant is None:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+
     existing = (
         db.query(FeatureFlag)
         .filter(

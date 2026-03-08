@@ -1,3 +1,5 @@
+import { FormSelect } from '@/components/atoms/form-select';
+import { FeatureUnavailableCard } from '@/components/molecules/feature-unavailable-card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -7,9 +9,11 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { Skeleton } from '@/components/ui/skeleton';
+import { ErrorStateCard } from '@/components/ui/error-state-card';
+import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { Switch } from '@/components/ui/switch';
 import { isApiError } from '@/lib/api-client';
+import { humanizeSnakeCase } from '@/lib/formatters';
 import {
   featureFlagsService,
   type FeatureFlagRecord,
@@ -36,51 +40,53 @@ export function PermissionsFeatureFlagsPanel() {
     {}
   );
 
+  const [selectedTenantId, setSelectedTenantId] =
+    useState<string>('all');
+
+  const selectedTenantNumber =
+    selectedTenantId === 'all' ? undefined : Number(selectedTenantId);
+
+  const { data: tenantOptions = [], isLoading: isLoadingTenants } =
+    useQuery({
+      queryKey: ['permissions', 'feature-flags', 'tenants'],
+      queryFn: () => featureFlagsService.listTenants(),
+    });
+
   const {
     data: flags = [],
     isLoading,
     isError,
     error,
   } = useQuery({
-    queryKey: FEATURE_FLAGS_QUERY_KEY,
-    queryFn: () => featureFlagsService.list(),
+    queryKey: [
+      ...FEATURE_FLAGS_QUERY_KEY,
+      selectedTenantNumber ?? 'all',
+    ],
+    queryFn: () => featureFlagsService.list(selectedTenantNumber),
   });
 
-  const groupedByPlan = useMemo(() => {
-    const grouped = new Map<string, FeatureFlagRecord[]>();
-    for (const row of flags) {
-      const groupKey =
-        row.tenant_id !== null
-          ? `tenant:${row.tenant_id}`
-          : `plan:${row.plan_tier ?? 'unknown'}`;
-      const existing = grouped.get(groupKey) ?? [];
-      existing.push(row);
-      grouped.set(groupKey, existing);
-    }
+  const selectedTenant = useMemo(
+    () =>
+      tenantOptions.find(
+        (tenant) => tenant.id === selectedTenantNumber
+      ),
+    [tenantOptions, selectedTenantNumber]
+  );
 
-    return [...grouped.entries()]
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([groupKey, rows]) => ({
-        groupKey,
-        groupLabel: groupKey.startsWith('tenant:')
-          ? `Tenant #${groupKey.replace('tenant:', '')}`
-          : `Plan ${groupKey.replace('plan:', '')}`,
-        rows: rows.sort((a, b) => {
-          return a.feature_key.localeCompare(b.feature_key);
-        }),
-      }));
-  }, [flags]);
+  const groupedByPlan = useMemo(
+    () =>
+      featureFlagsService.groupRecords({
+        flags,
+        tenantOptions,
+        selectedTenantId: selectedTenantNumber,
+      }),
+    [flags, tenantOptions, selectedTenantNumber]
+  );
 
-  const toTitleCase = (value: string) =>
-    value
-      .split('_')
-      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-      .join(' ');
-
-  const getScopeLabel = (row: FeatureFlagRecord): string =>
-    row.tenant_id !== null
-      ? `Tenant #${row.tenant_id}`
-      : `Plan ${row.plan_tier ?? 'unknown'}`;
+  const selectedTenantHasNoPermissions =
+    selectedTenantNumber !== undefined &&
+    groupedByPlan.length === 1 &&
+    groupedByPlan[0]?.rows.length === 0;
 
   const togglePlan = (groupKey: string) => {
     setOpenPlans((prev) => ({
@@ -105,6 +111,14 @@ export function PermissionsFeatureFlagsPanel() {
         });
       }
 
+      if (selectedTenantNumber !== undefined) {
+        return featureFlagsService.upsertTenantOverride({
+          tenant_id: selectedTenantNumber,
+          feature_key: row.feature_key,
+          enabled: nextEnabled,
+        });
+      }
+
       if (!row.plan_tier) {
         throw new Error(
           'Cannot update plan default without plan tier'
@@ -119,31 +133,58 @@ export function PermissionsFeatureFlagsPanel() {
     },
     onMutate: async ({ row, nextEnabled }) => {
       await queryClient.cancelQueries({
-        queryKey: FEATURE_FLAGS_QUERY_KEY,
+        queryKey: [
+          ...FEATURE_FLAGS_QUERY_KEY,
+          selectedTenantNumber ?? 'all',
+        ],
       });
       const previousFlags =
-        queryClient.getQueryData<FeatureFlagRecord[]>(
-          FEATURE_FLAGS_QUERY_KEY
-        ) ?? [];
+        queryClient.getQueryData<FeatureFlagRecord[]>([
+          ...FEATURE_FLAGS_QUERY_KEY,
+          selectedTenantNumber ?? 'all',
+        ]) ?? [];
 
       queryClient.setQueryData<FeatureFlagRecord[]>(
-        FEATURE_FLAGS_QUERY_KEY,
-        (current = []) =>
-          current.map((item) =>
+        [...FEATURE_FLAGS_QUERY_KEY, selectedTenantNumber ?? 'all'],
+        (current = []) => {
+          if (
+            selectedTenantNumber !== undefined &&
+            row.tenant_id === null
+          ) {
+            return [
+              ...current,
+              {
+                ...row,
+                id: row.id * -1,
+                tenant_id: selectedTenantNumber,
+                plan_tier: null,
+                enabled: nextEnabled,
+              },
+            ];
+          }
+
+          return current.map((item) =>
             item.id === row.id
               ? {
                   ...item,
                   enabled: nextEnabled,
                 }
               : item
-          )
+          );
+        }
       );
 
       return { previousFlags };
     },
     onSuccess: (_data, variables) => {
-      const featureName = toTitleCase(variables.row.feature_key);
-      const scope = getScopeLabel(variables.row);
+      const featureName = humanizeSnakeCase(
+        variables.row.feature_key
+      );
+      const scope =
+        groupedByPlan
+          .flatMap((group) => group.rows)
+          .find((row) => row.id === variables.row.id)?.scopeLabel ??
+        `Plan ${variables.row.plan_tier ?? 'unknown'}`;
       toast.success(
         `${featureName} (${scope}): Turned ${
           variables.nextEnabled ? 'On' : 'Off'
@@ -153,7 +194,7 @@ export function PermissionsFeatureFlagsPanel() {
     onError: (mutationError, _vars, context) => {
       if (context?.previousFlags) {
         queryClient.setQueryData(
-          FEATURE_FLAGS_QUERY_KEY,
+          [...FEATURE_FLAGS_QUERY_KEY, selectedTenantNumber ?? 'all'],
           context.previousFlags
         );
       }
@@ -189,35 +230,19 @@ export function PermissionsFeatureFlagsPanel() {
   });
 
   if (isLoading) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Feature Flags</CardTitle>
-          <CardDescription>
-            Toggle plan defaults and tenant overrides.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <Skeleton className="h-12 w-full" />
-          <Skeleton className="h-12 w-full" />
-          <Skeleton className="h-12 w-full" />
-        </CardContent>
-      </Card>
-    );
+    return <LoadingSpinner label="Loading feature flags..." />;
   }
 
   if (isError) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Feature Flags</CardTitle>
-          <CardDescription className="text-destructive">
-            {isApiError(error)
-              ? error.displayMessage
-              : 'Failed to load feature flags'}
-          </CardDescription>
-        </CardHeader>
-      </Card>
+      <ErrorStateCard
+        title="Feature Flags"
+        message={
+          isApiError(error)
+            ? error.displayMessage
+            : 'Failed to load feature flags'
+        }
+      />
     );
   }
 
@@ -244,11 +269,50 @@ export function PermissionsFeatureFlagsPanel() {
           </Button>
         </div>
         <CardDescription>
-          Grouped by plan. Expand each plan to manage its permissions.
+          Filter by tenant to create and manage overrides by tenant
+          id.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        {groupedByPlan.length === 0 ? (
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div className="space-y-1">
+            <p className="text-sm font-medium">Tenant filter</p>
+            <p className="text-xs text-muted-foreground">
+              {selectedTenant
+                ? `Showing inherited flags and overrides for ${selectedTenant.name}.`
+                : 'Showing all plan defaults and existing tenant overrides.'}
+            </p>
+          </div>
+          <div className="w-full sm:w-80">
+            <FormSelect
+              id="feature-flag-tenant-filter"
+              label="Tenant"
+              value={selectedTenantId}
+              onValueChange={setSelectedTenantId}
+              options={[
+                { value: 'all', label: 'All tenants' },
+                ...tenantOptions.map((tenant) => ({
+                  value: String(tenant.id),
+                  label: tenant.name,
+                })),
+              ]}
+              placeholder="Filter by tenant"
+              disabled={isLoadingTenants}
+            />
+          </div>
+        </div>
+        {selectedTenantHasNoPermissions ? (
+          <FeatureUnavailableCard
+            title="No plan assigned"
+            description={
+              selectedTenant
+                ? `${selectedTenant.name} does not have an active plan assigned yet, so there are no inherited permissions to manage.`
+                : 'This tenant does not have an active plan assigned yet, so there are no inherited permissions to manage.'
+            }
+            featureLabel="Tenant permissions unavailable"
+            className="border-border/70 bg-muted/10"
+          />
+        ) : groupedByPlan.length === 0 ? (
           <p className="text-sm text-muted-foreground">
             No feature flags found.
           </p>
@@ -269,8 +333,14 @@ export function PermissionsFeatureFlagsPanel() {
                     <IconLockAccess className="size-4 text-muted-foreground" />
                     <div className="text-left">
                       <p className="font-medium">
-                        {toTitleCase(groupLabel)}
+                        {humanizeSnakeCase(groupLabel)}
                       </p>
+                      {selectedTenantNumber !== undefined ? (
+                        <p className="text-xs text-muted-foreground">
+                          Toggle any inherited flag to create a tenant
+                          override.
+                        </p>
+                      ) : null}
                     </div>
                   </div>
                   <div className="flex items-center gap-3 text-xs text-muted-foreground">
@@ -306,9 +376,12 @@ export function PermissionsFeatureFlagsPanel() {
                           className="flex w-full items-center justify-between rounded-md border bg-background px-3 py-2 text-left transition-colors hover:bg-muted/30 disabled:cursor-not-allowed disabled:opacity-60"
                         >
                           <div className="flex items-center gap-2 text-sm">
-                            <Badge variant="outline">
-                              {toTitleCase(row.feature_key)}
+                            <Badge variant={row.badgeVariant}>
+                              {humanizeSnakeCase(row.feature_key)}
                             </Badge>
+                            <span className="text-xs text-muted-foreground">
+                              {row.sourceLabel}
+                            </span>
                           </div>
                           <Switch
                             checked={row.enabled}
@@ -328,6 +401,11 @@ export function PermissionsFeatureFlagsPanel() {
             );
           })
         )}
+        {isLoadingTenants ? (
+          <p className="text-xs text-muted-foreground">
+            Loading tenants...
+          </p>
+        ) : null}
       </CardContent>
     </Card>
   );
