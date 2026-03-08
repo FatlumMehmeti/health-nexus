@@ -158,7 +158,7 @@ async def stripe_webhook(
             "Stripe webhook rejected",
             extra={
                 "code": exc.code,
-                "message": exc.message,
+                "error_message": exc.message,
                 "details": exc.details,
             },
         )
