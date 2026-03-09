@@ -8,6 +8,14 @@
 
 import { Button } from '@/components/ui/button';
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -96,6 +104,12 @@ function formatCurrency(value: number): string {
   return usdFormatter.format(Number.isFinite(value) ? value : 0);
 }
 
+function formatStatusTimestamp(value: string): string {
+  const parsed = Date.parse(value);
+  if (Number.isNaN(parsed)) return 'Unavailable';
+  return new Date(parsed).toLocaleString();
+}
+
 function getApiDetailCode(err: unknown): string | undefined {
   if (!isApiError(err) || !err.data || typeof err.data !== 'object')
     return undefined;
@@ -113,6 +127,12 @@ function getApiDetailCode(err: unknown): string | undefined {
 
 export function TenantLanding({ landingData }: TenantLandingProps) {
   const [showStripeModal, setShowStripeModal] = useState(false);
+  const [showCheckoutStatusModal, setShowCheckoutStatusModal] =
+    useState(false);
+  const [isCheckingCheckoutStatus, setIsCheckingCheckoutStatus] =
+    useState(false);
+  const [isCheckoutNoticeVisible, setIsCheckoutNoticeVisible] =
+    useState(true);
   const [checkoutRecovery, setCheckoutRecovery] =
     useState<CheckoutRecoveryRecord | null>(null);
   const [activeTab, setActiveTab] = useState('home');
@@ -147,6 +167,8 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
 
   function clearEnrollmentCheckout() {
     setShowStripeModal(false);
+    setShowCheckoutStatusModal(false);
+    setIsCheckoutNoticeVisible(true);
     setEnrollmentCheckoutRecovery(null);
   }
 
@@ -198,6 +220,7 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
     }
 
     setCheckoutRecovery(savedRecovery);
+    setIsCheckoutNoticeVisible(true);
     setActiveTab('plans');
   }, [tenantId, isAuthenticated]);
 
@@ -254,6 +277,30 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
 
     return () => window.clearTimeout(timer);
   }, [checkoutRecovery]);
+
+  useEffect(() => {
+    if (!checkoutRecovery) {
+      setIsCheckoutNoticeVisible(true);
+      return;
+    }
+
+    setIsCheckoutNoticeVisible(true);
+  }, [checkoutRecovery?.paymentId, checkoutRecovery?.phase]);
+
+  async function handleCheckEnrollmentStatus() {
+    setShowCheckoutStatusModal(true);
+    if (!tenantId) return;
+
+    setIsCheckingCheckoutStatus(true);
+    try {
+      await queryClient.invalidateQueries({
+        queryKey: ['my-enrollment', tenantId],
+      });
+      await refetchEnrollment();
+    } finally {
+      setIsCheckingCheckoutStatus(false);
+    }
+  }
 
   const enrollMutation = useMutation({
     mutationFn: async ({
@@ -483,6 +530,21 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
   const availableProducts = products.filter(
     (product) => product.is_available !== false
   );
+  const pendingPlan = checkoutRecovery
+    ? plans.find((plan) => plan.id === checkoutRecovery.planId)
+    : null;
+  const checkoutStatusTitle =
+    checkoutRecovery?.phase === 'processing'
+      ? 'Payment confirmation in progress'
+      : checkoutRecovery?.phase === 'attention_required'
+        ? 'Payment needs attention'
+        : 'Checkout status';
+  const checkoutStatusDescription =
+    checkoutRecovery?.phase === 'processing'
+      ? 'We are still waiting for the backend to confirm activation for this payment.'
+      : checkoutRecovery?.phase === 'attention_required'
+        ? 'This payment is still pending after the expected confirmation window. You can refresh the status or clear it and retry.'
+        : 'Review the current state of this pending payment.';
   const accountButtonStyle: CSSProperties | undefined = brand.primary
     ? {
         backgroundColor: brand.primary,
@@ -962,7 +1024,7 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
                 </p>
               </div>
 
-              {checkoutRecovery ? (
+              {checkoutRecovery && isCheckoutNoticeVisible ? (
                 <PaymentFlowNotice
                   phase={checkoutRecovery.phase}
                   eyebrow="Plan checkout"
@@ -995,10 +1057,7 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
                         return;
                       }
 
-                      await queryClient.invalidateQueries({
-                        queryKey: ['my-enrollment', tenantId],
-                      });
-                      await refetchEnrollment();
+                      await handleCheckEnrollmentStatus();
                     },
                   }}
                   secondaryAction={{
@@ -1015,11 +1074,160 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
                         return;
                       }
                       setShowStripeModal(false);
+                      setIsCheckoutNoticeVisible(false);
                     },
                     variant: 'outline',
                   }}
                 />
               ) : null}
+
+              {checkoutRecovery && !isCheckoutNoticeVisible ? (
+                <div className="flex flex-col gap-3 rounded-xl border border-border/70 bg-card/70 p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+                  <div className="space-y-1">
+                    <p className="text-sm font-semibold">
+                      Plan checkout is still pending
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      Reopen the notice, resume checkout, or review the
+                      current status.
+                    </p>
+                  </div>
+                  <div className="flex flex-col gap-2 sm:flex-row">
+                    <Button
+                      variant="outline"
+                      onClick={() => setIsCheckoutNoticeVisible(true)}
+                    >
+                      Open notice
+                    </Button>
+                    <Button
+                      onClick={async () => {
+                        if (
+                          checkoutRecovery.phase ===
+                          'collecting_payment'
+                        ) {
+                          setShowStripeModal(true);
+                          setActiveTab('plans');
+                          return;
+                        }
+
+                        await handleCheckEnrollmentStatus();
+                      }}
+                    >
+                      {checkoutRecovery.phase === 'collecting_payment'
+                        ? 'Open checkout'
+                        : 'Check status'}
+                    </Button>
+                  </div>
+                </div>
+              ) : null}
+
+              <Dialog
+                open={showCheckoutStatusModal && !!checkoutRecovery}
+                onOpenChange={setShowCheckoutStatusModal}
+              >
+                <DialogContent className="sm:max-w-lg">
+                  <DialogHeader>
+                    <DialogTitle>{checkoutStatusTitle}</DialogTitle>
+                    <DialogDescription>
+                      {checkoutStatusDescription}
+                    </DialogDescription>
+                  </DialogHeader>
+
+                  {checkoutRecovery ? (
+                    <div className="space-y-3">
+                      <div className="rounded-lg border bg-muted/30 p-4">
+                        <div className="grid gap-3 text-sm sm:grid-cols-2">
+                          <div>
+                            <p className="text-muted-foreground">
+                              Plan
+                            </p>
+                            <p className="font-medium">
+                              {pendingPlan?.name ?? 'Pending plan'}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-muted-foreground">
+                              Payment ID
+                            </p>
+                            <p className="font-medium">
+                              #{checkoutRecovery.paymentId}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-muted-foreground">
+                              Enrollment ID
+                            </p>
+                            <p className="font-medium">
+                              #{checkoutRecovery.referenceId}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-muted-foreground">
+                              Current phase
+                            </p>
+                            <p className="font-medium capitalize">
+                              {checkoutRecovery.phase.replaceAll(
+                                '_',
+                                ' '
+                              )}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-muted-foreground">
+                              Started
+                            </p>
+                            <p className="font-medium">
+                              {formatStatusTimestamp(
+                                checkoutRecovery.startedAt
+                              )}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-muted-foreground">
+                              Last updated
+                            </p>
+                            <p className="font-medium">
+                              {formatStatusTimestamp(
+                                checkoutRecovery.updatedAt
+                              )}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="rounded-lg border border-border/70 bg-card/70 p-4 text-sm text-muted-foreground">
+                        {checkoutRecovery.phase === 'processing'
+                          ? 'Stripe accepted your payment submission. Activation will finish once the backend confirms the enrollment update.'
+                          : 'The payment has not been confirmed yet. If this status does not change after another refresh, clear the pending checkout and try again.'}
+                      </div>
+                    </div>
+                  ) : null}
+
+                  <DialogFooter>
+                    {checkoutRecovery?.phase ===
+                    'attention_required' ? (
+                      <Button
+                        variant="outline"
+                        onClick={clearEnrollmentCheckout}
+                      >
+                        Clear pending checkout
+                      </Button>
+                    ) : null}
+                    <Button
+                      variant="outline"
+                      onClick={() => setShowCheckoutStatusModal(false)}
+                    >
+                      Close
+                    </Button>
+                    <Button
+                      onClick={handleCheckEnrollmentStatus}
+                      loading={isCheckingCheckoutStatus}
+                    >
+                      Refresh status
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
 
               {selectedPlanId &&
                 (() => {
