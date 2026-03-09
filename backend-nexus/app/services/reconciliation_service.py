@@ -14,6 +14,7 @@ from app.services.payment_service import (
     _append_payment_audit_note,
     _is_post_payment_activation_complete,
     _mark_payment_as_captured,
+    _mark_payment_as_failed,
 )
 
 logger = logging.getLogger(__name__)
@@ -60,8 +61,12 @@ def _process_pending_payment(
         return
 
     if stripe_status in FAILED_STRIPE_STATUSES:
-        payment.status = PaymentStatus.FAILED
-        payment.last_error = f"Reconciled failed payment from Stripe status {stripe_status}"
+        _mark_payment_as_failed(
+            db,
+            payment,
+            last_error=f"Reconciled failed payment from Stripe status {stripe_status}",
+            commit=False,
+        )
         _append_payment_audit_note(payment, f"Reconciliation marked payment as FAILED from Stripe status {stripe_status}")
         return
 

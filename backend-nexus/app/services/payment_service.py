@@ -303,16 +303,38 @@ def _mark_payment_as_captured(db: Session, payment: Payment) -> Payment:
     return payment
 
 
-def _mark_payment_as_failed(db: Session, payment: Payment) -> Payment:
-    """Set payment status to FAILED. No activation logic. Idempotent if already FAILED."""
+def _cancel_pending_enrollment_for_failed_payment(db: Session, payment: Payment) -> None:
+    if payment.payment_type != PaymentType.ENROLLMENT or payment.reference_id is None:
+        return
+
+    enrollment = db.get(Enrollment, payment.reference_id)
+    if enrollment is None or enrollment.status != EnrollmentStatus.PENDING:
+        return
+
+    enrollment.status = EnrollmentStatus.CANCELLED
+    enrollment.cancelled_at = datetime.now(timezone.utc)
+
+
+def _mark_payment_as_failed(
+    db: Session,
+    payment: Payment,
+    *,
+    last_error: str | None = None,
+    commit: bool = True,
+) -> Payment:
+    """Set payment status to FAILED and cancel any pending enrollment tied to it."""
     if payment.status == PaymentStatus.CAPTURED:
-        return payment
-    if payment.status == PaymentStatus.FAILED:
         return payment
 
     payment.status = PaymentStatus.FAILED
-    db.commit()
-    db.refresh(payment)
+    if last_error is not None:
+        payment.last_error = last_error
+
+    _cancel_pending_enrollment_for_failed_payment(db, payment)
+
+    if commit:
+        db.commit()
+        db.refresh(payment)
     return payment
 
 
@@ -406,19 +428,28 @@ def _apply_webhook_state_transition(
         db.commit()
         return {"processed": True, "reason": "already_in_state", "event_type": event_type}
 
+    failure_message = str(
+        obj.get("last_payment_error", {}).get("message")
+        or obj.get("cancellation_reason")
+        or f"Stripe webhook moved payment to {target_status.value}"
+    )
+
     if target_status == PaymentStatus.CAPTURED:
         payment = _mark_payment_as_captured(db, payment)
+    elif target_status == PaymentStatus.FAILED:
+        payment = _mark_payment_as_failed(
+            db,
+            payment,
+            last_error=failure_message,
+            commit=False,
+        )
     elif target_status == PaymentStatus.DISPUTED:
         payment.status = PaymentStatus.DISPUTED
         payment.last_error = "Stripe dispute opened against captured payment"
         _suspend_entities_for_dispute(db, payment)
     else:
         payment.status = target_status
-        payment.last_error = str(
-            obj.get("last_payment_error", {}).get("message")
-            or obj.get("cancellation_reason")
-            or f"Stripe webhook moved payment to {target_status.value}"
-        )
+        payment.last_error = failure_message
 
     payment.external_event_id = event_id
     _append_payment_audit_note(

@@ -975,7 +975,7 @@ def test_stripe_webhook_failed_does_not_activate_enrollment(
     tenant_a,
     role_patient,
 ):
-    """payment_intent.payment_failed does not activate enrollment (stays PENDING)."""
+    """payment_intent.payment_failed cancels the pending enrollment."""
     reg = register_client_via_api(
         prd10_client,
         tenant_a.id,
@@ -1034,7 +1034,8 @@ def test_stripe_webhook_failed_does_not_activate_enrollment(
     db_session.refresh(enrollment)
 
     assert payment.status.value == "FAILED"
-    assert enrollment.status.value == "PENDING"
+    assert enrollment.status.value == "CANCELLED"
+    assert enrollment.cancelled_at is not None
 
 
 @pytest.mark.prd10

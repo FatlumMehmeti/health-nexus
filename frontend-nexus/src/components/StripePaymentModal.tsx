@@ -18,7 +18,12 @@ import type {
   StripeError,
   StripeCardElementOptions,
 } from '@stripe/stripe-js';
-import { CreditCard, LockKeyhole, ShieldCheck } from 'lucide-react';
+import {
+  AlertTriangle,
+  CreditCard,
+  LockKeyhole,
+  ShieldCheck,
+} from 'lucide-react';
 import React from 'react';
 
 const stripePromise = loadStripe(
@@ -26,8 +31,13 @@ const stripePromise = loadStripe(
 );
 
 function isRetryableStripeError(error: StripeError): boolean {
+  return error.type === 'validation_error';
+}
+
+function isDeclinedStripeError(error: StripeError): boolean {
   return (
-    error.type === 'card_error' || error.type === 'validation_error'
+    error.code === 'card_declined' ||
+    typeof error.decline_code === 'string'
   );
 }
 
@@ -66,6 +76,14 @@ function StripePaymentForm({
   const [errorMessage, setErrorMessage] = React.useState<
     string | null
   >(null);
+  const [showDeclinedState, setShowDeclinedState] =
+    React.useState(false);
+
+  React.useEffect(() => {
+    setErrorMessage(null);
+    setShowDeclinedState(false);
+    setIsSubmitting(false);
+  }, [clientSecret]);
 
   const cardElementOptions: StripeCardElementOptions = {
     hidePostalCode: true,
@@ -119,12 +137,21 @@ function StripePaymentForm({
     if (result.error) {
       const nextErrorMessage =
         result.error.message || 'Payment failed. Please try again.';
-      setErrorMessage(nextErrorMessage);
-      if (!isRetryableStripeError(result.error)) {
+      if (isDeclinedStripeError(result.error)) {
         await onPaymentFailed?.(
           nextErrorMessage,
           result.paymentIntent ?? null
         );
+        setErrorMessage(null);
+        setShowDeclinedState(true);
+      } else {
+        setErrorMessage(nextErrorMessage);
+        if (!isRetryableStripeError(result.error)) {
+          await onPaymentFailed?.(
+            nextErrorMessage,
+            result.paymentIntent ?? null
+          );
+        }
       }
     } else {
       await onPaymentConfirmed(result.paymentIntent ?? null);
@@ -135,98 +162,128 @@ function StripePaymentForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      <div className="grid gap-4 md:grid-cols-[1.2fr_0.8fr]">
-        <div className="rounded-2xl border bg-card p-5 shadow-sm">
-          <div className="mb-4 flex items-center gap-3">
-            <div className="flex size-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
-              <CreditCard className="size-5" />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-foreground">
-                Card details
-              </p>
-              <p className="text-sm text-muted-foreground">
-                Enter your payment information to activate the plan.
-              </p>
-            </div>
-          </div>
-
-          <div className="rounded-xl border bg-background px-4 py-4 shadow-xs transition-shadow focus-within:ring-2 focus-within:ring-primary/20">
-            <CardElement options={cardElementOptions} />
-          </div>
-
-          {errorMessage && (
-            <div className="mt-4 rounded-xl border border-destructive/20 bg-destructive/5 px-4 py-3 text-sm text-destructive">
-              {errorMessage}
-            </div>
-          )}
-        </div>
-
-        <div className="rounded-2xl border bg-muted/30 p-5 shadow-sm">
-          <div className="space-y-4">
-            <div>
-              <p className="text-sm font-semibold text-foreground">
-                Checkout summary
-              </p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Your enrollment stays pending until Stripe confirms
-                the payment.
-              </p>
-            </div>
-
-            <div className="rounded-xl border bg-background/90 p-4">
-              <div className="flex items-start gap-3">
-                <ShieldCheck className="mt-0.5 size-4 text-primary" />
-                <div>
-                  <p className="text-sm font-medium text-foreground">
-                    Protected checkout
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    Card data is processed securely by Stripe and
-                    never stored by this app.
-                  </p>
-                </div>
+      {showDeclinedState ? (
+        <>
+          <div className="rounded-2xl border border-destructive/20 bg-destructive/5 p-6 shadow-sm">
+            <div className="flex items-start gap-4">
+              <div className="flex size-11 items-center justify-center rounded-xl bg-destructive/10 text-destructive">
+                <AlertTriangle className="size-5" />
               </div>
-            </div>
-
-            <div className="rounded-xl border bg-background/90 p-4">
-              <div className="flex items-start gap-3">
-                <LockKeyhole className="mt-0.5 size-4 text-primary" />
-                <div>
-                  <p className="text-sm font-medium text-foreground">
-                    Instant activation
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    After Stripe accepts the payment, we verify the
-                    final activation status in the background.
-                  </p>
-                </div>
+              <div className="space-y-2">
+                <p className="text-lg font-semibold text-foreground">
+                  Your card has been declined
+                </p>
+                <p className="text-sm leading-6 text-muted-foreground">
+                  The enrollment was cancelled automatically. Close
+                  this payment window and try again with another card
+                  if you still want to subscribe.
+                </p>
               </div>
             </div>
           </div>
-        </div>
-      </div>
 
-      <div className="flex flex-col-reverse gap-3 border-t pt-5 sm:flex-row sm:justify-end">
-        <Button
-          type="button"
-          variant="outline"
-          size="lg"
-          onClick={onClose}
-          disabled={isSubmitting}
-        >
-          Cancel
-        </Button>
-        <Button
-          type="submit"
-          size="lg"
-          className="min-w-[160px] shadow-sm"
-          loading={isSubmitting}
-          disabled={!stripe}
-        >
-          Pay securely
-        </Button>
-      </div>
+          <div className="flex justify-end border-t pt-5">
+            <Button type="button" size="lg" onClick={onClose}>
+              Close
+            </Button>
+          </div>
+        </>
+      ) : (
+        <div className="grid gap-4 md:grid-cols-[1.2fr_0.8fr]">
+          <div className="rounded-2xl border bg-card p-5 shadow-sm">
+            <div className="mb-4 flex items-center gap-3">
+              <div className="flex size-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                <CreditCard className="size-5" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-foreground">
+                  Card details
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Enter your payment information to activate the plan.
+                </p>
+              </div>
+            </div>
+
+            <div className="rounded-xl border bg-background px-4 py-4 shadow-xs transition-shadow focus-within:ring-2 focus-within:ring-primary/20">
+              <CardElement options={cardElementOptions} />
+            </div>
+
+            {errorMessage && (
+              <div className="mt-4 rounded-xl border border-destructive/20 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+                {errorMessage}
+              </div>
+            )}
+          </div>
+
+          <div className="rounded-2xl border bg-muted/30 p-5 shadow-sm">
+            <div className="space-y-4">
+              <div>
+                <p className="text-sm font-semibold text-foreground">
+                  Checkout summary
+                </p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  We only activate your enrollment after Stripe
+                  confirms the payment.
+                </p>
+              </div>
+
+              <div className="rounded-xl border bg-background/90 p-4">
+                <div className="flex items-start gap-3">
+                  <ShieldCheck className="mt-0.5 size-4 text-primary" />
+                  <div>
+                    <p className="text-sm font-medium text-foreground">
+                      Protected checkout
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      Card data is processed securely by Stripe and
+                      never stored by this app.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-xl border bg-background/90 p-4">
+                <div className="flex items-start gap-3">
+                  <LockKeyhole className="mt-0.5 size-4 text-primary" />
+                  <div>
+                    <p className="text-sm font-medium text-foreground">
+                      Instant activation
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      After Stripe accepts the payment, we verify the
+                      final activation status in the background.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {!showDeclinedState ? (
+        <div className="flex flex-col-reverse gap-3 border-t pt-5 sm:flex-row sm:justify-end">
+          <Button
+            type="button"
+            variant="outline"
+            size="lg"
+            onClick={onClose}
+            disabled={isSubmitting}
+          >
+            Cancel
+          </Button>
+          <Button
+            type="submit"
+            size="lg"
+            className="min-w-[160px] shadow-sm"
+            loading={isSubmitting}
+            disabled={!stripe}
+          >
+            Pay securely
+          </Button>
+        </div>
+      ) : null}
     </form>
   );
 }

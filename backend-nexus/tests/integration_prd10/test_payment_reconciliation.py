@@ -329,6 +329,71 @@ def test_reconciliation_conflict_escalates_captured_payment(
 
 
 @pytest.mark.prd10
+def test_reconciliation_failed_enrollment_payment_cancels_enrollment(
+    prd10_client, db_session, tenant_a, role_patient, monkeypatch
+):
+    reg = register_client_via_api(
+        prd10_client,
+        tenant_a.id,
+        email="recon8@prd10.foo.com",
+        password="P!",
+        db_session=db_session,
+        role=role_patient,
+    )
+    user_plan = UserTenantPlan(
+        tenant_id=tenant_a.id,
+        name="Ful32 failed payment plan",
+        description="failed payment plan",
+        price=12.0,
+        duration=30,
+        max_appointments=1,
+        max_consultations=1,
+        is_active=True,
+    )
+    db_session.add(user_plan)
+    db_session.flush()
+
+    enrollment = Enrollment(
+        tenant_id=tenant_a.id,
+        patient_user_id=reg["user_id"],
+        user_tenant_plan_id=user_plan.id,
+        created_by=reg["user_id"],
+        status=EnrollmentStatus.PENDING,
+    )
+    db_session.add(enrollment)
+    db_session.flush()
+
+    payment = Payment(
+        payment_type=PaymentType.ENROLLMENT,
+        price=12.0,
+        tenant_id=tenant_a.id,
+        reference_id=enrollment.id,
+        reference_type="enrollment",
+        idempotency_key="key-recon-enrollment-failed",
+        status=PaymentStatus.INITIATED,
+        stripe_payment_intent_id="pi_recon_enrollment_failed",
+    )
+    db_session.add(payment)
+    db_session.flush()
+    payment.created_at = datetime.now(timezone.utc) - timedelta(minutes=20)
+    db_session.commit()
+
+    monkeypatch.setattr(
+        "app.services.reconciliation_service.stripe.PaymentIntent.retrieve",
+        lambda intent_id, **kwargs: {"id": intent_id, "status": "requires_payment_method"},
+    )
+
+    result = reconcile_payments(db_session)
+    assert result["processed"] >= 1
+
+    db_session.refresh(payment)
+    db_session.refresh(enrollment)
+    assert payment.status.value == "FAILED"
+    assert enrollment.status.value == "CANCELLED"
+    assert enrollment.cancelled_at is not None
+
+
+@pytest.mark.prd10
 def test_activation_failure_after_webhook_success_is_recovered_by_reconciliation(
     prd10_client, db_session, tenant_a, role_patient, monkeypatch
 ):

@@ -99,6 +99,52 @@ const usdFormatter = new Intl.NumberFormat('en-US', {
 });
 
 const PAYMENT_CONFIRMATION_TIMEOUT_MS = 45_000;
+const ENROLLMENT_CANCELLATION_NOTICE_KEY_PREFIX =
+  'health-nexus.enrollment-cancellation-notice';
+
+function getEnrollmentCancellationNoticeStorageKey(
+  tenantId: number
+): string {
+  return `${ENROLLMENT_CANCELLATION_NOTICE_KEY_PREFIX}.${tenantId}`;
+}
+
+function loadHandledEnrollmentCancellation(
+  tenantId: number
+): string | null {
+  try {
+    return (
+      globalThis.localStorage?.getItem(
+        getEnrollmentCancellationNoticeStorageKey(tenantId)
+      ) ?? null
+    );
+  } catch {
+    return null;
+  }
+}
+
+function saveHandledEnrollmentCancellation(
+  tenantId: number,
+  cancellationKey: string
+) {
+  try {
+    globalThis.localStorage?.setItem(
+      getEnrollmentCancellationNoticeStorageKey(tenantId),
+      cancellationKey
+    );
+  } catch {
+    // ignore storage failures
+  }
+}
+
+function clearHandledEnrollmentCancellation(tenantId: number) {
+  try {
+    globalThis.localStorage?.removeItem(
+      getEnrollmentCancellationNoticeStorageKey(tenantId)
+    );
+  } catch {
+    // ignore storage failures
+  }
+}
 
 function formatCurrency(value: number): string {
   return usdFormatter.format(Number.isFinite(value) ? value : 0);
@@ -141,6 +187,10 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
   );
   const [registeredOverride, setRegisteredOverride] = useState(false);
   const handledPaymentIdsRef = useRef<Set<number>>(new Set());
+  const localEnrollmentCancellationRef = useRef(false);
+  const handledEnrollmentCancellationRef = useRef<Set<string>>(
+    new Set()
+  );
 
   const user = useAuthStore((s) => s.user);
   const role = useAuthStore((s) => s.role);
@@ -151,6 +201,34 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
   const pendingPlanId = checkoutRecovery?.planId ?? null;
 
   const queryClient = useQueryClient();
+
+  function shouldShowEnrollmentCancellationToast(
+    cancellationKey: string
+  ): boolean {
+    if (!tenantId) {
+      return !handledEnrollmentCancellationRef.current.has(
+        cancellationKey
+      );
+    }
+
+    return (
+      !handledEnrollmentCancellationRef.current.has(
+        cancellationKey
+      ) &&
+      loadHandledEnrollmentCancellation(tenantId) !== cancellationKey
+    );
+  }
+
+  function markEnrollmentCancellationHandled(
+    cancellationKey: string
+  ) {
+    handledEnrollmentCancellationRef.current.add(cancellationKey);
+    if (!tenantId) {
+      return;
+    }
+
+    saveHandledEnrollmentCancellation(tenantId, cancellationKey);
+  }
 
   function setEnrollmentCheckoutRecovery(
     next: CheckoutRecoveryRecord | null
@@ -166,6 +244,7 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
   }
 
   function clearEnrollmentCheckout() {
+    localEnrollmentCancellationRef.current = false;
     setShowStripeModal(false);
     setShowCheckoutStatusModal(false);
     setIsCheckoutNoticeVisible(true);
@@ -184,22 +263,29 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
   // Hydrate the selected plan from the user's existing enrollment.
   // Only sync on initial fetch — not on every render — so the user
   // can click "Change plan" without it snapping back immediately.
-  const enrollmentRefetchInterval =
-    checkoutRecovery?.phase === 'processing'
-      ? 2500
-      : checkoutRecovery?.phase === 'attention_required'
-        ? 5000
-        : false;
+  const shouldSyncEnrollmentState =
+    isAuthenticated &&
+    (selectedPlanId !== null || checkoutRecovery !== null);
 
-  const { data: enrollmentData, refetch: refetchEnrollment } =
-    useQuery({
-      queryKey: ['my-enrollment', tenantId],
-      queryFn: () => tenantPlansService.myEnrollment(tenantId!),
-      enabled: !!tenantId && isAuthenticated,
-      retry: false,
-      refetchInterval: enrollmentRefetchInterval,
-      refetchIntervalInBackground: true,
-    });
+  const enrollmentRefetchInterval = shouldSyncEnrollmentState
+    ? checkoutRecovery?.phase === 'processing'
+      ? 2500
+      : 5000
+    : false;
+
+  const {
+    data: enrollmentData,
+    error: enrollmentError,
+    isError: isEnrollmentError,
+    refetch: refetchEnrollment,
+  } = useQuery({
+    queryKey: ['my-enrollment', tenantId],
+    queryFn: () => tenantPlansService.myEnrollment(tenantId!),
+    enabled: !!tenantId && isAuthenticated,
+    retry: false,
+    refetchInterval: enrollmentRefetchInterval,
+    refetchIntervalInBackground: true,
+  });
 
   useEffect(() => {
     if (!tenantId || !isAuthenticated) {
@@ -229,9 +315,13 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
       enrollmentData?.user_tenant_plan_id &&
       enrollmentData.status === 'ACTIVE'
     ) {
+      localEnrollmentCancellationRef.current = false;
+      if (tenantId) {
+        clearHandledEnrollmentCancellation(tenantId);
+      }
       setSelectedPlanId(enrollmentData.user_tenant_plan_id);
     }
-  }, [enrollmentData]);
+  }, [enrollmentData, tenantId]);
 
   useEffect(() => {
     if (!checkoutRecovery || !enrollmentData) return;
@@ -254,6 +344,77 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
       toast.success('Payment confirmed. Your plan is now active.');
     }
   }, [checkoutRecovery, enrollmentData]);
+
+  useEffect(() => {
+    if (!enrollmentData || enrollmentData.status !== 'CANCELLED') {
+      return;
+    }
+
+    const hasEnrollmentUiState =
+      selectedPlanId !== null || checkoutRecovery !== null;
+    if (!hasEnrollmentUiState) {
+      return;
+    }
+
+    const cancellationKey = `${enrollmentData.id}:${enrollmentData.cancelled_at ?? 'cancelled'}`;
+    const shouldShowToast =
+      shouldShowEnrollmentCancellationToast(cancellationKey);
+    markEnrollmentCancellationHandled(cancellationKey);
+
+    setSelectedPlanId(null);
+
+    if (localEnrollmentCancellationRef.current) {
+      return;
+    }
+
+    clearEnrollmentCheckout();
+    if (shouldShowToast) {
+      toast.error('Enrollment cancelled.', {
+        description: 'You can choose a plan again anytime.',
+      });
+    }
+  }, [checkoutRecovery, enrollmentData, selectedPlanId]);
+
+  useEffect(() => {
+    const isMissingEnrollment =
+      isEnrollmentError &&
+      isApiError(enrollmentError) &&
+      enrollmentError.status === 404;
+
+    if (!isMissingEnrollment) {
+      return;
+    }
+
+    const hasEnrollmentUiState =
+      selectedPlanId !== null || checkoutRecovery !== null;
+    if (!hasEnrollmentUiState) {
+      return;
+    }
+
+    const cancellationKey = `missing:${tenantId ?? 'unknown'}`;
+    const shouldShowToast =
+      shouldShowEnrollmentCancellationToast(cancellationKey);
+    markEnrollmentCancellationHandled(cancellationKey);
+
+    setSelectedPlanId(null);
+
+    if (localEnrollmentCancellationRef.current) {
+      return;
+    }
+
+    clearEnrollmentCheckout();
+    if (shouldShowToast) {
+      toast.error('Enrollment cancelled.', {
+        description:
+          'Your enrollment is no longer active. You can choose a plan again anytime.',
+      });
+    }
+  }, [
+    checkoutRecovery,
+    enrollmentError,
+    isEnrollmentError,
+    selectedPlanId,
+  ]);
 
   useEffect(() => {
     if (checkoutRecovery?.phase !== 'processing') return;
@@ -306,10 +467,11 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
     errorMessage: string
   ) {
     if (!tenantId) {
-      clearEnrollmentCheckout();
       toast.error(errorMessage);
       return;
     }
+
+    localEnrollmentCancellationRef.current = true;
 
     try {
       await tenantPlansService.cancelEnrollment(tenantId);
@@ -317,17 +479,22 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
         queryKey: ['my-enrollment', tenantId],
       });
       setSelectedPlanId(null);
-      clearEnrollmentCheckout();
-      toast.error('Payment failed. The pending enrollment was cancelled.', {
-        description: errorMessage,
-      });
+      if (checkoutRecovery) {
+        setEnrollmentCheckoutRecovery({
+          ...checkoutRecovery,
+          phase: 'attention_required',
+        });
+      }
     } catch (err) {
-      clearEnrollmentCheckout();
-      toast.error('Payment failed and the enrollment rollback did not complete.', {
-        description: isApiError(err)
-          ? err.displayMessage
-          : errorMessage,
-      });
+      toast.error(
+        'Payment failed and the enrollment rollback did not complete.',
+        {
+          description: isApiError(err)
+            ? err.displayMessage
+            : errorMessage,
+        }
+      );
+      localEnrollmentCancellationRef.current = false;
     }
   }
 
@@ -336,6 +503,8 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
       clearEnrollmentCheckout();
       return;
     }
+
+    localEnrollmentCancellationRef.current = true;
 
     try {
       await tenantPlansService.cancelEnrollment(tenantId);
@@ -347,11 +516,15 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
       toast.message('Checkout cancelled.');
     } catch (err) {
       clearEnrollmentCheckout();
-      toast.error('Checkout was closed, but the pending enrollment was not cancelled.', {
-        description: isApiError(err)
-          ? err.displayMessage
-          : 'Please refresh and try again.',
-      });
+      toast.error(
+        'Checkout was closed, but the pending enrollment was not cancelled.',
+        {
+          description: isApiError(err)
+            ? err.displayMessage
+            : 'Please refresh and try again.',
+        }
+      );
+      localEnrollmentCancellationRef.current = false;
     }
   }
 
@@ -365,11 +538,18 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
       planId: number;
       price: number;
     }) => {
+      localEnrollmentCancellationRef.current = false;
+
       // 1. Enroll
       const enrollment = await tenantPlansService.enroll(
         tenantId,
         planId
       );
+      queryClient.setQueryData(
+        ['my-enrollment', tenantId],
+        enrollment
+      );
+
       if (price <= 0) {
         return { enrollment, planId, requiresPayment: false };
       }
@@ -511,6 +691,9 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
   const cancelMutation = useMutation({
     mutationFn: (tid: number) =>
       tenantPlansService.cancelEnrollment(tid),
+    onMutate: () => {
+      localEnrollmentCancellationRef.current = true;
+    },
     onSuccess: () => {
       setSelectedPlanId(null);
       queryClient.invalidateQueries({
@@ -521,6 +704,7 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
       });
     },
     onError: (err) => {
+      localEnrollmentCancellationRef.current = false;
       toast.error(
         isApiError(err)
           ? err.message
@@ -1141,8 +1325,8 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
                       Plan checkout is still pending
                     </p>
                     <p className="text-sm text-muted-foreground">
-                      Reopen the notice, resume checkout, or review the
-                      current status.
+                      Reopen the notice, resume checkout, or review
+                      the current status.
                     </p>
                   </div>
                   <div className="flex flex-col gap-2 sm:flex-row">
@@ -1268,7 +1452,9 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
                     ) : null}
                     <Button
                       variant="outline"
-                      onClick={() => setShowCheckoutStatusModal(false)}
+                      onClick={() =>
+                        setShowCheckoutStatusModal(false)
+                      }
                     >
                       Close
                     </Button>
@@ -1471,6 +1657,13 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
                               'collecting_payment'
                             ) {
                               await handleEnrollmentCheckoutCancelled();
+                              return;
+                            }
+                            if (
+                              checkoutRecovery?.phase ===
+                              'attention_required'
+                            ) {
+                              clearEnrollmentCheckout();
                               return;
                             }
                             setShowStripeModal(false);
