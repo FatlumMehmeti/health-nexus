@@ -49,6 +49,39 @@ class PaymentServiceError(Exception):
         self.details = details or {}
 
 
+WEBHOOK_EVENT_STATUS_MAP = {
+    "payment_intent.succeeded": PaymentStatus.CAPTURED,
+    "payment_intent.payment_failed": PaymentStatus.FAILED,
+    "payment_intent.canceled": PaymentStatus.CANCELED,
+    "charge.dispute.created": PaymentStatus.DISPUTED,
+}
+
+ALLOWED_PAYMENT_TRANSITIONS = {
+    PaymentStatus.INITIATED: {
+        PaymentStatus.CAPTURED,
+        PaymentStatus.FAILED,
+        PaymentStatus.CANCELED,
+        PaymentStatus.REQUIRES_MANUAL_INTERVENTION,
+    },
+    PaymentStatus.AUTHORIZED: {
+        PaymentStatus.CAPTURED,
+        PaymentStatus.FAILED,
+        PaymentStatus.CANCELED,
+        PaymentStatus.REQUIRES_MANUAL_INTERVENTION,
+    },
+    PaymentStatus.CAPTURED: {
+        PaymentStatus.DISPUTED,
+        PaymentStatus.REFUNDED,
+        PaymentStatus.REQUIRES_MANUAL_INTERVENTION,
+    },
+    PaymentStatus.FAILED: {PaymentStatus.REQUIRES_MANUAL_INTERVENTION},
+    PaymentStatus.CANCELED: {PaymentStatus.REQUIRES_MANUAL_INTERVENTION},
+    PaymentStatus.DISPUTED: {PaymentStatus.REQUIRES_MANUAL_INTERVENTION},
+    PaymentStatus.REQUIRES_MANUAL_INTERVENTION: set(),
+    PaymentStatus.REFUNDED: set(),
+}
+
+
 def _amount_to_minor_units(amount: float) -> int:
     """Convert decimal major-unit amount to Stripe minor units (e.g. dollars -> cents)."""
     major = Decimal(str(amount))
@@ -213,12 +246,71 @@ def _apply_post_payment_activation(db: Session, payment: Payment) -> None:
         _activate_tenant_subscription_if_applicable(db, payment.reference_id)
 
 
+def _is_post_payment_activation_complete(db: Session, payment: Payment) -> bool:
+    if payment.reference_id is None:
+        return True
+
+    if payment.payment_type == PaymentType.ORDER:
+        order = db.get(Order, payment.reference_id)
+        return bool(order and order.status == OrderStatus.PAID)
+
+    if payment.payment_type == PaymentType.ENROLLMENT:
+        enrollment = db.get(Enrollment, payment.reference_id)
+        return bool(
+            enrollment
+            and enrollment.status == EnrollmentStatus.ACTIVE
+            and enrollment.activated_at is not None
+        )
+
+    if payment.payment_type == PaymentType.TENANT_SUBSCRIPTION:
+        subscription = db.get(TenantSubscription, payment.reference_id)
+        return bool(
+            subscription
+            and subscription.status == SubscriptionStatus.ACTIVE
+            and subscription.activated_at is not None
+        )
+
+    return True
+
+
+def _append_payment_audit_note(payment: Payment, message: str) -> None:
+    timestamp = datetime.now(timezone.utc).isoformat()
+    note = f"[{timestamp}] {message}"
+    payment.audit_notes = f"{payment.audit_notes}\n{note}" if payment.audit_notes else note
+
+
+def _can_transition_payment(current: PaymentStatus, target: PaymentStatus) -> bool:
+    if current == target:
+        return True
+    return target in ALLOWED_PAYMENT_TRANSITIONS.get(current, set())
+
+
+def _resolve_payment_intent_id(event_type: str, obj: dict) -> str | None:
+    if event_type.startswith("charge."):
+        return obj.get("payment_intent")
+    return obj.get("id")
+
+
 def _mark_payment_as_captured(db: Session, payment: Payment) -> Payment:
-    if payment.status == PaymentStatus.CAPTURED:
+    if payment.status == PaymentStatus.CAPTURED and _is_post_payment_activation_complete(db, payment):
         return payment
 
     payment.status = PaymentStatus.CAPTURED
+    payment.last_error = None
     _apply_post_payment_activation(db, payment)
+    db.commit()
+    db.refresh(payment)
+    return payment
+
+
+def _mark_payment_as_failed(db: Session, payment: Payment) -> Payment:
+    """Set payment status to FAILED. No activation logic. Idempotent if already FAILED."""
+    if payment.status == PaymentStatus.CAPTURED:
+        return payment
+    if payment.status == PaymentStatus.FAILED:
+        return payment
+
+    payment.status = PaymentStatus.FAILED
     db.commit()
     db.refresh(payment)
     return payment
@@ -258,47 +350,134 @@ def _verify_stripe_webhook_event(payload: bytes, signature: str | None) -> dict:
     return dict(event)
 
 
+def _suspend_entities_for_dispute(db: Session, payment: Payment) -> None:
+    if payment.reference_id is None:
+        return
+
+    now = datetime.now(timezone.utc)
+    if payment.payment_type == PaymentType.ENROLLMENT:
+        enrollment = db.get(Enrollment, payment.reference_id)
+        if enrollment and enrollment.status == EnrollmentStatus.ACTIVE:
+            enrollment.status = EnrollmentStatus.CANCELLED
+            enrollment.cancelled_at = now
+    elif payment.payment_type == PaymentType.TENANT_SUBSCRIPTION:
+        subscription = db.get(TenantSubscription, payment.reference_id)
+        if subscription and subscription.status == SubscriptionStatus.ACTIVE:
+            subscription.status = SubscriptionStatus.EXPIRED
+            subscription.cancelled_at = now
+            subscription.cancellation_reason = f"Payment Disputed: {payment.payment_id}"
+
+
+def _apply_webhook_state_transition(
+    db: Session,
+    payment: Payment,
+    *,
+    event_type: str,
+    event_id: str,
+    obj: dict,
+) -> dict:
+    target_status = WEBHOOK_EVENT_STATUS_MAP.get(event_type)
+    if target_status is None:
+        _append_payment_audit_note(payment, f"Ignored unsupported webhook event {event_id} ({event_type})")
+        db.commit()
+        return {"processed": False, "reason": "event_ignored", "event_type": event_type}
+
+    if payment.external_event_id == event_id:
+        return {"processed": True, "reason": "already_processed", "event_type": event_type}
+
+    current_status = payment.status
+    if not _can_transition_payment(current_status, target_status):
+        _append_payment_audit_note(
+            payment,
+            (
+                f"Ignored out-of-order webhook event {event_id} ({event_type}) "
+                f"while payment remained {current_status.value}"
+            ),
+        )
+        db.commit()
+        return {"processed": False, "reason": "transition_ignored", "event_type": event_type}
+
+    if current_status == target_status:
+        payment.external_event_id = event_id
+        _append_payment_audit_note(
+            payment,
+            f"Deduplicated webhook event {event_id} ({event_type}) with no state change",
+        )
+        db.commit()
+        return {"processed": True, "reason": "already_in_state", "event_type": event_type}
+
+    if target_status == PaymentStatus.CAPTURED:
+        payment = _mark_payment_as_captured(db, payment)
+    elif target_status == PaymentStatus.DISPUTED:
+        payment.status = PaymentStatus.DISPUTED
+        payment.last_error = "Stripe dispute opened against captured payment"
+        _suspend_entities_for_dispute(db, payment)
+    else:
+        payment.status = target_status
+        payment.last_error = str(
+            obj.get("last_payment_error", {}).get("message")
+            or obj.get("cancellation_reason")
+            or f"Stripe webhook moved payment to {target_status.value}"
+        )
+
+    payment.external_event_id = event_id
+    _append_payment_audit_note(
+        payment,
+        f"Applied webhook event {event_id} ({event_type}) -> {payment.status.value}",
+    )
+    db.commit()
+    db.refresh(payment)
+    return {
+        "processed": True,
+        "event_type": event_type,
+        "payment_id": payment.payment_id,
+        "payment_status": payment.status.value,
+    }
+
+
 def process_stripe_webhook(db: Session, payload: bytes, signature: str | None) -> dict:
     """
-    Process Stripe webhook event payload and perform post-payment activation.
+    Process Stripe webhook event payload and perform post-payment activation, failure, or suspension.
     """
     event = _verify_stripe_webhook_event(payload, signature)
     event_type = str(event.get("type") or "")
+    event_id = str(event.get("id") or "")
     data = event.get("data") or {}
     obj = data.get("object") or {}
+    if not event_id:
+        return {"processed": False, "reason": "missing_event_id", "event_type": event_type}
 
-    if event_type == "payment_intent.succeeded":
-        intent_id = obj.get("id")
-        if not intent_id:
+    intent_id = _resolve_payment_intent_id(event_type, obj)
+
+    if not intent_id:
+        if event_type == "payment_intent.succeeded":
             raise PaymentServiceError(
                 PaymentErrorCode.VALIDATION_ERROR,
                 "payment_intent.succeeded missing PaymentIntent id",
                 http_status=400,
             )
+        return {"processed": False, "reason": "missing_intent_id", "event_type": event_type}
 
-        payment = (
-            db.query(Payment)
-            .filter(Payment.stripe_payment_intent_id == str(intent_id))
-            .order_by(Payment.payment_id.desc())
-            .first()
+    payment = (
+        db.query(Payment)
+        .filter(Payment.stripe_payment_intent_id == str(intent_id))
+        .order_by(Payment.payment_id.desc())
+        .first()
+    )
+    if payment is None:
+        return {"processed": False, "reason": "payment_not_found", "event_type": event_type}
+
+    try:
+        return _apply_webhook_state_transition(
+            db,
+            payment,
+            event_type=event_type,
+            event_id=event_id,
+            obj=obj,
         )
-        if payment is None:
-            return {"processed": False, "reason": "payment_not_found", "event_type": event_type}
-
-        try:
-            payment = _mark_payment_as_captured(db, payment)
-        except Exception:
-            db.rollback()
-            raise
-
-        return {
-            "processed": True,
-            "event_type": event_type,
-            "payment_id": payment.payment_id,
-            "payment_status": payment.status.value,
-        }
-
-    return {"processed": False, "reason": "event_ignored", "event_type": event_type}
+    except Exception:
+        db.rollback()
+        raise
 
 
 def _create_or_get_payment_record(
