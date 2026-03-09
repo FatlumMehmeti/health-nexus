@@ -15,6 +15,7 @@ import {
 } from '@stripe/react-stripe-js';
 import type {
   PaymentIntent,
+  StripeError,
   StripeCardElementOptions,
 } from '@stripe/stripe-js';
 import { CreditCard, LockKeyhole, ShieldCheck } from 'lucide-react';
@@ -24,21 +25,40 @@ const stripePromise = loadStripe(
   import.meta.env.VITE_STRIPE_PUBLIC_KEY!
 );
 
+function isRetryableStripeError(error: StripeError): boolean {
+  return (
+    error.type === 'card_error' || error.type === 'validation_error'
+  );
+}
+
 interface StripePaymentModalProps {
   clientSecret: string;
   open: boolean;
   onClose: () => void;
-  onPaymentConfirmed: (paymentIntent: PaymentIntent | null) => void;
+  onPaymentConfirmed: (
+    paymentIntent: PaymentIntent | null
+  ) => void | Promise<void>;
+  onPaymentFailed?: (
+    errorMessage: string,
+    paymentIntent: PaymentIntent | null
+  ) => void | Promise<void>;
 }
 
 function StripePaymentForm({
   clientSecret,
   onClose,
   onPaymentConfirmed,
+  onPaymentFailed,
 }: {
   clientSecret: string;
   onClose: () => void;
-  onPaymentConfirmed: (paymentIntent: PaymentIntent | null) => void;
+  onPaymentConfirmed: (
+    paymentIntent: PaymentIntent | null
+  ) => void | Promise<void>;
+  onPaymentFailed?: (
+    errorMessage: string,
+    paymentIntent: PaymentIntent | null
+  ) => void | Promise<void>;
 }) {
   const stripe = useStripe();
   const elements = useElements();
@@ -97,12 +117,17 @@ function StripePaymentForm({
     });
 
     if (result.error) {
-      setErrorMessage(
-        result.error.message || 'Payment failed. Please try again.'
-      );
+      const nextErrorMessage =
+        result.error.message || 'Payment failed. Please try again.';
+      setErrorMessage(nextErrorMessage);
+      if (!isRetryableStripeError(result.error)) {
+        await onPaymentFailed?.(
+          nextErrorMessage,
+          result.paymentIntent ?? null
+        );
+      }
     } else {
-      onPaymentConfirmed(result.paymentIntent ?? null);
-      onClose();
+      await onPaymentConfirmed(result.paymentIntent ?? null);
     }
 
     setIsSubmitting(false);
@@ -210,10 +235,17 @@ function StripePaymentModalBody({
   clientSecret,
   onClose,
   onPaymentConfirmed,
+  onPaymentFailed,
 }: {
   clientSecret: string;
   onClose: () => void;
-  onPaymentConfirmed: (paymentIntent: PaymentIntent | null) => void;
+  onPaymentConfirmed: (
+    paymentIntent: PaymentIntent | null
+  ) => void | Promise<void>;
+  onPaymentFailed?: (
+    errorMessage: string,
+    paymentIntent: PaymentIntent | null
+  ) => void | Promise<void>;
 }) {
   return (
     <div className="space-y-2">
@@ -235,6 +267,7 @@ function StripePaymentModalBody({
         clientSecret={clientSecret}
         onClose={onClose}
         onPaymentConfirmed={onPaymentConfirmed}
+        onPaymentFailed={onPaymentFailed}
       />
     </div>
   );
@@ -245,6 +278,7 @@ export function StripePaymentModal({
   open,
   onClose,
   onPaymentConfirmed,
+  onPaymentFailed,
 }: StripePaymentModalProps) {
   if (!clientSecret) return null;
 
@@ -255,7 +289,7 @@ export function StripePaymentModal({
     >
       <DialogContent
         className="max-w-[920px] gap-6 overflow-hidden rounded-3xl border-border/70 p-0 shadow-2xl"
-        showCloseButton={false}
+        showCloseButton
       >
         <div className="border-b bg-gradient-to-br from-primary/10 via-background to-background px-6 py-6 sm:px-8">
           <Elements stripe={stripePromise} options={{ clientSecret }}>
@@ -263,6 +297,7 @@ export function StripePaymentModal({
               clientSecret={clientSecret}
               onClose={onClose}
               onPaymentConfirmed={onPaymentConfirmed}
+              onPaymentFailed={onPaymentFailed}
             />
           </Elements>
         </div>
