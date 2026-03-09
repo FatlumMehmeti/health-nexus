@@ -475,7 +475,13 @@ export function SubscriptionPlansModal({}: SubscriptionPlansModalProps) {
       <StripePaymentModal
         clientSecret={stripeClientSecret ?? ''}
         open={showStripeModal && !!stripeClientSecret}
-        onClose={() => {
+        onClose={async () => {
+          if (checkoutRecovery?.phase === 'collecting_payment') {
+            clearSubscriptionCheckout();
+            await refreshSubscriptionData();
+            toast.message('Checkout cancelled.');
+            return;
+          }
           setShowStripeModal(false);
         }}
         onPaymentConfirmed={async () => {
@@ -488,6 +494,16 @@ export function SubscriptionPlansModal({}: SubscriptionPlansModalProps) {
             phase: 'processing',
           });
           await refreshSubscriptionData(checkoutRecovery.planId);
+        }}
+        onPaymentFailed={async (errorMessage) => {
+          clearSubscriptionCheckout();
+          await refreshSubscriptionData();
+          toast.error(
+            'Payment failed. The pending subscription checkout was cleared.',
+            {
+              description: errorMessage,
+            }
+          );
         }}
       />
     </div>

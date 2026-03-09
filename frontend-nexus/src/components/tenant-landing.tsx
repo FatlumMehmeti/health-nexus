@@ -302,6 +302,59 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
     }
   }
 
+  async function handleEnrollmentPaymentFailure(
+    errorMessage: string
+  ) {
+    if (!tenantId) {
+      clearEnrollmentCheckout();
+      toast.error(errorMessage);
+      return;
+    }
+
+    try {
+      await tenantPlansService.cancelEnrollment(tenantId);
+      await queryClient.invalidateQueries({
+        queryKey: ['my-enrollment', tenantId],
+      });
+      setSelectedPlanId(null);
+      clearEnrollmentCheckout();
+      toast.error('Payment failed. The pending enrollment was cancelled.', {
+        description: errorMessage,
+      });
+    } catch (err) {
+      clearEnrollmentCheckout();
+      toast.error('Payment failed and the enrollment rollback did not complete.', {
+        description: isApiError(err)
+          ? err.displayMessage
+          : errorMessage,
+      });
+    }
+  }
+
+  async function handleEnrollmentCheckoutCancelled() {
+    if (!tenantId) {
+      clearEnrollmentCheckout();
+      return;
+    }
+
+    try {
+      await tenantPlansService.cancelEnrollment(tenantId);
+      await queryClient.invalidateQueries({
+        queryKey: ['my-enrollment', tenantId],
+      });
+      setSelectedPlanId(null);
+      clearEnrollmentCheckout();
+      toast.message('Checkout cancelled.');
+    } catch (err) {
+      clearEnrollmentCheckout();
+      toast.error('Checkout was closed, but the pending enrollment was not cancelled.', {
+        description: isApiError(err)
+          ? err.displayMessage
+          : 'Please refresh and try again.',
+      });
+    }
+  }
+
   const enrollMutation = useMutation({
     mutationFn: async ({
       tenantId,
@@ -1412,7 +1465,16 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
                           open={
                             showStripeModal && !!stripeClientSecret
                           }
-                          onClose={() => setShowStripeModal(false)}
+                          onClose={async () => {
+                            if (
+                              checkoutRecovery?.phase ===
+                              'collecting_payment'
+                            ) {
+                              await handleEnrollmentCheckoutCancelled();
+                              return;
+                            }
+                            setShowStripeModal(false);
+                          }}
                           onPaymentConfirmed={async () => {
                             if (!checkoutRecovery) return;
 
@@ -1425,6 +1487,11 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
                             await queryClient.invalidateQueries({
                               queryKey: ['my-enrollment', tenantId],
                             });
+                          }}
+                          onPaymentFailed={async (errorMessage) => {
+                            await handleEnrollmentPaymentFailure(
+                              errorMessage
+                            );
                           }}
                         />
                       </article>
