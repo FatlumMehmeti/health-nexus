@@ -56,7 +56,11 @@ def upgrade() -> None:
     op.execute("CREATE TYPE cancelled_by_actor AS ENUM ('LEAD', 'SALES')")
 
     # -- 3. Leads table --
-    op.add_column('leads', sa.Column('licence_number', sa.String(255), nullable=False))
+    # Add as nullable+default first so existing rows don't violate NOT NULL,
+    # then backfill and tighten the constraint.
+    op.add_column('leads', sa.Column('licence_number', sa.String(255), nullable=True, server_default=''))
+    op.execute("UPDATE leads SET licence_number = '' WHERE licence_number IS NULL")
+    op.alter_column('leads', 'licence_number', nullable=False, server_default=None)
     op.add_column('leads', sa.Column('initial_message', sa.Text(), nullable=True))
     op.add_column('leads', sa.Column('next_action', sa.Text(), nullable=True))
     op.add_column('leads', sa.Column('next_action_due_at', sa.DateTime(timezone=True), nullable=True))
