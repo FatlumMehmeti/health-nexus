@@ -1,3 +1,4 @@
+from datetime import datetime
 from pydantic import BaseModel
 from app.models.lead import LeadStatus
 
@@ -35,3 +36,34 @@ class LeadRead(LeadBase):
 
     class Config:
         from_attributes = True
+
+
+class PublicLeadTrackingStep(BaseModel):
+    """
+    One step of the public lead roadmap.
+
+    state values are intentionally UI-friendly:
+    - DONE (green)
+    - IN_PROGRESS (orange)
+    - NOT_STARTED (gray)
+    """
+
+    status: str
+    state: str
+
+
+class PublicLeadTrackingRead(BaseModel):
+    """
+    Public-safe lead tracking payload.
+
+    Uses lead_id + contact email verification in the route layer
+    so the frontend can render a status roadmap without authentication.
+    """
+
+    lead_id: int
+    organization_name: str | None = None
+    contact_email: str | None = None
+    current_status: str
+    created_at: datetime
+    updated_at: datetime
+    roadmap: list[PublicLeadTrackingStep]

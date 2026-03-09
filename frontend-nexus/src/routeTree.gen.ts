@@ -16,6 +16,7 @@ import { Route as RegisterRouteImport } from './routes/register'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as EnrollmentRouteImport } from './routes/enrollment'
 import { Route as ContactAdminRouteImport } from './routes/contact-admin'
+import { Route as ConsultationTrackingRouteImport } from './routes/consultation-tracking'
 import { Route as LandingRouteRouteImport } from './routes/landing/route'
 import { Route as DashboardRouteRouteImport } from './routes/dashboard/route'
 import { Route as IndexRouteImport } from './routes/index'
@@ -37,9 +38,12 @@ import { Route as DashboardLandingPagesRouteRouteImport } from './routes/dashboa
 import { Route as DashboardLandingPagesIndexRouteImport } from './routes/dashboard/landing-pages/index'
 import { Route as DashboardAuditLogsIndexRouteImport } from './routes/dashboard/audit-logs/index'
 import { Route as DashboardTenantSectionRouteImport } from './routes/dashboard/tenant.$section'
+import { Route as DashboardSalesMyLeadsRouteImport } from './routes/dashboard/sales/my-leads'
+import { Route as DashboardSalesLeadsRouteImport } from './routes/dashboard/sales/leads'
 import { Route as DashboardLandingPagesPageIdRouteImport } from './routes/dashboard/landing-pages/$pageId'
 import { Route as DashboardContractSignDoctorContractIdRouteImport } from './routes/dashboard/contract-sign-doctor.$contractId'
 import { Route as DashboardClientSectionRouteImport } from './routes/dashboard/client.$section'
+import { Route as DashboardSalesLeadsLeadIdRouteImport } from './routes/dashboard/sales/leads.$leadId'
 
 const UnauthorizedRoute = UnauthorizedRouteImport.update({
   id: '/unauthorized',
@@ -74,6 +78,11 @@ const EnrollmentRoute = EnrollmentRouteImport.update({
 const ContactAdminRoute = ContactAdminRouteImport.update({
   id: '/contact-admin',
   path: '/contact-admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ConsultationTrackingRoute = ConsultationTrackingRouteImport.update({
+  id: '/consultation-tracking',
+  path: '/consultation-tracking',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LandingRouteRoute = LandingRouteRouteImport.update({
@@ -186,6 +195,16 @@ const DashboardTenantSectionRoute = DashboardTenantSectionRouteImport.update({
   path: '/$section',
   getParentRoute: () => DashboardTenantRoute,
 } as any)
+const DashboardSalesMyLeadsRoute = DashboardSalesMyLeadsRouteImport.update({
+  id: '/sales/my-leads',
+  path: '/sales/my-leads',
+  getParentRoute: () => DashboardRouteRoute,
+} as any)
+const DashboardSalesLeadsRoute = DashboardSalesLeadsRouteImport.update({
+  id: '/sales/leads',
+  path: '/sales/leads',
+  getParentRoute: () => DashboardRouteRoute,
+} as any)
 const DashboardLandingPagesPageIdRoute =
   DashboardLandingPagesPageIdRouteImport.update({
     id: '/$pageId',
@@ -203,11 +222,18 @@ const DashboardClientSectionRoute = DashboardClientSectionRouteImport.update({
   path: '/$section',
   getParentRoute: () => DashboardClientRoute,
 } as any)
+const DashboardSalesLeadsLeadIdRoute =
+  DashboardSalesLeadsLeadIdRouteImport.update({
+    id: '/$leadId',
+    path: '/$leadId',
+    getParentRoute: () => DashboardSalesLeadsRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRouteRouteWithChildren
   '/landing': typeof LandingRouteRouteWithChildren
+  '/consultation-tracking': typeof ConsultationTrackingRoute
   '/contact-admin': typeof ContactAdminRoute
   '/enrollment': typeof EnrollmentRoute
   '/login': typeof LoginRoute
@@ -233,13 +259,17 @@ export interface FileRoutesByFullPath {
   '/dashboard/client/$section': typeof DashboardClientSectionRoute
   '/dashboard/contract-sign-doctor/$contractId': typeof DashboardContractSignDoctorContractIdRoute
   '/dashboard/landing-pages/$pageId': typeof DashboardLandingPagesPageIdRoute
+  '/dashboard/sales/leads': typeof DashboardSalesLeadsRouteWithChildren
+  '/dashboard/sales/my-leads': typeof DashboardSalesMyLeadsRoute
   '/dashboard/tenant/$section': typeof DashboardTenantSectionRoute
   '/dashboard/audit-logs/': typeof DashboardAuditLogsIndexRoute
   '/dashboard/landing-pages/': typeof DashboardLandingPagesIndexRoute
+  '/dashboard/sales/leads/$leadId': typeof DashboardSalesLeadsLeadIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/landing': typeof LandingRouteRouteWithChildren
+  '/consultation-tracking': typeof ConsultationTrackingRoute
   '/contact-admin': typeof ContactAdminRoute
   '/enrollment': typeof EnrollmentRoute
   '/login': typeof LoginRoute
@@ -264,15 +294,19 @@ export interface FileRoutesByTo {
   '/dashboard/client/$section': typeof DashboardClientSectionRoute
   '/dashboard/contract-sign-doctor/$contractId': typeof DashboardContractSignDoctorContractIdRoute
   '/dashboard/landing-pages/$pageId': typeof DashboardLandingPagesPageIdRoute
+  '/dashboard/sales/leads': typeof DashboardSalesLeadsRouteWithChildren
+  '/dashboard/sales/my-leads': typeof DashboardSalesMyLeadsRoute
   '/dashboard/tenant/$section': typeof DashboardTenantSectionRoute
   '/dashboard/audit-logs': typeof DashboardAuditLogsIndexRoute
   '/dashboard/landing-pages': typeof DashboardLandingPagesIndexRoute
+  '/dashboard/sales/leads/$leadId': typeof DashboardSalesLeadsLeadIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRouteRouteWithChildren
   '/landing': typeof LandingRouteRouteWithChildren
+  '/consultation-tracking': typeof ConsultationTrackingRoute
   '/contact-admin': typeof ContactAdminRoute
   '/enrollment': typeof EnrollmentRoute
   '/login': typeof LoginRoute
@@ -298,9 +332,12 @@ export interface FileRoutesById {
   '/dashboard/client/$section': typeof DashboardClientSectionRoute
   '/dashboard/contract-sign-doctor/$contractId': typeof DashboardContractSignDoctorContractIdRoute
   '/dashboard/landing-pages/$pageId': typeof DashboardLandingPagesPageIdRoute
+  '/dashboard/sales/leads': typeof DashboardSalesLeadsRouteWithChildren
+  '/dashboard/sales/my-leads': typeof DashboardSalesMyLeadsRoute
   '/dashboard/tenant/$section': typeof DashboardTenantSectionRoute
   '/dashboard/audit-logs/': typeof DashboardAuditLogsIndexRoute
   '/dashboard/landing-pages/': typeof DashboardLandingPagesIndexRoute
+  '/dashboard/sales/leads/$leadId': typeof DashboardSalesLeadsLeadIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -308,6 +345,7 @@ export interface FileRouteTypes {
     | '/'
     | '/dashboard'
     | '/landing'
+    | '/consultation-tracking'
     | '/contact-admin'
     | '/enrollment'
     | '/login'
@@ -333,13 +371,17 @@ export interface FileRouteTypes {
     | '/dashboard/client/$section'
     | '/dashboard/contract-sign-doctor/$contractId'
     | '/dashboard/landing-pages/$pageId'
+    | '/dashboard/sales/leads'
+    | '/dashboard/sales/my-leads'
     | '/dashboard/tenant/$section'
     | '/dashboard/audit-logs/'
     | '/dashboard/landing-pages/'
+    | '/dashboard/sales/leads/$leadId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/landing'
+    | '/consultation-tracking'
     | '/contact-admin'
     | '/enrollment'
     | '/login'
@@ -364,14 +406,18 @@ export interface FileRouteTypes {
     | '/dashboard/client/$section'
     | '/dashboard/contract-sign-doctor/$contractId'
     | '/dashboard/landing-pages/$pageId'
+    | '/dashboard/sales/leads'
+    | '/dashboard/sales/my-leads'
     | '/dashboard/tenant/$section'
     | '/dashboard/audit-logs'
     | '/dashboard/landing-pages'
+    | '/dashboard/sales/leads/$leadId'
   id:
     | '__root__'
     | '/'
     | '/dashboard'
     | '/landing'
+    | '/consultation-tracking'
     | '/contact-admin'
     | '/enrollment'
     | '/login'
@@ -397,15 +443,19 @@ export interface FileRouteTypes {
     | '/dashboard/client/$section'
     | '/dashboard/contract-sign-doctor/$contractId'
     | '/dashboard/landing-pages/$pageId'
+    | '/dashboard/sales/leads'
+    | '/dashboard/sales/my-leads'
     | '/dashboard/tenant/$section'
     | '/dashboard/audit-logs/'
     | '/dashboard/landing-pages/'
+    | '/dashboard/sales/leads/$leadId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   DashboardRouteRoute: typeof DashboardRouteRouteWithChildren
   LandingRouteRoute: typeof LandingRouteRouteWithChildren
+  ConsultationTrackingRoute: typeof ConsultationTrackingRoute
   ContactAdminRoute: typeof ContactAdminRoute
   EnrollmentRoute: typeof EnrollmentRoute
   LoginRoute: typeof LoginRoute
@@ -470,6 +520,13 @@ declare module '@tanstack/react-router' {
       path: '/contact-admin'
       fullPath: '/contact-admin'
       preLoaderRoute: typeof ContactAdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/consultation-tracking': {
+      id: '/consultation-tracking'
+      path: '/consultation-tracking'
+      fullPath: '/consultation-tracking'
+      preLoaderRoute: typeof ConsultationTrackingRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/landing': {
@@ -619,6 +676,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardTenantSectionRouteImport
       parentRoute: typeof DashboardTenantRoute
     }
+    '/dashboard/sales/my-leads': {
+      id: '/dashboard/sales/my-leads'
+      path: '/sales/my-leads'
+      fullPath: '/dashboard/sales/my-leads'
+      preLoaderRoute: typeof DashboardSalesMyLeadsRouteImport
+      parentRoute: typeof DashboardRouteRoute
+    }
+    '/dashboard/sales/leads': {
+      id: '/dashboard/sales/leads'
+      path: '/sales/leads'
+      fullPath: '/dashboard/sales/leads'
+      preLoaderRoute: typeof DashboardSalesLeadsRouteImport
+      parentRoute: typeof DashboardRouteRoute
+    }
     '/dashboard/landing-pages/$pageId': {
       id: '/dashboard/landing-pages/$pageId'
       path: '/$pageId'
@@ -639,6 +710,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/dashboard/client/$section'
       preLoaderRoute: typeof DashboardClientSectionRouteImport
       parentRoute: typeof DashboardClientRoute
+    }
+    '/dashboard/sales/leads/$leadId': {
+      id: '/dashboard/sales/leads/$leadId'
+      path: '/$leadId'
+      fullPath: '/dashboard/sales/leads/$leadId'
+      preLoaderRoute: typeof DashboardSalesLeadsLeadIdRouteImport
+      parentRoute: typeof DashboardSalesLeadsRoute
     }
   }
 }
@@ -683,6 +761,17 @@ const DashboardTenantRouteWithChildren = DashboardTenantRoute._addFileChildren(
   DashboardTenantRouteChildren,
 )
 
+interface DashboardSalesLeadsRouteChildren {
+  DashboardSalesLeadsLeadIdRoute: typeof DashboardSalesLeadsLeadIdRoute
+}
+
+const DashboardSalesLeadsRouteChildren: DashboardSalesLeadsRouteChildren = {
+  DashboardSalesLeadsLeadIdRoute: DashboardSalesLeadsLeadIdRoute,
+}
+
+const DashboardSalesLeadsRouteWithChildren =
+  DashboardSalesLeadsRoute._addFileChildren(DashboardSalesLeadsRouteChildren)
+
 interface DashboardRouteRouteChildren {
   DashboardLandingPagesRouteRoute: typeof DashboardLandingPagesRouteRouteWithChildren
   DashboardAppointmentsRoute: typeof DashboardAppointmentsRoute
@@ -693,6 +782,8 @@ interface DashboardRouteRouteChildren {
   DashboardTenantsRoute: typeof DashboardTenantsRoute
   DashboardIndexRoute: typeof DashboardIndexRoute
   DashboardContractSignDoctorContractIdRoute: typeof DashboardContractSignDoctorContractIdRoute
+  DashboardSalesLeadsRoute: typeof DashboardSalesLeadsRouteWithChildren
+  DashboardSalesMyLeadsRoute: typeof DashboardSalesMyLeadsRoute
   DashboardAuditLogsIndexRoute: typeof DashboardAuditLogsIndexRoute
 }
 
@@ -707,6 +798,8 @@ const DashboardRouteRouteChildren: DashboardRouteRouteChildren = {
   DashboardIndexRoute: DashboardIndexRoute,
   DashboardContractSignDoctorContractIdRoute:
     DashboardContractSignDoctorContractIdRoute,
+  DashboardSalesLeadsRoute: DashboardSalesLeadsRouteWithChildren,
+  DashboardSalesMyLeadsRoute: DashboardSalesMyLeadsRoute,
   DashboardAuditLogsIndexRoute: DashboardAuditLogsIndexRoute,
 }
 
@@ -730,6 +823,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   DashboardRouteRoute: DashboardRouteRouteWithChildren,
   LandingRouteRoute: LandingRouteRouteWithChildren,
+  ConsultationTrackingRoute: ConsultationTrackingRoute,
   ContactAdminRoute: ContactAdminRoute,
   EnrollmentRoute: EnrollmentRoute,
   LoginRoute: LoginRoute,

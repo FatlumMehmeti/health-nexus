@@ -122,6 +122,26 @@ async function updateTenantDetailsMultipart(
   return (await response.json()) as TenantDetailsRead;
 }
 
+export type PublicLeadTrackingStepState =
+  | 'DONE'
+  | 'IN_PROGRESS'
+  | 'NOT_STARTED';
+
+export interface PublicLeadTrackingStep {
+  status: string;
+  state: PublicLeadTrackingStepState;
+}
+
+export interface PublicLeadTrackingResponse {
+  lead_id: number;
+  organization_name: string | null;
+  contact_email: string | null;
+  current_status: string;
+  created_at: string;
+  updated_at: string;
+  roadmap: PublicLeadTrackingStep[];
+}
+
 /**
  * Tenant service for public and superadmin tenant operations
  */
@@ -152,6 +172,30 @@ export const tenantsService = {
    */
   createApplication: (data: TenantCreate) =>
     api.post<TenantRead>('/api/public/tenants', data),
+
+  /**
+   * Submit a public consultation request (creates a lead in backend).
+   * Current backend accepts tenant_name, contact_email, description.
+   * Frontend augments this in a local placeholder store with extra fields
+   * until dedicated lead CRUD endpoints are available.
+   */
+  createConsultationRequest: (data: {
+    tenant_name: string;
+    contact_email: string;
+    description?: string;
+  }) => api.post('/api/public/tenants/consultation', data),
+
+  /**
+   * Public lead tracking lookup used by consultation requester (no login required).
+   * Caller must provide lead_id and the same email used during consultation request.
+   */
+  trackConsultationRequest: (params: {
+    lead_id: number;
+    email: string;
+  }) =>
+    api.get<PublicLeadTrackingResponse>(
+      `/api/public/tenants/consultation/track?lead_id=${encodeURIComponent(String(params.lead_id))}&email=${encodeURIComponent(params.email)}`
+    ),
 
   /**
    * List tenants for superadmin dashboard with optional status filter and pagination
