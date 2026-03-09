@@ -44,18 +44,22 @@ export function HeroSection({
 
         <div className="flex flex-wrap gap-3">
           <Link to="/register">
-            <Button size="lg" className="rounded-full px-6">
-              Register your organization
-              <ArrowRight className="h-4 w-4" />
-            </Button>
-          </Link>
-          <Link to="/tenants">
             <Button
               size="lg"
-              variant="outline"
-              className="rounded-full bg-card/80 px-6"
+              className="min-w-[180px] shadow-md transition-all hover:shadow-lg"
             >
-              View tenant experience
+              Join the Platform
+            </Button>
+          </Link>
+          <Link to="/appointments/book" preload={false}>
+            <Button
+              size="lg"
+              className="min-w-[180px] shadow-md transition-all hover:shadow-lg bg-primary text-primary-foreground border-2 border-primary/70 ring-2 ring-primary/10 hover:bg-primary/90 hover:ring-primary/20 focus:ring-4 focus:ring-primary/30"
+              style={{
+                boxShadow: '0 4px 24px 0 rgba(80, 72, 229, 0.10)',
+              }}
+            >
+              Book Appointment
             </Button>
           </Link>
         </div>
