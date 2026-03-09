@@ -1,5 +1,5 @@
 """
-Pytest for POST /auth/signup using global-user registration semantics.
+Pytest for POST /api/auth/signup using global-user registration semantics.
 """
 
 import pytest
@@ -27,7 +27,7 @@ def client(db_session):
 
 def test_signup_success_creates_global_user(client):
     response = client.post(
-        "/auth/signup",
+        "/api/auth/signup",
         json={
             "email": "new@example.com",
             "password": "secret123",
@@ -65,17 +65,17 @@ def test_signup_duplicate_email_returns_409(client):
         "role": "client",
     }
 
-    first = client.post("/auth/signup", json=payload)
+    first = client.post("/api/auth/signup", json=payload)
     assert first.status_code == 201
 
-    second = client.post("/auth/signup", json=payload)
+    second = client.post("/api/auth/signup", json=payload)
     assert second.status_code == 409
     assert "already exists" in second.json().get("detail", "").lower()
 
 
 def test_signup_role_not_found_returns_404(client):
     response = client.post(
-        "/auth/signup",
+        "/api/auth/signup",
         json={
             "email": "missing-role@example.com",
             "password": "pass1234",
@@ -91,7 +91,7 @@ def test_signup_role_not_found_returns_404(client):
 
 def test_signup_admin_alias_maps_to_super_admin(client):
     response = client.post(
-        "/auth/signup",
+        "/api/auth/signup",
         json={
             "email": "alias-admin@example.com",
             "password": "pass1234",
@@ -113,20 +113,20 @@ def test_signup_invalid_password_returns_422(client):
         "role": "client",
     }
 
-    r_short = client.post("/auth/signup", json={**base, "password": "short1"})
+    r_short = client.post("/api/auth/signup", json={**base, "password": "short1"})
     assert r_short.status_code == 422
 
-    r_no_letter = client.post("/auth/signup", json={**base, "password": "12345678"})
+    r_no_letter = client.post("/api/auth/signup", json={**base, "password": "12345678"})
     assert r_no_letter.status_code == 422
 
-    r_no_digit = client.post("/auth/signup", json={**base, "password": "password"})
+    r_no_digit = client.post("/api/auth/signup", json={**base, "password": "password"})
     assert r_no_digit.status_code == 422
 
 
 def test_signup_password_is_hashed_in_db(client):
     plain = "mypass123"
     response = client.post(
-        "/auth/signup",
+        "/api/auth/signup",
         json={
             "email": "hashed@example.com",
             "password": plain,
