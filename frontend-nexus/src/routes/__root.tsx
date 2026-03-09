@@ -1,9 +1,10 @@
 /**
- * Root layout: outlet, bootstrap rehydration, and session-expiration redirect.
+ * Root layout: outlet, bootstrap rehydration, session-expiration redirect, and a global 404.
  * On mount, if a token exists in storage we call ensureAuth() to hydrate user from /auth/me.
  */
 import { AIAssistantWidget } from '@/components/AIAssistantWidget';
 import { GlobalDialog } from '@/components/global-dialog';
+import { NotFoundPage } from '@/components/NotFoundPage';
 import { getAccessToken } from '@/lib/api-client';
 import { useAuthStore } from '@/stores/auth.store';
 import {
@@ -16,6 +17,7 @@ import { useEffect } from 'react';
 
 export const Route = createRootRoute({
   component: RootLayout,
+  notFoundComponent: NotFoundPage,
 });
 
 function RootLayout() {
