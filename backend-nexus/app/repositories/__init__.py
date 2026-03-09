@@ -32,6 +32,7 @@ from .enrollment_repository import (
 from .lead_repository import (
     get_lead_by_id,
     list_unclaimed_leads,
+    list_my_leads,
 )
 
 # Explicit public exports for `from app.repositories import *`.
@@ -50,4 +51,5 @@ __all__ = [
     "list_enrollment_status_history",
     "get_lead_by_id",
     "list_unclaimed_leads",
+    "list_my_leads",
 ]

@@ -190,6 +190,17 @@ SEED_LEADS = [
         "source": "CAMPAIGN",
         "status": LeadStatus.QUALIFIED,
     },
+    # Assigned to sales agent for testing (QUALIFIED status)
+    {
+        "licence_number": "MED-2024-007",
+        "organization_name": "TechMed Solutions",
+        "contact_name": "Victoria Price",
+        "contact_email": "victoria@techmed.com",
+        "contact_phone": "+1-555-0107",
+        "initial_message": "Already qualified, working on contract",
+        "source": "REFERRAL",
+        "status": LeadStatus.CONSULTATION_SCHEDULED,
+    },
 ]
 
 
@@ -1965,6 +1976,22 @@ def seed_leads(session):
     session.commit()
 
 
+def seed_lead_assignments(session):
+    """Assign leads to sales agent for testing my-leads endpoint."""
+    sales_agent = session.query(User).filter_by(email="sales.agent@seed.com").first()
+    if not sales_agent:
+        return
+    
+    # Get leads by email and assign to sales agent
+    leads_to_assign = ["sarah@greenvalley.com", "victoria@techmed.com"]
+    for email in leads_to_assign:
+        lead = session.query(Lead).filter_by(contact_email=email).first()
+        if lead:
+            lead.assigned_sales_user_id = sales_agent.id
+    
+    session.commit()
+
+
 def seed_enrollment(session):
     enrollment_targets = [
         {"email": "client.user@seed.com", "tenant_name": "Bluestone Clinic"},
@@ -2073,6 +2100,7 @@ def run_seed() -> None:
         session.commit()
         seed_enrollment(session)
         seed_leads(session)
+        seed_lead_assignments(session)
         seed_appointments(session)
         enrollment_count = session.query(Enrollment).count()
         history_count = session.query(EnrollmentStatusHistory).count()
