@@ -83,3 +83,22 @@ class LeadListResponse(BaseModel):
     total: int
     page: int
     page_size: int
+
+
+class FollowUpUpdate(BaseModel):
+    """Request schema for updating lead follow-up actions."""
+    
+    next_action: Optional[str] = Field(None, description="Next planned action (optional)")
+    next_action_due_at: Optional[datetime] = Field(None, description="Due date for next action (optional)")
+    
+    model_config = ConfigDict(from_attributes=True)
+
+
+class LeadTransition(BaseModel):
+    """Request schema for transitioning lead status."""
+    
+    new_status: LeadStatus = Field(..., description="New status to transition to")
+    reason: Optional[str] = Field(None, description="Reason for transition (required for some transitions)")
+    
+    model_config = ConfigDict(from_attributes=True)
+

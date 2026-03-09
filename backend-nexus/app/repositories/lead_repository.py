@@ -45,8 +45,11 @@ def list_unclaimed_leads(
     Returns:
         Tuple of (lead_list, total_count) where lead_list is paginated
     """
-    # Base query: only unclaimed leads
-    query = db.query(Lead).filter(Lead.assigned_sales_user_id.is_(None))
+    # Base query: only unclaimed leads, excluding terminal states
+    query = db.query(Lead).filter(
+        Lead.assigned_sales_user_id.is_(None),
+        Lead.status.notin_([LeadStatus.CONVERTED, LeadStatus.REJECTED, LeadStatus.LOST]),
+    )
     
     # Add optional filters
     if status is not None:

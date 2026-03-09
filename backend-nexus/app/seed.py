@@ -70,6 +70,7 @@ SEED_USERS = [
     SeedUser("Doctor", "Nine", "doctor.nine@seed.com", "Team2026@", "DOCTOR"),
     SeedUser("Doctor", "Ten", "doctor.ten@seed.com", "Team2026@", "DOCTOR"),
     SeedUser("Sales", "Agent", "sales.agent@seed.com", "Team2026@", "SALES"),
+    SeedUser("Sales", "Agent2", "sales.agent2@seed.com", "Team2026@", "SALES"),
     SeedUser("Client", "User", "client.user@seed.com", "Team2026@", "CLIENT"),
     SeedUser("Registered", "Client", "registered.client@seed.com", "Team2026@", "CLIENT"),
     SeedUser("Global", "Only", "global.only@seed.com", "Team2026@", "CLIENT"),
