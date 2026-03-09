@@ -21,6 +21,7 @@ import {
   TabsList,
   TabsTrigger,
 } from '@/components/ui/tabs';
+import { ThemeToggle } from '@/components/theme-toggle';
 import type { TenantLandingPageResponse } from '@/interfaces';
 import { isApiError } from '@/lib/api-client';
 import { resolveMediaUrl } from '@/lib/media-url';
@@ -403,6 +404,11 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
               <TabsTrigger value="products">PRODUCTS</TabsTrigger>
               <TabsTrigger value="plans">PLANS</TabsTrigger>
             </TabsList>
+            <ThemeToggle
+              variant="outline"
+              size="icon-sm"
+              className="rounded-full"
+            />
             {isAuthenticated && user ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
