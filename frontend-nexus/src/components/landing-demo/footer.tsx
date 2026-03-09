@@ -1,5 +1,5 @@
 import { Button } from '@/components/ui/button';
-import { FooterColumn } from '@/routes/landing-demo/components/shared';
+import { FooterColumn } from '@/routes/home/shared';
 import { Link } from '@tanstack/react-router';
 
 export function LandingDemoFooter() {

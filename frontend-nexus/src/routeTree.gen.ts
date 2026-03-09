@@ -19,7 +19,6 @@ import { Route as ContactAdminRouteImport } from './routes/contact-admin'
 import { Route as LandingRouteRouteImport } from './routes/landing/route'
 import { Route as DashboardRouteRouteImport } from './routes/dashboard/route'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as LandingDemoIndexRouteImport } from './routes/landing-demo/index'
 import { Route as DashboardIndexRouteImport } from './routes/dashboard/index'
 import { Route as LandingTenantSlugRouteImport } from './routes/landing/$tenantSlug'
 import { Route as DoctorAppointmentsRouteImport } from './routes/doctor/appointments'
@@ -91,11 +90,6 @@ const DashboardRouteRoute = DashboardRouteRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const LandingDemoIndexRoute = LandingDemoIndexRouteImport.update({
-  id: '/landing-demo/',
-  path: '/landing-demo/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DashboardIndexRoute = DashboardIndexRouteImport.update({
@@ -243,7 +237,6 @@ export interface FileRoutesByFullPath {
   '/doctor/appointments': typeof DoctorAppointmentsRoute
   '/landing/$tenantSlug': typeof LandingTenantSlugRoute
   '/dashboard/': typeof DashboardIndexRoute
-  '/landing-demo/': typeof LandingDemoIndexRoute
   '/dashboard/client/$section': typeof DashboardClientSectionRoute
   '/dashboard/contract-sign-doctor/$contractId': typeof DashboardContractSignDoctorContractIdRoute
   '/dashboard/landing-pages/$pageId': typeof DashboardLandingPagesPageIdRoute
@@ -276,7 +269,6 @@ export interface FileRoutesByTo {
   '/doctor/appointments': typeof DoctorAppointmentsRoute
   '/landing/$tenantSlug': typeof LandingTenantSlugRoute
   '/dashboard': typeof DashboardIndexRoute
-  '/landing-demo': typeof LandingDemoIndexRoute
   '/dashboard/client/$section': typeof DashboardClientSectionRoute
   '/dashboard/contract-sign-doctor/$contractId': typeof DashboardContractSignDoctorContractIdRoute
   '/dashboard/landing-pages/$pageId': typeof DashboardLandingPagesPageIdRoute
@@ -312,7 +304,6 @@ export interface FileRoutesById {
   '/doctor/appointments': typeof DoctorAppointmentsRoute
   '/landing/$tenantSlug': typeof LandingTenantSlugRoute
   '/dashboard/': typeof DashboardIndexRoute
-  '/landing-demo/': typeof LandingDemoIndexRoute
   '/dashboard/client/$section': typeof DashboardClientSectionRoute
   '/dashboard/contract-sign-doctor/$contractId': typeof DashboardContractSignDoctorContractIdRoute
   '/dashboard/landing-pages/$pageId': typeof DashboardLandingPagesPageIdRoute
@@ -349,7 +340,6 @@ export interface FileRouteTypes {
     | '/doctor/appointments'
     | '/landing/$tenantSlug'
     | '/dashboard/'
-    | '/landing-demo/'
     | '/dashboard/client/$section'
     | '/dashboard/contract-sign-doctor/$contractId'
     | '/dashboard/landing-pages/$pageId'
@@ -382,7 +372,6 @@ export interface FileRouteTypes {
     | '/doctor/appointments'
     | '/landing/$tenantSlug'
     | '/dashboard'
-    | '/landing-demo'
     | '/dashboard/client/$section'
     | '/dashboard/contract-sign-doctor/$contractId'
     | '/dashboard/landing-pages/$pageId'
@@ -417,7 +406,6 @@ export interface FileRouteTypes {
     | '/doctor/appointments'
     | '/landing/$tenantSlug'
     | '/dashboard/'
-    | '/landing-demo/'
     | '/dashboard/client/$section'
     | '/dashboard/contract-sign-doctor/$contractId'
     | '/dashboard/landing-pages/$pageId'
@@ -443,7 +431,6 @@ export interface RootRouteChildren {
   AppointmentsMyRoute: typeof AppointmentsMyRoute
   AppointmentsSelectTenantRoute: typeof AppointmentsSelectTenantRoute
   DoctorAppointmentsRoute: typeof DoctorAppointmentsRoute
-  LandingDemoIndexRoute: typeof LandingDemoIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -516,13 +503,6 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/landing-demo/': {
-      id: '/landing-demo/'
-      path: '/landing-demo'
-      fullPath: '/landing-demo/'
-      preLoaderRoute: typeof LandingDemoIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/dashboard/': {
@@ -784,7 +764,6 @@ const rootRouteChildren: RootRouteChildren = {
   AppointmentsMyRoute: AppointmentsMyRoute,
   AppointmentsSelectTenantRoute: AppointmentsSelectTenantRoute,
   DoctorAppointmentsRoute: DoctorAppointmentsRoute,
-  LandingDemoIndexRoute: LandingDemoIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
