@@ -14,6 +14,7 @@ from datetime import datetime
 from sqlalchemy.orm import Session
 
 from app.models import Lead, LeadStatus, LeadStatusHistory, ConsultationBooking, ConsultationStatus, User
+from app.schemas.lead import LeadCreate
 
 
 # ===== Error Handling =====
@@ -59,7 +60,52 @@ class ActorContext:
     role: str
 
 
-# ===== Transition Rules =====
+# ===== Lead Creation =====
+
+def create_lead(
+    payload: LeadCreate,
+    session: Session,
+) -> Lead:
+    """
+    Create a new lead from a public consultation request form with:
+    - status = NEW (initial state)
+    - assigned_sales_user_id = NULL (unclaimed)
+    - All fields from request payload
+    
+    Args:
+        payload: LeadCreate schema with required/optional fields
+        session: SQLAlchemy session
+    
+    Raises:
+        LeadServiceError: On database errors
+    """
+    try:
+        lead = Lead(
+            licence_number=payload.licence_number,
+            organization_name=payload.organization_name,
+            contact_name=payload.contact_name,
+            contact_email=payload.contact_email,
+            contact_phone=payload.contact_phone,
+            initial_message=payload.initial_message,
+            source=payload.source,
+            status=LeadStatus.NEW,
+            assigned_sales_user_id=None,
+        )
+        
+        session.add(lead)
+        session.commit()
+        session.refresh(lead)
+        
+        return lead
+    
+    except Exception as e:
+        session.rollback()
+        raise LeadServiceError(
+            code=LeadServiceErrorCode.DATABASE_ERROR,
+            message=f"Failed to create lead: {str(e)}",
+            http_status=500,
+            details={"error": str(e)},
+        )
 
 VALID_LEAD_TRANSITIONS = {
     LeadStatus.NEW: [LeadStatus.QUALIFIED, LeadStatus.REJECTED],
