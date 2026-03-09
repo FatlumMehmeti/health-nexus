@@ -37,9 +37,16 @@ import {
 } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import type { CSSProperties } from 'react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { PaymentFlowNotice } from './PaymentFlowNotice';
 import { StripePaymentModal } from './StripePaymentModal';
 import { checkoutService } from '@/services/checkout.service';
+import {
+  clearCheckoutRecovery,
+  loadCheckoutRecovery,
+  saveCheckoutRecovery,
+  type CheckoutRecoveryRecord,
+} from '@/services/checkout-recovery.service';
 import { toast } from 'sonner';
 
 export interface TenantLandingProps {
@@ -83,6 +90,8 @@ const usdFormatter = new Intl.NumberFormat('en-US', {
   minimumFractionDigits: 2,
 });
 
+const PAYMENT_CONFIRMATION_TIMEOUT_MS = 45_000;
+
 function formatCurrency(value: number): string {
   return usdFormatter.format(Number.isFinite(value) ? value : 0);
 }
@@ -104,35 +113,93 @@ function getApiDetailCode(err: unknown): string | undefined {
 
 export function TenantLanding({ landingData }: TenantLandingProps) {
   const [showStripeModal, setShowStripeModal] = useState(false);
-  const [stripeClientSecret, setStripeClientSecret] = useState<
-    string | null
-  >(null);
-  const [pendingPlanId, setPendingPlanId] = useState<number | null>(
-    null
-  );
+  const [checkoutRecovery, setCheckoutRecovery] =
+    useState<CheckoutRecoveryRecord | null>(null);
   const [activeTab, setActiveTab] = useState('home');
   const [selectedPlanId, setSelectedPlanId] = useState<number | null>(
     null
   );
   const [registeredOverride, setRegisteredOverride] = useState(false);
+  const handledPaymentIdsRef = useRef<Set<number>>(new Set());
 
   const user = useAuthStore((s) => s.user);
   const role = useAuthStore((s) => s.role);
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
 
   const tenantId = landingData?.tenant?.id;
+  const stripeClientSecret = checkoutRecovery?.clientSecret ?? null;
+  const pendingPlanId = checkoutRecovery?.planId ?? null;
 
   const queryClient = useQueryClient();
+
+  function setEnrollmentCheckoutRecovery(
+    next: CheckoutRecoveryRecord | null
+  ) {
+    if (!next) {
+      clearCheckoutRecovery('enrollment');
+      setCheckoutRecovery(null);
+      return;
+    }
+
+    const saved = saveCheckoutRecovery(next);
+    setCheckoutRecovery(saved);
+  }
+
+  function clearEnrollmentCheckout() {
+    setShowStripeModal(false);
+    setEnrollmentCheckoutRecovery(null);
+  }
+
+  function moveEnrollmentCheckoutToAttention() {
+    if (!checkoutRecovery) return;
+    setEnrollmentCheckoutRecovery({
+      ...checkoutRecovery,
+      clientSecret: null,
+      phase: 'attention_required',
+    });
+  }
 
   // Hydrate the selected plan from the user's existing enrollment.
   // Only sync on initial fetch — not on every render — so the user
   // can click "Change plan" without it snapping back immediately.
-  const { data: enrollmentData } = useQuery({
-    queryKey: ['my-enrollment', tenantId],
-    queryFn: () => tenantPlansService.myEnrollment(tenantId!),
-    enabled: !!tenantId && isAuthenticated,
-    retry: false,
-  });
+  const enrollmentRefetchInterval =
+    checkoutRecovery?.phase === 'processing'
+      ? 2500
+      : checkoutRecovery?.phase === 'attention_required'
+        ? 5000
+        : false;
+
+  const { data: enrollmentData, refetch: refetchEnrollment } =
+    useQuery({
+      queryKey: ['my-enrollment', tenantId],
+      queryFn: () => tenantPlansService.myEnrollment(tenantId!),
+      enabled: !!tenantId && isAuthenticated,
+      retry: false,
+      refetchInterval: enrollmentRefetchInterval,
+      refetchIntervalInBackground: true,
+    });
+
+  useEffect(() => {
+    if (!tenantId || !isAuthenticated) {
+      setCheckoutRecovery(null);
+      return;
+    }
+
+    const savedRecovery = loadCheckoutRecovery('enrollment');
+    if (!savedRecovery) {
+      setCheckoutRecovery(null);
+      return;
+    }
+
+    if (savedRecovery.tenantId !== tenantId) {
+      clearCheckoutRecovery('enrollment');
+      setCheckoutRecovery(null);
+      return;
+    }
+
+    setCheckoutRecovery(savedRecovery);
+    setActiveTab('plans');
+  }, [tenantId, isAuthenticated]);
 
   useEffect(() => {
     if (
@@ -142,6 +209,51 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
       setSelectedPlanId(enrollmentData.user_tenant_plan_id);
     }
   }, [enrollmentData]);
+
+  useEffect(() => {
+    if (!checkoutRecovery || !enrollmentData) return;
+
+    const isRecoveredActivation =
+      enrollmentData.status === 'ACTIVE' &&
+      enrollmentData.user_tenant_plan_id === checkoutRecovery.planId;
+
+    if (!isRecoveredActivation) return;
+
+    setSelectedPlanId(checkoutRecovery.planId);
+    setShowStripeModal(false);
+    clearCheckoutRecovery('enrollment');
+    setCheckoutRecovery(null);
+
+    if (
+      !handledPaymentIdsRef.current.has(checkoutRecovery.paymentId)
+    ) {
+      handledPaymentIdsRef.current.add(checkoutRecovery.paymentId);
+      toast.success('Payment confirmed. Your plan is now active.');
+    }
+  }, [checkoutRecovery, enrollmentData]);
+
+  useEffect(() => {
+    if (checkoutRecovery?.phase !== 'processing') return;
+
+    const startedAt = Date.parse(checkoutRecovery.startedAt);
+    if (Number.isNaN(startedAt)) {
+      moveEnrollmentCheckoutToAttention();
+      return;
+    }
+
+    const remainingMs =
+      PAYMENT_CONFIRMATION_TIMEOUT_MS - (Date.now() - startedAt);
+    if (remainingMs <= 0) {
+      moveEnrollmentCheckoutToAttention();
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      moveEnrollmentCheckoutToAttention();
+    }, remainingMs);
+
+    return () => window.clearTimeout(timer);
+  }, [checkoutRecovery]);
 
   const enrollMutation = useMutation({
     mutationFn: async ({
@@ -167,7 +279,17 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
         { enrollment_id: enrollment.id },
         idempotencyKey
       );
-      setStripeClientSecret(checkout.stripe_client_secret);
+      setEnrollmentCheckoutRecovery({
+        kind: 'enrollment',
+        tenantId,
+        planId,
+        paymentId: checkout.payment_id,
+        referenceId: enrollment.id,
+        phase: 'collecting_payment',
+        startedAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        clientSecret: checkout.stripe_client_secret,
+      });
       setShowStripeModal(true);
       return { enrollment, planId, requiresPayment: true };
     },
@@ -176,17 +298,15 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
         return;
       }
 
-      setStripeClientSecret(null);
-      setShowStripeModal(false);
+      clearEnrollmentCheckout();
       setSelectedPlanId(data.planId);
-      setPendingPlanId(null);
       await queryClient.invalidateQueries({
         queryKey: ['my-enrollment', tenantId],
       });
       toast.success('Free plan activated successfully.');
     },
     onError: (err) => {
-      setPendingPlanId(null);
+      clearEnrollmentCheckout();
       toast.error(
         isApiError(err)
           ? err.message
@@ -842,6 +962,65 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
                 </p>
               </div>
 
+              {checkoutRecovery ? (
+                <PaymentFlowNotice
+                  phase={checkoutRecovery.phase}
+                  eyebrow="Plan checkout"
+                  title={
+                    checkoutRecovery.phase === 'collecting_payment'
+                      ? 'Your secure checkout is ready'
+                      : checkoutRecovery.phase === 'processing'
+                        ? 'We are confirming your payment'
+                        : 'Payment submitted, but activation is still pending'
+                  }
+                  description={
+                    checkoutRecovery.phase === 'collecting_payment'
+                      ? 'Return to the Stripe form to finish your payment. Your current selection will stay pending until you submit the card details.'
+                      : checkoutRecovery.phase === 'processing'
+                        ? 'Stripe accepted your submission. This page will keep checking for plan activation and update automatically once the backend confirms it.'
+                        : 'We have not confirmed activation yet. You can check again now, or clear this pending checkout and start over if you need to retry.'
+                  }
+                  primaryAction={{
+                    label:
+                      checkoutRecovery.phase === 'collecting_payment'
+                        ? 'Resume checkout'
+                        : 'Check status now',
+                    onClick: async () => {
+                      if (
+                        checkoutRecovery.phase ===
+                        'collecting_payment'
+                      ) {
+                        setShowStripeModal(true);
+                        setActiveTab('plans');
+                        return;
+                      }
+
+                      await queryClient.invalidateQueries({
+                        queryKey: ['my-enrollment', tenantId],
+                      });
+                      await refetchEnrollment();
+                    },
+                  }}
+                  secondaryAction={{
+                    label:
+                      checkoutRecovery.phase === 'attention_required'
+                        ? 'Clear pending checkout'
+                        : 'Close notice',
+                    onClick: () => {
+                      if (
+                        checkoutRecovery.phase ===
+                        'attention_required'
+                      ) {
+                        clearEnrollmentCheckout();
+                        return;
+                      }
+                      setShowStripeModal(false);
+                    },
+                    variant: 'outline',
+                  }}
+                />
+              ) : null}
+
               {selectedPlanId &&
                 (() => {
                   const selected = plans.find(
@@ -902,6 +1081,9 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
                     const isCheckoutPending =
                       enrollMutation.isPending &&
                       pendingPlanId === plan.id;
+                    const isRecoveryLocked =
+                      !!checkoutRecovery &&
+                      checkoutRecovery.phase !== 'attention_required';
                     const isFreePlan = Number(plan.price) <= 0;
                     return (
                       <article
@@ -974,7 +1156,9 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
                           className="mt-4 w-full"
                           variant={isSelected ? 'outline' : 'default'}
                           disabled={
-                            isSelected || enrollMutation.isPending
+                            isSelected ||
+                            enrollMutation.isPending ||
+                            isRecoveryLocked
                           }
                           style={
                             isSelected
@@ -997,7 +1181,6 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
                               );
                               return;
                             }
-                            setPendingPlanId(plan.id);
                             enrollMutation.mutate({
                               tenantId: tenant.id,
                               planId: plan.id,
@@ -1022,18 +1205,18 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
                             showStripeModal && !!stripeClientSecret
                           }
                           onClose={() => setShowStripeModal(false)}
-                          onSuccess={async () => {
+                          onPaymentConfirmed={async () => {
+                            if (!checkoutRecovery) return;
+
                             setShowStripeModal(false);
-                            setStripeClientSecret(null);
-                            setSelectedPlanId(pendingPlanId);
-                            setPendingPlanId(null);
-                            // Invalidate enrollment cache to refresh status
+                            setEnrollmentCheckoutRecovery({
+                              ...checkoutRecovery,
+                              clientSecret: null,
+                              phase: 'processing',
+                            });
                             await queryClient.invalidateQueries({
                               queryKey: ['my-enrollment', tenantId],
                             });
-                            toast.success(
-                              'Payment successful! Your plan is now active.'
-                            );
                           }}
                         />
                       </article>

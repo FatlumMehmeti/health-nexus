@@ -467,23 +467,17 @@ def process_stripe_webhook(db: Session, payload: bytes, signature: str | None) -
     if payment is None:
         return {"processed": False, "reason": "payment_not_found", "event_type": event_type}
 
-
-
-    if payment is None:
-        return {"processed": False, "reason": "payment_not_found", "event_type": event_type}
-
     try:
-        payment = _mark_payment_as_captured(db, payment)
+        return _apply_webhook_state_transition(
+            db,
+            payment,
+            event_type=event_type,
+            event_id=event_id,
+            obj=obj,
+        )
     except Exception:
         db.rollback()
         raise
-
-    return {
-        "processed": True,
-        "event_type": event_type,
-        "payment_id": payment.payment_id,
-        "payment_status": payment.status.value,
-    }
 
 
 def _create_or_get_payment_record(

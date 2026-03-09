@@ -868,7 +868,7 @@ def test_stripe_webhook_payment_canceled_sets_payment_status_failed(
     tenant_a,
     role_patient,
 ):
-    """payment_intent.canceled sets payment status to FAILED."""
+    """payment_intent.canceled sets payment status to CANCELED."""
     reg = register_client_via_api(
         prd10_client,
         tenant_a.id,
@@ -908,11 +908,11 @@ def test_stripe_webhook_payment_canceled_sets_payment_status_failed(
     assert webhook_resp.status_code == 200, (webhook_resp.status_code, webhook_resp.text)
     body = webhook_resp.json()
     assert body.get("processed") is True
-    assert body.get("payment_status") == "FAILED"
+    assert body.get("payment_status") == "CANCELED"
 
     payment = db_session.query(Payment).filter(Payment.payment_id == init_data["payment_id"]).first()
     db_session.refresh(payment)
-    assert payment.status.value == "FAILED"
+    assert payment.status.value == "CANCELED"
 
 
 @pytest.mark.prd10
@@ -1091,5 +1091,5 @@ def test_stripe_webhook_failed_does_not_activate_tenant_subscription(
     db_session.refresh(payment)
     db_session.refresh(tenant_subscription)
 
-    assert payment.status.value == "FAILED"
+    assert payment.status.value == "CANCELED"
     assert tenant_subscription.status.value == "EXPIRED"

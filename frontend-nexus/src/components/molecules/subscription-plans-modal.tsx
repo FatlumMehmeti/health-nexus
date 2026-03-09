@@ -1,7 +1,14 @@
 import { PlanCard } from '@/components/molecules/plan-card';
+import { PaymentFlowNotice } from '@/components/PaymentFlowNotice';
 import { StripePaymentModal } from '@/components/StripePaymentModal';
 import { isApiError } from '@/lib/api-client';
 import { checkoutService } from '@/services/checkout.service';
+import {
+  clearCheckoutRecovery,
+  loadCheckoutRecovery,
+  saveCheckoutRecovery,
+  type CheckoutRecoveryRecord,
+} from '@/services/checkout-recovery.service';
 import {
   changePlan,
   getCurrentSubscription,
@@ -12,11 +19,13 @@ import {
   type TenantSubscription,
 } from '@/services/subscription-plans.service';
 import { toast } from 'sonner';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 interface SubscriptionPlansModalProps {
   onClose: () => void;
 }
+
+const PAYMENT_CONFIRMATION_TIMEOUT_MS = 45_000;
 
 /**
  * SubscriptionPlansModal Component
@@ -35,12 +44,38 @@ export function SubscriptionPlansModal({}: SubscriptionPlansModalProps) {
   );
   const [changeError, setChangeError] = useState<string | null>(null);
   const [showStripeModal, setShowStripeModal] = useState(false);
-  const [stripeClientSecret, setStripeClientSecret] = useState<
-    string | null
-  >(null);
-  const [pendingPlanId, setPendingPlanId] = useState<number | null>(
-    null
-  );
+  const [checkoutRecovery, setCheckoutRecovery] =
+    useState<CheckoutRecoveryRecord | null>(null);
+  const handledPaymentIdsRef = useRef<Set<number>>(new Set());
+  const stripeClientSecret = checkoutRecovery?.clientSecret ?? null;
+  const pendingPlanId = checkoutRecovery?.planId ?? null;
+
+  function setSubscriptionCheckoutRecovery(
+    next: CheckoutRecoveryRecord | null
+  ) {
+    if (!next) {
+      clearCheckoutRecovery('tenant-subscription');
+      setCheckoutRecovery(null);
+      return;
+    }
+
+    const saved = saveCheckoutRecovery(next);
+    setCheckoutRecovery(saved);
+  }
+
+  function clearSubscriptionCheckout() {
+    setShowStripeModal(false);
+    setSubscriptionCheckoutRecovery(null);
+  }
+
+  function moveSubscriptionCheckoutToAttention() {
+    if (!checkoutRecovery) return;
+    setSubscriptionCheckoutRecovery({
+      ...checkoutRecovery,
+      clientSecret: null,
+      phase: 'attention_required',
+    });
+  }
 
   const refreshSubscriptionData = async (
     expectedPlanId?: number,
@@ -67,6 +102,16 @@ export function SubscriptionPlansModal({}: SubscriptionPlansModalProps) {
 
     return null;
   };
+
+  useEffect(() => {
+    const savedRecovery = loadCheckoutRecovery('tenant-subscription');
+    if (!savedRecovery) {
+      setCheckoutRecovery(null);
+      return;
+    }
+
+    setCheckoutRecovery(savedRecovery);
+  }, []);
 
   // Helper: Check if a plan can accommodate current stats
   const canPlanFitStats = (plan: SubscriptionPlan): boolean => {
@@ -132,6 +177,71 @@ export function SubscriptionPlansModal({}: SubscriptionPlansModalProps) {
     fetchData();
   }, []);
 
+  useEffect(() => {
+    if (!checkoutRecovery) return;
+
+    const hasActivatedPlan =
+      currentSubscription?.status === 'ACTIVE' &&
+      currentSubscription.subscription_plan_id ===
+        checkoutRecovery.planId;
+
+    if (!hasActivatedPlan) return;
+
+    setShowStripeModal(false);
+    clearCheckoutRecovery('tenant-subscription');
+    setCheckoutRecovery(null);
+
+    if (
+      !handledPaymentIdsRef.current.has(checkoutRecovery.paymentId)
+    ) {
+      handledPaymentIdsRef.current.add(checkoutRecovery.paymentId);
+      toast.success(
+        'Payment confirmed. Your subscription is now active.'
+      );
+    }
+  }, [checkoutRecovery, currentSubscription]);
+
+  useEffect(() => {
+    if (checkoutRecovery?.phase !== 'processing') return;
+
+    const startedAt = Date.parse(checkoutRecovery.startedAt);
+    if (Number.isNaN(startedAt)) {
+      moveSubscriptionCheckoutToAttention();
+      return;
+    }
+
+    const remainingMs =
+      PAYMENT_CONFIRMATION_TIMEOUT_MS - (Date.now() - startedAt);
+    if (remainingMs <= 0) {
+      moveSubscriptionCheckoutToAttention();
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      moveSubscriptionCheckoutToAttention();
+    }, remainingMs);
+
+    return () => window.clearTimeout(timer);
+  }, [checkoutRecovery]);
+
+  useEffect(() => {
+    if (
+      checkoutRecovery?.phase !== 'processing' &&
+      checkoutRecovery?.phase !== 'attention_required'
+    ) {
+      return;
+    }
+
+    const interval = window.setInterval(
+      () => {
+        void refreshSubscriptionData(pendingPlanId ?? undefined);
+      },
+      checkoutRecovery.phase === 'processing' ? 2500 : 5000
+    );
+
+    return () => window.clearInterval(interval);
+  }, [checkoutRecovery, pendingPlanId]);
+
   const handleChangePlan = async (planId: number) => {
     try {
       setChangingPlanId(planId);
@@ -143,6 +253,7 @@ export function SubscriptionPlansModal({}: SubscriptionPlansModalProps) {
 
       const nextSubscription = await changePlan(planId);
       if (parseFloat(selectedPlan.price) <= 0) {
+        clearSubscriptionCheckout();
         await refreshSubscriptionData();
         toast.success('Subscription updated successfully.');
         return;
@@ -153,10 +264,20 @@ export function SubscriptionPlansModal({}: SubscriptionPlansModalProps) {
         { tenant_subscription_id: nextSubscription.id },
         idempotencyKey
       );
-      setPendingPlanId(planId);
-      setStripeClientSecret(checkout.stripe_client_secret);
+      setSubscriptionCheckoutRecovery({
+        kind: 'tenant-subscription',
+        tenantId: nextSubscription.tenant_id,
+        planId,
+        paymentId: checkout.payment_id,
+        referenceId: nextSubscription.id,
+        phase: 'collecting_payment',
+        startedAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        clientSecret: checkout.stripe_client_secret,
+      });
       setShowStripeModal(true);
     } catch (err) {
+      clearSubscriptionCheckout();
       let message = 'Failed to change plan';
       if (isApiError(err)) {
         message = err.displayMessage;
@@ -263,12 +384,64 @@ export function SubscriptionPlansModal({}: SubscriptionPlansModalProps) {
         </div>
       )}
 
+      {checkoutRecovery ? (
+        <PaymentFlowNotice
+          phase={checkoutRecovery.phase}
+          eyebrow="Subscription checkout"
+          title={
+            checkoutRecovery.phase === 'collecting_payment'
+              ? 'Your secure checkout is ready'
+              : checkoutRecovery.phase === 'processing'
+                ? 'We are confirming your payment'
+                : 'Payment submitted, but activation is still pending'
+          }
+          description={
+            checkoutRecovery.phase === 'collecting_payment'
+              ? 'Return to Stripe to finish the subscription payment. Your plan change will remain pending until the payment is submitted.'
+              : checkoutRecovery.phase === 'processing'
+                ? 'Stripe accepted your submission. This modal will keep checking until the backend marks your new subscription as active.'
+                : 'We still have not confirmed activation for this subscription change. Check again now, or clear this pending checkout and start over if you need to retry.'
+          }
+          primaryAction={{
+            label:
+              checkoutRecovery.phase === 'collecting_payment'
+                ? 'Resume checkout'
+                : 'Check status now',
+            onClick: async () => {
+              if (checkoutRecovery.phase === 'collecting_payment') {
+                setShowStripeModal(true);
+                return;
+              }
+
+              await refreshSubscriptionData(checkoutRecovery.planId);
+            },
+          }}
+          secondaryAction={{
+            label:
+              checkoutRecovery.phase === 'attention_required'
+                ? 'Clear pending checkout'
+                : 'Close notice',
+            onClick: () => {
+              if (checkoutRecovery.phase === 'attention_required') {
+                clearSubscriptionCheckout();
+                return;
+              }
+              setShowStripeModal(false);
+            },
+            variant: 'outline',
+          }}
+        />
+      ) : null}
+
       {/* Grid layout: 1 column on mobile, 2 on tablet, 4 on desktop */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-8">
         {plans.map((plan) => {
           const recommendedPlanId = getRecommendedPlanId();
           const isRecommended = plan.id === recommendedPlanId;
           const canFit = canPlanFitStats(plan);
+          const isRecoveryLocked =
+            !!checkoutRecovery &&
+            checkoutRecovery.phase !== 'attention_required';
 
           return (
             <PlanCard
@@ -281,7 +454,9 @@ export function SubscriptionPlansModal({}: SubscriptionPlansModalProps) {
               isRecommended={isRecommended}
               canFitStats={canFit}
               onChangePlan={handleChangePlan}
-              isChanging={changingPlanId === plan.id}
+              isChanging={
+                changingPlanId === plan.id || isRecoveryLocked
+              }
               changingLabel={
                 parseFloat(plan.price) <= 0
                   ? 'Activating…'
@@ -302,17 +477,17 @@ export function SubscriptionPlansModal({}: SubscriptionPlansModalProps) {
         open={showStripeModal && !!stripeClientSecret}
         onClose={() => {
           setShowStripeModal(false);
-          setStripeClientSecret(null);
-          setPendingPlanId(null);
         }}
-        onSuccess={async () => {
+        onPaymentConfirmed={async () => {
+          if (!checkoutRecovery) return;
+
           setShowStripeModal(false);
-          setStripeClientSecret(null);
-          await refreshSubscriptionData(pendingPlanId ?? undefined);
-          setPendingPlanId(null);
-          toast.success(
-            'Payment successful! Your subscription is now active.'
-          );
+          setSubscriptionCheckoutRecovery({
+            ...checkoutRecovery,
+            clientSecret: null,
+            phase: 'processing',
+          });
+          await refreshSubscriptionData(checkoutRecovery.planId);
         }}
       />
     </div>

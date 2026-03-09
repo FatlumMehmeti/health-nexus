@@ -13,7 +13,10 @@ import {
   useElements,
   CardElement,
 } from '@stripe/react-stripe-js';
-import type { StripeCardElementOptions } from '@stripe/stripe-js';
+import type {
+  PaymentIntent,
+  StripeCardElementOptions,
+} from '@stripe/stripe-js';
 import { CreditCard, LockKeyhole, ShieldCheck } from 'lucide-react';
 import React from 'react';
 
@@ -25,17 +28,17 @@ interface StripePaymentModalProps {
   clientSecret: string;
   open: boolean;
   onClose: () => void;
-  onSuccess: () => void;
+  onPaymentConfirmed: (paymentIntent: PaymentIntent | null) => void;
 }
 
 function StripePaymentForm({
   clientSecret,
   onClose,
-  onSuccess,
+  onPaymentConfirmed,
 }: {
   clientSecret: string;
   onClose: () => void;
-  onSuccess: () => void;
+  onPaymentConfirmed: (paymentIntent: PaymentIntent | null) => void;
 }) {
   const stripe = useStripe();
   const elements = useElements();
@@ -97,8 +100,8 @@ function StripePaymentForm({
       setErrorMessage(
         result.error.message || 'Payment failed. Please try again.'
       );
-    } else if (result.paymentIntent?.status === 'succeeded') {
-      onSuccess();
+    } else {
+      onPaymentConfirmed(result.paymentIntent ?? null);
       onClose();
     }
 
@@ -169,8 +172,8 @@ function StripePaymentForm({
                     Instant activation
                   </p>
                   <p className="text-sm text-muted-foreground">
-                    Once Stripe confirms success, your enrollment is
-                    upgraded to active automatically.
+                    After Stripe accepts the payment, we verify the
+                    final activation status in the background.
                   </p>
                 </div>
               </div>
@@ -206,11 +209,11 @@ function StripePaymentForm({
 function StripePaymentModalBody({
   clientSecret,
   onClose,
-  onSuccess,
+  onPaymentConfirmed,
 }: {
   clientSecret: string;
   onClose: () => void;
-  onSuccess: () => void;
+  onPaymentConfirmed: (paymentIntent: PaymentIntent | null) => void;
 }) {
   return (
     <div className="space-y-2">
@@ -222,15 +225,16 @@ function StripePaymentModalBody({
           Complete your plan checkout
         </DialogTitle>
         <DialogDescription className="max-w-2xl text-sm leading-6">
-          Finish payment to activate your enrollment and unlock access
-          immediately after confirmation.
+          Finish payment to start activation. We will confirm the
+          final status here as soon as the backend receives Stripe
+          confirmation.
         </DialogDescription>
       </DialogHeader>
 
       <StripePaymentForm
         clientSecret={clientSecret}
         onClose={onClose}
-        onSuccess={onSuccess}
+        onPaymentConfirmed={onPaymentConfirmed}
       />
     </div>
   );
@@ -240,7 +244,7 @@ export function StripePaymentModal({
   clientSecret,
   open,
   onClose,
-  onSuccess,
+  onPaymentConfirmed,
 }: StripePaymentModalProps) {
   if (!clientSecret) return null;
 
@@ -258,7 +262,7 @@ export function StripePaymentModal({
             <StripePaymentModalBody
               clientSecret={clientSecret}
               onClose={onClose}
-              onSuccess={onSuccess}
+              onPaymentConfirmed={onPaymentConfirmed}
             />
           </Elements>
         </div>
