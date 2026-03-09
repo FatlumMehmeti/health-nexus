@@ -35,3 +35,11 @@ def get_api_base_url() -> str:
     port = os.getenv("API_PORT", "8000")
     scheme = "https" if os.getenv("API_SCHEME") == "https" else "http"
     return f"{scheme}://{host}:{port}"
+
+
+def get_deepseek_api_key() -> str | None:
+    return os.getenv("DEEPSEEK_API_KEY")
+
+
+def get_deepseek_model() -> str:
+    return os.getenv("DEEPSEEK_MODEL", "deepseek-chat")

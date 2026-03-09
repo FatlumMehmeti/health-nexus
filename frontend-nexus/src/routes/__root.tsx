@@ -2,6 +2,7 @@
  * Root layout: outlet, bootstrap rehydration, and session-expiration redirect.
  * On mount, if a token exists in storage we call ensureAuth() to hydrate user from /auth/me.
  */
+import { AIAssistantWidget } from '@/components/AIAssistantWidget';
 import { GlobalDialog } from '@/components/global-dialog';
 import { getAccessToken } from '@/lib/api-client';
 import { useAuthStore } from '@/stores/auth.store';
@@ -68,6 +69,7 @@ function RootLayout() {
         <Outlet />
       </div>
       <GlobalDialog />
+      <AIAssistantWidget />
     </>
   );
 }
