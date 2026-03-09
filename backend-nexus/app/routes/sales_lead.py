@@ -5,10 +5,14 @@ Routes for lead management (public lead creation + sales agent operations).
 from fastapi import APIRouter, Depends, status, Query, HTTPException
 from sqlalchemy.orm import Session
 from typing import Optional, Dict, Any
+from datetime import datetime
 
 from app.db import get_db
-from app.models import LeadStatus
-from app.schemas.lead import LeadCreate, LeadCreateResponse, LeadListResponse, LeadRead, FollowUpUpdate, LeadTransition
+from app.models import LeadStatus, ConsultationBooking, ConsultationStatus
+from app.schemas.lead import (
+    LeadCreate, LeadCreateResponse, LeadListResponse, LeadRead, FollowUpUpdate, LeadTransition, LeadStatusPublic,
+    ConsultationCreate, ConsultationRead
+)
 from app.services.lead_service import create_lead, transition_lead, ActorContext, LeadServiceError
 from app.repositories import list_unclaimed_leads, list_my_leads, get_lead_by_id
 from app.auth.auth_utils import require_permission
@@ -28,6 +32,33 @@ def post_create_lead(
     """
     lead = create_lead(payload, db)
     return lead
+
+
+@router.get("/{lead_id}/status", response_model=LeadStatusPublic)
+def get_lead_status(
+    lead_id: int,
+    contact_email: str = Query(..., description="Email to verify ownership (must match lead contact email)"),
+    db: Session = Depends(get_db),
+):
+    """
+    Public endpoint to track lead status by Request ID + email verification. No authentication required.
+    """
+    # Fetch the lead
+    lead = get_lead_by_id(db, lead_id)
+    if not lead:
+        raise HTTPException(status_code=404, detail="Request ID not found")
+    
+    # Verify email matches (security: prevent unauthorized access)
+    if lead.contact_email.lower() != contact_email.lower():
+        raise HTTPException(status_code=403, detail="Email verification failed")
+    
+    return LeadStatusPublic(
+        request_id=lead.id,
+        status=lead.status,
+        contact_email=lead.contact_email,
+        organization_name=lead.organization_name,
+        created_at=lead.created_at,
+    )
 
 
 @router.get("", response_model=LeadListResponse)
@@ -255,3 +286,47 @@ def transition_lead_status(
     
     except LeadServiceError as e:
         raise HTTPException(status_code=e.http_status, detail=e.message)
+
+
+# ===== Lead-Scoped Consultation Endpoints =====
+
+@router.post("/{lead_id}/consultations", response_model=ConsultationRead, status_code=status.HTTP_201_CREATED)
+def create_consultation_for_lead(
+    lead_id: int,
+    payload: ConsultationCreate,
+    db: Session = Depends(get_db),
+    user: Dict[str, Any] = Depends(require_permission("sales:leads")),
+):
+    """
+    Create a consultation booking for a lead. Only the lead owner can create.
+    Automatically sets status = SCHEDULED.
+    """
+    current_user_id = user.get("user_id")
+    
+    if current_user_id is None:
+        raise ValueError("user_id not found in JWT token")
+    
+    # Verify lead exists and user owns it
+    lead = get_lead_by_id(db, lead_id)
+    if not lead:
+        raise HTTPException(status_code=404, detail="Lead not found")
+    
+    if lead.assigned_sales_user_id != current_user_id:
+        raise HTTPException(status_code=403, detail="Only the lead owner can create consultations")
+    
+    # Create consultation
+    consultation = ConsultationBooking(
+        lead_id=lead_id,
+        scheduled_at=payload.scheduled_at,
+        duration_minutes=payload.duration_minutes,
+        meeting_link=payload.meeting_link,
+        location=payload.location,
+        status=ConsultationStatus.SCHEDULED,
+        created_by_user_id=current_user_id,
+    )
+    
+    db.add(consultation)
+    db.commit()
+    db.refresh(consultation)
+    
+    return consultation

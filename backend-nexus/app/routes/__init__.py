@@ -45,4 +45,5 @@ __all__ = [
     "appointment_status_history_router",
     "notification_router",
     "sales_lead_router",
+    "consultation_bookings_router",
 ]

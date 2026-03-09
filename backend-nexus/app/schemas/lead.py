@@ -2,6 +2,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from typing import Optional, List
 from datetime import datetime
 from app.models.lead import LeadStatus
+from app.models.consultation_booking import ConsultationStatus, CancelledByActor
 
 
 class LeadCreate(BaseModel):
@@ -101,4 +102,77 @@ class LeadTransition(BaseModel):
     reason: Optional[str] = Field(None, description="Reason for transition (required for some transitions)")
     
     model_config = ConfigDict(from_attributes=True)
+
+
+class LeadStatusPublic(BaseModel):
+    """Public response schema for lead status tracking (no auth required)."""
+    
+    request_id: int = Field(..., description="Lead ID (request identifier)")
+    status: LeadStatus
+    contact_email: str
+    organization_name: str
+    created_at: datetime
+    
+    model_config = ConfigDict(from_attributes=True)
+
+
+# ===== Consultation Schemas =====
+
+class ConsultationCreate(BaseModel):
+    """Request schema for creating a consultation booking."""
+    
+    scheduled_at: datetime = Field(..., description="Date and time when the consultation will occur")
+    duration_minutes: int = Field(..., description="Duration of the consultation in minutes")
+    location: str = Field(..., description="Meeting location or platform (e.g., 'Google Meet', 'Zoom', 'Phone Call', 'Clinic Office')")
+    meeting_link: Optional[str] = Field(None, description="URL for online meeting (optional, use for virtual consultations)")
+
+
+class ConsultationRead(BaseModel):
+    """Response schema for a consultation booking."""
+    
+    id: int
+    lead_id: int
+    scheduled_at: datetime
+    duration_minutes: int
+    meeting_link: Optional[str] = None
+    location: Optional[str] = None
+    status: ConsultationStatus
+    created_by_user_id: int
+    completed_at: Optional[datetime] = None
+    cancelled_at: Optional[datetime] = None
+    cancelled_by_actor: Optional[CancelledByActor] = None
+    cancellation_reason: Optional[str] = None
+    created_at: datetime
+    
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ConsultationListResponse(BaseModel):
+    """Paginated response for listing consultations."""
+    
+    items: List[ConsultationRead]
+    total: int
+    page: int
+    page_size: int
+
+
+class LeadStatusHistoryItem(BaseModel):
+    """Single status history entry."""
+    
+    id: int
+    lead_id: int
+    old_status: LeadStatus
+    new_status: LeadStatus
+    reason: Optional[str] = None
+    changed_by_user_id: int
+    changed_at: datetime
+    
+    model_config = ConfigDict(from_attributes=True)
+
+
+class LeadStatusHistoryList(BaseModel):
+    """Response schema for listing lead status history."""
+    
+    items: List[LeadStatusHistoryItem]
+    total: int
 
