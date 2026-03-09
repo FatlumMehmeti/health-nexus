@@ -11,7 +11,7 @@ from app.db import get_db
 from app.models import LeadStatus, ConsultationBooking, ConsultationStatus
 from app.schemas.lead import (
     LeadCreate, LeadCreateResponse, LeadListResponse, LeadRead, FollowUpUpdate, LeadTransition, LeadStatusPublic,
-    ConsultationCreate, ConsultationRead
+    ConsultationCreate, ConsultationRead, ConsultationListResponse
 )
 from app.services.lead_service import create_lead, transition_lead, ActorContext, LeadServiceError
 from app.repositories import list_unclaimed_leads, list_my_leads, get_lead_by_id
@@ -330,3 +330,42 @@ def create_consultation_for_lead(
     db.refresh(consultation)
     
     return consultation
+
+
+@router.get("/{lead_id}/consultations", response_model=ConsultationListResponse)
+def list_consultations_for_lead(
+    lead_id: int,
+    db: Session = Depends(get_db),
+    user: Dict[str, Any] = Depends(require_permission("sales:leads")),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+):
+    """
+    List all consultations for a lead. Only the lead owner can view.
+    """
+    current_user_id = user.get("user_id")
+    
+    # Verify lead exists and user owns it
+    lead = get_lead_by_id(db, lead_id)
+    if not lead:
+        raise HTTPException(status_code=404, detail="Lead not found")
+    
+    if lead.assigned_sales_user_id != current_user_id:
+        raise HTTPException(status_code=403, detail="Only the lead owner can view consultations")
+    
+    total = db.query(ConsultationBooking).filter(ConsultationBooking.lead_id == lead_id).count()
+    consultations = (
+        db.query(ConsultationBooking)
+        .filter(ConsultationBooking.lead_id == lead_id)
+        .order_by(ConsultationBooking.scheduled_at.desc())
+        .offset((page - 1) * page_size)
+        .limit(page_size)
+        .all()
+    )
+    
+    return ConsultationListResponse(
+        items=consultations,
+        total=total,
+        page=page,
+        page_size=page_size,
+    )

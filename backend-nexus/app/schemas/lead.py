@@ -122,7 +122,7 @@ class ConsultationCreate(BaseModel):
     """Request schema for creating a consultation booking."""
     
     scheduled_at: datetime = Field(..., description="Date and time when the consultation will occur")
-    duration_minutes: int = Field(..., description="Duration of the consultation in minutes")
+    duration_minutes: int = Field(..., gt=0, description="Duration of the consultation in minutes (must be greater than 0)")
     location: str = Field(..., description="Meeting location or platform (e.g., 'Google Meet', 'Zoom', 'Phone Call', 'Clinic Office')")
     meeting_link: Optional[str] = Field(None, description="URL for online meeting (optional, use for virtual consultations)")
 
