@@ -20,6 +20,7 @@ from .patient_appointment import router as patient_appointment_router
 from .appointment_status_history import router as appointment_status_history_router
 from .notification import router as notification_router
 from .sales_lead import router as sales_lead_router
+from .consultation_bookings import router as consultation_bookings_router
 
 __all__ = [
     "role_router",
