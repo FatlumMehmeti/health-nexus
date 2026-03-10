@@ -222,9 +222,6 @@ function SalesLeadDetailsPage() {
         .join(' ')
         .trim();
       if (fullName.length > 0) return fullName;
-      if (typeof user?.email === 'string' && user.email.length > 0) {
-        return user.email;
-      }
       return 'You';
     }
     return 'Sales Agent';
