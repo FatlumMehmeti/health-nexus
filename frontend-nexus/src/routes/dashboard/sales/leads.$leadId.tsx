@@ -22,6 +22,7 @@ import {
   getAllowedLeadTransitions,
   type SalesLeadStatus,
   useClaimLead,
+  useLeadStatusHistory,
   useCompleteLatestLeadConsultation,
   useCreateLeadConsultation,
   useReleaseLead,
@@ -119,6 +120,13 @@ function SalesLeadDetailsPage() {
   const { data: lead, isLoading } = useSalesLead(
     Number.isFinite(leadIdNum) ? leadIdNum : null
   );
+  const {
+    data: leadHistory,
+    isLoading: isHistoryLoading,
+    isError: isHistoryError,
+  } = useLeadStatusHistory(
+    Number.isFinite(leadIdNum) ? leadIdNum : null
+  );
   const claimLead = useClaimLead();
   const completeLatestLeadConsultation =
     useCompleteLatestLeadConsultation();
@@ -183,6 +191,7 @@ function SalesLeadDetailsPage() {
   const hasOwner = !!lead.assigned_sales_user_id;
   const allowedTransitions = getAllowedLeadTransitions(lead.status);
   const roadmap = buildLeadRoadmap(lead.status);
+  const historyItems = leadHistory?.items ?? [];
 
   const ownershipInsight = !lead.assigned_sales_user_id
     ? {
@@ -201,6 +210,22 @@ function SalesLeadDetailsPage() {
           variant: 'neutral' as const,
           text: `Assigned to user #${lead.assigned_sales_user_id}`,
         };
+
+  const formatHistoryActor = (changedByUserId: number) => {
+    const currentUserId = Number(user?.id);
+    if (
+      Number.isFinite(currentUserId) &&
+      changedByUserId === currentUserId
+    ) {
+      const fullName = [user?.first_name, user?.last_name]
+        .filter(Boolean)
+        .join(' ')
+        .trim();
+      if (fullName.length > 0) return fullName;
+      return 'You';
+    }
+    return 'Sales Agent';
+  };
 
   const handleClaim = async () => {
     try {
@@ -605,6 +630,75 @@ function SalesLeadDetailsPage() {
                 </li>
               ))}
             </ol>
+          </div>
+
+          <div className="rounded-lg border p-4">
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              Lead Status History
+            </p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Audit trail of actual status transitions for this lead.
+            </p>
+            {isHistoryLoading ? (
+              <div className="mt-3 rounded-md border bg-muted/20 p-3 text-sm text-muted-foreground">
+                Loading status history...
+              </div>
+            ) : isHistoryError ? (
+              <div className="mt-3 rounded-md border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-800 dark:text-amber-200">
+                Lead history is not available from backend yet.
+              </div>
+            ) : historyItems.length === 0 ? (
+              <p className="mt-3 rounded-md border bg-muted/20 p-3 text-sm text-muted-foreground">
+                No status transitions recorded yet.
+              </p>
+            ) : (
+              <ol className="mt-3 space-y-3">
+                {historyItems.map((item, index) => (
+                  <li
+                    key={item.id}
+                    className="rounded-lg border bg-muted/10 overflow-hidden"
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-3 border-b bg-muted/20 px-3 py-2">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="inline-flex size-5 items-center justify-center rounded-full bg-primary/10 text-[11px] font-semibold text-primary">
+                          {index + 1}
+                        </span>
+                        <StatusPill
+                          status={item.old_status ?? 'UNKNOWN'}
+                        />
+                        <span className="text-xs text-muted-foreground">
+                          →
+                        </span>
+                        <StatusPill status={item.new_status} />
+                      </div>
+                      <span className="text-xs text-muted-foreground">
+                        {new Date(item.changed_at).toLocaleString()}
+                      </span>
+                    </div>
+                    <div className="grid gap-3 px-3 py-3 md:grid-cols-2">
+                      <div className="rounded-md border bg-background/60 p-2">
+                        <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                          Changed By
+                        </p>
+                        <p className="mt-1 text-sm font-medium">
+                          {formatHistoryActor(
+                            item.changed_by_user_id
+                          )}
+                        </p>
+                      </div>
+                      <div className="rounded-md border bg-background/60 p-2">
+                        <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                          Details
+                        </p>
+                        <p className="mt-1 text-sm">
+                          {item.reason || 'No details provided.'}
+                        </p>
+                      </div>
+                    </div>
+                  </li>
+                ))}
+              </ol>
+            )}
           </div>
         </CardContent>
       </Card>
