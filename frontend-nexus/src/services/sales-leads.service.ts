@@ -158,6 +158,21 @@ export interface LeadConsultationRead {
   created_at: string;
 }
 
+export interface SalesLeadStatusHistoryItem {
+  id: number;
+  lead_id: number;
+  old_status: SalesLeadStatus | null;
+  new_status: SalesLeadStatus;
+  changed_by_user_id: number;
+  changed_at: string;
+  reason: string | null;
+}
+
+export interface SalesLeadStatusHistoryListResponse {
+  items: SalesLeadStatusHistoryItem[];
+  total: number;
+}
+
 export const salesLeadsService = {
   createPublicLead: (payload: PublicLeadCreatePayload) =>
     api.post<PublicLeadCreateResponse>('/api/leads', payload),
@@ -240,6 +255,11 @@ export const salesLeadsService = {
     api.post<LeadConsultationRead>(
       `/api/leads/${leadId}/consultations/latest/complete`
     ),
+
+  getLeadStatusHistory: (leadId: number) =>
+    api.get<SalesLeadStatusHistoryListResponse>(
+      `/api/leads/${leadId}/history`
+    ),
 };
 
 export function useSalesLeads(params: {
@@ -282,11 +302,23 @@ export function useSalesLead(leadId: number | null) {
   });
 }
 
+export function useLeadStatusHistory(leadId: number | null) {
+  return useQuery({
+    queryKey: ['sales-lead-history', leadId],
+    queryFn: () => salesLeadsService.getLeadStatusHistory(leadId!),
+    enabled: leadId !== null,
+    retry: false,
+  });
+}
+
 function invalidateLeadQueries(
   queryClient: ReturnType<typeof useQueryClient>
 ) {
   queryClient.invalidateQueries({ queryKey: ['sales-leads'] });
   queryClient.invalidateQueries({ queryKey: ['sales-lead'] });
+  queryClient.invalidateQueries({
+    queryKey: ['sales-lead-history'],
+  });
 }
 
 export function useClaimLead() {
