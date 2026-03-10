@@ -171,6 +171,21 @@ export interface SalesLeadStatusHistoryItem {
 export interface SalesLeadStatusHistoryListResponse {
   items: SalesLeadStatusHistoryItem[];
   total: number;
+  page?: number;
+  page_size?: number;
+}
+
+export interface LeadConsultationListResponse {
+  items: LeadConsultationRead[];
+  total: number;
+  page: number;
+  page_size: number;
+}
+
+export interface ConsultationTransitionPayload {
+  new_status: 'COMPLETED' | 'CANCELLED' | 'NO_SHOW';
+  cancellation_reason?: string;
+  cancelled_by_actor?: 'LEAD' | 'SALES';
 }
 
 export const salesLeadsService = {
@@ -251,9 +266,27 @@ export const salesLeadsService = {
       payload
     ),
 
-  completeLatestLeadConsultation: (leadId: number) =>
+  listLeadConsultations: (params: {
+    leadId: number;
+    page?: number;
+    page_size?: number;
+  }) => {
+    const q = new URLSearchParams({
+      page: String(params.page ?? 1),
+      page_size: String(params.page_size ?? 20),
+    });
+    return api.get<LeadConsultationListResponse>(
+      `/api/leads/${params.leadId}/consultations?${q.toString()}`
+    );
+  },
+
+  transitionConsultation: (
+    consultationId: number,
+    payload: ConsultationTransitionPayload
+  ) =>
     api.post<LeadConsultationRead>(
-      `/api/leads/${leadId}/consultations/latest/complete`
+      `/api/consultations/${consultationId}/transition`,
+      payload
     ),
 
   getLeadStatusHistory: (leadId: number) =>
@@ -374,8 +407,25 @@ export function useCreateLeadConsultation() {
 export function useCompleteLatestLeadConsultation() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (leadId: number) =>
-      salesLeadsService.completeLatestLeadConsultation(leadId),
+    mutationFn: async (leadId: number) => {
+      const list = await salesLeadsService.listLeadConsultations({
+        leadId,
+        page: 1,
+        page_size: 50,
+      });
+      const latestScheduled = list.items.find(
+        (c) => c.status === 'SCHEDULED'
+      );
+      if (!latestScheduled) {
+        throw new Error(
+          `No SCHEDULED consultation booking found for lead ${leadId}`
+        );
+      }
+      return salesLeadsService.transitionConsultation(
+        latestScheduled.id,
+        { new_status: 'COMPLETED' }
+      );
+    },
     onSuccess: () => invalidateLeadQueries(queryClient),
   });
 }

@@ -304,6 +304,10 @@ function SalesLeadDetailsPage() {
         toast.error(err.displayMessage);
         return;
       }
+      if (err instanceof Error && err.message) {
+        toast.error(err.message);
+        return;
+      }
       toast.error('Failed to update status');
     }
   };
