@@ -33,8 +33,32 @@ import { toast } from 'sonner';
  * /dashboard/sales/leads/$leadId
  */
 function StatusPill({ status }: { status: string }) {
+  const statusClassByStatus: Record<string, string> = {
+    NEW: 'border-slate-300 bg-slate-100 text-slate-700 dark:border-slate-400/35 dark:bg-slate-500/10 dark:text-slate-200',
+    QUALIFIED:
+      'border-indigo-300 bg-indigo-100 text-indigo-700 dark:border-indigo-400/40 dark:bg-indigo-500/12 dark:text-indigo-200',
+    CONTACTED:
+      'border-sky-300 bg-sky-100 text-sky-700 dark:border-sky-400/40 dark:bg-sky-500/12 dark:text-sky-200',
+    CONSULTATION_SCHEDULED:
+      'border-purple-300 bg-purple-100 text-purple-700 dark:border-purple-400/40 dark:bg-purple-500/12 dark:text-purple-200',
+    CONSULTATION_COMPLETED:
+      'border-emerald-300 bg-emerald-100 text-emerald-700 dark:border-emerald-400/40 dark:bg-emerald-500/12 dark:text-emerald-200',
+    AWAITING_DECISION:
+      'border-amber-300 bg-amber-100 text-amber-800 dark:border-amber-400/40 dark:bg-amber-500/12 dark:text-amber-200',
+    CONVERTED:
+      'border-green-300 bg-green-100 text-green-700 dark:border-green-400/40 dark:bg-green-500/12 dark:text-green-200',
+    REJECTED:
+      'border-rose-300 bg-rose-100 text-rose-700 dark:border-rose-400/40 dark:bg-rose-500/12 dark:text-rose-200',
+    LOST: 'border-zinc-300 bg-zinc-100 text-zinc-700 dark:border-neutral-400/35 dark:bg-neutral-500/10 dark:text-neutral-300',
+  };
+  const statusClass =
+    statusClassByStatus[status] ||
+    'border-border bg-muted/20 text-muted-foreground';
+
   return (
-    <span className="inline-flex rounded-full border border-primary/20 bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+    <span
+      className={`inline-flex rounded-full border px-2 py-0.5 text-xs font-medium ${statusClass}`}
+    >
       {status}
     </span>
   );
