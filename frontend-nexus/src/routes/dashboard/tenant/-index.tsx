@@ -17,8 +17,8 @@ import { ProductsManager } from './products/-index';
 import { TenantDetailsEditor } from './settings/-index';
 
 export {
-  TENANT_SECTION_KEYS,
   normalizeTenantSection,
+  TENANT_SECTION_KEYS,
   type TenantSectionKey,
 } from './-constants';
 

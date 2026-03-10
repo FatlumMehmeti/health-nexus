@@ -33,6 +33,13 @@ import type { TenantLandingPageResponse } from '@/interfaces';
 import { isApiError } from '@/lib/api-client';
 import { resolveMediaUrl } from '@/lib/media-url';
 import { can } from '@/lib/rbac';
+import {
+  clearCheckoutRecovery,
+  loadCheckoutRecovery,
+  saveCheckoutRecovery,
+  type CheckoutRecoveryRecord,
+} from '@/services/checkout-recovery.service';
+import { checkoutService } from '@/services/checkout.service';
 import { clientsService } from '@/services/clients.service';
 import { patientsService } from '@/services/patients.service';
 import { tenantPlansService } from '@/services/tenant-plans.service';
@@ -46,16 +53,9 @@ import {
 import { useNavigate } from '@tanstack/react-router';
 import type { CSSProperties } from 'react';
 import { useEffect, useRef, useState } from 'react';
+import { toast } from 'sonner';
 import { PaymentFlowNotice } from './PaymentFlowNotice';
 import { StripePaymentModal } from './StripePaymentModal';
-import { checkoutService } from '@/services/checkout.service';
-import {
-  clearCheckoutRecovery,
-  loadCheckoutRecovery,
-  saveCheckoutRecovery,
-  type CheckoutRecoveryRecord,
-} from '@/services/checkout-recovery.service';
-import { toast } from 'sonner';
 
 export interface TenantLandingProps {
   /** Landing data from API; null while loading */

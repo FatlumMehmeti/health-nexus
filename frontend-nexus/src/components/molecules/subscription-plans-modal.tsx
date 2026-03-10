@@ -2,13 +2,13 @@ import { PlanCard } from '@/components/molecules/plan-card';
 import { PaymentFlowNotice } from '@/components/PaymentFlowNotice';
 import { StripePaymentModal } from '@/components/StripePaymentModal';
 import { isApiError } from '@/lib/api-client';
-import { checkoutService } from '@/services/checkout.service';
 import {
   clearCheckoutRecovery,
   loadCheckoutRecovery,
   saveCheckoutRecovery,
   type CheckoutRecoveryRecord,
 } from '@/services/checkout-recovery.service';
+import { checkoutService } from '@/services/checkout.service';
 import {
   changePlan,
   getCurrentSubscription,
@@ -18,8 +18,8 @@ import {
   type SubscriptionStats,
   type TenantSubscription,
 } from '@/services/subscription-plans.service';
-import { toast } from 'sonner';
 import { useEffect, useRef, useState } from 'react';
+import { toast } from 'sonner';
 
 interface SubscriptionPlansModalProps {
   onClose: () => void;

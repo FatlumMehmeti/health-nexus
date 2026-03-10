@@ -6,18 +6,18 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { loadStripe } from '@stripe/stripe-js';
 import {
-  Elements,
-  useStripe,
-  useElements,
   CardElement,
+  Elements,
+  useElements,
+  useStripe,
 } from '@stripe/react-stripe-js';
 import type {
   PaymentIntent,
-  StripeError,
   StripeCardElementOptions,
+  StripeError,
 } from '@stripe/stripe-js';
+import { loadStripe } from '@stripe/stripe-js';
 import {
   AlertTriangle,
   CreditCard,
