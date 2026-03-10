@@ -51,3 +51,7 @@ def stub_stripe(monkeypatch):
         "app.services.payment_service.stripe.Webhook.construct_event",
         fake_construct_event,
     )
+    return {
+        "client_secrets": client_secrets,
+        "counter": counter,
+    }
