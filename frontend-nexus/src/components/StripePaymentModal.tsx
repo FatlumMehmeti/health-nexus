@@ -27,7 +27,7 @@ import {
 import React from 'react';
 
 const stripePromise = loadStripe(
-  import.meta.env.VITE_STRIPE_PUBLIC_KEY!
+  import.meta.env?.VITE_STRIPE_PUBLIC_KEY ?? ''
 );
 
 function isRetryableStripeError(error: StripeError): boolean {
