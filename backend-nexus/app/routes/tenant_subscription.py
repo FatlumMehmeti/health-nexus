@@ -189,25 +189,52 @@ def change_subscription_plan(
             detail=f"Cannot downgrade to {new_plan.name}. You have {department_count} departments but the plan supports only {new_plan.max_departments}. Please remove {department_count - new_plan.max_departments} department(s) first.",
         )
 
-    # Create new subscription
     now = datetime.now(timezone.utc)
-    expires_at = now + timedelta(days=new_plan.duration)
-    new_subscription = TenantSubscription(
+    if new_price <= 0:
+        expires_at = now + timedelta(days=new_plan.duration)
+        new_subscription = TenantSubscription(
+            tenant_id=tenant_id,
+            subscription_plan_id=request.new_plan_id,
+            status=SubscriptionStatus.ACTIVE,
+            activated_at=now,
+            expires_at=expires_at,
+        )
+
+        db.add(new_subscription)
+        current_subscription.status = SubscriptionStatus.EXPIRED
+        current_subscription.cancelled_at = now
+        current_subscription.cancellation_reason = f"Replaced with {new_plan.name}"
+
+        db.commit()
+        db.refresh(new_subscription)
+        return new_subscription
+
+    existing_pending_subscription = (
+        db.query(TenantSubscription)
+        .filter(
+            TenantSubscription.tenant_id == tenant_id,
+            TenantSubscription.subscription_plan_id == request.new_plan_id,
+            TenantSubscription.status == SubscriptionStatus.EXPIRED,
+            TenantSubscription.activated_at.is_(None),
+        )
+        .order_by(TenantSubscription.id.desc())
+        .first()
+    )
+    if existing_pending_subscription is not None:
+        return existing_pending_subscription
+
+    pending_subscription = TenantSubscription(
         tenant_id=tenant_id,
         subscription_plan_id=request.new_plan_id,
-        status=SubscriptionStatus.ACTIVE,
-        activated_at=now,
-        expires_at=expires_at,
+        status=SubscriptionStatus.EXPIRED,
+        activated_at=None,
+        expires_at=None,
+        cancelled_at=None,
+        cancellation_reason=f"Awaiting payment for {new_plan.name}",
     )
 
-    db.add(new_subscription)
-
-    # Mark old subscription as EXPIRED (value already exists in enum)
-    current_subscription.status = SubscriptionStatus.EXPIRED
-    current_subscription.cancelled_at = now
-    current_subscription.cancellation_reason = f"Replaced with {new_plan.name}"
-
+    db.add(pending_subscription)
     db.commit()
-    db.refresh(new_subscription)
+    db.refresh(pending_subscription)
 
-    return new_subscription
+    return pending_subscription

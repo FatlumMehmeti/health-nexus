@@ -32,6 +32,7 @@ from app.routes import (
     notification_router,
     feature_flag_router,
     ai_assistant_router,
+    payment_router,
 )
 
 app = FastAPI(
@@ -109,6 +110,7 @@ app.include_router(appointment_status_history_router)
 app.include_router(notification_router)
 app.include_router(feature_flag_router)
 app.include_router(ai_assistant_router)
+app.include_router(payment_router, prefix="/api")
 
 
 @app.get("/")

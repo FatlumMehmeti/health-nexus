@@ -46,7 +46,13 @@ def test_audit_logs_empty_before_status_change(client):
 
     response = client.get("/audit-logs")
     assert response.status_code == 200
-    assert response.json() == []
+    payload = response.json()
+    assert payload == {
+        "items": [],
+        "total": 0,
+        "page": 1,
+        "page_size": 10,
+    }
 
     app.dependency_overrides = {}
 
@@ -77,7 +83,12 @@ def test_audit_logs_after_status_change(client):
     response = client.get("/audit-logs")
     assert response.status_code == 200
 
-    logs = response.json()
+    payload = response.json()
+    assert payload["page"] == 1
+    assert payload["page_size"] == 10
+    assert payload["total"] >= 1
+
+    logs = payload["items"]
     assert len(logs) >= 1
 
     status_change = next(
