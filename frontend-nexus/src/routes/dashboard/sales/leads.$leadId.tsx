@@ -19,11 +19,11 @@ import {
   buildLeadRoadmap,
   getAllowedLeadTransitions,
   type SalesLeadStatus,
-  useClaimPlaceholderLead,
-  usePlaceholderLeads,
-  useReleasePlaceholderLead,
-  useTransitionPlaceholderLead,
-} from '@/services/leads.placeholder';
+  useClaimLead,
+  useReleaseLead,
+  useSalesLead,
+  useTransitionLead,
+} from '@/services/sales-leads.service';
 import { useAuthStore } from '@/stores/auth.store';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import {
@@ -33,7 +33,7 @@ import {
   Phone,
   User2,
 } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { toast } from 'sonner';
 
 /** Dedicated lead detail page for deep sales work (claim + status transitions). */
@@ -70,19 +70,29 @@ function SalesLeadDetailsPage() {
   const { leadId } = Route.useParams();
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
+  const leadIdNum = Number(leadId);
 
-  const { data: leads = [] } = usePlaceholderLeads();
-  const claimLead = useClaimPlaceholderLead();
-  const releaseLead = useReleasePlaceholderLead();
-  const transitionLead = useTransitionPlaceholderLead();
-
-  const lead = useMemo(
-    () => leads.find((item) => item.local_id === leadId) ?? null,
-    [leadId, leads]
+  const { data: lead, isLoading } = useSalesLead(
+    Number.isFinite(leadIdNum) ? leadIdNum : null
   );
+  const claimLead = useClaimLead();
+  const releaseLead = useReleaseLead();
+  const transitionLead = useTransitionLead();
   const [nextStatus, setNextStatus] = useState<SalesLeadStatus | ''>(
     ''
   );
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-1 flex-col gap-4 p-4 lg:p-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Loading lead...</CardTitle>
+          </CardHeader>
+        </Card>
+      </div>
+    );
+  }
 
   if (!lead) {
     return (
@@ -111,7 +121,9 @@ function SalesLeadDetailsPage() {
     );
   }
 
-  const isMine = lead.assigned_sales_user_id === user?.id;
+  const isMine =
+    lead.assigned_sales_user_id != null &&
+    String(lead.assigned_sales_user_id) === user?.id;
   const hasOwner = !!lead.assigned_sales_user_id;
   const allowedTransitions = getAllowedLeadTransitions(lead.status);
   const roadmap = buildLeadRoadmap(lead.status);
@@ -131,17 +143,12 @@ function SalesLeadDetailsPage() {
       : {
           label: 'Locked',
           variant: 'neutral' as const,
-          text: `Assigned to ${lead.assigned_sales_email}`,
+          text: `Assigned to user #${lead.assigned_sales_user_id}`,
         };
 
   const handleClaim = async () => {
-    if (!user) return;
     try {
-      await claimLead.mutateAsync({
-        localId: lead.local_id,
-        salesUserId: user.id,
-        salesEmail: user.email,
-      });
+      await claimLead.mutateAsync(lead.id);
       toast.success('Lead claimed');
     } catch {
       toast.error('Failed to claim lead');
@@ -150,7 +157,7 @@ function SalesLeadDetailsPage() {
 
   const handleRelease = async () => {
     try {
-      await releaseLead.mutateAsync(lead.local_id);
+      await releaseLead.mutateAsync(lead.id);
       toast.success('Lead released');
     } catch {
       toast.error('Failed to release lead');
@@ -161,7 +168,7 @@ function SalesLeadDetailsPage() {
     if (!nextStatus) return;
     try {
       await transitionLead.mutateAsync({
-        localId: lead.local_id,
+        leadId: lead.id,
         nextStatus,
       });
       setNextStatus('');
@@ -250,13 +257,17 @@ function SalesLeadDetailsPage() {
             <div className="rounded-lg border p-4">
               <p className="text-xs text-muted-foreground">Owner</p>
               <p className="mt-1 text-sm font-medium">
-                {lead.assigned_sales_email ?? 'Unassigned'}
+                {lead.assigned_sales_user_id != null
+                  ? isMine
+                    ? 'You'
+                    : `User #${lead.assigned_sales_user_id}`
+                  : 'Unassigned'}
               </p>
             </div>
             <div className="rounded-lg border p-4">
               <p className="text-xs text-muted-foreground">Source</p>
               <p className="mt-1 text-sm font-medium">
-                {lead.source}
+                {lead.source || 'N/A'}
               </p>
             </div>
             <div className="rounded-lg border p-4">

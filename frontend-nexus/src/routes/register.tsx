@@ -9,7 +9,7 @@ import {
 } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { isApiError } from '@/lib/api-client';
-import { savePlaceholderLead } from '@/services/leads.placeholder';
+import { salesLeadsService } from '@/services/sales-leads.service';
 import { tenantsService } from '@/services/tenants.service';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation } from '@tanstack/react-query';
@@ -24,8 +24,7 @@ import { z } from 'zod';
  * 1) Tenant application (existing platform onboarding path)
  * 2) Consultation request (creates a sales lead path)
  *
- * Consultation flow uses backend public endpoint + local placeholder lead store,
- * so sales users can work with leads immediately before full lead APIs are ready.
+ * Consultation flow now uses real backend lead creation endpoint.
  */
 export const Route = createFileRoute('/register')({
   component: TenantRegistrationPage,
@@ -105,30 +104,10 @@ function TenantRegistrationPage() {
   });
 
   const consultationMutation = useMutation({
-    mutationFn: tenantsService.createConsultationRequest,
-    onSuccess: (data: unknown) => {
+    mutationFn: salesLeadsService.createPublicLead,
+    onSuccess: (data) => {
       setConsultationError(null);
       const values = consultationForm.getValues();
-      const backendId =
-        typeof data === 'object' &&
-        data !== null &&
-        'id' in data &&
-        (typeof (data as { id: unknown }).id === 'string' ||
-          typeof (data as { id: unknown }).id === 'number')
-          ? (data as { id: string | number }).id
-          : null;
-
-      // Save enriched local lead data for Sales placeholder inbox visibility.
-      const localLead = savePlaceholderLead({
-        backend_id: backendId,
-        organization_name: values.organization_name,
-        contact_name: values.contact_name,
-        contact_email: values.contact_email,
-        contact_phone: values.contact_phone,
-        licence_number: values.licence_number,
-        source: values.source,
-        initial_message: values.initial_message,
-      });
 
       consultationForm.reset({
         organization_name: '',
@@ -141,25 +120,15 @@ function TenantRegistrationPage() {
       });
 
       // If backend returned a concrete lead id, send requester to public tracking UI.
-      const parsedLeadId =
-        typeof backendId === 'number'
-          ? backendId
-          : typeof backendId === 'string' && /^\d+$/.test(backendId)
-            ? Number(backendId)
-            : undefined;
-
-      // Always show a user-visible reference, even if backend id is unavailable.
-      const requestIdText =
-        parsedLeadId != null
-          ? String(parsedLeadId)
-          : localLead.local_id;
+      const parsedLeadId = Number(data.id);
+      const requestIdText = String(parsedLeadId);
       setConsultationReference({
         requestId: requestIdText,
         email: values.contact_email,
-        isBackendId: parsedLeadId != null,
+        isBackendId: Number.isFinite(parsedLeadId),
       });
 
-      if (parsedLeadId) {
+      if (Number.isFinite(parsedLeadId)) {
         toast.success('Consultation request submitted!', {
           description: `Your Request ID is ${parsedLeadId}. We will use it to track progress.`,
         });
@@ -223,9 +192,13 @@ function TenantRegistrationPage() {
     setConsultationError(null);
     setConsultationReference(null);
     consultationMutation.mutate({
-      tenant_name: data.organization_name,
+      licence_number: data.licence_number,
+      organization_name: data.organization_name,
+      contact_name: data.contact_name,
       contact_email: data.contact_email,
-      description: data.initial_message || undefined,
+      contact_phone: data.contact_phone,
+      initial_message: data.initial_message || undefined,
+      source: data.source,
     });
   };
 

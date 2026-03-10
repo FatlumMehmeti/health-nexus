@@ -6,7 +6,7 @@ import {
   useRouterState,
 } from '@tanstack/react-router';
 
-/** Sales route: all leads inbox (placeholder-backed for now). */
+/** Sales route: all leads inbox (backend-powered). */
 export const Route = createFileRoute('/dashboard/sales/leads')({
   beforeLoad: requireAuth({
     routeKey: 'DASHBOARD_SALES_LEADS',
