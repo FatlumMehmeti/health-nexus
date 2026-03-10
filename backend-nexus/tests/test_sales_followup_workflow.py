@@ -173,6 +173,21 @@ def test_lead_to_consultation_happy_path(client: TestClient):
     assert schedule_status_resp.status_code == 200
     assert schedule_status_resp.json()["status"] == "CONSULTATION_SCHEDULED"
 
+    complete_consultation_resp = client.post(
+        f"/api/leads/{lead_id}/consultations/latest/complete",
+        headers=sales_headers,
+    )
+    assert complete_consultation_resp.status_code == 200
+    assert complete_consultation_resp.json()["status"] == "COMPLETED"
+
+    complete_status_resp = client.post(
+        f"/api/leads/{lead_id}/transition",
+        json={"new_status": "CONSULTATION_COMPLETED"},
+        headers=sales_headers,
+    )
+    assert complete_status_resp.status_code == 200
+    assert complete_status_resp.json()["status"] == "CONSULTATION_COMPLETED"
+
 
 def test_consultation_creation_non_owner_forbidden(client: TestClient):
     """Non-owner sales user cannot create consultation for another agent's lead."""

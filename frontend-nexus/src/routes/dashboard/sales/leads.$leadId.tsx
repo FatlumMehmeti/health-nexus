@@ -7,6 +7,8 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { isApiError } from '@/lib/api-client';
 import {
   Select,
   SelectContent,
@@ -20,6 +22,8 @@ import {
   getAllowedLeadTransitions,
   type SalesLeadStatus,
   useClaimLead,
+  useCompleteLatestLeadConsultation,
+  useCreateLeadConsultation,
   useReleaseLead,
   useSalesLead,
   useTransitionLead,
@@ -47,8 +51,32 @@ export const Route = createFileRoute(
 });
 
 function StatusPill({ status }: { status: string }) {
+  const statusClassByStatus: Record<string, string> = {
+    NEW: 'border-slate-300 bg-slate-100 text-slate-700 dark:border-slate-400/35 dark:bg-slate-500/10 dark:text-slate-200',
+    QUALIFIED:
+      'border-indigo-300 bg-indigo-100 text-indigo-700 dark:border-indigo-400/40 dark:bg-indigo-500/12 dark:text-indigo-200',
+    CONTACTED:
+      'border-sky-300 bg-sky-100 text-sky-700 dark:border-sky-400/40 dark:bg-sky-500/12 dark:text-sky-200',
+    CONSULTATION_SCHEDULED:
+      'border-purple-300 bg-purple-100 text-purple-700 dark:border-purple-400/40 dark:bg-purple-500/12 dark:text-purple-200',
+    CONSULTATION_COMPLETED:
+      'border-emerald-300 bg-emerald-100 text-emerald-700 dark:border-emerald-400/40 dark:bg-emerald-500/12 dark:text-emerald-200',
+    AWAITING_DECISION:
+      'border-amber-300 bg-amber-100 text-amber-800 dark:border-amber-400/40 dark:bg-amber-500/12 dark:text-amber-200',
+    CONVERTED:
+      'border-green-300 bg-green-100 text-green-700 dark:border-green-400/40 dark:bg-green-500/12 dark:text-green-200',
+    REJECTED:
+      'border-rose-300 bg-rose-100 text-rose-700 dark:border-rose-400/40 dark:bg-rose-500/12 dark:text-rose-200',
+    LOST: 'border-zinc-300 bg-zinc-100 text-zinc-700 dark:border-neutral-400/35 dark:bg-neutral-500/10 dark:text-neutral-300',
+  };
+  const statusClass =
+    statusClassByStatus[status] ||
+    'border-border bg-muted/20 text-muted-foreground';
+
   return (
-    <span className="inline-flex rounded-full border border-primary/20 bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+    <span
+      className={`inline-flex rounded-full border px-2 py-0.5 text-xs font-medium ${statusClass}`}
+    >
       {status}
     </span>
   );
@@ -66,6 +94,22 @@ function roadmapStepClass(
   return 'border-border bg-muted/20 text-muted-foreground';
 }
 
+function isReasonRequiredForTransition(
+  currentStatus: SalesLeadStatus,
+  nextStatus: SalesLeadStatus
+) {
+  const transitionsWithoutReason = new Set<string>([
+    'NEW->QUALIFIED',
+    'QUALIFIED->CONTACTED',
+    'CONTACTED->CONSULTATION_SCHEDULED',
+    'CONSULTATION_SCHEDULED->CONSULTATION_COMPLETED',
+    'AWAITING_DECISION->CONVERTED',
+  ]);
+  return !transitionsWithoutReason.has(
+    `${currentStatus}->${nextStatus}`
+  );
+}
+
 function SalesLeadDetailsPage() {
   const { leadId } = Route.useParams();
   const navigate = useNavigate();
@@ -76,11 +120,23 @@ function SalesLeadDetailsPage() {
     Number.isFinite(leadIdNum) ? leadIdNum : null
   );
   const claimLead = useClaimLead();
+  const completeLatestLeadConsultation =
+    useCompleteLatestLeadConsultation();
+  const createLeadConsultation = useCreateLeadConsultation();
   const releaseLead = useReleaseLead();
   const transitionLead = useTransitionLead();
   const [nextStatus, setNextStatus] = useState<SalesLeadStatus | ''>(
     ''
   );
+  const [transitionReason, setTransitionReason] = useState('');
+  const [consultationScheduledAt, setConsultationScheduledAt] =
+    useState('');
+  const [consultationDuration, setConsultationDuration] =
+    useState('45');
+  const [consultationLocation, setConsultationLocation] =
+    useState('Google Meet');
+  const [consultationMeetingLink, setConsultationMeetingLink] =
+    useState('');
 
   if (isLoading) {
     return (
@@ -166,17 +222,64 @@ function SalesLeadDetailsPage() {
 
   const handleTransition = async () => {
     if (!nextStatus) return;
+    const reasonRequired = isReasonRequiredForTransition(
+      lead.status,
+      nextStatus
+    );
+    if (reasonRequired && !transitionReason.trim()) {
+      toast.error('Reason is required for this transition.');
+      return;
+    }
+
+    if (nextStatus === 'CONSULTATION_SCHEDULED') {
+      if (!consultationScheduledAt.trim()) {
+        toast.error(
+          'Consultation date and time are required before scheduling status.'
+        );
+        return;
+      }
+      if (!consultationLocation.trim()) {
+        toast.error(
+          'Consultation location is required before scheduling status.'
+        );
+        return;
+      }
+    }
+
     try {
+      if (nextStatus === 'CONSULTATION_SCHEDULED') {
+        await createLeadConsultation.mutateAsync({
+          leadId: lead.id,
+          payload: {
+            scheduled_at: new Date(
+              consultationScheduledAt
+            ).toISOString(),
+            duration_minutes: Math.max(
+              15,
+              Number(consultationDuration) || 45
+            ),
+            location: consultationLocation.trim(),
+            meeting_link: consultationMeetingLink.trim() || undefined,
+          },
+        });
+      }
+      if (nextStatus === 'CONSULTATION_COMPLETED') {
+        await completeLatestLeadConsultation.mutateAsync(lead.id);
+      }
       await transitionLead.mutateAsync({
         leadId: lead.id,
         nextStatus,
+        reason: transitionReason.trim() || undefined,
       });
       setNextStatus('');
+      setTransitionReason('');
       toast.success(`Status updated to ${nextStatus}`);
     } catch (err) {
-      toast.error(
-        (err as Error).message || 'Failed to update status'
-      );
+      if (isApiError(err)) {
+        toast.error(err.displayMessage);
+        return;
+      }
+      toast.error('Failed to update status');
     }
   };
 
@@ -341,37 +444,143 @@ function SalesLeadDetailsPage() {
                 This lead is in a terminal state.
               </p>
             ) : (
-              <div className="mt-3 flex flex-col gap-2 sm:flex-row">
-                <Select
-                  value={nextStatus}
-                  onValueChange={(value) =>
-                    setNextStatus(value as SalesLeadStatus)
-                  }
-                >
-                  <SelectTrigger className="sm:w-64">
-                    <SelectValue placeholder="Select next status" />
-                  </SelectTrigger>
-                  <SelectContent
-                    position="popper"
-                    side="top"
-                    align="start"
+              <>
+                <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                  <Select
+                    value={nextStatus}
+                    onValueChange={(value) =>
+                      setNextStatus(value as SalesLeadStatus)
+                    }
                   >
-                    {allowedTransitions.map((status) => (
-                      <SelectItem key={status} value={status}>
-                        {status}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Button
-                  onClick={handleTransition}
-                  disabled={!nextStatus || transitionLead.isPending}
-                >
-                  {transitionLead.isPending
-                    ? 'Updating...'
-                    : 'Update Status'}
-                </Button>
-              </div>
+                    <SelectTrigger className="sm:w-64">
+                      <SelectValue placeholder="Select next status" />
+                    </SelectTrigger>
+                    <SelectContent
+                      position="popper"
+                      side="top"
+                      align="start"
+                    >
+                      {allowedTransitions.map((status) => (
+                        <SelectItem key={status} value={status}>
+                          {status}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {nextStatus === 'CONSULTATION_SCHEDULED' ? null : (
+                    <Button
+                      onClick={handleTransition}
+                      disabled={
+                        !nextStatus ||
+                        transitionLead.isPending ||
+                        createLeadConsultation.isPending ||
+                        completeLatestLeadConsultation.isPending
+                      }
+                    >
+                      {transitionLead.isPending ||
+                      createLeadConsultation.isPending ||
+                      completeLatestLeadConsultation.isPending
+                        ? 'Updating...'
+                        : 'Update Status'}
+                    </Button>
+                  )}
+                </div>
+
+                {nextStatus === 'CONSULTATION_SCHEDULED' ? (
+                  <div className="mt-3 rounded-md border bg-muted/20 p-3">
+                    <p className="mb-2 text-xs text-muted-foreground">
+                      A scheduled consultation record is required
+                      before this transition.
+                    </p>
+                    <div className="grid gap-2 md:grid-cols-2">
+                      <div className="space-y-1">
+                        <p className="text-xs text-muted-foreground">
+                          Scheduled at
+                        </p>
+                        <Input
+                          type="datetime-local"
+                          value={consultationScheduledAt}
+                          onChange={(e) =>
+                            setConsultationScheduledAt(e.target.value)
+                          }
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-xs text-muted-foreground">
+                          Duration (minutes)
+                        </p>
+                        <Input
+                          type="number"
+                          min={15}
+                          step={15}
+                          value={consultationDuration}
+                          onChange={(e) =>
+                            setConsultationDuration(e.target.value)
+                          }
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-xs text-muted-foreground">
+                          Location
+                        </p>
+                        <Input
+                          value={consultationLocation}
+                          onChange={(e) =>
+                            setConsultationLocation(e.target.value)
+                          }
+                          placeholder="Google Meet, Zoom, Office..."
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-xs text-muted-foreground">
+                          Meeting link (optional)
+                        </p>
+                        <Input
+                          value={consultationMeetingLink}
+                          onChange={(e) =>
+                            setConsultationMeetingLink(e.target.value)
+                          }
+                          placeholder="https://..."
+                        />
+                      </div>
+                    </div>
+                    <div className="mt-3">
+                      <Button
+                        onClick={handleTransition}
+                        disabled={
+                          transitionLead.isPending ||
+                          createLeadConsultation.isPending ||
+                          completeLatestLeadConsultation.isPending
+                        }
+                      >
+                        {transitionLead.isPending ||
+                        createLeadConsultation.isPending ||
+                        completeLatestLeadConsultation.isPending
+                          ? 'Scheduling...'
+                          : 'Create Consultation and Update Status'}
+                      </Button>
+                    </div>
+                  </div>
+                ) : null}
+                {nextStatus &&
+                isReasonRequiredForTransition(
+                  lead.status,
+                  nextStatus
+                ) ? (
+                  <div className="mt-3 rounded-md border bg-muted/20 p-3">
+                    <p className="mb-2 text-xs text-muted-foreground">
+                      Reason is required for this transition.
+                    </p>
+                    <Input
+                      value={transitionReason}
+                      onChange={(e) =>
+                        setTransitionReason(e.target.value)
+                      }
+                      placeholder="Enter reason for status change..."
+                    />
+                  </div>
+                ) : null}
+              </>
             )}
           </div>
 

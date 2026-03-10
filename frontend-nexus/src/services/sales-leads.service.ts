@@ -135,6 +135,29 @@ export interface PublicLeadCreateResponse {
   created_at: string;
 }
 
+export interface LeadConsultationCreatePayload {
+  scheduled_at: string;
+  duration_minutes: number;
+  location: string;
+  meeting_link?: string;
+}
+
+export interface LeadConsultationRead {
+  id: number;
+  lead_id: number;
+  scheduled_at: string;
+  duration_minutes: number;
+  meeting_link: string | null;
+  location: string | null;
+  status: 'SCHEDULED' | 'COMPLETED' | 'CANCELLED' | 'NO_SHOW';
+  created_by_user_id: number;
+  completed_at: string | null;
+  cancelled_at: string | null;
+  cancelled_by_actor: string | null;
+  cancellation_reason: string | null;
+  created_at: string;
+}
+
 export const salesLeadsService = {
   createPublicLead: (payload: PublicLeadCreatePayload) =>
     api.post<PublicLeadCreateResponse>('/api/leads', payload),
@@ -194,10 +217,29 @@ export const salesLeadsService = {
       `/api/leads/${leadId}/owner?action=release`
     ),
 
-  transitionLead: (leadId: number, new_status: SalesLeadStatus) =>
+  transitionLead: (
+    leadId: number,
+    new_status: SalesLeadStatus,
+    reason?: string
+  ) =>
     api.post<SalesLeadRead>(`/api/leads/${leadId}/transition`, {
       new_status,
+      reason,
     }),
+
+  createLeadConsultation: (
+    leadId: number,
+    payload: LeadConsultationCreatePayload
+  ) =>
+    api.post<LeadConsultationRead>(
+      `/api/leads/${leadId}/consultations`,
+      payload
+    ),
+
+  completeLatestLeadConsultation: (leadId: number) =>
+    api.post<LeadConsultationRead>(
+      `/api/leads/${leadId}/consultations/latest/complete`
+    ),
 };
 
 export function useSalesLeads(params: {
@@ -271,11 +313,37 @@ export function useTransitionLead() {
     mutationFn: (params: {
       leadId: number;
       nextStatus: SalesLeadStatus;
+      reason?: string;
     }) =>
       salesLeadsService.transitionLead(
         params.leadId,
-        params.nextStatus
+        params.nextStatus,
+        params.reason
       ),
+    onSuccess: () => invalidateLeadQueries(queryClient),
+  });
+}
+
+export function useCreateLeadConsultation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (params: {
+      leadId: number;
+      payload: LeadConsultationCreatePayload;
+    }) =>
+      salesLeadsService.createLeadConsultation(
+        params.leadId,
+        params.payload
+      ),
+    onSuccess: () => invalidateLeadQueries(queryClient),
+  });
+}
+
+export function useCompleteLatestLeadConsultation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (leadId: number) =>
+      salesLeadsService.completeLatestLeadConsultation(leadId),
     onSuccess: () => invalidateLeadQueries(queryClient),
   });
 }

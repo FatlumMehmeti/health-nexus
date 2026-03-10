@@ -330,3 +330,58 @@ def create_consultation_for_lead(
     db.refresh(consultation)
     
     return consultation
+
+
+# UI helper endpoint:
+# This exists to support the sales lead transition flow when moving
+# CONSULTATION_SCHEDULED -> CONSULTATION_COMPLETED.
+# The lead service requires an underlying consultation row with status=COMPLETED,
+# so the frontend calls this first to mark the latest scheduled booking as completed,
+# then performs the lead status transition.
+@router.post("/{lead_id}/consultations/latest/complete", response_model=ConsultationRead)
+def complete_latest_consultation_for_lead(
+    lead_id: int,
+    db: Session = Depends(get_db),
+    user: Dict[str, Any] = Depends(require_permission("sales:leads")),
+):
+    """
+    Mark the most recently created SCHEDULED consultation for a lead as COMPLETED.
+    Only the lead owner can perform this action.
+    """
+    current_user_id = user.get("user_id")
+
+    if current_user_id is None:
+        raise ValueError("user_id not found in JWT token")
+
+    lead = get_lead_by_id(db, lead_id)
+    if not lead:
+        raise HTTPException(status_code=404, detail="Lead not found")
+
+    if lead.assigned_sales_user_id != current_user_id:
+        raise HTTPException(
+            status_code=403,
+            detail="Only the lead owner can complete consultations",
+        )
+
+    consultation = (
+        db.query(ConsultationBooking)
+        .filter(
+            ConsultationBooking.lead_id == lead_id,
+            ConsultationBooking.status == ConsultationStatus.SCHEDULED,
+        )
+        .order_by(ConsultationBooking.created_at.desc())
+        .first()
+    )
+
+    if not consultation:
+        raise HTTPException(
+            status_code=400,
+            detail=f"No SCHEDULED consultation booking found for lead {lead_id}",
+        )
+
+    consultation.status = ConsultationStatus.COMPLETED
+    consultation.completed_at = datetime.utcnow()
+    db.commit()
+    db.refresh(consultation)
+
+    return consultation
