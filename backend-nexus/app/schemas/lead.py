@@ -116,6 +116,29 @@ class LeadStatusPublic(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class LeadStatusHistoryItem(BaseModel):
+    """Individual status transition record."""
+    
+    id: int
+    lead_id: int
+    old_status: LeadStatus
+    new_status: LeadStatus
+    changed_by_user_id: int
+    changed_at: datetime
+    reason: Optional[str] = None
+    
+    model_config = ConfigDict(from_attributes=True)
+
+
+class LeadStatusHistoryListResponse(BaseModel):
+    """Paginated response for lead status history."""
+    
+    items: List[LeadStatusHistoryItem]
+    total: int
+    page: int
+    page_size: int
+
+
 # ===== Consultation Schemas =====
 
 class ConsultationCreate(BaseModel):
