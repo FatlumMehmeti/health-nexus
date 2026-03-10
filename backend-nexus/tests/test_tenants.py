@@ -66,6 +66,49 @@ def test_public_create_tenant_duplicate_licence_returns_409(client):
     assert r2.status_code == 409
 
 
+def test_public_consultation_tracking_success(client):
+    """GET /api/public/tenants/consultation/track returns roadmap for valid lead/email."""
+    create_response = client.post(
+        "/api/public/tenants/consultation",
+        json={
+            "tenant_name": "Trackable Clinic",
+            "contact_email": "track@clinic.com",
+            "description": "Need demo",
+        },
+    )
+    assert create_response.status_code == 201
+    lead_id = create_response.json()["id"]
+
+    response = client.get(
+        f"/api/public/tenants/consultation/track?lead_id={lead_id}&email=track@clinic.com"
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["lead_id"] == lead_id
+    assert data["current_status"] == "NEW"
+    assert len(data["roadmap"]) >= 1
+    assert data["roadmap"][0]["status"] == "NEW"
+
+
+def test_public_consultation_tracking_invalid_email_returns_404(client):
+    """Tracking endpoint rejects requests when email does not match the lead."""
+    create_response = client.post(
+        "/api/public/tenants/consultation",
+        json={
+            "tenant_name": "Private Clinic",
+            "contact_email": "private@clinic.com",
+            "description": "Need details",
+        },
+    )
+    assert create_response.status_code == 201
+    lead_id = create_response.json()["id"]
+
+    response = client.get(
+        f"/api/public/tenants/consultation/track?lead_id={lead_id}&email=wrong@clinic.com"
+    )
+    assert response.status_code == 404
+
+
 def test_superadmin_list_tenants_empty(client):
     """GET /api/superadmin/tenants returns empty list when no tenants."""
     response = client.get("/api/superadmin/tenants")

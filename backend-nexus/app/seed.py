@@ -21,6 +21,8 @@ from app.models import (
     Enrollment,
     EnrollmentStatusHistory,
     Font,
+    Lead,
+    LeadStatus,
     Patient,
     Product,
     Role,
@@ -68,6 +70,7 @@ SEED_USERS = [
     SeedUser("Doctor", "Nine", "doctor.nine@seed.com", "Team2026@", "DOCTOR"),
     SeedUser("Doctor", "Ten", "doctor.ten@seed.com", "Team2026@", "DOCTOR"),
     SeedUser("Sales", "Agent", "sales.agent@seed.com", "Team2026@", "SALES"),
+    SeedUser("Sales", "Agent2", "sales.agent2@seed.com", "Team2026@", "SALES"),
     SeedUser("Client", "User", "client.user@seed.com", "Team2026@", "CLIENT"),
     SeedUser("Registered", "Client", "registered.client@seed.com", "Team2026@", "CLIENT"),
     SeedUser("Global", "Only", "global.only@seed.com", "Team2026@", "CLIENT"),
@@ -121,6 +124,83 @@ SEED_PATIENTS = [
         "birthdate": date(1988, 11, 5),
         "gender": "male",
         "blood_type": "O-",
+    },
+]
+
+
+SEED_LEADS = [
+    # New Pool (unclaimed, status=NEW)
+    {
+        "licence_number": "MED-2024-001",
+        "organization_name": "Green Valley Medical Center",
+        "contact_name": "Dr. Sarah Johnson",
+        "contact_email": "sarah@greenvalley.com",
+        "contact_phone": "+1-555-0101",
+        "initial_message": "Interested in modernizing our patient management system",
+        "source": "WEBSITE",
+        "status": LeadStatus.NEW,
+    },
+    {
+        "licence_number": "MED-2024-002",
+        "organization_name": "Unity Healthcare Group",
+        "contact_name": "John Martinez",
+        "contact_email": "john@unityhealth.com",
+        "contact_phone": "+1-555-0102",
+        "initial_message": "Looking for digital transformation in healthcare",
+        "source": "REFERRAL",
+        "status": LeadStatus.NEW,
+    },
+    {
+        "licence_number": "MED-2024-003",
+        "organization_name": "Westside Clinic",
+        "contact_name": "Emma Thompson",
+        "contact_email": "emma@westside.com",
+        "contact_phone": "+1-555-0103",
+        "initial_message": None,
+        "source": "WEBSITE",
+        "status": LeadStatus.NEW,
+    },
+    # Dropped Leads (unclaimed, status=QUALIFIED)
+    {
+        "licence_number": "MED-2024-004",
+        "organization_name": "Harmony Health Partners",
+        "contact_name": "Michael Chen",
+        "contact_email": "michael@harmonyhealth.com",
+        "contact_phone": "+1-555-0104",
+        "initial_message": "Previously qualified, needs follow-up",
+        "source": "WEBSITE",
+        "status": LeadStatus.QUALIFIED,
+    },
+    {
+        "licence_number": "MED-2024-005",
+        "organization_name": "Coastal Medical Associates",
+        "contact_name": "Lisa Anderson",
+        "contact_email": "lisa@coastalmed.com",
+        "contact_phone": "+1-555-0105",
+        "initial_message": "Contacted but no response recently",
+        "source": "REFERRAL",
+        "status": LeadStatus.CONTACTED,
+    },
+    {
+        "licence_number": "MED-2024-006",
+        "organization_name": "Premier Healthcare Solutions",
+        "contact_name": "Robert Wilson",
+        "contact_email": "robert@premierhc.com",
+        "contact_phone": None,
+        "initial_message": None,
+        "source": "CAMPAIGN",
+        "status": LeadStatus.QUALIFIED,
+    },
+    # Assigned to sales agent for testing (QUALIFIED status)
+    {
+        "licence_number": "MED-2024-007",
+        "organization_name": "TechMed Solutions",
+        "contact_name": "Victoria Price",
+        "contact_email": "victoria@techmed.com",
+        "contact_phone": "+1-555-0107",
+        "initial_message": "Already qualified, working on contract",
+        "source": "REFERRAL",
+        "status": LeadStatus.CONSULTATION_SCHEDULED,
     },
 ]
 
@@ -1873,6 +1953,46 @@ def seed_products(session, tenants_by_name):
     session.flush()
 
 
+def seed_leads(session):
+    """Seed test leads for sales agent testing (unclaimed, various statuses)."""
+    for lead_data in SEED_LEADS:
+        # Check if lead already exists (by email)
+        existing = session.query(Lead).filter_by(contact_email=lead_data["contact_email"]).first()
+        if existing:
+            continue
+        
+        lead = Lead(
+            licence_number=lead_data["licence_number"],
+            organization_name=lead_data["organization_name"],
+            contact_name=lead_data["contact_name"],
+            contact_email=lead_data["contact_email"],
+            contact_phone=lead_data.get("contact_phone"),
+            initial_message=lead_data.get("initial_message"),
+            source=lead_data.get("source"),
+            status=lead_data["status"],
+            assigned_sales_user_id=None,  # All leads unclaimed
+        )
+        session.add(lead)
+    
+    session.commit()
+
+
+def seed_lead_assignments(session):
+    """Assign leads to sales agent for testing my-leads endpoint."""
+    sales_agent = session.query(User).filter_by(email="sales.agent@seed.com").first()
+    if not sales_agent:
+        return
+    
+    # Get leads by email and assign to sales agent
+    leads_to_assign = ["sarah@greenvalley.com", "victoria@techmed.com"]
+    for email in leads_to_assign:
+        lead = session.query(Lead).filter_by(contact_email=email).first()
+        if lead:
+            lead.assigned_sales_user_id = sales_agent.id
+    
+    session.commit()
+
+
 def seed_enrollment(session):
     enrollment_targets = [
         {"email": "client.user@seed.com", "tenant_name": "Bluestone Clinic"},
@@ -1980,11 +2100,14 @@ def run_seed() -> None:
         seed_products(session, tenants_by_name)
         session.commit()
         seed_enrollment(session)
+        seed_leads(session)
+        seed_lead_assignments(session)
         seed_appointments(session)
         enrollment_count = session.query(Enrollment).count()
         history_count = session.query(EnrollmentStatusHistory).count()
+        leads_count = session.query(Lead).count()
         print("Seed completed.")
-        print(f"  Enrollments: {enrollment_count} | Enrollment status history: {history_count}")
+        print(f"  Enrollments: {enrollment_count} | Enrollment status history: {history_count} | Leads: {leads_count}")
     except Exception:
         session.rollback()
         raise

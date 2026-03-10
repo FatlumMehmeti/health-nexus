@@ -1,6 +1,6 @@
 import secrets
 
-from fastapi import APIRouter, Depends, status, HTTPException, Request
+from fastapi import APIRouter, Depends, status, HTTPException, Request, Query
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from app.db import get_db as app_get_db
@@ -9,7 +9,12 @@ from app.models.user import User
 from app.models.patient import Patient
 from app.models.lead import Lead, LeadStatus
 from app.schemas.tenant import TenantCreate, TenantRead
-from app.schemas.lead import LeadCreate, PublicLeadCreate
+from app.schemas.lead import (
+    LeadCreate,
+    PublicLeadCreate,
+    PublicLeadTrackingRead,
+    PublicLeadTrackingStep,
+)
 from app.schemas.patient import ClientRegistrationRequest, ClientRegistrationResponse
 from app.auth.auth_utils import hash_password, verify_token, TokenError
 
@@ -19,6 +24,64 @@ _TENANT_NOT_ACTIVE_DETAIL = {
     "code": "TENANT_NOT_ACTIVE",
     "message": "Tenant must be active to register clients",
 }
+
+
+def _build_public_tracking_roadmap(current_status: str) -> list[PublicLeadTrackingStep]:
+    """
+    Build a UI-ready roadmap for the public tracking page.
+
+    We support both legacy backend statuses and PRD-08 statuses so the response
+    remains compatible while the sales pipeline is being aligned.
+    """
+
+    status = (current_status or "").upper()
+    if status in {"QUALIFIED", "CONSULTATION_SCHEDULED", "CONSULTATION_COMPLETED", "AWAITING_DECISION", "LOST"}:
+        flow = [
+            "NEW",
+            "QUALIFIED",
+            "CONTACTED",
+            "CONSULTATION_SCHEDULED",
+            "CONSULTATION_COMPLETED",
+            "AWAITING_DECISION",
+            "CONVERTED",
+        ]
+    else:
+        flow = [
+            "NEW",
+            "CONTACTED",
+            "DEMO_SCHEDULED",
+            "DEMO_COMPLETED",
+            "HIGH_INTEREST",
+            "NEGOTIATION",
+            "CONVERTED",
+        ]
+
+    if status in {"REJECTED", "LOST"}:
+        # Terminal non-converted statuses show all regular flow steps as not started.
+        return [
+            PublicLeadTrackingStep(
+                status=step,
+                state="NOT_STARTED" if step != flow[0] else "DONE",
+            )
+            for step in flow
+        ] + [PublicLeadTrackingStep(status=status, state="IN_PROGRESS")]
+
+    try:
+        idx = flow.index(status)
+    except ValueError:
+        idx = 0
+
+    roadmap: list[PublicLeadTrackingStep] = []
+    for step_idx, step in enumerate(flow):
+        if step_idx < idx:
+            state = "DONE"
+        elif step_idx == idx:
+            state = "IN_PROGRESS"
+        else:
+            state = "NOT_STARTED"
+        roadmap.append(PublicLeadTrackingStep(status=step, state=state))
+
+    return roadmap
 
 
 def get_db():
@@ -84,7 +147,7 @@ def create_public_lead(
         contact_email=payload.contact_email,
         source="WEBSITE",
         status=LeadStatus.NEW,
-        notes=payload.description,
+        initial_message=payload.description,
     )
 
     db.add(lead)
@@ -92,6 +155,55 @@ def create_public_lead(
     db.refresh(lead)
 
     return lead
+
+
+@router.get(
+    "/consultation/track",
+    response_model=PublicLeadTrackingRead,
+    status_code=status.HTTP_200_OK,
+)
+def track_public_lead_status(
+    lead_id: int = Query(..., ge=1),
+    email: str = Query(..., min_length=3),
+    db: Session = Depends(get_db),
+):
+    """
+    Public tracking endpoint for consultation requests.
+
+    Access model:
+    - caller provides lead_id + contact email
+    - endpoint returns only minimal status data needed by roadmap UI
+    """
+    normalized_email = email.strip().lower()
+    lead = (
+        db.query(Lead)
+        .filter(
+            Lead.id == lead_id,
+            Lead.contact_email.isnot(None),
+            Lead.contact_email.ilike(normalized_email),
+        )
+        .first()
+    )
+    if not lead:
+        raise HTTPException(
+            status_code=404,
+            detail="Lead tracking record not found for provided credentials",
+        )
+
+    current_status = (
+        lead.status.value if isinstance(lead.status, LeadStatus) else str(lead.status)
+    )
+    roadmap = _build_public_tracking_roadmap(current_status)
+
+    return PublicLeadTrackingRead(
+        lead_id=lead.id,
+        organization_name=lead.organization_name,
+        contact_email=lead.contact_email,
+        current_status=current_status,
+        created_at=lead.created_at,
+        updated_at=lead.updated_at,
+        roadmap=roadmap,
+    )
 
 
 @router.post(
