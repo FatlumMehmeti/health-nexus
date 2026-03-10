@@ -477,6 +477,41 @@ def delete_plan(
 
     verify_tenant_manager(db, user_id, db_plan.tenant_id)
 
+    active_or_pending_enrollment = (
+        db.query(Enrollment)
+        .filter(
+            Enrollment.user_tenant_plan_id == db_plan.id,
+            Enrollment.status.in_(
+                [
+                    EnrollmentStatusModel.ACTIVE,
+                    EnrollmentStatusModel.PENDING,
+                ]
+            ),
+        )
+        .first()
+    )
+    if active_or_pending_enrollment:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "Cannot delete plan because it still has active or pending enrollments. "
+                "Move those users first."
+            ),
+        )
+
+    has_enrollments = (
+        db.query(Enrollment)
+        .filter(Enrollment.user_tenant_plan_id == db_plan.id)
+        .first()
+    )
+    if has_enrollments:
+        db_plan.is_active = False
+        db_plan.updated_at = datetime.now(timezone.utc)
+        db.commit()
+        return {
+            "message": "Plan archived successfully",
+        }
+
     db.delete(db_plan)
     db.commit()
 

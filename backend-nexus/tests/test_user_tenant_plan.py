@@ -697,3 +697,58 @@ def test_delete_plan_for_other_tenant_returns_403(client, db_session):
     response = client.delete(f"/user-tenant-plans/{other_plan.id}")
 
     assert response.status_code == 403
+
+
+def test_delete_plan_with_enrollments_returns_409(client, db_session):
+    plan = UserTenantPlan(
+        tenant_id=client.tenant_id,
+        name="Protected Delete",
+        price=9.99,
+        is_active=True,
+    )
+    db_session.add(plan)
+    db_session.flush()
+
+    enrollment = Enrollment(
+        tenant_id=client.tenant_id,
+        patient_user_id=client.user_id,
+        user_tenant_plan_id=plan.id,
+        created_by=client.user_id,
+        status=EnrollmentStatusModel.PENDING,
+    )
+    db_session.add(enrollment)
+    db_session.commit()
+
+    response = client.delete(f"/user-tenant-plans/{plan.id}")
+
+    assert response.status_code == 200
+    assert response.json()["message"] == "Plan archived successfully"
+
+    db_session.refresh(plan)
+    assert plan.is_active is False
+
+
+def test_delete_plan_with_active_enrollments_returns_409(client, db_session):
+    plan = UserTenantPlan(
+        tenant_id=client.tenant_id,
+        name="Active Protected Delete",
+        price=9.99,
+        is_active=True,
+    )
+    db_session.add(plan)
+    db_session.flush()
+
+    enrollment = Enrollment(
+        tenant_id=client.tenant_id,
+        patient_user_id=client.user_id,
+        user_tenant_plan_id=plan.id,
+        created_by=client.user_id,
+        status=EnrollmentStatusModel.ACTIVE,
+    )
+    db_session.add(enrollment)
+    db_session.commit()
+
+    response = client.delete(f"/user-tenant-plans/{plan.id}")
+
+    assert response.status_code == 409
+    assert "active or pending enrollments" in response.json()["detail"].lower()
