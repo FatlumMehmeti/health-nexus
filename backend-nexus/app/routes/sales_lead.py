@@ -8,10 +8,10 @@ from typing import Optional, Dict, Any
 from datetime import datetime
 
 from app.db import get_db
-from app.models import LeadStatus, ConsultationBooking, ConsultationStatus
+from app.models import LeadStatus, ConsultationBooking, ConsultationStatus, LeadStatusHistory
 from app.schemas.lead import (
     LeadCreate, LeadCreateResponse, LeadListResponse, LeadRead, FollowUpUpdate, LeadTransition, LeadStatusPublic,
-    ConsultationCreate, ConsultationRead
+    LeadStatusHistoryListResponse, ConsultationCreate, ConsultationRead, ConsultationListResponse
 )
 from app.services.lead_service import create_lead, transition_lead, ActorContext, LeadServiceError
 from app.repositories import list_unclaimed_leads, list_my_leads, get_lead_by_id
@@ -288,6 +288,57 @@ def transition_lead_status(
         raise HTTPException(status_code=e.http_status, detail=e.message)
 
 
+@router.get("/{lead_id}/history", response_model=LeadStatusHistoryListResponse)
+def get_lead_status_history(
+    lead_id: int,
+    page: int = Query(default=1, ge=1, description="Page number (1-indexed)"),
+    page_size: int = Query(default=20, ge=1, le=100, description="Results per page"),
+    db: Session = Depends(get_db),
+    user: Dict[str, Any] = Depends(require_permission("sales:leads")),
+):
+    """
+    Get status transition history for a lead. Returns paginated records sorted by most recent first.
+    Only the lead owner can view the history. Requires SALES role.
+    """
+    current_user_id = user.get("user_id")
+    
+    if current_user_id is None:
+        raise ValueError("user_id not found in JWT token")
+    
+    # Verify lead exists
+    lead = get_lead_by_id(db, lead_id)
+    if not lead:
+        raise HTTPException(status_code=404, detail="Lead not found")
+    
+    # Check ownership: only the assigned agent can view history
+    if lead.assigned_sales_user_id != current_user_id:
+        raise HTTPException(
+            status_code=403,
+            detail="You can only view history for leads you own"
+        )
+    
+    # Calculate offset
+    offset = (page - 1) * page_size
+    
+    # Query history records (most recent first)
+    history_query = db.query(LeadStatusHistory).filter(
+        LeadStatusHistory.lead_id == lead_id
+    ).order_by(LeadStatusHistory.changed_at.desc())
+    
+    # Get total count
+    total = history_query.count()
+    
+    # Get paginated results
+    history_items = history_query.limit(page_size).offset(offset).all()
+    
+    return LeadStatusHistoryListResponse(
+        items=history_items,
+        total=total,
+        page=page,
+        page_size=page_size,
+    )
+
+
 # ===== Lead-Scoped Consultation Endpoints =====
 
 @router.post("/{lead_id}/consultations", response_model=ConsultationRead, status_code=status.HTTP_201_CREATED)
@@ -330,3 +381,42 @@ def create_consultation_for_lead(
     db.refresh(consultation)
     
     return consultation
+
+
+@router.get("/{lead_id}/consultations", response_model=ConsultationListResponse)
+def list_consultations_for_lead(
+    lead_id: int,
+    db: Session = Depends(get_db),
+    user: Dict[str, Any] = Depends(require_permission("sales:leads")),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+):
+    """
+    List all consultations for a lead. Only the lead owner can view.
+    """
+    current_user_id = user.get("user_id")
+    
+    # Verify lead exists and user owns it
+    lead = get_lead_by_id(db, lead_id)
+    if not lead:
+        raise HTTPException(status_code=404, detail="Lead not found")
+    
+    if lead.assigned_sales_user_id != current_user_id:
+        raise HTTPException(status_code=403, detail="Only the lead owner can view consultations")
+    
+    total = db.query(ConsultationBooking).filter(ConsultationBooking.lead_id == lead_id).count()
+    consultations = (
+        db.query(ConsultationBooking)
+        .filter(ConsultationBooking.lead_id == lead_id)
+        .order_by(ConsultationBooking.scheduled_at.desc())
+        .offset((page - 1) * page_size)
+        .limit(page_size)
+        .all()
+    )
+    
+    return ConsultationListResponse(
+        items=consultations,
+        total=total,
+        page=page,
+        page_size=page_size,
+    )

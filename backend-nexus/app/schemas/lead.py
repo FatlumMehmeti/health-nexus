@@ -116,13 +116,36 @@ class LeadStatusPublic(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class LeadStatusHistoryItem(BaseModel):
+    """Individual status transition record."""
+    
+    id: int
+    lead_id: int
+    old_status: LeadStatus
+    new_status: LeadStatus
+    changed_by_user_id: int
+    changed_at: datetime
+    reason: Optional[str] = None
+    
+    model_config = ConfigDict(from_attributes=True)
+
+
+class LeadStatusHistoryListResponse(BaseModel):
+    """Paginated response for lead status history."""
+    
+    items: List[LeadStatusHistoryItem]
+    total: int
+    page: int
+    page_size: int
+
+
 # ===== Consultation Schemas =====
 
 class ConsultationCreate(BaseModel):
     """Request schema for creating a consultation booking."""
     
     scheduled_at: datetime = Field(..., description="Date and time when the consultation will occur")
-    duration_minutes: int = Field(..., description="Duration of the consultation in minutes")
+    duration_minutes: int = Field(..., gt=0, description="Duration of the consultation in minutes (must be greater than 0)")
     location: str = Field(..., description="Meeting location or platform (e.g., 'Google Meet', 'Zoom', 'Phone Call', 'Clinic Office')")
     meeting_link: Optional[str] = Field(None, description="URL for online meeting (optional, use for virtual consultations)")
 
