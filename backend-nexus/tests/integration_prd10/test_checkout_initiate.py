@@ -2,6 +2,8 @@
 PRD-10 integration tests: Checkout initiation, idempotency, and payment intent flow.
 """
 
+import json
+
 import pytest
 
 from app.models.enrollment import Enrollment, EnrollmentStatus
@@ -673,6 +675,81 @@ def test_stripe_webhook_marks_order_payment_captured_and_order_paid(
 
 
 @pytest.mark.prd10
+def test_stripe_webhook_missing_signature_header_is_rejected(
+    prd10_client,
+):
+    event = {
+        "id": "evt_missing_signature",
+        "type": "payment_intent.succeeded",
+        "data": {"object": {"id": "pi_missing_signature"}},
+    }
+
+    webhook_resp = prd10_client.post(
+        "/api/checkout/webhook/stripe",
+        json=event,
+    )
+
+    assert webhook_resp.status_code == 400, (webhook_resp.status_code, webhook_resp.text)
+    body = webhook_resp.json()
+    assert body["error"]["code"] == "VALIDATION_ERROR"
+    assert "Stripe-Signature" in body["error"]["message"]
+
+
+@pytest.mark.prd10
+def test_stripe_webhook_invalid_payload_is_rejected(
+    prd10_client,
+):
+    webhook_resp = prd10_client.post(
+        "/api/checkout/webhook/stripe",
+        content=b"{not-valid-json",
+        headers={"Stripe-Signature": "t=stripe,v1=fake", "Content-Type": "application/json"},
+    )
+
+    assert webhook_resp.status_code == 400, (webhook_resp.status_code, webhook_resp.text)
+    body = webhook_resp.json()
+    assert body["error"]["code"] == "VALIDATION_ERROR"
+    assert "Invalid Stripe webhook payload" in body["error"]["message"]
+
+
+@pytest.mark.prd10
+def test_stripe_webhook_invalid_signature_is_rejected(
+    prd10_client,
+    monkeypatch,
+):
+    class FakeSignatureVerificationError(Exception):
+        pass
+
+    def fake_construct_event(payload, sig_header, secret):
+        raise FakeSignatureVerificationError("signature mismatch")
+
+    monkeypatch.setattr(
+        "app.services.payment_service.stripe.error.SignatureVerificationError",
+        FakeSignatureVerificationError,
+    )
+    monkeypatch.setattr(
+        "app.services.payment_service.stripe.Webhook.construct_event",
+        fake_construct_event,
+    )
+
+    webhook_resp = prd10_client.post(
+        "/api/checkout/webhook/stripe",
+        content=json.dumps(
+            {
+                "id": "evt_invalid_signature",
+                "type": "payment_intent.succeeded",
+                "data": {"object": {"id": "pi_invalid_signature"}},
+            }
+        ).encode("utf-8"),
+        headers={"Stripe-Signature": "t=stripe,v1=bad", "Content-Type": "application/json"},
+    )
+
+    assert webhook_resp.status_code == 400, (webhook_resp.status_code, webhook_resp.text)
+    body = webhook_resp.json()
+    assert body["error"]["code"] == "FORBIDDEN"
+    assert "Invalid Stripe webhook signature" in body["error"]["message"]
+
+
+@pytest.mark.prd10
 def test_stripe_webhook_activates_enrollment_on_successful_payment(
     prd10_client,
     db_session,
@@ -804,6 +881,272 @@ def test_stripe_webhook_activates_tenant_subscription_on_successful_payment(
     assert tenant_subscription.status.value == "ACTIVE"
     assert tenant_subscription.activated_at is not None
     assert tenant_subscription.expires_at is not None
+
+
+@pytest.mark.prd10
+def test_stripe_webhook_replay_with_same_event_id_is_deduplicated(
+    prd10_client,
+    db_session,
+    tenant_a,
+    role_patient,
+):
+    reg = register_client_via_api(
+        prd10_client,
+        tenant_a.id,
+        email="patient-webhook-dedup@prd10.example.com",
+        password="PassPRD10!",
+        db_session=db_session,
+        role=role_patient,
+    )
+    auth = login_client(prd10_client, "patient-webhook-dedup@prd10.example.com", "PassPRD10!")
+    order = create_order_in_db(
+        db_session,
+        tenant_id=tenant_a.id,
+        patient_user_id=reg["user_id"],
+        total_amount=20.0,
+        status=OrderStatus.PENDING,
+    )
+
+    init_resp = checkout_initiate_via_api(
+        prd10_client,
+        order_id=order.id,
+        idempotency_key="key-webhook-dedup-001",
+        auth_headers=auth,
+    )
+    assert init_resp.status_code == 200, (init_resp.status_code, init_resp.text)
+    payment_id = init_resp.json()["payment_id"]
+    intent_id = init_resp.json()["stripe_payment_intent_id"]
+
+    event = {
+        "id": "evt_test_dedup",
+        "type": "payment_intent.succeeded",
+        "data": {"object": {"id": intent_id}},
+    }
+    first_resp = prd10_client.post(
+        "/api/checkout/webhook/stripe",
+        json=event,
+        headers={"Stripe-Signature": "t=stripe,v1=fake"},
+    )
+    assert first_resp.status_code == 200, (first_resp.status_code, first_resp.text)
+
+    second_resp = prd10_client.post(
+        "/api/checkout/webhook/stripe",
+        json=event,
+        headers={"Stripe-Signature": "t=stripe,v1=fake"},
+    )
+    assert second_resp.status_code == 200, (second_resp.status_code, second_resp.text)
+    second_body = second_resp.json()
+    assert second_body["processed"] is True
+    assert second_body["reason"] == "already_processed"
+
+    payment = db_session.query(Payment).filter(Payment.payment_id == payment_id).first()
+    db_session.refresh(payment)
+    db_session.refresh(order)
+
+    assert payment.status.value == "CAPTURED"
+    assert payment.external_event_id == "evt_test_dedup"
+    assert order.status.value == "PAID"
+
+
+@pytest.mark.prd10
+def test_stripe_webhook_out_of_order_failure_after_capture_is_ignored(
+    prd10_client,
+    db_session,
+    tenant_a,
+    role_patient,
+):
+    reg = register_client_via_api(
+        prd10_client,
+        tenant_a.id,
+        email="patient-webhook-ordering@prd10.example.com",
+        password="PassPRD10!",
+        db_session=db_session,
+        role=role_patient,
+    )
+    auth = login_client(prd10_client, "patient-webhook-ordering@prd10.example.com", "PassPRD10!")
+    order = create_order_in_db(
+        db_session,
+        tenant_id=tenant_a.id,
+        patient_user_id=reg["user_id"],
+        total_amount=26.0,
+        status=OrderStatus.PENDING,
+    )
+
+    init_resp = checkout_initiate_via_api(
+        prd10_client,
+        order_id=order.id,
+        idempotency_key="key-webhook-ordering-001",
+        auth_headers=auth,
+    )
+    assert init_resp.status_code == 200, (init_resp.status_code, init_resp.text)
+    payment_id = init_resp.json()["payment_id"]
+    intent_id = init_resp.json()["stripe_payment_intent_id"]
+
+    success_resp = prd10_client.post(
+        "/api/checkout/webhook/stripe",
+        json={
+            "id": "evt_test_ordering_success",
+            "type": "payment_intent.succeeded",
+            "data": {"object": {"id": intent_id}},
+        },
+        headers={"Stripe-Signature": "t=stripe,v1=fake"},
+    )
+    assert success_resp.status_code == 200, (success_resp.status_code, success_resp.text)
+
+    failed_resp = prd10_client.post(
+        "/api/checkout/webhook/stripe",
+        json={
+            "id": "evt_test_ordering_failed",
+            "type": "payment_intent.payment_failed",
+            "data": {"object": {"id": intent_id, "last_payment_error": {"message": "late fail"}}},
+        },
+        headers={"Stripe-Signature": "t=stripe,v1=fake"},
+    )
+    assert failed_resp.status_code == 200, (failed_resp.status_code, failed_resp.text)
+    failed_body = failed_resp.json()
+    assert failed_body["processed"] is False
+    assert failed_body["reason"] == "transition_ignored"
+
+    payment = db_session.query(Payment).filter(Payment.payment_id == payment_id).first()
+    db_session.refresh(payment)
+    db_session.refresh(order)
+
+    assert payment.status.value == "CAPTURED"
+    assert payment.external_event_id == "evt_test_ordering_success"
+    assert "out-of-order webhook event" in (payment.audit_notes or "").lower()
+    assert order.status.value == "PAID"
+
+
+@pytest.mark.prd10
+def test_stripe_dispute_webhook_suspends_active_enrollment(
+    prd10_client,
+    db_session,
+    tenant_a,
+    role_patient,
+):
+    reg = register_client_via_api(
+        prd10_client,
+        tenant_a.id,
+        email="patient-webhook-dispute-enrollment@prd10.example.com",
+        password="PassPRD10!",
+        db_session=db_session,
+        role=role_patient,
+    )
+
+    user_plan = UserTenantPlan(
+        tenant_id=tenant_a.id,
+        name="PRD10 Dispute Enrollment Plan",
+        description="Plan for webhook dispute enrollment test",
+        price=55.00,
+        duration=30,
+        max_appointments=10,
+        max_consultations=10,
+        is_active=True,
+    )
+    db_session.add(user_plan)
+    db_session.flush()
+
+    enrollment = Enrollment(
+        tenant_id=tenant_a.id,
+        patient_user_id=reg["user_id"],
+        user_tenant_plan_id=user_plan.id,
+        created_by=reg["user_id"],
+        status=EnrollmentStatus.ACTIVE,
+    )
+    db_session.add(enrollment)
+    db_session.flush()
+
+    payment = Payment(
+        payment_type=PaymentType.ENROLLMENT,
+        price=55.00,
+        tenant_id=tenant_a.id,
+        reference_id=enrollment.id,
+        reference_type="enrollment",
+        idempotency_key="key-webhook-dispute-enrollment-001",
+        status=PaymentStatus.CAPTURED,
+        stripe_payment_intent_id="pi_test_prd10_dispute_enrollment",
+    )
+    db_session.add(payment)
+    db_session.commit()
+
+    webhook_resp = prd10_client.post(
+        "/api/checkout/webhook/stripe",
+        json={
+            "id": "evt_test_dispute_enrollment",
+            "type": "charge.dispute.created",
+            "data": {"object": {"id": "dp_enrollment", "payment_intent": payment.stripe_payment_intent_id}},
+        },
+        headers={"Stripe-Signature": "t=stripe,v1=fake"},
+    )
+    assert webhook_resp.status_code == 200, (webhook_resp.status_code, webhook_resp.text)
+    body = webhook_resp.json()
+    assert body["processed"] is True
+    assert body["payment_status"] == "DISPUTED"
+
+    db_session.refresh(payment)
+    db_session.refresh(enrollment)
+
+    assert payment.status.value == "DISPUTED"
+    assert enrollment.status.value == "CANCELLED"
+    assert enrollment.cancelled_at is not None
+
+
+@pytest.mark.prd10
+def test_stripe_dispute_webhook_expires_active_tenant_subscription(
+    prd10_client,
+    db_session,
+    tenant_a,
+):
+    subscription_plan = SubscriptionPlan(
+        name="PRD10 Dispute Tenant Plan",
+        price=250.00,
+        duration=30,
+        max_doctors=8,
+        max_patients=250,
+        max_departments=12,
+    )
+    db_session.add(subscription_plan)
+    db_session.flush()
+
+    tenant_subscription = TenantSubscription(
+        tenant_id=tenant_a.id,
+        subscription_plan_id=subscription_plan.id,
+        status=SubscriptionStatus.ACTIVE,
+    )
+    db_session.add(tenant_subscription)
+    db_session.flush()
+
+    payment = Payment(
+        payment_type=PaymentType.TENANT_SUBSCRIPTION,
+        price=250.00,
+        tenant_id=tenant_a.id,
+        reference_id=tenant_subscription.id,
+        reference_type="tenant_subscription",
+        idempotency_key="key-webhook-dispute-subscription-001",
+        status=PaymentStatus.CAPTURED,
+        stripe_payment_intent_id="pi_test_prd10_dispute_subscription",
+    )
+    db_session.add(payment)
+    db_session.commit()
+
+    webhook_resp = prd10_client.post(
+        "/api/checkout/webhook/stripe",
+        json={
+            "id": "evt_test_dispute_subscription",
+            "type": "charge.dispute.created",
+            "data": {"object": {"id": "dp_subscription", "payment_intent": payment.stripe_payment_intent_id}},
+        },
+        headers={"Stripe-Signature": "t=stripe,v1=fake"},
+    )
+    assert webhook_resp.status_code == 200, (webhook_resp.status_code, webhook_resp.text)
+
+    db_session.refresh(payment)
+    db_session.refresh(tenant_subscription)
+
+    assert payment.status.value == "DISPUTED"
+    assert tenant_subscription.status.value == "EXPIRED"
+    assert tenant_subscription.cancelled_at is not None
+    assert str(payment.payment_id) in (tenant_subscription.cancellation_reason or "")
 
 
 
