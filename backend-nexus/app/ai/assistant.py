@@ -33,6 +33,7 @@ class AssistantContext:
     tenant_id: int | None = None
     workflow: str | None = None
     recent_actions: list[str] | None = None
+    navigation_links: list[str] | None = None
 
 
 @lru_cache(maxsize=1)
@@ -51,6 +52,13 @@ def _format_recent_actions(actions: Iterable[str] | None) -> str:
     return ", ".join(cleaned) if cleaned else "None"
 
 
+def _format_navigation_links(links: Iterable[str] | None) -> str:
+    if not links:
+        return "None"
+    cleaned = [link.strip() for link in links if link.strip()]
+    return ", ".join(cleaned) if cleaned else "None"
+
+
 def build_system_prompt(context: AssistantContext) -> str:
     knowledge = load_knowledge_bundle()
     return f"""
@@ -66,12 +74,17 @@ Current user context:
 - Current page: {context.page or "Unknown"}
 - Current workflow: {context.workflow or "Unknown"}
 - Recent actions: {_format_recent_actions(context.recent_actions)}
+- Navigation links: {_format_navigation_links(context.navigation_links)}
 
 Response rules:
 - Only answer questions about Health Nexus.
 - Keep answers concise and practical.
 - Prefer numbered steps for workflows.
 - Respect role boundaries; do not suggest actions the role should not perform.
+- When navigation is relevant, include the most useful internal route paths in backticks, for example `/login` or `/appointments/book`.
+- Only use routes that exist in the product knowledge or provided navigation links.
+- Never invent placeholder routes or bracket notation such as `/tenants/[tenant-id]`.
+- If a tenant-specific page is needed and the slug is unknown, direct the user to `/tenants` first.
 - If the request is outside Health Nexus or the answer is uncertain, reply exactly with:
   {FALLBACK_MESSAGE}
 """.strip()

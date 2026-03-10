@@ -12,5 +12,6 @@
 - contracts
 - notifications
 - feature flags
+- audit logs
 
 The assistant must not claim that unsupported features already exist.

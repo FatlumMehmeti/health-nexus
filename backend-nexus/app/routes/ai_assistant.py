@@ -14,6 +14,7 @@ class AssistantChatRequest(BaseModel):
     page: str | None = Field(default=None, max_length=200)
     workflow: str | None = Field(default=None, max_length=200)
     recent_actions: list[str] | None = Field(default=None, max_length=10)
+    navigation_links: list[str] | None = Field(default=None, max_length=20)
 
 
 class AssistantChatResponse(BaseModel):
@@ -32,6 +33,7 @@ async def chat_with_assistant(
             page=body.page,
             workflow=body.workflow,
             recent_actions=body.recent_actions,
+            navigation_links=body.navigation_links,
             role=user.get("role") if user else None,
             tenant_id=user.get("tenant_id") if user else None,
         ),

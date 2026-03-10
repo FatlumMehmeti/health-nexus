@@ -9,5 +9,6 @@ The platform supports:
 - tenant-scoped plans, products, departments, and services
 - contracts and provider eligibility workflows
 - superadmin feature flags and plan entitlements
+- superadmin audit logs
 
 Health Nexus uses synthetic data only in this capstone environment.

@@ -5,6 +5,7 @@ export interface AssistantChatPayload {
   page?: string;
   workflow?: string;
   recent_actions?: string[];
+  navigation_links?: string[];
 }
 
 export interface AssistantChatResponse {
