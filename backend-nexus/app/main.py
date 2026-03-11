@@ -33,6 +33,8 @@ from app.routes import (
     sales_lead_router,
     consultation_bookings_router,
     feature_flag_router,
+    offer_router,
+    recommendation_router,
     ai_assistant_router,
     payment_router,
 )
@@ -113,6 +115,8 @@ app.include_router(notification_router)
 app.include_router(sales_lead_router, prefix="/api")
 app.include_router(consultation_bookings_router, prefix="/api")
 app.include_router(feature_flag_router)
+app.include_router(offer_router)
+app.include_router(recommendation_router)
 app.include_router(ai_assistant_router)
 app.include_router(payment_router, prefix="/api")
 
