@@ -19,6 +19,8 @@ from .doctor_appointment import router as doctor_appointment_router
 from .patient_appointment import router as patient_appointment_router
 from .appointment_status_history import router as appointment_status_history_router
 from .notification import router as notification_router
+from .sales_lead import router as sales_lead_router
+from .consultation_bookings import router as consultation_bookings_router
 from .feature_flag import router as feature_flag_router
 from .ai_assistant import router as ai_assistant_router
 from .payment import router as payment_router
@@ -46,6 +48,8 @@ __all__ = [
     "patient_appointment_router",
     "appointment_status_history_router",
     "notification_router",
+    "sales_lead_router",
+    "consultation_bookings_router",
     "feature_flag_router",
     "ai_assistant_router",
     "payment_router",

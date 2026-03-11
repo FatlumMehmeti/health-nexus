@@ -146,6 +146,35 @@ export function AppSidebar({
     const baseItems = navMainAll.filter(
       (item) => !item.routeKey || can(userWithRole, item.routeKey)
     );
+    /**
+     * Sales-specific nav customization:
+     * - Adds Leads and My Leads quick entries.
+     * - Keeps Profile at the end for a consistent "work first, account second" flow.
+     */
+    if (role === 'SALES') {
+      const profileItem = baseItems.find(
+        (item) => item.url === '/dashboard/profile'
+      );
+      const itemsWithoutProfile = baseItems.filter(
+        (item) => item.url !== '/dashboard/profile'
+      );
+      return [
+        ...itemsWithoutProfile,
+        {
+          title: 'Leads',
+          url: '/dashboard/sales/leads',
+          icon: IconFolder,
+          routeKey: 'DASHBOARD_SALES_LEADS',
+        },
+        {
+          title: 'My Leads',
+          url: '/dashboard/sales/my-leads',
+          icon: IconReport,
+          routeKey: 'DASHBOARD_SALES_MY_LEADS',
+        },
+        ...(profileItem ? [profileItem] : []),
+      ];
+    }
     if (role === 'DOCTOR' && user?.id) {
       baseItems.push({
         title: 'My Contract',

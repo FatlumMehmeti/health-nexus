@@ -44,6 +44,10 @@ PERMISSIONS_MATRIX: Dict[tuple[str, str], set[str]] = {
         "sales",
         "client",
     },
+    # Sales lead management
+    ("GET", "sales:leads"): {"super_admin", "sales"},
+    ("POST", "sales:leads"): {"super_admin", "sales"},
+    ("PATCH", "sales:leads"): {"super_admin", "sales"},
 }
 
 # Create pwd_context using CryptContext for bcrypt hashing

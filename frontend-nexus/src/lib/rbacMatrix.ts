@@ -24,7 +24,11 @@ export type RouteKey =
   | 'DASHBOARD_AUDIT_LOGS'
   | 'DASHBOARD_ROLES'
   | 'APP_TENANT_SELECTOR'
-  | 'DASHBOARD_DOCTOR_APPOINTMENTS';
+  | 'DASHBOARD_DOCTOR_APPOINTMENTS'
+  /** Sales pipeline list (all visible leads for sales/superadmin). */
+  | 'DASHBOARD_SALES_LEADS'
+  /** Sales owned-leads list ("My Leads"). */
+  | 'DASHBOARD_SALES_MY_LEADS';
 
 /** Roles that can access the app tenant selector (/tenants). Add PATIENT here if the project has that role. */
 function appTenantSelectorRoles(): Role[] {
@@ -50,6 +54,8 @@ const rbacMatrix: Record<RouteKey, Role[]> = {
   DASHBOARD_ROLES: ['SUPER_ADMIN'],
   APP_TENANT_SELECTOR: appTenantSelectorRoles(),
   DASHBOARD_DOCTOR_APPOINTMENTS: ['DOCTOR'],
+  DASHBOARD_SALES_LEADS: ['SALES', 'SUPER_ADMIN'],
+  DASHBOARD_SALES_MY_LEADS: ['SALES', 'SUPER_ADMIN'],
 };
 
 export function canAccess(
