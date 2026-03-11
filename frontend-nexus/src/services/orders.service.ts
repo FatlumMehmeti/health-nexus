@@ -80,6 +80,10 @@ export const ordersService = {
     apiFetch<Order>(`/api/orders/${orderId}/refund`, {
       method: 'PATCH',
     }),
+  markOrderPaid: (orderId: number) =>
+    apiFetch<Order>(`/api/orders/${orderId}/mark-paid`, {
+      method: 'PATCH',
+    }),
 };
 
 export function useOrders(params: {
@@ -137,6 +141,19 @@ export function useRefundOrder() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ordersService.refundOrder,
+    onSuccess: (order) => {
+      invalidateOrders(queryClient);
+      void queryClient.invalidateQueries({
+        queryKey: orderQueryKeys.detail(order.id),
+      });
+    },
+  });
+}
+
+export function useMarkOrderPaid() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ordersService.markOrderPaid,
     onSuccess: (order) => {
       invalidateOrders(queryClient);
       void queryClient.invalidateQueries({

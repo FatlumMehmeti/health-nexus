@@ -27,6 +27,7 @@ import { isApiError } from '@/lib/api-client';
 import { requireAuth } from '@/lib/guards/requireAuth';
 import {
   useCancelOrder,
+  useMarkOrderPaid,
   useOrders,
   useRefundOrder,
   type Order,
@@ -63,6 +64,7 @@ function TenantOrdersPage() {
   });
   const cancelOrder = useCancelOrder();
   const refundOrder = useRefundOrder();
+  const markPaid = useMarkOrderPaid();
 
   const orders = useMemo(
     () => ordersQuery.data?.items ?? [],
@@ -76,6 +78,20 @@ function TenantOrdersPage() {
       if (selectedOrder?.id === orderId) setSelectedOrder(null);
     } catch (error) {
       toast.error('Failed to cancel order', {
+        description: isApiError(error)
+          ? error.displayMessage
+          : 'Request failed',
+      });
+    }
+  };
+
+  const handleMarkPaid = async (orderId: number) => {
+    try {
+      await markPaid.mutateAsync(orderId);
+      toast.success('Order marked as paid');
+      if (selectedOrder?.id === orderId) setSelectedOrder(null);
+    } catch (error) {
+      toast.error('Failed to mark order as paid', {
         description: isApiError(error)
           ? error.displayMessage
           : 'Request failed',
@@ -198,6 +214,15 @@ function TenantOrdersPage() {
                           >
                             View
                           </Button>
+                          {order.status === 'PENDING' ? (
+                            <Button
+                              size="sm"
+                              onClick={() => handleMarkPaid(order.id)}
+                              disabled={markPaid.isPending}
+                            >
+                              Mark as Paid
+                            </Button>
+                          ) : null}
                           {order.status !== 'PAID' &&
                           order.status !== 'CANCELLED' ? (
                             <Button

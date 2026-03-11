@@ -143,9 +143,8 @@ def create_order(
     patient_user_id = _require_client(user)
     _ensure_patient_membership(db, payload.tenant_id, patient_user_id)
 
-    cart = (
+    locked_cart = (
         db.query(Cart)
-        .options(joinedload(Cart.items).joinedload(CartItem.product))
         .filter(
             Cart.tenant_id == payload.tenant_id,
             Cart.patient_user_id == patient_user_id,
@@ -153,6 +152,15 @@ def create_order(
         )
         .order_by(Cart.id.desc())
         .with_for_update()
+        .first()
+    )
+    if locked_cart is None:
+        raise HTTPException(status_code=400, detail="Active cart is empty")
+
+    cart = (
+        db.query(Cart)
+        .options(joinedload(Cart.items).joinedload(CartItem.product))
+        .filter(Cart.id == locked_cart.id)
         .first()
     )
     if cart is None or not cart.items:
@@ -286,6 +294,31 @@ def cancel_order(
             product.stock_quantity += item.quantity
 
     order.status = OrderStatus.CANCELLED
+    db.commit()
+    return _serialize_order(_load_order(db, order.id))
+
+
+@router.patch("/{order_id}/mark-paid", response_model=OrderResponse)
+def mark_order_paid(
+    order_id: int,
+    db: Session = Depends(get_db),
+    user: Dict[str, Any] = Depends(get_current_user),
+):
+    """Manually mark a PENDING order as PAID (tenant manager / testing only — bypasses payment)."""
+    role = _normalize_role(user)
+    if role not in {"TENANT_MANAGER", "SUPER_ADMIN"}:
+        raise HTTPException(status_code=403, detail="Insufficient permissions")
+
+    order = _load_order(db, order_id)
+    _enforce_order_access(order, user)
+
+    if order.status != OrderStatus.PENDING:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Only PENDING orders can be marked as paid (current status: {order.status.value})",
+        )
+
+    order.status = OrderStatus.PAID
     db.commit()
     return _serialize_order(_load_order(db, order.id))
 
