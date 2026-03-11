@@ -404,7 +404,11 @@ def get_tenant_details(
     return details
 
 
-@router.put("/details", response_model=TenantDetailsRead, dependencies=[Depends(require_feature("custom_branding"))])
+@router.put(
+    "/details",
+    response_model=TenantDetailsRead,
+    dependencies=[Depends(require_feature("custom_branding"))],
+)
 async def upsert_tenant_details(
     logo: UploadFile | None = File(default=None),
     image: UploadFile | None = File(default=None),

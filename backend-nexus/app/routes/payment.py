@@ -1,6 +1,7 @@
 """
 Checkout initiation and payment intent flow (PRD-10).
 """
+
 from __future__ import annotations
 
 import logging
@@ -24,7 +25,6 @@ from app.services.payment_service import (
     process_stripe_webhook,
 )
 from app.models.payment import PaymentStatus
-
 
 logger = logging.getLogger(__name__)
 
@@ -120,9 +120,7 @@ def checkout_initiate(
         return _error_response(exc)
 
     status_value = (
-        payment.status.value
-        if isinstance(payment.status, PaymentStatus)
-        else str(payment.status)
+        payment.status.value if isinstance(payment.status, PaymentStatus) else str(payment.status)
     )
     return CheckoutInitiateResponse(
         payment_id=payment.payment_id,

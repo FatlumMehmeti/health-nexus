@@ -384,7 +384,9 @@ describe('TenantFeatureGuard component', () => {
     expect(
       screen.getByText('Always visible to doctors')
     ).toBeInTheDocument();
-    expect(screen.queryByText('Hidden for plans')).not.toBeInTheDocument();
+    expect(
+      screen.queryByText('Hidden for plans')
+    ).not.toBeInTheDocument();
     expect(global.fetch).not.toHaveBeenCalled();
   });
 });
