@@ -21,6 +21,9 @@ from .appointment_status_history import router as appointment_status_history_rou
 from .notification import router as notification_router
 from .sales_lead import router as sales_lead_router
 from .consultation_bookings import router as consultation_bookings_router
+from .feature_flag import router as feature_flag_router
+from .ai_assistant import router as ai_assistant_router
+from .payment import router as payment_router
 
 __all__ = [
     "role_router",
@@ -47,4 +50,7 @@ __all__ = [
     "notification_router",
     "sales_lead_router",
     "consultation_bookings_router",
+    "feature_flag_router",
+    "ai_assistant_router",
+    "payment_router",
 ]

@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.auth.auth_utils import get_current_user, require_tenant_from_token
 from app.auth.auth_utils import require_tenant_from_token
+from app.routes.feature_flag import require_feature
 from app.db import get_db
 from app.models.patient import Patient
 from app.models.tenant import Tenant, TenantStatus
@@ -403,7 +404,7 @@ def get_tenant_details(
     return details
 
 
-@router.put("/details", response_model=TenantDetailsRead)
+@router.put("/details", response_model=TenantDetailsRead, dependencies=[Depends(require_feature("custom_branding"))])
 async def upsert_tenant_details(
     logo: UploadFile | None = File(default=None),
     image: UploadFile | None = File(default=None),

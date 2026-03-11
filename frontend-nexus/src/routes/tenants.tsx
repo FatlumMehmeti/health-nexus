@@ -37,7 +37,7 @@ function TenantSelectorPage() {
       <PublicAuthHeader />
 
       <main className="container mx-auto flex-1 px-4 py-6 sm:px-6 sm:py-10">
-        <section className="mx-auto max-w-5xl space-y-6">
+        <section className="mx-auto container space-y-6">
           <p className="text-sm text-muted-foreground sm:text-base">
             Select which organization you want to use with Health
             Nexus. You can switch tenants at any time.

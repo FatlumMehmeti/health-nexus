@@ -11,10 +11,11 @@ logger = logging.getLogger(__name__)
 
 
 security = HTTPBearer()
+optional_security = HTTPBearer(auto_error=False)
 
 SECRET_KEY = "secret"
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
+ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7
 REFRESH_TOKEN_EXPIRE_DAYS = 7
 
 # Role -> list of permission identifiers (for documentation / tooling)
@@ -171,6 +172,18 @@ def get_current_user(
     except TokenError:
         # If verification fails, deny access with an Unauthorized response
         raise HTTPException(status_code=401, detail="Invalid or expired token")
+
+
+def get_current_user_optional(
+    credentials: HTTPAuthorizationCredentials | None = Depends(optional_security),
+) -> Dict[str, Any] | None:
+    if credentials is None:
+        return None
+
+    try:
+        return verify_token(credentials.credentials)
+    except TokenError:
+        return None
 
 
 def require_role(role: str):

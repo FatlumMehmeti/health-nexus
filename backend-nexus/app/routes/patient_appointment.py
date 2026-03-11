@@ -21,6 +21,7 @@ from app.routes.appointment import (
     _require_patient,
     book_appointment,
 )
+from app.routes.feature_flag import require_feature
 from app.models.notification import NotificationType
 from app.services.notification_service import create_notification
 
@@ -128,7 +129,9 @@ def list_tenant_doctors(
     ]
 
 
-@router.post("/book", response_model=dict)
+@router.post(
+    "/book", response_model=dict, dependencies=[Depends(require_feature("basic_appointments"))]
+)
 def book_appointment_endpoint(
     payload: AppointmentCreate,
     db: Session = Depends(get_db),

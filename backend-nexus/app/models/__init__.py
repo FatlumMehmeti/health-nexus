@@ -37,6 +37,7 @@ from .audit_event import AuditEvent
 from .offer_delivery import OfferDelivery
 from .contract import Contract, ContractStatus
 from .notification import Notification, NotificationType
+from .feature_flag import FeatureFlag
 
 # Backward compatibility alias for legacy imports.
 UserTenantMembership = Enrollment
@@ -88,4 +89,5 @@ __all__ = [
     "TenantAuditLog",
     "Contract",
     "ContractStatus",
+    "FeatureFlag",
 ]
