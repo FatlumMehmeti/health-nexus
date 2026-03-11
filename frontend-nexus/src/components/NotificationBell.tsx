@@ -12,7 +12,6 @@ import { formatDistanceToNow } from 'date-fns';
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
-import { dispatchTenantSubscriptionUpdated } from '@/lib/tenant-subscription-events';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -22,6 +21,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { dispatchTenantSubscriptionUpdated } from '@/lib/tenant-subscription-events';
 import {
   invalidateNotifications,
   useMarkAllRead,

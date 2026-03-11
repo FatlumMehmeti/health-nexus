@@ -1,8 +1,8 @@
 import { PlanCard } from '@/components/molecules/plan-card';
 import { PaymentFlowNotice } from '@/components/PaymentFlowNotice';
 import { StripePaymentModal } from '@/components/StripePaymentModal';
-import { TENANT_SUBSCRIPTION_UPDATED_EVENT } from '@/lib/tenant-subscription-events';
 import { isApiError } from '@/lib/api-client';
+import { TENANT_SUBSCRIPTION_UPDATED_EVENT } from '@/lib/tenant-subscription-events';
 import {
   clearCheckoutRecovery,
   loadCheckoutRecovery,
