@@ -226,9 +226,13 @@ def register_client_in_tenant(
     authenticated_user = get_authenticated_user_if_present(request)
     if authenticated_user is not None:
         role = str(authenticated_user.get("role") or "").strip().upper()
+        authenticated_email = str(authenticated_user.get("email") or "").strip().lower()
+        payload_email = (payload.email or "").strip().lower()
         user_tenant_id = authenticated_user.get("tenant_id")
         # CLIENT users can register themselves under multiple approved tenants.
         # Tenant-scoped staff should still be limited to their own tenant.
+        if role in {"CLIENT", "PATIENT"} and authenticated_email and payload_email != authenticated_email:
+            raise HTTPException(status_code=403, detail="Email does not match authenticated user")
         if role not in {"", "CLIENT", "PATIENT", "SUPER_ADMIN"} and user_tenant_id is not None:
             try:
                 if int(user_tenant_id) != tenant_id:

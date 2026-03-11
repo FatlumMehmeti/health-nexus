@@ -108,7 +108,7 @@ function resolveHydratedTenantId(
   return normalizedFallbackTenantId;
 }
 
-const initialState: Pick<
+function createInitialAuthState(): Pick<
   AuthState,
   | 'status'
   | 'user'
@@ -118,20 +118,27 @@ const initialState: Pick<
   | 'role'
   | 'tenantId'
   | 'authErrorReason'
-> = {
-  status: getAccessToken() ? 'loading' : 'unauthenticated',
-  user: undefined,
-  token: getAccessToken(),
-  isAuthenticated: false,
-  error: null,
-  role: undefined,
-  tenantId: safeGetSelectedTenantId(),
-  authErrorReason: null,
-};
+> {
+  const accessToken = getAccessToken();
+  return {
+    status: accessToken ? 'loading' : 'unauthenticated',
+    user: undefined,
+    token: accessToken,
+    isAuthenticated: false,
+    error: null,
+    role: undefined,
+    tenantId: safeGetSelectedTenantId(),
+    authErrorReason: null,
+  };
+}
+
+const initialState = createInitialAuthState();
 
 function clearedAuthState() {
   return {
-    ...initialState,
+    ...createInitialAuthState(),
+    status: 'unauthenticated' as const,
+    token: null,
     tenantId: undefined,
   };
 }

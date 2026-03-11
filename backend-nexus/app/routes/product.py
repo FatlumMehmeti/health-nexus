@@ -109,6 +109,8 @@ def list_products(
         query = query.order_by(Product.price.asc(), Product.product_id.asc())
     elif sort == "price_desc":
         query = query.order_by(Product.price.desc(), Product.product_id.desc())
+    else:
+        query = query.order_by(func.lower(Product.name).asc(), Product.product_id.asc())
     items = query.offset((page - 1) * size).limit(size).all()
     return ProductListResponse(items=items, page=page, page_size=size, total=total)
 
