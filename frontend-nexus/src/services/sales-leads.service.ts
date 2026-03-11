@@ -158,6 +158,12 @@ export interface LeadConsultationRead {
   created_at: string;
 }
 
+export type ConsultationStatus = LeadConsultationRead['status'];
+
+export interface SalesConsultationListItem extends LeadConsultationRead {
+  lead: SalesLeadRead | null;
+}
+
 export interface SalesLeadStatusHistoryItem {
   id: number;
   lead_id: number;
@@ -186,6 +192,11 @@ export interface ConsultationTransitionPayload {
   new_status: 'COMPLETED' | 'CANCELLED' | 'NO_SHOW';
   cancellation_reason?: string;
   cancelled_by_actor?: 'LEAD' | 'SALES';
+}
+
+export interface LeadFollowUpPayload {
+  next_action?: string | null;
+  next_action_due_at?: string | null;
 }
 
 export const salesLeadsService = {
@@ -280,6 +291,26 @@ export const salesLeadsService = {
     );
   },
 
+  listMyConsultations: (params: {
+    page?: number;
+    page_size?: number;
+    status?: ConsultationStatus;
+  }) => {
+    const q = new URLSearchParams({
+      page: String(params.page ?? 1),
+      page_size: String(params.page_size ?? 20),
+    });
+    if (params.status) q.set('status_filter', params.status);
+    return api.get<LeadConsultationListResponse>(
+      `/api/consultations/my-consultations?${q.toString()}`
+    );
+  },
+
+  getConsultation: (consultationId: number) =>
+    api.get<LeadConsultationRead>(
+      `/api/consultations/${consultationId}`
+    ),
+
   transitionConsultation: (
     consultationId: number,
     payload: ConsultationTransitionPayload
@@ -288,6 +319,18 @@ export const salesLeadsService = {
       `/api/consultations/${consultationId}/transition`,
       payload
     ),
+
+  updateLeadFollowUp: (
+    leadId: number,
+    payload: LeadFollowUpPayload
+  ) =>
+    api.patch<SalesLeadRead>(`/api/leads/${leadId}/follow-up`, {
+      next_action:
+        payload.next_action && payload.next_action.trim().length > 0
+          ? payload.next_action.trim()
+          : null,
+      next_action_due_at: payload.next_action_due_at || null,
+    }),
 
   getLeadStatusHistory: (leadId: number) =>
     api.get<SalesLeadStatusHistoryListResponse>(
@@ -344,11 +387,77 @@ export function useLeadStatusHistory(leadId: number | null) {
   });
 }
 
+export function useLeadConsultations(leadId: number | null) {
+  return useQuery({
+    queryKey: ['sales-lead-consultations', leadId],
+    queryFn: () =>
+      salesLeadsService.listLeadConsultations({
+        leadId: leadId!,
+        page: 1,
+        page_size: 50,
+      }),
+    enabled: leadId !== null,
+  });
+}
+
+export function useMyConsultations(params: {
+  page: number;
+  pageSize: number;
+  status?: ConsultationStatus;
+}) {
+  return useQuery({
+    queryKey: ['sales-consultations', params],
+    queryFn: async () => {
+      const response = await salesLeadsService.listMyConsultations({
+        page: params.page,
+        page_size: params.pageSize,
+        status: params.status,
+      });
+      const leadIds = Array.from(
+        new Set(response.items.map((item) => item.lead_id))
+      );
+      const leads = await Promise.all(
+        leadIds.map(async (leadId) => {
+          try {
+            return await salesLeadsService.getLead(leadId);
+          } catch {
+            return null;
+          }
+        })
+      );
+      const leadById = new Map(
+        leads
+          .filter((lead): lead is SalesLeadRead => lead !== null)
+          .map((lead) => [lead.id, lead])
+      );
+
+      return {
+        ...response,
+        items: response.items.map((item) => ({
+          ...item,
+          lead: leadById.get(item.lead_id) ?? null,
+        })),
+      } as {
+        items: SalesConsultationListItem[];
+        total: number;
+        page: number;
+        page_size: number;
+      };
+    },
+  });
+}
+
 function invalidateLeadQueries(
   queryClient: ReturnType<typeof useQueryClient>
 ) {
   queryClient.invalidateQueries({ queryKey: ['sales-leads'] });
   queryClient.invalidateQueries({ queryKey: ['sales-lead'] });
+  queryClient.invalidateQueries({
+    queryKey: ['sales-consultations'],
+  });
+  queryClient.invalidateQueries({
+    queryKey: ['sales-lead-consultations'],
+  });
   queryClient.invalidateQueries({
     queryKey: ['sales-lead-history'],
   });
@@ -404,6 +513,36 @@ export function useCreateLeadConsultation() {
   });
 }
 
+export function useTransitionConsultation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (params: {
+      consultationId: number;
+      payload: ConsultationTransitionPayload;
+    }) =>
+      salesLeadsService.transitionConsultation(
+        params.consultationId,
+        params.payload
+      ),
+    onSuccess: () => invalidateLeadQueries(queryClient),
+  });
+}
+
+export function useUpdateLeadFollowUp() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (params: {
+      leadId: number;
+      payload: LeadFollowUpPayload;
+    }) =>
+      salesLeadsService.updateLeadFollowUp(
+        params.leadId,
+        params.payload
+      ),
+    onSuccess: () => invalidateLeadQueries(queryClient),
+  });
+}
+
 export function useCompleteLatestLeadConsultation() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -413,12 +552,18 @@ export function useCompleteLatestLeadConsultation() {
         page: 1,
         page_size: 50,
       });
+      const existingCompleted = list.items.find(
+        (c) => c.status === 'COMPLETED'
+      );
+      if (existingCompleted) {
+        return existingCompleted;
+      }
       const latestScheduled = list.items.find(
         (c) => c.status === 'SCHEDULED'
       );
       if (!latestScheduled) {
         throw new Error(
-          `No SCHEDULED consultation booking found for lead ${leadId}`
+          `No scheduled consultation is available to complete for lead ${leadId}. Reschedule the consultation first or use an existing completed consultation record.`
         );
       }
       return salesLeadsService.transitionConsultation(
