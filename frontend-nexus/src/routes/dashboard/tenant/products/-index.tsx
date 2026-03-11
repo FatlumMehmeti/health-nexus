@@ -1,6 +1,7 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { resolveMediaUrl } from '@/lib/media-url';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   flexRender,
@@ -22,7 +23,6 @@ import {
   type Product,
 } from '@/services/products.service';
 import { useDialogStore } from '@/stores/use-dialog-store';
-import { useAuthStore } from '@/stores/auth.store';
 import { useMemo } from 'react';
 import { toast } from 'sonner';
 import {
@@ -35,12 +35,21 @@ import {
 } from '../-utils';
 import { ProductForm } from './forms/-product-form';
 
-export function ProductsManager() {
+interface ProductsManagerProps {
+  tenantId: number;
+}
+
+export function ProductsManager({
+  tenantId,
+}: ProductsManagerProps) {
   const { open: openDialog, close: closeDialog } = useDialogStore();
-  const tenantIdFromStore = useAuthStore((state) => state.tenantId);
   const currentTenantQuery = useProducts(
-    Number.isFinite(Number(tenantIdFromStore))
-      ? Number(tenantIdFromStore)
+    Number.isFinite(tenantId) && tenantId > 0
+      ? {
+          tenantId,
+          page: 1,
+          size: 100,
+        }
       : null
   );
   const products = currentTenantQuery.data?.items ?? [];
@@ -52,11 +61,29 @@ export function ProductsManager() {
         accessorKey: 'name',
         header: 'Name',
         cell: ({ row }) => (
-          <div>
-            <p className="font-medium">{row.original.name}</p>
-            <p className="max-w-md truncate text-xs text-muted-foreground">
-              {row.original.description || 'No description'}
-            </p>
+          <div className="flex items-center gap-3">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-md border bg-muted/40">
+              {row.original.image_url ? (
+                <img
+                  src={resolveMediaUrl(row.original.image_url) ?? ''}
+                  alt={row.original.name}
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <span className="text-[10px] uppercase text-muted-foreground">
+                  No image
+                </span>
+              )}
+            </div>
+            <div>
+              <p className="font-medium">{row.original.name}</p>
+              <p className="max-w-md truncate text-xs text-muted-foreground">
+                {row.original.description || 'No description'}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {row.original.category || 'Uncategorized'}
+              </p>
+            </div>
           </div>
         ),
       },
@@ -112,7 +139,7 @@ export function ProductsManager() {
   });
 
   function openCreateDialog() {
-    if (!tenantIdFromStore) {
+    if (!Number.isFinite(tenantId) || tenantId <= 0) {
       toast.error('Tenant context is missing');
       return;
     }
@@ -121,7 +148,7 @@ export function ProductsManager() {
       content: (
         <ProductForm
           mode="create"
-          tenantId={Number(tenantIdFromStore)}
+          tenantId={tenantId}
         />
       ),
     });

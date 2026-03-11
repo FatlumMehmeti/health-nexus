@@ -58,6 +58,56 @@ interface AuthState {
   loadProfile: () => Promise<void>;
 }
 
+const ACTIVE_TENANT_KEY = 'health-nexus.activeTenantId';
+
+function safeGetSelectedTenantId(): string | undefined {
+  try {
+    const value = globalThis.localStorage?.getItem(ACTIVE_TENANT_KEY);
+    return value && value.trim() ? value : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function safeSetSelectedTenantId(value: string | undefined) {
+  try {
+    if (!globalThis.localStorage) return;
+    if (value && value.trim()) {
+      globalThis.localStorage.setItem(ACTIVE_TENANT_KEY, value);
+      return;
+    }
+    globalThis.localStorage.removeItem(ACTIVE_TENANT_KEY);
+  } catch {
+    // ignore
+  }
+}
+
+function resolveHydratedTenantId(
+  role: Role | undefined,
+  tenantIdRaw: unknown,
+  fallbackTenantId?: string
+): string | undefined {
+  const normalizedFallbackTenantId =
+    fallbackTenantId && fallbackTenantId.trim()
+      ? fallbackTenantId.trim()
+      : undefined;
+
+  // CLIENT users can browse multiple storefront tenants, so preserve the
+  // previously selected storefront context across refreshes when available.
+  if (role === 'CLIENT' && normalizedFallbackTenantId) {
+    return normalizedFallbackTenantId;
+  }
+
+  if (tenantIdRaw !== undefined && tenantIdRaw !== null) {
+    const value = String(tenantIdRaw).trim();
+    const parsed = Number(value);
+    if (value && Number.isFinite(parsed) && parsed > 0) {
+      return String(parsed);
+    }
+  }
+  return normalizedFallbackTenantId;
+}
+
 const initialState: Pick<
   AuthState,
   | 'status'
@@ -69,15 +119,22 @@ const initialState: Pick<
   | 'tenantId'
   | 'authErrorReason'
 > = {
-  status: 'unauthenticated',
+  status: getAccessToken() ? 'loading' : 'unauthenticated',
   user: undefined,
-  token: null,
+  token: getAccessToken(),
   isAuthenticated: false,
   error: null,
   role: undefined,
-  tenantId: undefined,
+  tenantId: safeGetSelectedTenantId(),
   authErrorReason: null,
 };
+
+function clearedAuthState() {
+  return {
+    ...initialState,
+    tenantId: undefined,
+  };
+}
 
 /** Map backend /auth/me or JWT role string (e.g. "admin", "doctor") to frontend Role for rbacMatrix. */
 function mapBackendRole(role: unknown): Role | undefined {
@@ -154,14 +211,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   clearAuth: () => {
     clearTokens();
     ensureAuthPromise = null;
-    set(initialState);
+    set(clearedAuthState());
   },
   /** Call when access token is invalid/expired (e.g. after 401). Clears token/user, sets authErrorReason; guard redirects to /login?reason=expired. */
   expireSession: () => {
     clearTokens();
     ensureAuthPromise = null;
     set({
-      ...initialState,
+      ...clearedAuthState(),
       authErrorReason: 'expired',
     });
   },
@@ -170,7 +227,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     clearTokens();
     ensureAuthPromise = null;
     set({
-      ...initialState,
+      ...clearedAuthState(),
       authErrorReason: 'revoked',
     });
   },
@@ -185,7 +242,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
     const token = getAccessToken();
     if (!token) {
-      if (status !== 'unauthenticated') set({ ...initialState });
+      if (status !== 'unauthenticated') set(clearedAuthState());
       return false;
     }
 
@@ -197,6 +254,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         const res = await authService.me();
         const role = mapBackendRole(res.user?.role);
         const tenantIdRaw = res.user?.tenant_id;
+        const fallbackTenantId = get().tenantId;
         set({
           status: 'authenticated',
           user: {
@@ -205,10 +263,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           },
           token,
           role,
-          tenantId:
-            tenantIdRaw !== undefined && tenantIdRaw !== null
-              ? String(tenantIdRaw)
-              : undefined,
+          tenantId: resolveHydratedTenantId(
+            role,
+            tenantIdRaw,
+            fallbackTenantId
+          ),
           isAuthenticated: true,
           error: null,
           authErrorReason: null,
@@ -229,6 +288,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           if (payload && typeof payload.email === 'string') {
             const role = mapBackendRole(payload.role);
             const tenantIdRaw = payload.tenant_id;
+            const fallbackTenantId = get().tenantId;
             set({
               status: 'authenticated',
               user: {
@@ -240,10 +300,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
               },
               token,
               role,
-              tenantId:
-                tenantIdRaw !== undefined && tenantIdRaw !== null
-                  ? String(tenantIdRaw)
-                  : undefined,
+              tenantId: resolveHydratedTenantId(
+                role,
+                tenantIdRaw,
+                fallbackTenantId
+              ),
               isAuthenticated: true,
               error: null,
               authErrorReason: null,
@@ -255,7 +316,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         /** On 401, the client's onUnauthorized already ran (expireSession + toast); don't overwrite state again. */
         if (!(err instanceof ApiError && err.status === 401)) {
           set({
-            ...initialState,
+            ...clearedAuthState(),
             error:
               err instanceof Error
                 ? err.message
@@ -287,7 +348,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       if (!get().isAuthenticated) {
         clearTokens();
         set({
-          ...initialState,
+          ...clearedAuthState(),
           error: 'Failed to load profile',
         });
         throw new Error('Failed to load profile');
@@ -299,7 +360,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           : err instanceof Error
             ? err.message
             : 'Sign in failed';
-      set({ ...initialState, error: message });
+      set({ ...clearedAuthState(), error: message });
       throw err;
     }
   },
@@ -339,6 +400,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     await get().ensureAuth();
   },
 }));
+
+useAuthStore.subscribe((state) => {
+  safeSetSelectedTenantId(state.tenantId);
+});
 
 /** On any API 401: clear token/user, set authErrorReason (so guards redirect to /login?reason=expired), and show toast. */
 setUnauthorizedHandler(() => {

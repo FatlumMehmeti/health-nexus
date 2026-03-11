@@ -105,7 +105,9 @@ export function TenantManagerPageContent({
           <DoctorsManager tenantId={tenant.id} />
         )}
 
-        {activeSection === 'products' && <ProductsManager />}
+        {activeSection === 'products' && (
+          <ProductsManager tenantId={tenant.id} />
+        )}
 
         {activeSection === 'contracts' && <ContractsPage />}
         {activeSection === 'plans' && <TenantPlansPanel />}

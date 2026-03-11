@@ -1,11 +1,31 @@
 import type { OrderStatus } from '@/services/orders.service';
 
+const ACTIVE_TENANT_KEY = 'health-nexus.activeTenantId';
+
+function parseTenantId(value: string | undefined): number | null {
+  if (!value) return null;
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed <= 0) return null;
+  return parsed;
+}
+
+export function getStoredActiveTenantId(): number | null {
+  try {
+    return parseTenantId(
+      globalThis.localStorage?.getItem(ACTIVE_TENANT_KEY) ??
+        undefined
+    );
+  } catch {
+    return null;
+  }
+}
+
 export function getActiveTenantId(
   tenantIdFromStore?: string
 ): number | null {
-  const parsed = Number(tenantIdFromStore);
-  if (!Number.isFinite(parsed) || parsed <= 0) return null;
-  return parsed;
+  const storeTenantId = parseTenantId(tenantIdFromStore);
+  if (storeTenantId !== null) return storeTenantId;
+  return getStoredActiveTenantId();
 }
 
 export function formatCurrency(value: number): string {

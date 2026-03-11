@@ -775,6 +775,11 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
   const availableProducts = products.filter(
     (product) => product.is_available !== false
   );
+  const handleOpenShop = () => {
+    if (!tenantId) return;
+    useAuthStore.setState({ tenantId: String(tenantId) });
+    void navigate({ to: '/dashboard/shop' });
+  };
   const pendingPlan = checkoutRecovery
     ? plans.find((plan) => plan.id === checkoutRecovery.planId)
     : null;
@@ -1273,15 +1278,20 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
 
             <TabsContent value="products" className="mt-0 flex-1">
               <section className="mx-auto max-w-5xl space-y-4">
-                <div className="space-y-1">
-                  <h2 className="text-xl font-semibold tracking-tight sm:text-2xl">
-                    Products
-                  </h2>
-                  <p className="text-sm text-muted-foreground sm:text-base">
-                    {availableProducts.length > 0
-                      ? 'Healthcare products currently available from this tenant.'
-                      : 'No products available yet.'}
-                  </p>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                  <div className="space-y-1">
+                    <h2 className="text-xl font-semibold tracking-tight sm:text-2xl">
+                      Products
+                    </h2>
+                    <p className="text-sm text-muted-foreground sm:text-base">
+                      {availableProducts.length > 0
+                        ? 'Healthcare products currently available from this tenant.'
+                        : 'No products available yet.'}
+                    </p>
+                  </div>
+                  {isAuthenticated && role === 'CLIENT' ? (
+                    <Button onClick={handleOpenShop}>Open Shop</Button>
+                  ) : null}
                 </div>
                 {availableProducts.length > 0 ? (
                   <div className="grid gap-4 md:grid-cols-2">
@@ -1290,28 +1300,50 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
                         key={product.product_id}
                         className="flex h-full flex-col rounded-xl border bg-card/60 p-4 shadow-sm"
                       >
-                        <div className="flex items-start justify-between gap-3">
-                          <h3 className="text-sm font-semibold sm:text-base">
-                            {product.name}
-                          </h3>
-                          <span
-                            className="rounded-full border px-2 py-0.5 text-xs font-medium"
-                            style={
-                              brand.primary
-                                ? {
-                                    borderColor: brand.primary,
-                                    color: brand.primary,
-                                  }
-                                : undefined
-                            }
-                          >
-                            {formatCurrency(product.price)}
-                          </span>
+                        <div className="flex gap-4">
+                          <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-lg border bg-muted/30">
+                            {product.image_url ? (
+                              <img
+                                src={resolveMediaUrl(product.image_url) ?? ''}
+                                alt={product.name}
+                                className="h-full w-full object-cover"
+                              />
+                            ) : (
+                              <span className="text-xs text-muted-foreground">
+                                No image
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex-1">
+                            <div className="flex items-start justify-between gap-3">
+                              <div>
+                                <h3 className="text-sm font-semibold sm:text-base">
+                                  {product.name}
+                                </h3>
+                                <p className="mt-1 text-xs uppercase tracking-wide text-muted-foreground">
+                                  {product.category || 'Uncategorized'}
+                                </p>
+                              </div>
+                              <span
+                                className="rounded-full border px-2 py-0.5 text-xs font-medium"
+                                style={
+                                  brand.primary
+                                    ? {
+                                        borderColor: brand.primary,
+                                        color: brand.primary,
+                                      }
+                                    : undefined
+                                }
+                              >
+                                {formatCurrency(product.price)}
+                              </span>
+                            </div>
+                            <p className="mt-2 text-sm text-muted-foreground">
+                              {product.description ||
+                                'No description provided.'}
+                            </p>
+                          </div>
                         </div>
-                        <p className="mt-2 text-sm text-muted-foreground">
-                          {product.description ||
-                            'No description provided.'}
-                        </p>
                       </article>
                     ))}
                   </div>
