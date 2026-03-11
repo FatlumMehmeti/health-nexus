@@ -267,6 +267,8 @@ def _apply_post_payment_activation(db: Session, payment: Payment) -> None:
         _activate_order_if_applicable(db, payment.reference_id)
     elif payment.payment_type == PaymentType.ENROLLMENT:
         _activate_enrollment_if_applicable(db, payment.reference_id)
+    elif payment.payment_type == PaymentType.TENANT_SUBSCRIPTION:
+        _activate_tenant_subscription_if_applicable(db, payment.reference_id)
 
 
 def _is_post_payment_activation_complete(db: Session, payment: Payment) -> bool:
@@ -287,7 +289,11 @@ def _is_post_payment_activation_complete(db: Session, payment: Payment) -> bool:
 
     if payment.payment_type == PaymentType.TENANT_SUBSCRIPTION:
         subscription = db.get(TenantSubscription, payment.reference_id)
-        return bool(subscription and payment.status == PaymentStatus.CAPTURED)
+        return bool(
+            subscription
+            and subscription.status == SubscriptionStatus.ACTIVE
+            and subscription.activated_at is not None
+        )
 
     return True
 

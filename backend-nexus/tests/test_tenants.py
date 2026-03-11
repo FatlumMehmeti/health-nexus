@@ -6,17 +6,26 @@ Uses conftest's reset_database and db_session.
 import pytest
 from fastapi.testclient import TestClient
 
+from app.auth.auth_utils import get_current_user
 from app.main import app
 from app.models import Tenant, TenantStatus, SubscriptionPlan
 
 
 @pytest.fixture
 def client(db_session):
-    """TestClient with FREE subscription plan for approval flow."""
+    """TestClient with FREE plan and SUPER_ADMIN auth override for protected endpoints."""
     free_plan = SubscriptionPlan(name="FREE", price=0, duration=30)
     db_session.add(free_plan)
     db_session.commit()
-    yield TestClient(app)
+
+    app.dependency_overrides[get_current_user] = lambda: {
+        "user_id": 1,
+        "role": "SUPER_ADMIN",
+    }
+    try:
+        yield TestClient(app)
+    finally:
+        app.dependency_overrides.pop(get_current_user, None)
 
 
 def test_public_create_tenant_application_success(client):
@@ -70,7 +79,12 @@ def test_superadmin_list_tenants_empty(client):
     """GET /api/superadmin/tenants returns empty list when no tenants."""
     response = client.get("/api/superadmin/tenants")
     assert response.status_code == 200
-    assert response.json() == []
+    assert response.json() == {
+        "items": [],
+        "total": 0,
+        "page": 1,
+        "page_size": 10,
+    }
 
 
 def test_superadmin_list_tenants_with_filter(client, db_session):
@@ -82,7 +96,7 @@ def test_superadmin_list_tenants_with_filter(client, db_session):
 
     response = client.get("/api/superadmin/tenants?status=pending")
     assert response.status_code == 200
-    items = response.json()
+    items = response.json()["items"]
     assert len(items) == 1
     assert items[0]["status"] == "pending"
     assert items[0]["name"] == "A"
