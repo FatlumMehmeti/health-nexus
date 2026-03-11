@@ -62,4 +62,10 @@ SEED_FEATURE_FLAGS: dict[str, dict[str, bool]] = {
         "medium clinic": False,
         "hospital": True,
     },
+    "post_appointment_offers": {
+        "free": False,
+        "small clinic": False,
+        "medium clinic": True,
+        "hospital": True,
+    },
 }

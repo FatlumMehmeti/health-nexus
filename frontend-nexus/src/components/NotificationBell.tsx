@@ -27,8 +27,13 @@ import {
   useUnreadCount,
 } from '@/services/notifications.queries';
 import type { Notification } from '@/services/notifications.service';
+import { getNotificationNavigationTarget } from '@/lib/offers';
 import { useAuthStore } from '@/stores/auth.store';
 
+/**
+ * Returns the appropriate icon for a notification type.
+ * @param type Notification type string
+ */
 function notificationIcon(type: string) {
   switch (type) {
     case 'APPOINTMENT_CONFIRMED':
@@ -41,11 +46,17 @@ function notificationIcon(type: string) {
       return <IconCalendarEvent className="size-4 text-blue-400" />;
     case 'APPOINTMENT_COMPLETED':
       return <IconChecks className="size-4 text-green-400" />;
+    case 'OFFER_DELIVERED':
+      return <IconBell className="size-4 text-amber-500" />;
     default:
       return <IconBell className="size-4" />;
   }
 }
 
+/**
+ * Renders a single notification row in the dropdown menu.
+ * Handles marking as read and navigation.
+ */
 function NotificationRow({
   notification,
   onRead,
@@ -90,6 +101,10 @@ function NotificationRow({
   );
 }
 
+/**
+ * NotificationBell displays a bell icon with unread count and a dropdown menu of notifications.
+ * Handles marking notifications as read, navigation, and invalidation on open.
+ */
 export function NotificationBell() {
   const qc = useQueryClient();
   const { data: count = 0 } = useUnreadCount();
@@ -99,6 +114,9 @@ export function NotificationBell() {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
 
+  /**
+   * Handles navigation for a notification, based on its entity type and id.
+   */
   const handleNavigate = (n: Notification) => {
     setOpen(false);
     if (n.entity_type === 'appointment' && n.entity_id) {
@@ -116,9 +134,15 @@ export function NotificationBell() {
           },
         });
       }
+      return;
+    }
+    const target = getNotificationNavigationTarget(n);
+    if (target) {
+      navigate(target as never);
     }
   };
 
+  // Main UI: bell icon, unread badge, dropdown menu
   return (
     <DropdownMenu
       open={open}
