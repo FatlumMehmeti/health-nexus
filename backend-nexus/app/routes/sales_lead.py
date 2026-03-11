@@ -390,9 +390,11 @@ def list_consultations_for_lead(
     user: Dict[str, Any] = Depends(require_permission("sales:leads")),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
+    status: ConsultationStatus | None = Query(None),
 ):
     """
-    List all consultations for a lead. Only the lead owner can view.
+    List all consultations for a lead.
+    Optionally filter by status (SCHEDULED, COMPLETED, CANCELLED, NO_SHOW).
     """
     current_user_id = user.get("user_id")
     
@@ -404,10 +406,13 @@ def list_consultations_for_lead(
     if lead.assigned_sales_user_id != current_user_id:
         raise HTTPException(status_code=403, detail="Only the lead owner can view consultations")
     
-    total = db.query(ConsultationBooking).filter(ConsultationBooking.lead_id == lead_id).count()
+    base_query = db.query(ConsultationBooking).filter(ConsultationBooking.lead_id == lead_id)
+    if status is not None:
+        base_query = base_query.filter(ConsultationBooking.status == status)
+
+    total = base_query.count()
     consultations = (
-        db.query(ConsultationBooking)
-        .filter(ConsultationBooking.lead_id == lead_id)
+        base_query
         .order_by(ConsultationBooking.scheduled_at.desc())
         .offset((page - 1) * page_size)
         .limit(page_size)

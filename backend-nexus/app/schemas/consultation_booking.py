@@ -1,4 +1,4 @@
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 from datetime import datetime
 from app.models.consultation_booking import ConsultationStatus
 
@@ -6,7 +6,7 @@ from app.models.consultation_booking import ConsultationStatus
 class ConsultationBase(BaseModel):
     lead_id: int
     scheduled_at: datetime
-    duration_minutes: int | None = None
+    duration_minutes: int | None = Field(None, gt=0, le=60)
     meeting_link: str | None = None
     location: str | None = None
     status: ConsultationStatus = ConsultationStatus.SCHEDULED
