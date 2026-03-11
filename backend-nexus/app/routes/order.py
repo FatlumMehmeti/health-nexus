@@ -247,7 +247,12 @@ def list_orders(
 
     total = query.count()
     orders = query.order_by(Order.created_at.desc(), Order.id.desc()).offset((page - 1) * size).limit(size).all()
-    return OrderListResponse(items=[_serialize_order(order) for order in orders], total=total)
+    return OrderListResponse(
+        items=[_serialize_order(order) for order in orders],
+        page=page,
+        page_size=size,
+        total=total,
+    )
 
 
 @router.get("/{order_id}", response_model=OrderResponse)

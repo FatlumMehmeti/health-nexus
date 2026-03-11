@@ -225,8 +225,11 @@ def register_client_in_tenant(
 
     authenticated_user = get_authenticated_user_if_present(request)
     if authenticated_user is not None:
+        role = str(authenticated_user.get("role") or "").strip().upper()
         user_tenant_id = authenticated_user.get("tenant_id")
-        if user_tenant_id is not None:
+        # CLIENT users can register themselves under multiple approved tenants.
+        # Tenant-scoped staff should still be limited to their own tenant.
+        if role not in {"", "CLIENT", "PATIENT", "SUPER_ADMIN"} and user_tenant_id is not None:
             try:
                 if int(user_tenant_id) != tenant_id:
                     raise HTTPException(status_code=403, detail="Tenant access denied")
