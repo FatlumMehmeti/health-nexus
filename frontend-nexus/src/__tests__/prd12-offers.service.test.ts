@@ -17,7 +17,8 @@ describe('PRD-12 offers service', () => {
 
   it('fetches client offers', async () => {
     globalThis.fetch = jest.fn(async (input) => {
-      const url = typeof input === 'string' ? input : input.toString();
+      const url =
+        typeof input === 'string' ? input : input.toString();
       expect(url).toContain('/clients/7/offers');
       return new Response(
         JSON.stringify([
@@ -61,7 +62,8 @@ describe('PRD-12 offers service', () => {
 
   it('accepts an offer', async () => {
     globalThis.fetch = jest.fn(async (input, init) => {
-      const url = typeof input === 'string' ? input : input.toString();
+      const url =
+        typeof input === 'string' ? input : input.toString();
       expect(url).toContain('/offers/15/accept');
       expect(init?.method).toBe('POST');
       expect(init?.headers).toMatchObject({

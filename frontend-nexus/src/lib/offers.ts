@@ -28,7 +28,10 @@ export function getNotificationNavigationTarget(notification: {
     };
   }
 
-  if (notification.entity_type === 'appointment' && notification.entity_id) {
+  if (
+    notification.entity_type === 'appointment' &&
+    notification.entity_id
+  ) {
     return {
       to: '/appointments/$appointmentId',
       params: {

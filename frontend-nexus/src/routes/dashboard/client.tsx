@@ -8,6 +8,7 @@ import {
   useRouterState,
 } from '@tanstack/react-router';
 
+import { ClientOffersPanel } from '@/components/ClientOffersPanel';
 import { Badge } from '@/components/ui/badge';
 import {
   Card,
@@ -25,7 +26,6 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { ClientOffersPanel } from '@/components/ClientOffersPanel';
 
 // Route definition for the client dashboard. Requires authentication.
 export const Route = createFileRoute('/dashboard/client')({

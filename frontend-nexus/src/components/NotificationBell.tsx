@@ -19,6 +19,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { getNotificationNavigationTarget } from '@/lib/offers';
 import {
   invalidateNotifications,
   useMarkAllRead,
@@ -27,7 +28,6 @@ import {
   useUnreadCount,
 } from '@/services/notifications.queries';
 import type { Notification } from '@/services/notifications.service';
-import { getNotificationNavigationTarget } from '@/lib/offers';
 import { useAuthStore } from '@/stores/auth.store';
 
 /**

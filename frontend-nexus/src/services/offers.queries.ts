@@ -8,11 +8,11 @@ import { toast } from 'sonner';
 import { invalidateNotifications } from './notifications.queries';
 import {
   offersService,
+  type AcceptOfferRequest,
+  type GenerateOffersRequest,
   type GenerateOffersResponse,
   type OfferDelivery,
   type OfferViewResponse,
-  type AcceptOfferRequest,
-  type GenerateOffersRequest,
 } from './offers.service';
 
 // Query key prefix for offer-related queries

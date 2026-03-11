@@ -38,15 +38,16 @@ function formatDate(value: string | null) {
 export function ClientOffersPanel({
   clientId,
 }: ClientOffersPanelProps) {
-  const { enabled, loading: flagLoading } =
-    useFeatureFlag('post_appointment_offers');
+  const { enabled, loading: flagLoading } = useFeatureFlag(
+    'post_appointment_offers'
+  );
   const offersQuery = useClientOffers(clientId);
   const viewOffer = useViewOffer(clientId);
   const acceptOffer = useAcceptOffer(clientId);
   const declineOffer = useDeclineOffer(clientId);
-  const [selectedOfferId, setSelectedOfferId] = useState<number | null>(
-    null
-  );
+  const [selectedOfferId, setSelectedOfferId] = useState<
+    number | null
+  >(null);
 
   const offers = offersQuery.data ?? [];
   const selectedOffer =
@@ -137,7 +138,8 @@ export function ClientOffersPanel({
         <CardHeader>
           <CardTitle>My Offers</CardTitle>
           <CardDescription>
-            Review approved recommendations from completed appointments.
+            Review approved recommendations from completed
+            appointments.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
@@ -162,7 +164,9 @@ export function ClientOffersPanel({
                     {offer.recommendation.appointment_id}
                   </p>
                 </div>
-                <Badge variant={getOfferStatusVariant(offer.offer_status)}>
+                <Badge
+                  variant={getOfferStatusVariant(offer.offer_status)}
+                >
                   {offer.offer_status}
                 </Badge>
               </div>
@@ -186,7 +190,9 @@ export function ClientOffersPanel({
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <Badge
-                variant={getOfferStatusVariant(selectedOffer.offer_status)}
+                variant={getOfferStatusVariant(
+                  selectedOffer.offer_status
+                )}
               >
                 {selectedOffer.offer_status}
               </Badge>
@@ -210,7 +216,8 @@ export function ClientOffersPanel({
 
             {selectedOffer.acceptance ? (
               <div className="rounded-lg border bg-muted/40 p-3 text-sm">
-                Accepted on {formatDate(selectedOffer.acceptance.accepted_at)}
+                Accepted on{' '}
+                {formatDate(selectedOffer.acceptance.accepted_at)}
                 {selectedOffer.acceptance.redemption_method
                   ? ` via ${selectedOffer.acceptance.redemption_method}`
                   : ''}
