@@ -21,7 +21,7 @@ import {
 } from '@/services/orders.service';
 import { useAuthStore } from '@/stores/auth.store';
 import { createFileRoute } from '@tanstack/react-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import {
   formatCurrency,
@@ -40,10 +40,29 @@ function MyOrdersPage() {
   const tenantId = getActiveTenantId(
     useAuthStore((state) => state.tenantId)
   );
-  const ordersQuery = useOrders({ tenantId });
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
+  const ordersQuery = useOrders({
+    tenantId,
+    page,
+    size: pageSize,
+  });
   const cancelOrder = useCancelOrder();
   const [selectedOrder, setSelectedOrder] =
     useState<Order | null>(null);
+  const totalPages = Math.max(
+    1,
+    Math.ceil(
+      (ordersQuery.data?.total ?? 0) /
+        (ordersQuery.data?.page_size ?? pageSize)
+    )
+  );
+
+  useEffect(() => {
+    if (page > totalPages) {
+      setPage(totalPages);
+    }
+  }, [page, totalPages]);
 
   const handleCancel = async (orderId: number) => {
     try {
@@ -124,6 +143,28 @@ function MyOrdersPage() {
               </CardContent>
             </Card>
           ))}
+
+          <div className="flex items-center justify-between gap-4">
+            <p className="text-sm text-muted-foreground">
+              Page {ordersQuery.data?.page ?? page} of {totalPages}
+            </p>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                onClick={() => setPage((current) => current - 1)}
+                disabled={page <= 1}
+              >
+                Previous
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setPage((current) => current + 1)}
+                disabled={page >= totalPages}
+              >
+                Next
+              </Button>
+            </div>
+          </div>
         </div>
       )}
 

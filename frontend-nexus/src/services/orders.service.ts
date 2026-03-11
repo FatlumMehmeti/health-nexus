@@ -35,6 +35,8 @@ export interface Order {
 
 export interface OrderListResponse {
   items: Order[];
+  page: number;
+  page_size: number;
   total: number;
 }
 
@@ -42,10 +44,17 @@ export interface CreateOrderInput {
   tenant_id: number;
 }
 
+export interface OrderListParams {
+  tenantId?: number | null;
+  status?: OrderStatus | 'ALL';
+  page?: number;
+  size?: number;
+}
+
 export const orderQueryKeys = {
   lists: ['orders'] as const,
-  list: (tenantId: number | null, status?: OrderStatus | 'ALL') =>
-    ['orders', { tenantId, status }] as const,
+  list: (params: OrderListParams) =>
+    ['orders', params] as const,
   detail: (orderId: number) => ['order', orderId] as const,
 };
 
@@ -55,20 +64,19 @@ export const ordersService = {
       method: 'POST',
       body: payload,
     }),
-  listOrders: (params: {
-    tenantId?: number | null;
-    status?: OrderStatus | 'ALL';
-    page?: number;
-    size?: number;
-  }) => {
+  listOrders: (params: OrderListParams) => {
     const query = new URLSearchParams();
-    if (params.tenantId) query.set('tenant_id', String(params.tenantId));
+    if (params.tenantId) {
+      query.set('tenant_id', String(params.tenantId));
+    }
     if (params.status && params.status !== 'ALL') {
       query.set('status', params.status);
     }
     query.set('page', String(params.page ?? 1));
-    query.set('size', String(params.size ?? 50));
-    return apiFetch<OrderListResponse>(`/api/orders?${query.toString()}`);
+    query.set('size', String(params.size ?? 20));
+    return apiFetch<OrderListResponse>(
+      `/api/orders?${query.toString()}`
+    );
   },
   getOrder: (orderId: number) =>
     apiFetch<Order>(`/api/orders/${orderId}`),
@@ -86,14 +94,9 @@ export const ordersService = {
     }),
 };
 
-export function useOrders(params: {
-  tenantId?: number | null;
-  status?: OrderStatus | 'ALL';
-  page?: number;
-  size?: number;
-}) {
+export function useOrders(params: OrderListParams) {
   return useQuery({
-    queryKey: orderQueryKeys.list(params.tenantId ?? null, params.status),
+    queryKey: orderQueryKeys.list(params),
     queryFn: () => ordersService.listOrders(params),
   });
 }

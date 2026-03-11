@@ -35,7 +35,7 @@ import {
 } from '@/services/orders.service';
 import { useAuthStore } from '@/stores/auth.store';
 import { createFileRoute } from '@tanstack/react-router';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import {
   formatCurrency,
@@ -55,12 +55,16 @@ function TenantOrdersPage() {
   const tenantId = Number(useAuthStore((state) => state.tenantId));
   const [statusFilter, setStatusFilter] =
     useState<OrderFilter>('ALL');
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
   const [selectedOrder, setSelectedOrder] =
     useState<Order | null>(null);
 
   const ordersQuery = useOrders({
     tenantId: Number.isFinite(tenantId) ? tenantId : undefined,
     status: statusFilter,
+    page,
+    size: pageSize,
   });
   const cancelOrder = useCancelOrder();
   const refundOrder = useRefundOrder();
@@ -70,6 +74,23 @@ function TenantOrdersPage() {
     () => ordersQuery.data?.items ?? [],
     [ordersQuery.data]
   );
+  const totalPages = Math.max(
+    1,
+    Math.ceil(
+      (ordersQuery.data?.total ?? 0) /
+        (ordersQuery.data?.page_size ?? pageSize)
+    )
+  );
+
+  useEffect(() => {
+    setPage(1);
+  }, [statusFilter, tenantId]);
+
+  useEffect(() => {
+    if (page > totalPages) {
+      setPage(totalPages);
+    }
+  }, [page, totalPages]);
 
   const handleCancel = async (orderId: number) => {
     try {
@@ -169,86 +190,116 @@ function TenantOrdersPage() {
               No orders found for this filter.
             </p>
           ) : (
-            <div className="overflow-hidden rounded-lg border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Order #</TableHead>
-                    <TableHead>Patient</TableHead>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Total</TableHead>
-                    <TableHead className="text-right">
-                      Actions
-                    </TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {orders.map((order) => (
-                    <TableRow key={order.id}>
-                      <TableCell className="font-medium">
-                        #{order.id}
-                      </TableCell>
-                      <TableCell>
-                        Patient #{order.patient_user_id}
-                      </TableCell>
-                      <TableCell>
-                        {new Date(order.created_at).toLocaleString()}
-                      </TableCell>
-                      <TableCell>
-                        <Badge
-                          variant={getOrderBadgeVariant(order.status)}
-                        >
-                          {order.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        {formatCurrency(order.total_amount)}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setSelectedOrder(order)}
-                          >
-                            View
-                          </Button>
-                          {order.status === 'PENDING' ? (
-                            <Button
-                              size="sm"
-                              onClick={() => handleMarkPaid(order.id)}
-                              disabled={markPaid.isPending}
-                            >
-                              Mark as Paid
-                            </Button>
-                          ) : null}
-                          {order.status !== 'PAID' &&
-                          order.status !== 'CANCELLED' ? (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handleCancel(order.id)}
-                              disabled={cancelOrder.isPending}
-                            >
-                              Cancel
-                            </Button>
-                          ) : null}
-                          {order.status === 'PAID' ? (
-                            <Button
-                              size="sm"
-                              onClick={() => handleRefund(order.id)}
-                              disabled={refundOrder.isPending}
-                            >
-                              Refund
-                            </Button>
-                          ) : null}
-                        </div>
-                      </TableCell>
+            <div className="space-y-4">
+              <div className="overflow-hidden rounded-lg border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Order #</TableHead>
+                      <TableHead>Patient</TableHead>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Total</TableHead>
+                      <TableHead className="text-right">
+                        Actions
+                      </TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {orders.map((order) => (
+                      <TableRow key={order.id}>
+                        <TableCell className="font-medium">
+                          #{order.id}
+                        </TableCell>
+                        <TableCell>
+                          Patient #{order.patient_user_id}
+                        </TableCell>
+                        <TableCell>
+                          {new Date(order.created_at).toLocaleString()}
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            variant={getOrderBadgeVariant(order.status)}
+                          >
+                            {order.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          {formatCurrency(order.total_amount)}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setSelectedOrder(order)}
+                            >
+                              View
+                            </Button>
+                            {order.status === 'PENDING' ? (
+                              <Button
+                                size="sm"
+                                onClick={() =>
+                                  handleMarkPaid(order.id)
+                                }
+                                disabled={markPaid.isPending}
+                              >
+                                Mark as Paid
+                              </Button>
+                            ) : null}
+                            {order.status !== 'PAID' &&
+                            order.status !== 'CANCELLED' ? (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() =>
+                                  handleCancel(order.id)
+                                }
+                                disabled={cancelOrder.isPending}
+                              >
+                                Cancel
+                              </Button>
+                            ) : null}
+                            {order.status === 'PAID' ? (
+                              <Button
+                                size="sm"
+                                onClick={() =>
+                                  handleRefund(order.id)
+                                }
+                                disabled={refundOrder.isPending}
+                              >
+                                Refund
+                              </Button>
+                            ) : null}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+              <div className="flex items-center justify-between gap-4">
+                <p className="text-sm text-muted-foreground">
+                  Page {ordersQuery.data?.page ?? page} of{' '}
+                  {totalPages}
+                </p>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => setPage((current) => current - 1)}
+                    disabled={page <= 1}
+                  >
+                    Previous
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => setPage((current) => current + 1)}
+                    disabled={page >= totalPages}
+                  >
+                    Next
+                  </Button>
+                </div>
+              </div>
             </div>
           )}
         </CardContent>
