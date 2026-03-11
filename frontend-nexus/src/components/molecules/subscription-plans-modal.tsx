@@ -1,6 +1,7 @@
 import { PlanCard } from '@/components/molecules/plan-card';
 import { PaymentFlowNotice } from '@/components/PaymentFlowNotice';
 import { StripePaymentModal } from '@/components/StripePaymentModal';
+import { TENANT_SUBSCRIPTION_UPDATED_EVENT } from '@/lib/tenant-subscription-events';
 import { isApiError } from '@/lib/api-client';
 import {
   clearCheckoutRecovery,
@@ -13,10 +14,12 @@ import {
   changePlan,
   getCurrentSubscription,
   getSubscriptionPlans,
+  getSubscriptionRequest,
   getSubscriptionStats,
   type SubscriptionPlan,
   type SubscriptionStats,
   type TenantSubscription,
+  type TenantSubscriptionRequest,
 } from '@/services/subscription-plans.service';
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
@@ -26,6 +29,8 @@ interface SubscriptionPlansModalProps {
 }
 
 const PAYMENT_CONFIRMATION_TIMEOUT_MS = 45_000;
+const NO_ACTIVE_SUBSCRIPTION_MESSAGE =
+  'No active subscription found for this tenant';
 
 /**
  * SubscriptionPlansModal Component
@@ -46,9 +51,66 @@ export function SubscriptionPlansModal({}: SubscriptionPlansModalProps) {
   const [showStripeModal, setShowStripeModal] = useState(false);
   const [checkoutRecovery, setCheckoutRecovery] =
     useState<CheckoutRecoveryRecord | null>(null);
+  const [pendingRequest, setPendingRequest] =
+    useState<TenantSubscriptionRequest | null>(null);
+  const [isCheckingStatus, setIsCheckingStatus] = useState(false);
+  const [statusFeedback, setStatusFeedback] = useState<string | null>(
+    null
+  );
   const handledPaymentIdsRef = useRef<Set<number>>(new Set());
   const stripeClientSecret = checkoutRecovery?.clientSecret ?? null;
-  const pendingPlanId = checkoutRecovery?.planId ?? null;
+
+  async function getCurrentSubscriptionOrNull() {
+    try {
+      return await getCurrentSubscription();
+    } catch (err) {
+      if (
+        isApiError(err) &&
+        err.status === 404 &&
+        err.displayMessage === NO_ACTIVE_SUBSCRIPTION_MESSAGE
+      ) {
+        return null;
+      }
+
+      throw err;
+    }
+  }
+
+  function buildStatusFeedback(
+    request: TenantSubscriptionRequest
+  ): string {
+    const paymentStatus =
+      request.latest_payment_status ?? 'NO_PAYMENT';
+
+    if (request.admin_status === 'ACTIVE') {
+      return 'Your plan request has been approved and the subscription is active.';
+    }
+
+    if (request.admin_status === 'CANCELLED') {
+      return (
+        request.cancellation_reason ??
+        'This subscription request was cancelled by a super admin.'
+      );
+    }
+
+    if (paymentStatus === 'CAPTURED') {
+      return 'Payment received. Your request is waiting for super admin approval.';
+    }
+
+    if (paymentStatus === 'AUTHORIZED') {
+      return 'Payment is authorized and still being finalized with Stripe.';
+    }
+
+    if (paymentStatus === 'INITIATED') {
+      return 'Checkout exists, but payment capture has not been confirmed yet.';
+    }
+
+    if (paymentStatus === 'FAILED' || paymentStatus === 'CANCELED') {
+      return `Payment status is ${paymentStatus}. You may need to retry checkout.`;
+    }
+
+    return `Current payment status: ${paymentStatus}.`;
+  }
 
   function setSubscriptionCheckoutRecovery(
     next: CheckoutRecoveryRecord | null
@@ -77,13 +139,22 @@ export function SubscriptionPlansModal({}: SubscriptionPlansModalProps) {
     });
   }
 
+  function moveSubscriptionCheckoutToAwaitingApproval() {
+    if (!checkoutRecovery) return;
+    setSubscriptionCheckoutRecovery({
+      ...checkoutRecovery,
+      clientSecret: null,
+      phase: 'awaiting_approval',
+    });
+  }
+
   const refreshSubscriptionData = async (
     expectedPlanId?: number,
     maxAttempts = 6
   ) => {
     for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
       const [updatedSubscription, updatedStats] = await Promise.all([
-        getCurrentSubscription(),
+        getCurrentSubscriptionOrNull(),
         getSubscriptionStats(),
       ]);
 
@@ -92,7 +163,7 @@ export function SubscriptionPlansModal({}: SubscriptionPlansModalProps) {
 
       if (
         expectedPlanId === undefined ||
-        updatedSubscription.subscription_plan_id === expectedPlanId
+        updatedSubscription?.subscription_plan_id === expectedPlanId
       ) {
         return updatedSubscription;
       }
@@ -101,6 +172,61 @@ export function SubscriptionPlansModal({}: SubscriptionPlansModalProps) {
     }
 
     return null;
+  };
+
+  const refreshSubscriptionRequest = async (
+    subscriptionId: number
+  ) => {
+    const request = await getSubscriptionRequest(subscriptionId);
+    setPendingRequest(request);
+    setStatusFeedback(buildStatusFeedback(request));
+
+    if (
+      request.admin_status === 'PENDING' &&
+      request.latest_payment_status === 'CAPTURED' &&
+      checkoutRecovery?.phase === 'processing'
+    ) {
+      moveSubscriptionCheckoutToAwaitingApproval();
+    }
+
+    if (request.admin_status === 'ACTIVE') {
+      await refreshSubscriptionData(request.subscription_plan_id, 2);
+    } else {
+      await refreshSubscriptionData();
+    }
+
+    return request;
+  };
+
+  const handleCheckStatus = async () => {
+    if (!checkoutRecovery) return;
+
+    setIsCheckingStatus(true);
+    try {
+      if (checkoutRecovery.phase === 'processing') {
+        await checkoutService.syncStatus(checkoutRecovery.paymentId);
+      }
+
+      const request = await refreshSubscriptionRequest(
+        checkoutRecovery.referenceId
+      );
+      const feedback = buildStatusFeedback(request);
+      setStatusFeedback(feedback);
+      toast.message('Subscription status updated.', {
+        description: feedback,
+      });
+    } catch (err) {
+      const message =
+        isApiError(err) || err instanceof Error
+          ? err.message
+          : 'Unable to refresh subscription status.';
+      setStatusFeedback(message);
+      toast.error('Unable to check subscription status.', {
+        description: isApiError(err) ? err.displayMessage : message,
+      });
+    } finally {
+      setIsCheckingStatus(false);
+    }
   };
 
   useEffect(() => {
@@ -112,6 +238,21 @@ export function SubscriptionPlansModal({}: SubscriptionPlansModalProps) {
 
     setCheckoutRecovery(savedRecovery);
   }, []);
+
+  useEffect(() => {
+    if (!checkoutRecovery || !currentSubscription) return;
+
+    const hasRecoveredActivePlan =
+      currentSubscription.status === 'ACTIVE' &&
+      currentSubscription.subscription_plan_id ===
+        checkoutRecovery.planId;
+
+    if (!hasRecoveredActivePlan) return;
+
+    clearSubscriptionCheckout();
+    setPendingRequest(null);
+    setStatusFeedback(null);
+  }, [checkoutRecovery, currentSubscription]);
 
   // Helper: Check if a plan can accommodate current stats
   const canPlanFitStats = (plan: SubscriptionPlan): boolean => {
@@ -149,7 +290,7 @@ export function SubscriptionPlansModal({}: SubscriptionPlansModalProps) {
         setLoading(true);
         const results = await Promise.allSettled([
           getSubscriptionPlans(),
-          getCurrentSubscription(),
+          getCurrentSubscriptionOrNull(),
           getSubscriptionStats(),
         ]);
         const plansData =
@@ -178,28 +319,74 @@ export function SubscriptionPlansModal({}: SubscriptionPlansModalProps) {
   }, []);
 
   useEffect(() => {
-    if (!checkoutRecovery) return;
+    const handleTenantSubscriptionUpdated = () => {
+      void (async () => {
+        try {
+          const [updatedSubscription, updatedStats] =
+            await Promise.all([
+              getCurrentSubscriptionOrNull(),
+              getSubscriptionStats(),
+            ]);
 
-    const hasActivatedPlan =
-      currentSubscription?.status === 'ACTIVE' &&
-      currentSubscription.subscription_plan_id ===
-        checkoutRecovery.planId;
+          setCurrentSubscription(updatedSubscription);
+          setStats(updatedStats);
+          setPendingRequest(null);
+          setStatusFeedback(null);
 
-    if (!hasActivatedPlan) return;
+          if (!updatedSubscription) {
+            clearSubscriptionCheckout();
+          }
+        } catch {
+          // Keep the existing UI state when background refresh fails.
+        }
+      })();
+    };
 
-    setShowStripeModal(false);
-    clearCheckoutRecovery('tenant-subscription');
-    setCheckoutRecovery(null);
+    window.addEventListener(
+      TENANT_SUBSCRIPTION_UPDATED_EVENT,
+      handleTenantSubscriptionUpdated
+    );
 
-    if (
-      !handledPaymentIdsRef.current.has(checkoutRecovery.paymentId)
-    ) {
-      handledPaymentIdsRef.current.add(checkoutRecovery.paymentId);
-      toast.success(
-        'Payment confirmed. Your subscription is now active.'
+    return () => {
+      window.removeEventListener(
+        TENANT_SUBSCRIPTION_UPDATED_EVENT,
+        handleTenantSubscriptionUpdated
       );
+    };
+  }, [checkoutRecovery]);
+
+  useEffect(() => {
+    if (!checkoutRecovery || !pendingRequest) return;
+
+    if (pendingRequest.id !== checkoutRecovery.referenceId) {
+      return;
     }
-  }, [checkoutRecovery, currentSubscription]);
+
+    if (pendingRequest.admin_status === 'ACTIVE') {
+      clearSubscriptionCheckout();
+      setStatusFeedback(null);
+
+      if (
+        !handledPaymentIdsRef.current.has(checkoutRecovery.paymentId)
+      ) {
+        handledPaymentIdsRef.current.add(checkoutRecovery.paymentId);
+        toast.success(
+          'Subscription approved. Your new plan is now active.'
+        );
+      }
+      return;
+    }
+
+    if (pendingRequest.admin_status === 'CANCELLED') {
+      clearSubscriptionCheckout();
+      toast.error('Subscription request was cancelled.', {
+        description:
+          pendingRequest.cancellation_reason ??
+          'A super admin cancelled this pending plan change.',
+      });
+      setStatusFeedback(null);
+    }
+  }, [checkoutRecovery, pendingRequest]);
 
   useEffect(() => {
     if (checkoutRecovery?.phase !== 'processing') return;
@@ -227,23 +414,49 @@ export function SubscriptionPlansModal({}: SubscriptionPlansModalProps) {
   useEffect(() => {
     if (
       checkoutRecovery?.phase !== 'processing' &&
+      checkoutRecovery?.phase !== 'awaiting_approval' &&
       checkoutRecovery?.phase !== 'attention_required'
     ) {
       return;
     }
 
     const interval = window.setInterval(
-      () => {
-        void refreshSubscriptionData(pendingPlanId ?? undefined);
+      async () => {
+        try {
+          if (checkoutRecovery.phase === 'processing') {
+            await checkoutService.syncStatus(
+              checkoutRecovery.paymentId
+            );
+          }
+          await refreshSubscriptionRequest(
+            checkoutRecovery.referenceId
+          );
+        } catch {
+          // Continue polling; webhook delivery may still settle the payment.
+        }
       },
       checkoutRecovery.phase === 'processing' ? 2500 : 5000
     );
 
     return () => window.clearInterval(interval);
-  }, [checkoutRecovery, pendingPlanId]);
+  }, [checkoutRecovery]);
 
   const handleChangePlan = async (planId: number) => {
     try {
+      setPendingRequest(null);
+      setStatusFeedback(null);
+
+      if (
+        checkoutRecovery &&
+        currentSubscription?.status === 'ACTIVE' &&
+        currentSubscription.subscription_plan_id ===
+          checkoutRecovery.planId
+      ) {
+        clearSubscriptionCheckout();
+        setPendingRequest(null);
+        setStatusFeedback(null);
+      }
+
       setChangingPlanId(planId);
       setChangeError(null);
       const selectedPlan = plans.find((plan) => plan.id === planId);
@@ -275,6 +488,7 @@ export function SubscriptionPlansModal({}: SubscriptionPlansModalProps) {
         updatedAt: new Date().toISOString(),
         clientSecret: checkout.stripe_client_secret,
       });
+      setStatusFeedback(null);
       setShowStripeModal(true);
     } catch (err) {
       clearSubscriptionCheckout();
@@ -385,52 +599,62 @@ export function SubscriptionPlansModal({}: SubscriptionPlansModalProps) {
       )}
 
       {checkoutRecovery ? (
-        <PaymentFlowNotice
-          phase={checkoutRecovery.phase}
-          eyebrow="Subscription checkout"
-          title={
-            checkoutRecovery.phase === 'collecting_payment'
-              ? 'Your secure checkout is ready'
-              : checkoutRecovery.phase === 'processing'
-                ? 'We are confirming your payment'
-                : 'Payment submitted, but activation is still pending'
-          }
-          description={
-            checkoutRecovery.phase === 'collecting_payment'
-              ? 'Return to Stripe to finish the subscription payment. Your plan change will remain pending until the payment is submitted.'
-              : checkoutRecovery.phase === 'processing'
-                ? 'Stripe accepted your submission. This modal will keep checking until the backend marks your new subscription as active.'
-                : 'We still have not confirmed activation for this subscription change. Check again now, or clear this pending checkout and start over if you need to retry.'
-          }
-          primaryAction={{
-            label:
+        <div className="space-y-3">
+          <PaymentFlowNotice
+            phase={checkoutRecovery.phase}
+            eyebrow="Subscription checkout"
+            title={
               checkoutRecovery.phase === 'collecting_payment'
-                ? 'Resume checkout'
-                : 'Check status now',
-            onClick: async () => {
-              if (checkoutRecovery.phase === 'collecting_payment') {
-                setShowStripeModal(true);
-                return;
-              }
-
-              await refreshSubscriptionData(checkoutRecovery.planId);
-            },
-          }}
-          secondaryAction={{
-            label:
+                ? 'Your secure checkout is ready'
+                : checkoutRecovery.phase === 'processing'
+                  ? 'We are confirming your payment'
+                  : checkoutRecovery.phase === 'awaiting_approval'
+                    ? 'Payment confirmed. Awaiting super admin approval'
+                    : 'Payment submitted, but activation is still pending'
+            }
+            description={
+              checkoutRecovery.phase === 'collecting_payment'
+                ? 'Return to Stripe to finish the subscription payment. Your plan change will remain pending until the payment is submitted.'
+                : checkoutRecovery.phase === 'processing'
+                  ? 'Stripe accepted your submission. We are waiting for the backend to confirm the payment before routing this request to a super admin.'
+                  : checkoutRecovery.phase === 'awaiting_approval'
+                    ? 'Your payment was captured successfully. A super admin must now approve or cancel this subscription request before the new plan can activate.'
+                    : 'We still have not confirmed payment capture for this subscription change. Check again now, or clear this pending checkout and start over if you need to retry.'
+            }
+            primaryAction={
+              checkoutRecovery.phase === 'collecting_payment'
+                ? {
+                    label: 'Resume checkout',
+                    onClick: async () => {
+                      setShowStripeModal(true);
+                    },
+                  }
+                : {
+                    label: 'Check status now',
+                    onClick: handleCheckStatus,
+                    loading: isCheckingStatus,
+                  }
+            }
+            secondaryAction={
               checkoutRecovery.phase === 'attention_required'
-                ? 'Clear pending checkout'
-                : 'Close notice',
-            onClick: () => {
-              if (checkoutRecovery.phase === 'attention_required') {
-                clearSubscriptionCheckout();
-                return;
-              }
-              setShowStripeModal(false);
-            },
-            variant: 'outline',
-          }}
-        />
+                ? {
+                    label: 'Clear pending checkout',
+                    onClick: () => {
+                      clearSubscriptionCheckout();
+                      setPendingRequest(null);
+                      setStatusFeedback(null);
+                    },
+                    variant: 'outline',
+                  }
+                : undefined
+            }
+          />
+          {statusFeedback ? (
+            <div className="rounded-lg border border-border/70 bg-muted/30 px-4 py-3 text-sm text-muted-foreground">
+              {statusFeedback}
+            </div>
+          ) : null}
+        </div>
       ) : null}
 
       {/* Grid layout: 1 column on mobile, 2 on tablet, 4 on desktop */}
@@ -442,6 +666,26 @@ export function SubscriptionPlansModal({}: SubscriptionPlansModalProps) {
           const isRecoveryLocked =
             !!checkoutRecovery &&
             checkoutRecovery.phase !== 'attention_required';
+          const lockedPlanId =
+            pendingRequest?.subscription_plan_id ??
+            checkoutRecovery?.planId ??
+            null;
+          const isLockedPlan =
+            isRecoveryLocked && lockedPlanId === plan.id;
+          const isOtherPlanDisabled =
+            isRecoveryLocked &&
+            lockedPlanId !== null &&
+            lockedPlanId !== plan.id;
+          const changingLabel =
+            parseFloat(plan.price) <= 0
+              ? 'Activating…'
+              : checkoutRecovery?.phase === 'collecting_payment'
+                ? 'Redirecting to payment…'
+                : checkoutRecovery?.phase === 'processing'
+                  ? 'Confirming payment…'
+                  : checkoutRecovery?.phase === 'awaiting_approval'
+                    ? 'Awaiting approval…'
+                    : 'Check status…';
 
           return (
             <PlanCard
@@ -454,14 +698,9 @@ export function SubscriptionPlansModal({}: SubscriptionPlansModalProps) {
               isRecommended={isRecommended}
               canFitStats={canFit}
               onChangePlan={handleChangePlan}
-              isChanging={
-                changingPlanId === plan.id || isRecoveryLocked
-              }
-              changingLabel={
-                parseFloat(plan.price) <= 0
-                  ? 'Activating…'
-                  : 'Redirecting to payment…'
-              }
+              isChanging={changingPlanId === plan.id || isLockedPlan}
+              isActionDisabled={isOtherPlanDisabled}
+              changingLabel={changingLabel}
               buttonLabel={
                 parseFloat(plan.price) <= 0
                   ? 'Choose Plan'
@@ -478,6 +717,8 @@ export function SubscriptionPlansModal({}: SubscriptionPlansModalProps) {
         onClose={async () => {
           if (checkoutRecovery?.phase === 'collecting_payment') {
             clearSubscriptionCheckout();
+            setPendingRequest(null);
+            setStatusFeedback(null);
             await refreshSubscriptionData();
             toast.message('Checkout cancelled.');
             return;
@@ -493,10 +734,21 @@ export function SubscriptionPlansModal({}: SubscriptionPlansModalProps) {
             clientSecret: null,
             phase: 'processing',
           });
-          await refreshSubscriptionData(checkoutRecovery.planId);
+          try {
+            await checkoutService.syncStatus(
+              checkoutRecovery.paymentId
+            );
+          } catch {
+            // The recovery poller will retry and webhook delivery may still update the payment.
+          }
+          await refreshSubscriptionRequest(
+            checkoutRecovery.referenceId
+          );
         }}
         onPaymentFailed={async (errorMessage) => {
           clearSubscriptionCheckout();
+          setPendingRequest(null);
+          setStatusFeedback(null);
           await refreshSubscriptionData();
           toast.error(
             'Payment failed. The pending subscription checkout was cleared.',

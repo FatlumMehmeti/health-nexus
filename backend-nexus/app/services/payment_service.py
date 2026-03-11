@@ -4,6 +4,7 @@ Payment service: checkout initiation with idempotency and order validation.
 from __future__ import annotations
 
 import enum
+import asyncio
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal, ROUND_HALF_UP
 from typing import Optional
@@ -24,6 +25,7 @@ from app.models.subscription_plan import SubscriptionPlan
 from app.models.tenant_manager import TenantManager
 from app.models.tenant_subscription import SubscriptionStatus, TenantSubscription
 from app.models.user_tenant_plan import UserTenantPlan
+from app.services.subscription_request_stream import subscription_request_stream
 
 
 class PaymentErrorCode(str, enum.Enum):
@@ -174,6 +176,29 @@ def _get_stripe_payment_intent_client_secret(intent_id: str) -> Optional[str]:
     return intent.get("client_secret")
 
 
+def _retrieve_stripe_payment_intent(intent_id: str) -> dict:
+    secret_key = get_stripe_secret_key()
+    if not secret_key:
+        raise PaymentServiceError(
+            PaymentErrorCode.PAYMENT_PROVIDER_ERROR,
+            "Stripe is not configured: STRIPE_SECRET_KEY is missing",
+            http_status=500,
+        )
+
+    try:
+        stripe.api_key = secret_key
+        intent = stripe.PaymentIntent.retrieve(intent_id)
+    except stripe.error.StripeError as exc:
+        raise PaymentServiceError(
+            PaymentErrorCode.PAYMENT_PROVIDER_ERROR,
+            "Failed to retrieve Stripe PaymentIntent",
+            http_status=502,
+            details={"stripe_error": str(exc), "stripe_payment_intent_id": intent_id},
+        ) from exc
+
+    return dict(intent or {})
+
+
 def _activate_order_if_applicable(db: Session, order_id: int) -> None:
     order = db.get(Order, order_id)
     if order is None:
@@ -242,8 +267,6 @@ def _apply_post_payment_activation(db: Session, payment: Payment) -> None:
         _activate_order_if_applicable(db, payment.reference_id)
     elif payment.payment_type == PaymentType.ENROLLMENT:
         _activate_enrollment_if_applicable(db, payment.reference_id)
-    elif payment.payment_type == PaymentType.TENANT_SUBSCRIPTION:
-        _activate_tenant_subscription_if_applicable(db, payment.reference_id)
 
 
 def _is_post_payment_activation_complete(db: Session, payment: Payment) -> bool:
@@ -264,11 +287,7 @@ def _is_post_payment_activation_complete(db: Session, payment: Payment) -> bool:
 
     if payment.payment_type == PaymentType.TENANT_SUBSCRIPTION:
         subscription = db.get(TenantSubscription, payment.reference_id)
-        return bool(
-            subscription
-            and subscription.status == SubscriptionStatus.ACTIVE
-            and subscription.activated_at is not None
-        )
+        return bool(subscription and payment.status == PaymentStatus.CAPTURED)
 
     return True
 
@@ -300,6 +319,25 @@ def _mark_payment_as_captured(db: Session, payment: Payment) -> Payment:
     _apply_post_payment_activation(db, payment)
     db.commit()
     db.refresh(payment)
+
+    if payment.payment_type == PaymentType.TENANT_SUBSCRIPTION and payment.reference_id is not None:
+        subscription = db.get(TenantSubscription, payment.reference_id)
+        if subscription is not None:
+            try:
+                asyncio.get_running_loop().create_task(
+                    subscription_request_stream.publish_subscription_ready(
+                        subscription_id=subscription.id,
+                        tenant_id=subscription.tenant_id,
+                    )
+                )
+            except RuntimeError:
+                asyncio.run(
+                    subscription_request_stream.publish_subscription_ready(
+                        subscription_id=subscription.id,
+                        tenant_id=subscription.tenant_id,
+                    )
+                )
+
     return payment
 
 
@@ -335,6 +373,56 @@ def _mark_payment_as_failed(
     if commit:
         db.commit()
         db.refresh(payment)
+    return payment
+
+
+def sync_payment_status_with_provider(db: Session, payment_id: int) -> Payment:
+    payment = db.get(Payment, payment_id)
+    if payment is None:
+        raise PaymentServiceError(
+            PaymentErrorCode.NOT_FOUND,
+            "Payment not found",
+            http_status=404,
+            details={"payment_id": payment_id},
+        )
+
+    if not payment.stripe_payment_intent_id:
+        raise PaymentServiceError(
+            PaymentErrorCode.CONFLICT,
+            "Payment has no Stripe PaymentIntent to sync",
+            http_status=409,
+            details={"payment_id": payment_id},
+        )
+
+    intent = _retrieve_stripe_payment_intent(payment.stripe_payment_intent_id)
+    intent_status = str(intent.get("status") or "").strip().lower()
+
+    if intent_status == "succeeded":
+        return _mark_payment_as_captured(db, payment)
+
+    if intent_status in {"processing", "requires_capture"}:
+        payment.status = PaymentStatus.AUTHORIZED
+        payment.last_error = None
+    elif intent_status == "canceled":
+        payment.status = PaymentStatus.CANCELED
+        payment.last_error = "Stripe PaymentIntent was canceled"
+    elif intent_status == "requires_payment_method":
+        payment = _mark_payment_as_failed(
+            db,
+            payment,
+            last_error="Stripe PaymentIntent still requires a payment method",
+            commit=False,
+        )
+    elif intent_status in {"requires_action", "requires_confirmation"}:
+        payment.status = PaymentStatus.REQUIRES_MANUAL_INTERVENTION
+        payment.last_error = f"Stripe PaymentIntent requires manual action ({intent_status})"
+
+    _append_payment_audit_note(
+        payment,
+        f"Synced payment status from Stripe PaymentIntent {payment.stripe_payment_intent_id}: {intent_status or 'unknown'} -> {payment.status.value}",
+    )
+    db.commit()
+    db.refresh(payment)
     return payment
 
 
@@ -758,6 +846,17 @@ def create_or_get_tenant_subscription_payment(
         raise PaymentServiceError(
             PaymentErrorCode.CONFLICT,
             "Tenant subscription is already ACTIVE; cannot initiate checkout",
+            http_status=409,
+            details={
+                "tenant_subscription_id": tenant_subscription_id,
+                "subscription_status": tenant_subscription.status.value,
+            },
+        )
+
+    if tenant_subscription.cancelled_at is not None:
+        raise PaymentServiceError(
+            PaymentErrorCode.CONFLICT,
+            "Cancelled tenant subscription request cannot initiate checkout",
             http_status=409,
             details={
                 "tenant_subscription_id": tenant_subscription_id,

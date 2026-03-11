@@ -20,6 +20,7 @@ from .patient_appointment import router as patient_appointment_router
 from .appointment_status_history import router as appointment_status_history_router
 from .notification import router as notification_router
 from .payment import router as payment_router
+from .superadmin_subscription import router as superadmin_subscription_router
 
 __all__ = [
     "role_router",
@@ -45,4 +46,5 @@ __all__ = [
     "appointment_status_history_router",
     "notification_router",
     "payment_router",
+    "superadmin_subscription_router",
 ]

@@ -78,6 +78,11 @@ const superAdminDocuments = [
     icon: IconFileDescription,
   },
   {
+    title: 'Subscriptions',
+    url: '/dashboard/subscriptions',
+    icon: IconReport,
+  },
+  {
     title: 'Global State',
     url: '/dashboard/global-state',
     icon: IconDatabase,

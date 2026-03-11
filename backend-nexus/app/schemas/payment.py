@@ -8,7 +8,10 @@ class PaymentStatus(str, Enum):
     AUTHORIZED = "AUTHORIZED"
     CAPTURED = "CAPTURED"
     FAILED = "FAILED"
+    CANCELED = "CANCELED"
     REFUNDED = "REFUNDED"
+    DISPUTED = "DISPUTED"
+    REQUIRES_MANUAL_INTERVENTION = "REQUIRES_MANUAL_INTERVENTION"
 
 
 class PaymentType(str, Enum):
@@ -51,5 +54,13 @@ class CheckoutInitiateResponse(BaseModel):
     stripe_client_secret: Optional[str] = None
     amount: float
     tenant_id: int
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class CheckoutPaymentStatusResponse(BaseModel):
+    payment_id: int
+    status: PaymentStatus
+    stripe_payment_intent_id: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)

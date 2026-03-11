@@ -17,8 +17,11 @@ from app.models import (
     SubscriptionPlan,
     TenantSubscription,
     Doctor,
+    Enrollment,
+    TenantDepartment,
 )
 from app.models.tenant_subscription import SubscriptionStatus
+from app.models.enrollment import EnrollmentStatus
 from app.auth.auth_utils import hash_password
 
 
@@ -35,6 +38,17 @@ def bluestone_auth(client):
     resp = client.post(
         "/api/auth/login",
         json={"email": "tenant.manager@seed.com", "password": "Team2026@"},
+    )
+    assert resp.status_code == 200
+    return resp.json()["access_token"]
+
+
+@pytest.fixture
+def superadmin_auth(client):
+    """Seeded super admin token."""
+    resp = client.post(
+        "/api/auth/login",
+        json={"email": "super.admin@seed.com", "password": "Team2026@"},
     )
     assert resp.status_code == 200
     return resp.json()["access_token"]
@@ -265,3 +279,193 @@ def test_tenant_plan_change_only_affects_own_subscription(client, bluestone_auth
     finally:
         session.rollback()
         session.close()
+
+
+def test_plan_change_allows_new_selection_without_active_subscription(client, bluestone_auth):
+    """Tenant managers can choose a new plan after the previous subscription is cancelled."""
+
+    headers = {"Authorization": f"Bearer {bluestone_auth}"}
+
+    session = SessionLocal()
+    try:
+        bluestone = session.query(Tenant).filter(Tenant.name == "Bluestone Clinic").first()
+        current_sub = (
+            session.query(TenantSubscription)
+            .filter(
+                TenantSubscription.tenant_id == bluestone.id,
+                TenantSubscription.status == SubscriptionStatus.ACTIVE,
+            )
+            .first()
+        )
+        assert current_sub is not None
+
+        current_sub.status = SubscriptionStatus.EXPIRED
+        current_sub.cancelled_at = current_sub.activated_at
+        current_sub.cancellation_reason = "Cancelled by super admin"
+        session.commit()
+
+        replacement_plan = (
+            session.query(SubscriptionPlan)
+            .filter(SubscriptionPlan.id != current_sub.subscription_plan_id)
+            .order_by(SubscriptionPlan.price.asc(), SubscriptionPlan.id.asc())
+            .first()
+        )
+        assert replacement_plan is not None
+
+        active_doctors = (
+            session.query(Doctor)
+            .filter(Doctor.tenant_id == bluestone.id, Doctor.is_active == True)
+            .count()
+        )
+        active_patients = (
+            session.query(Enrollment)
+            .filter(
+                Enrollment.tenant_id == bluestone.id,
+                Enrollment.status == EnrollmentStatus.ACTIVE,
+            )
+            .count()
+        )
+        department_count = (
+            session.query(TenantDepartment)
+            .filter(TenantDepartment.tenant_id == bluestone.id)
+            .count()
+        )
+    finally:
+        session.close()
+
+    stats_resp = client.get("/api/subscription_plan/stats", headers=headers)
+    assert stats_resp.status_code == 200
+    assert stats_resp.json() == {
+        "doctors_used": active_doctors,
+        "patients_used": active_patients,
+        "departments_used": department_count,
+        "current_plan_id": None,
+        "current_plan_name": None,
+    }
+
+    current_resp = client.get("/api/subscription_plan/current", headers=headers)
+    assert current_resp.status_code == 404
+    assert current_resp.json()["detail"] == "No active subscription found for this tenant"
+
+    change_resp = client.post(
+        "/api/subscription_plan/change",
+        headers=headers,
+        json={"new_plan_id": replacement_plan.id},
+    )
+    assert change_resp.status_code == 200
+    assert change_resp.json()["subscription_plan_id"] == replacement_plan.id
+
+
+def test_superadmin_cancelling_active_subscription_notifies_tenant_manager(
+    client,
+    bluestone_auth,
+    superadmin_auth,
+):
+    """Tenant managers receive a dashboard notification when an approved subscription is cancelled."""
+
+    manager_headers = {"Authorization": f"Bearer {bluestone_auth}"}
+    admin_headers = {"Authorization": f"Bearer {superadmin_auth}"}
+
+    unread_before = client.get("/notifications/me/unread-count", headers=manager_headers)
+    assert unread_before.status_code == 200
+    assert unread_before.json() == {"count": 0}
+
+    session = SessionLocal()
+    try:
+        bluestone = session.query(Tenant).filter(Tenant.name == "Bluestone Clinic").first()
+        active_subscription = (
+            session.query(TenantSubscription)
+            .filter(
+                TenantSubscription.tenant_id == bluestone.id,
+                TenantSubscription.status == SubscriptionStatus.ACTIVE,
+            )
+            .first()
+        )
+        assert active_subscription is not None
+        active_subscription_id = active_subscription.id
+        active_plan_name = active_subscription.subscription_plan.name
+    finally:
+        session.close()
+
+    transition_resp = client.post(
+        f"/api/superadmin/subscriptions/{active_subscription_id}/transition",
+        headers=admin_headers,
+        json={
+            "target": "CANCELLED",
+            "reason": "Cancelled after approval by super admin",
+        },
+    )
+    assert transition_resp.status_code == 200
+    assert transition_resp.json()["admin_status"] == "CANCELLED"
+
+    unread_after = client.get("/notifications/me/unread-count", headers=manager_headers)
+    assert unread_after.status_code == 200
+    assert unread_after.json() == {"count": 1}
+
+    notifications_resp = client.get("/notifications/me", headers=manager_headers)
+    assert notifications_resp.status_code == 200
+    notifications = notifications_resp.json()
+    assert len(notifications) == 1
+    assert notifications[0]["type"] == "TENANT_SUBSCRIPTION_CANCELLED"
+    assert notifications[0]["title"] == "Subscription Cancelled"
+    assert active_plan_name in notifications[0]["message"]
+    assert "Cancelled after approval by super admin" in notifications[0]["message"]
+    assert notifications[0]["entity_type"] == "tenant_subscription"
+    assert notifications[0]["entity_id"] == active_subscription_id
+    assert notifications[0]["is_read"] is False
+
+
+def test_superadmin_cancelling_pending_subscription_does_not_notify_tenant_manager(
+    client,
+    bluestone_auth,
+    superadmin_auth,
+):
+    """Pending subscription requests can be cancelled without creating a dashboard notification."""
+
+    manager_headers = {"Authorization": f"Bearer {bluestone_auth}"}
+    admin_headers = {"Authorization": f"Bearer {superadmin_auth}"}
+
+    session = SessionLocal()
+    try:
+        bluestone = session.query(Tenant).filter(Tenant.name == "Bluestone Clinic").first()
+        current_subscription = (
+            session.query(TenantSubscription)
+            .filter(
+                TenantSubscription.tenant_id == bluestone.id,
+                TenantSubscription.status == SubscriptionStatus.ACTIVE,
+            )
+            .first()
+        )
+        higher_plan = (
+            session.query(SubscriptionPlan)
+            .filter(SubscriptionPlan.price > current_subscription.subscription_plan.price)
+            .order_by(SubscriptionPlan.price.asc(), SubscriptionPlan.id.asc())
+            .first()
+        )
+        assert higher_plan is not None
+    finally:
+        session.close()
+
+    change_resp = client.post(
+        "/api/subscription_plan/change",
+        headers=manager_headers,
+        json={"new_plan_id": higher_plan.id},
+    )
+    assert change_resp.status_code == 200
+    pending_subscription_id = change_resp.json()["id"]
+
+    transition_resp = client.post(
+        f"/api/superadmin/subscriptions/{pending_subscription_id}/transition",
+        headers=admin_headers,
+        json={"target": "CANCELLED", "reason": "Pending request withdrawn"},
+    )
+    assert transition_resp.status_code == 200
+    assert transition_resp.json()["admin_status"] == "CANCELLED"
+
+    unread_after = client.get("/notifications/me/unread-count", headers=manager_headers)
+    assert unread_after.status_code == 200
+    assert unread_after.json() == {"count": 0}
+
+    notifications_resp = client.get("/notifications/me", headers=manager_headers)
+    assert notifications_resp.status_code == 200
+    assert notifications_resp.json() == []

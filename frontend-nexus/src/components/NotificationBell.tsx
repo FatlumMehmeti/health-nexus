@@ -4,12 +4,15 @@ import {
   IconCalendarEvent,
   IconCheck,
   IconChecks,
+  IconCreditCard,
 } from '@tabler/icons-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { formatDistanceToNow } from 'date-fns';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { toast } from 'sonner';
 
+import { dispatchTenantSubscriptionUpdated } from '@/lib/tenant-subscription-events';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -41,6 +44,8 @@ function notificationIcon(type: string) {
       return <IconCalendarEvent className="size-4 text-blue-400" />;
     case 'APPOINTMENT_COMPLETED':
       return <IconChecks className="size-4 text-green-400" />;
+    case 'TENANT_SUBSCRIPTION_CANCELLED':
+      return <IconCreditCard className="size-4 text-amber-500" />;
     default:
       return <IconBell className="size-4" />;
   }
@@ -98,6 +103,40 @@ export function NotificationBell() {
   const markAllRead = useMarkAllRead();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
+  const seenNotificationIdsRef = useRef<Set<number>>(new Set());
+
+  useEffect(() => {
+    if (notifications.length === 0) {
+      return;
+    }
+
+    const seenNotificationIds = seenNotificationIdsRef.current;
+
+    if (seenNotificationIds.size === 0) {
+      notifications.forEach((notification) => {
+        seenNotificationIds.add(notification.id);
+      });
+      return;
+    }
+
+    notifications.forEach((notification) => {
+      if (seenNotificationIds.has(notification.id)) {
+        return;
+      }
+
+      seenNotificationIds.add(notification.id);
+
+      if (
+        !notification.is_read &&
+        notification.type === 'TENANT_SUBSCRIPTION_CANCELLED'
+      ) {
+        toast.error(notification.title, {
+          description: notification.message,
+        });
+        dispatchTenantSubscriptionUpdated();
+      }
+    });
+  }, [notifications]);
 
   const handleNavigate = (n: Notification) => {
     setOpen(false);
@@ -116,6 +155,14 @@ export function NotificationBell() {
           },
         });
       }
+      return;
+    }
+
+    if (n.entity_type === 'tenant_subscription') {
+      dispatchTenantSubscriptionUpdated();
+      navigate({
+        to: '/dashboard/subscriptions',
+      });
     }
   };
 
