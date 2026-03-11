@@ -5,8 +5,16 @@
  *
  * Used by /landing/$tenantSlug. Data from GET /api/tenants/by-slug/{slug}/landing.
  */
-
 import { Button } from '@/components/ui/button';
+import { Link } from '@tanstack/react-router';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -21,10 +29,18 @@ import {
   TabsList,
   TabsTrigger,
 } from '@/components/ui/tabs';
+import { ThemeToggle } from '@/components/theme-toggle';
 import type { TenantLandingPageResponse } from '@/interfaces';
 import { isApiError } from '@/lib/api-client';
 import { resolveMediaUrl } from '@/lib/media-url';
 import { can } from '@/lib/rbac';
+import {
+  clearCheckoutRecovery,
+  loadCheckoutRecovery,
+  saveCheckoutRecovery,
+  type CheckoutRecoveryRecord,
+} from '@/services/checkout-recovery.service';
+import { checkoutService } from '@/services/checkout.service';
 import { clientsService } from '@/services/clients.service';
 import { patientsService } from '@/services/patients.service';
 import { tenantPlansService } from '@/services/tenant-plans.service';
@@ -36,9 +52,18 @@ import {
   useQueryClient,
 } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
+import {
+  ArrowLeft,
+  Facebook,
+  Instagram,
+  Linkedin,
+  MessageCircle,
+} from 'lucide-react';
 import type { CSSProperties } from 'react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
+import { PaymentFlowNotice } from './PaymentFlowNotice';
+import { StripePaymentModal } from './StripePaymentModal';
 
 export interface TenantLandingProps {
   /** Landing data from API; null while loading */
@@ -81,8 +106,62 @@ const usdFormatter = new Intl.NumberFormat('en-US', {
   minimumFractionDigits: 2,
 });
 
+const PAYMENT_CONFIRMATION_TIMEOUT_MS = 45_000;
+const ENROLLMENT_CANCELLATION_NOTICE_KEY_PREFIX =
+  'health-nexus.enrollment-cancellation-notice';
+
+function getEnrollmentCancellationNoticeStorageKey(
+  tenantId: number
+): string {
+  return `${ENROLLMENT_CANCELLATION_NOTICE_KEY_PREFIX}.${tenantId}`;
+}
+
+function loadHandledEnrollmentCancellation(
+  tenantId: number
+): string | null {
+  try {
+    return (
+      globalThis.localStorage?.getItem(
+        getEnrollmentCancellationNoticeStorageKey(tenantId)
+      ) ?? null
+    );
+  } catch {
+    return null;
+  }
+}
+
+function saveHandledEnrollmentCancellation(
+  tenantId: number,
+  cancellationKey: string
+) {
+  try {
+    globalThis.localStorage?.setItem(
+      getEnrollmentCancellationNoticeStorageKey(tenantId),
+      cancellationKey
+    );
+  } catch {
+    // ignore storage failures
+  }
+}
+
+function clearHandledEnrollmentCancellation(tenantId: number) {
+  try {
+    globalThis.localStorage?.removeItem(
+      getEnrollmentCancellationNoticeStorageKey(tenantId)
+    );
+  } catch {
+    // ignore storage failures
+  }
+}
+
 function formatCurrency(value: number): string {
   return usdFormatter.format(Number.isFinite(value) ? value : 0);
+}
+
+function formatStatusTimestamp(value: string): string {
+  const parsed = Date.parse(value);
+  if (Number.isNaN(parsed)) return 'Unavailable';
+  return new Date(parsed).toLocaleString();
 }
 
 function getApiDetailCode(err: unknown): string | undefined {
@@ -101,58 +180,421 @@ function getApiDetailCode(err: unknown): string | undefined {
 }
 
 export function TenantLanding({ landingData }: TenantLandingProps) {
+  const [showStripeModal, setShowStripeModal] = useState(false);
+  const [showCheckoutStatusModal, setShowCheckoutStatusModal] =
+    useState(false);
+  const [isCheckingCheckoutStatus, setIsCheckingCheckoutStatus] =
+    useState(false);
+  const [isCheckoutNoticeVisible, setIsCheckoutNoticeVisible] =
+    useState(true);
+  const [checkoutRecovery, setCheckoutRecovery] =
+    useState<CheckoutRecoveryRecord | null>(null);
   const [activeTab, setActiveTab] = useState('home');
   const [selectedPlanId, setSelectedPlanId] = useState<number | null>(
     null
   );
   const [registeredOverride, setRegisteredOverride] = useState(false);
+  const handledPaymentIdsRef = useRef<Set<number>>(new Set());
+  const localEnrollmentCancellationRef = useRef(false);
+  const handledEnrollmentCancellationRef = useRef<Set<string>>(
+    new Set()
+  );
 
   const user = useAuthStore((s) => s.user);
   const role = useAuthStore((s) => s.role);
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
 
   const tenantId = landingData?.tenant?.id;
+  const stripeClientSecret = checkoutRecovery?.clientSecret ?? null;
+  const pendingPlanId = checkoutRecovery?.planId ?? null;
 
   const queryClient = useQueryClient();
+
+  function shouldShowEnrollmentCancellationToast(
+    cancellationKey: string
+  ): boolean {
+    if (!tenantId) {
+      return !handledEnrollmentCancellationRef.current.has(
+        cancellationKey
+      );
+    }
+
+    return (
+      !handledEnrollmentCancellationRef.current.has(
+        cancellationKey
+      ) &&
+      loadHandledEnrollmentCancellation(tenantId) !== cancellationKey
+    );
+  }
+
+  function markEnrollmentCancellationHandled(
+    cancellationKey: string
+  ) {
+    handledEnrollmentCancellationRef.current.add(cancellationKey);
+    if (!tenantId) {
+      return;
+    }
+
+    saveHandledEnrollmentCancellation(tenantId, cancellationKey);
+  }
+
+  function setEnrollmentCheckoutRecovery(
+    next: CheckoutRecoveryRecord | null
+  ) {
+    if (!next) {
+      clearCheckoutRecovery('enrollment');
+      setCheckoutRecovery(null);
+      return;
+    }
+
+    const saved = saveCheckoutRecovery(next);
+    setCheckoutRecovery(saved);
+  }
+
+  function clearEnrollmentCheckout() {
+    localEnrollmentCancellationRef.current = false;
+    setShowStripeModal(false);
+    setShowCheckoutStatusModal(false);
+    setIsCheckoutNoticeVisible(true);
+    setEnrollmentCheckoutRecovery(null);
+  }
+
+  function moveEnrollmentCheckoutToAttention() {
+    if (!checkoutRecovery) return;
+    setEnrollmentCheckoutRecovery({
+      ...checkoutRecovery,
+      clientSecret: null,
+      phase: 'attention_required',
+    });
+  }
 
   // Hydrate the selected plan from the user's existing enrollment.
   // Only sync on initial fetch — not on every render — so the user
   // can click "Change plan" without it snapping back immediately.
-  const { data: enrollmentData } = useQuery({
+  const shouldSyncEnrollmentState =
+    isAuthenticated &&
+    (selectedPlanId !== null || checkoutRecovery !== null);
+
+  const enrollmentRefetchInterval = shouldSyncEnrollmentState
+    ? checkoutRecovery?.phase === 'processing'
+      ? 2500
+      : 5000
+    : false;
+
+  const {
+    data: enrollmentData,
+    error: enrollmentError,
+    isError: isEnrollmentError,
+    refetch: refetchEnrollment,
+  } = useQuery({
     queryKey: ['my-enrollment', tenantId],
     queryFn: () => tenantPlansService.myEnrollment(tenantId!),
     enabled: !!tenantId && isAuthenticated,
     retry: false,
+    refetchInterval: enrollmentRefetchInterval,
+    refetchIntervalInBackground: true,
   });
+
+  useEffect(() => {
+    if (!tenantId || !isAuthenticated) {
+      setCheckoutRecovery(null);
+      return;
+    }
+
+    const savedRecovery = loadCheckoutRecovery('enrollment');
+    if (!savedRecovery) {
+      setCheckoutRecovery(null);
+      return;
+    }
+
+    if (savedRecovery.tenantId !== tenantId) {
+      clearCheckoutRecovery('enrollment');
+      setCheckoutRecovery(null);
+      return;
+    }
+
+    setCheckoutRecovery(savedRecovery);
+    setIsCheckoutNoticeVisible(true);
+    setActiveTab('plans');
+  }, [tenantId, isAuthenticated]);
 
   useEffect(() => {
     if (
       enrollmentData?.user_tenant_plan_id &&
       enrollmentData.status === 'ACTIVE'
     ) {
+      localEnrollmentCancellationRef.current = false;
+      if (tenantId) {
+        clearHandledEnrollmentCancellation(tenantId);
+      }
       setSelectedPlanId(enrollmentData.user_tenant_plan_id);
     }
-  }, [enrollmentData]);
+  }, [enrollmentData, tenantId]);
+
+  useEffect(() => {
+    if (!checkoutRecovery || !enrollmentData) return;
+
+    const isRecoveredActivation =
+      enrollmentData.status === 'ACTIVE' &&
+      enrollmentData.user_tenant_plan_id === checkoutRecovery.planId;
+
+    if (!isRecoveredActivation) return;
+
+    setSelectedPlanId(checkoutRecovery.planId);
+    setShowStripeModal(false);
+    clearCheckoutRecovery('enrollment');
+    setCheckoutRecovery(null);
+
+    if (
+      !handledPaymentIdsRef.current.has(checkoutRecovery.paymentId)
+    ) {
+      handledPaymentIdsRef.current.add(checkoutRecovery.paymentId);
+      toast.success('Payment confirmed. Your plan is now active.');
+    }
+  }, [checkoutRecovery, enrollmentData]);
+
+  useEffect(() => {
+    if (!enrollmentData || enrollmentData.status !== 'CANCELLED') {
+      return;
+    }
+
+    const hasEnrollmentUiState =
+      selectedPlanId !== null || checkoutRecovery !== null;
+    if (!hasEnrollmentUiState) {
+      return;
+    }
+
+    const cancellationKey = `${enrollmentData.id}:${enrollmentData.cancelled_at ?? 'cancelled'}`;
+    const shouldShowToast =
+      shouldShowEnrollmentCancellationToast(cancellationKey);
+    markEnrollmentCancellationHandled(cancellationKey);
+
+    setSelectedPlanId(null);
+
+    if (localEnrollmentCancellationRef.current) {
+      return;
+    }
+
+    clearEnrollmentCheckout();
+    if (shouldShowToast) {
+      toast.error('Enrollment cancelled.', {
+        description: 'You can choose a plan again anytime.',
+      });
+    }
+  }, [checkoutRecovery, enrollmentData, selectedPlanId]);
+
+  useEffect(() => {
+    const isMissingEnrollment =
+      isEnrollmentError &&
+      isApiError(enrollmentError) &&
+      enrollmentError.status === 404;
+
+    if (!isMissingEnrollment) {
+      return;
+    }
+
+    const hasEnrollmentUiState =
+      selectedPlanId !== null || checkoutRecovery !== null;
+    if (!hasEnrollmentUiState) {
+      return;
+    }
+
+    const cancellationKey = `missing:${tenantId ?? 'unknown'}`;
+    const shouldShowToast =
+      shouldShowEnrollmentCancellationToast(cancellationKey);
+    markEnrollmentCancellationHandled(cancellationKey);
+
+    setSelectedPlanId(null);
+
+    if (localEnrollmentCancellationRef.current) {
+      return;
+    }
+
+    clearEnrollmentCheckout();
+    if (shouldShowToast) {
+      toast.error('Enrollment cancelled.', {
+        description:
+          'Your enrollment is no longer active. You can choose a plan again anytime.',
+      });
+    }
+  }, [
+    checkoutRecovery,
+    enrollmentError,
+    isEnrollmentError,
+    selectedPlanId,
+  ]);
+
+  useEffect(() => {
+    if (checkoutRecovery?.phase !== 'processing') return;
+
+    const startedAt = Date.parse(checkoutRecovery.startedAt);
+    if (Number.isNaN(startedAt)) {
+      moveEnrollmentCheckoutToAttention();
+      return;
+    }
+
+    const remainingMs =
+      PAYMENT_CONFIRMATION_TIMEOUT_MS - (Date.now() - startedAt);
+    if (remainingMs <= 0) {
+      moveEnrollmentCheckoutToAttention();
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      moveEnrollmentCheckoutToAttention();
+    }, remainingMs);
+
+    return () => window.clearTimeout(timer);
+  }, [checkoutRecovery]);
+
+  useEffect(() => {
+    if (!checkoutRecovery) {
+      setIsCheckoutNoticeVisible(true);
+      return;
+    }
+
+    setIsCheckoutNoticeVisible(true);
+  }, [checkoutRecovery?.paymentId, checkoutRecovery?.phase]);
+
+  async function handleCheckEnrollmentStatus() {
+    setShowCheckoutStatusModal(true);
+    if (!tenantId) return;
+
+    setIsCheckingCheckoutStatus(true);
+    try {
+      await queryClient.invalidateQueries({
+        queryKey: ['my-enrollment', tenantId],
+      });
+      await refetchEnrollment();
+    } finally {
+      setIsCheckingCheckoutStatus(false);
+    }
+  }
+
+  async function handleEnrollmentPaymentFailure(
+    errorMessage: string
+  ) {
+    if (!tenantId) {
+      toast.error(errorMessage);
+      return;
+    }
+
+    localEnrollmentCancellationRef.current = true;
+
+    try {
+      await tenantPlansService.cancelEnrollment(tenantId);
+      await queryClient.invalidateQueries({
+        queryKey: ['my-enrollment', tenantId],
+      });
+      setSelectedPlanId(null);
+      if (checkoutRecovery) {
+        setEnrollmentCheckoutRecovery({
+          ...checkoutRecovery,
+          phase: 'attention_required',
+        });
+      }
+    } catch (err) {
+      toast.error(
+        'Payment failed and the enrollment rollback did not complete.',
+        {
+          description: isApiError(err)
+            ? err.displayMessage
+            : errorMessage,
+        }
+      );
+      localEnrollmentCancellationRef.current = false;
+    }
+  }
+
+  async function handleEnrollmentCheckoutCancelled() {
+    if (!tenantId) {
+      clearEnrollmentCheckout();
+      return;
+    }
+
+    localEnrollmentCancellationRef.current = true;
+
+    try {
+      await tenantPlansService.cancelEnrollment(tenantId);
+      await queryClient.invalidateQueries({
+        queryKey: ['my-enrollment', tenantId],
+      });
+      setSelectedPlanId(null);
+      clearEnrollmentCheckout();
+      toast.message('Checkout cancelled.');
+    } catch (err) {
+      clearEnrollmentCheckout();
+      toast.error(
+        'Checkout was closed, but the pending enrollment was not cancelled.',
+        {
+          description: isApiError(err)
+            ? err.displayMessage
+            : 'Please refresh and try again.',
+        }
+      );
+      localEnrollmentCancellationRef.current = false;
+    }
+  }
 
   const enrollMutation = useMutation({
-    mutationFn: ({
+    mutationFn: async ({
       tenantId,
       planId,
+      price,
     }: {
       tenantId: number;
       planId: number;
-    }) => tenantPlansService.enroll(tenantId, planId),
-    onSuccess: (_data, variables) => {
-      setSelectedPlanId(variables.planId);
-      // Invalidate the cached enrollment so next hydration uses the new plan
-      queryClient.invalidateQueries({
+      price: number;
+    }) => {
+      localEnrollmentCancellationRef.current = false;
+
+      // 1. Enroll
+      const enrollment = await tenantPlansService.enroll(
+        tenantId,
+        planId
+      );
+      queryClient.setQueryData(
+        ['my-enrollment', tenantId],
+        enrollment
+      );
+
+      if (price <= 0) {
+        return { enrollment, planId, requiresPayment: false };
+      }
+      // 2. Initiate Stripe checkout
+      const idempotencyKey = crypto.randomUUID();
+      const checkout = await checkoutService.initiate(
+        { enrollment_id: enrollment.id },
+        idempotencyKey
+      );
+      setEnrollmentCheckoutRecovery({
+        kind: 'enrollment',
+        tenantId,
+        planId,
+        paymentId: checkout.payment_id,
+        referenceId: enrollment.id,
+        phase: 'collecting_payment',
+        startedAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        clientSecret: checkout.stripe_client_secret,
+      });
+      setShowStripeModal(true);
+      return { enrollment, planId, requiresPayment: true };
+    },
+    onSuccess: async (data) => {
+      if (data.requiresPayment) {
+        return;
+      }
+
+      clearEnrollmentCheckout();
+      setSelectedPlanId(data.planId);
+      await queryClient.invalidateQueries({
         queryKey: ['my-enrollment', tenantId],
       });
-      toast.success('Successfully subscribed!', {
-        description: 'Your plan has been selected.',
-      });
+      toast.success('Free plan activated successfully.');
     },
     onError: (err) => {
+      clearEnrollmentCheckout();
       toast.error(
         isApiError(err)
           ? err.message
@@ -257,6 +699,9 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
   const cancelMutation = useMutation({
     mutationFn: (tid: number) =>
       tenantPlansService.cancelEnrollment(tid),
+    onMutate: () => {
+      localEnrollmentCancellationRef.current = true;
+    },
     onSuccess: () => {
       setSelectedPlanId(null);
       queryClient.invalidateQueries({
@@ -267,6 +712,7 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
       });
     },
     onError: (err) => {
+      localEnrollmentCancellationRef.current = false;
       toast.error(
         isApiError(err)
           ? err.message
@@ -329,6 +775,21 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
   const availableProducts = products.filter(
     (product) => product.is_available !== false
   );
+  const pendingPlan = checkoutRecovery
+    ? plans.find((plan) => plan.id === checkoutRecovery.planId)
+    : null;
+  const checkoutStatusTitle =
+    checkoutRecovery?.phase === 'processing'
+      ? 'Payment confirmation in progress'
+      : checkoutRecovery?.phase === 'attention_required'
+        ? 'Payment needs attention'
+        : 'Checkout status';
+  const checkoutStatusDescription =
+    checkoutRecovery?.phase === 'processing'
+      ? 'We are still waiting for the backend to confirm activation for this payment.'
+      : checkoutRecovery?.phase === 'attention_required'
+        ? 'This payment is still pending after the expected confirmation window. You can refresh the status or clear it and retry.'
+        : 'Review the current state of this pending payment.';
   const accountButtonStyle: CSSProperties | undefined = brand.primary
     ? {
         backgroundColor: brand.primary,
@@ -343,647 +804,989 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
       : undefined;
 
   return (
-    <Tabs
-      value={activeTab}
-      onValueChange={setActiveTab}
-      className="relative flex min-h-screen flex-col overflow-hidden"
-      style={fontBodyStyle}
-    >
-      <div className="pointer-events-none fixed inset-0 -z-10">
-        <div
-          className={`
+    <div>
+      <div className="flex h-10 items-center justify-center bg-gradient-to-r from-white via-blue-100/70 to-blue-100/90  transition dark:from-[#131c33] dark:via-[#243661] dark:to-[#234586] dark:shadow-lg border-b-zinc-500">
+        <div className="container   px-6 flex w-full items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <Link
+              to="/tenants"
+              className="flex items-center text-sm font-semibold tracking-wide text-blue-900 transition hover:opacity-90 hover:underline dark:text-white"
+              style={{ letterSpacing: '0.05em' }}
+            >
+              <span className=" mr-2 flex h-5 w-5 items-center justify-center rounded-full bg-blue-100/80 text-blue-700 shadow dark:bg-gradient-to-br dark:from-blue-500/60 dark:to-blue-900/60 dark:text-blue-100">
+                <ArrowLeft className="h-3 w-3" />
+              </span>
+              Tenants List
+            </Link>
+          </div>
+          <div className="flex items-center gap-2">
+            {[
+              {
+                href: 'https://wa.me',
+                title: 'WhatsApp',
+                icon: MessageCircle,
+                color: 'text-emerald-600 dark:text-emerald-300',
+              },
+              {
+                href: 'https://instagram.com',
+                title: 'Instagram',
+                icon: Instagram,
+                color: 'text-pink-600 dark:text-pink-300',
+              },
+              {
+                href: 'https://facebook.com',
+                title: 'Facebook',
+                icon: Facebook,
+                color: 'text-blue-700 dark:text-blue-200',
+              },
+              {
+                href: 'https://linkedin.com',
+                title: 'LinkedIn',
+                icon: Linkedin,
+                color: 'text-blue-800 dark:text-blue-300',
+              },
+            ].map(({ href, title, icon: Icon, color }) => (
+              <a
+                key={title}
+                href={href}
+                target="_blank"
+                rel="noopener noreferrer"
+                title={title}
+                className="rounded-full p-1 transition hover:scale-110 hover:bg-blue-200/60 dark:hover:bg-blue-900/50"
+              >
+                <Icon className={`h-5 w-5 ${color}`} />
+              </a>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <Tabs
+        value={activeTab}
+        onValueChange={setActiveTab}
+        className="relative flex min-h-screen flex-col overflow-hidden"
+        style={fontBodyStyle}
+      >
+        <div className="pointer-events-none fixed inset-0 -z-10">
+          <div
+            className={`
             absolute inset-0 
             bg-gradient-to-br
             from-[#e6edf7] via-[#dbeafe] to-[#b1c4e6]
             dark:from-[#1d2333] dark:via-[#1c2130] dark:to-[#375483]
-            brightness-100 dark:brightness-50
             -rotate-6 
             scale-200
             z-[-1]
           `}
-        />
-      </div>
+          />
+        </div>
 
-      <header className="sticky top-0 z-40 border-b border-border/40 bg-background/80 backdrop-blur-xl">
-        <div className="container mx-auto flex h-16 items-center justify-between px-4 sm:px-6">
-          <div className="flex items-center gap-3">
-            {logo ? (
-              <img
-                src={logo}
-                alt={title}
-                className="h-9 w-9 rounded-lg object-contain"
-              />
-            ) : (
-              <div className="bg-primary/10 text-primary flex h-9 w-9 items-center justify-center rounded-lg text-sm font-semibold">
-                {title
-                  .split(' ')
-                  .map((p) => p[0])
-                  .join('')
-                  .slice(0, 2)}
+        <header className="sticky top-0 z-40 border-b border-border/40 bg-background/80 backdrop-blur-xl">
+          <div className="container mx-auto flex h-16 items-center justify-between px-4 sm:px-6">
+            <div className="flex items-center gap-3">
+              {logo ? (
+                <img
+                  src={logo}
+                  alt={title}
+                  className="h-9 w-9 rounded-lg object-contain"
+                />
+              ) : (
+                <div className="bg-primary/10 text-primary flex h-9 w-9 items-center justify-center rounded-lg text-sm font-semibold">
+                  {title
+                    .split(' ')
+                    .map((p) => p[0])
+                    .join('')
+                    .slice(0, 2)}
+                </div>
+              )}
+              <div className="flex flex-col">
+                <span className="text-sm font-semibold sm:text-base">
+                  {title}
+                </span>
+                <span className="text-xs text-muted-foreground sm:text-[0.8rem]">
+                  {subtitle}
+                </span>
               </div>
-            )}
-            <div className="flex flex-col">
-              <span className="text-sm font-semibold sm:text-base">
-                {title}
-              </span>
-              <span className="text-xs text-muted-foreground sm:text-[0.8rem]">
-                {subtitle}
-              </span>
+            </div>
+            <div className="flex items-center gap-4">
+              <TabsList
+                variant="line"
+                className="inline-flex items-center gap-1 rounded-lg p-0.75"
+              >
+                <TabsTrigger value="home">HOME</TabsTrigger>
+                <TabsTrigger value="departments">
+                  DEPARTMENTS
+                </TabsTrigger>
+                <TabsTrigger value="products">PRODUCTS</TabsTrigger>
+                <TabsTrigger value="plans">PLANS</TabsTrigger>
+              </TabsList>
+              <ThemeToggle
+                variant="outline"
+                size="icon-sm"
+                className="rounded-full"
+              />
+              {isAuthenticated && user ? (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="icon-sm"
+                      className="rounded-full text-xs text-white! font-semibold"
+                      aria-label="Open account menu"
+                      title={user.email}
+                      style={accountButtonStyle}
+                    >
+                      {userInitial}
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent
+                    align="end"
+                    className="min-w-40"
+                  >
+                    <DropdownMenuLabel className="text-xs sm:text-sm">
+                      Signed in as
+                      <br />
+                      <span className="font-medium">
+                        {user.email}
+                      </span>
+                    </DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    {canOpenTenantDashboard ? (
+                      <>
+                        <DropdownMenuItem
+                          onClick={handleGoToTenantDashboard}
+                        >
+                          Go to dashboard
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                      </>
+                    ) : null}
+                    <DropdownMenuItem onClick={handleLogout}>
+                      <span className="text-destructive">
+                        Log out
+                      </span>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              ) : null}
             </div>
           </div>
-          <div className="flex items-center gap-4">
-            <TabsList
-              variant="line"
-              className="inline-flex items-center gap-1 rounded-lg p-0.75"
-            >
-              <TabsTrigger value="home">HOME</TabsTrigger>
-              <TabsTrigger value="departments">
-                DEPARTMENTS
-              </TabsTrigger>
-              <TabsTrigger value="products">PRODUCTS</TabsTrigger>
-              <TabsTrigger value="plans">PLANS</TabsTrigger>
-            </TabsList>
-            {isAuthenticated && user ? (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="icon-sm"
-                    className="rounded-full text-xs text-white! font-semibold"
-                    aria-label="Open account menu"
-                    title={user.email}
-                    style={accountButtonStyle}
-                  >
-                    {userInitial}
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="min-w-40">
-                  <DropdownMenuLabel className="text-xs sm:text-sm">
-                    Signed in as
-                    <br />
-                    <span className="font-medium">{user.email}</span>
-                  </DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  {canOpenTenantDashboard ? (
-                    <>
-                      <DropdownMenuItem
-                        onClick={handleGoToTenantDashboard}
-                      >
-                        Go to dashboard
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                    </>
-                  ) : null}
-                  <DropdownMenuItem onClick={handleLogout}>
-                    <span className="text-destructive">Log out</span>
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            ) : null}
-          </div>
-        </div>
-      </header>
+        </header>
 
-      <main className="container mx-auto flex-1 px-4 py-6 sm:px-6 sm:py-10">
-        <div className="flex flex-1 flex-col gap-6">
-          <TabsContent value="home" className="mt-0 flex-1">
-            <section className="mx-auto flex max-w-5xl flex-col gap-8 lg:flex-row">
-              <div className="flex-1 space-y-4 lg:space-y-6">
-                <p
-                  className="text-sm font-medium uppercase tracking-[0.2em] text-primary"
-                  style={
-                    brand.secondary
-                      ? { color: brand.secondary }
-                      : undefined
-                  }
-                >
-                  {moto}
-                </p>
-                <h1
-                  className="text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl"
-                  style={fontHeaderStyle}
-                >
-                  {title}
-                </h1>
-                <p className="text-base leading-relaxed text-muted-foreground sm:text-lg">
-                  {about}
-                </p>
-
-                {featuredDepartments.length > 0 && (
-                  <div className="mt-4 space-y-2">
-                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-                      Key departments
-                    </p>
-                    <ul className="grid gap-1 text-sm text-muted-foreground sm:grid-cols-2">
-                      {featuredDepartments.map((d) => (
-                        <li
-                          key={d.id}
-                          className="flex items-center gap-2"
-                        >
-                          <span
-                            className="h-1.5 w-1.5 rounded-full"
-                            style={
-                              brand.primary
-                                ? {
-                                    backgroundColor: brand.primary,
-                                  }
-                                : undefined
-                            }
-                          />
-                          <span>{d.name}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-
-                <div className="mt-5 flex flex-wrap gap-3">
-                  <Button
-                    size="sm"
-                    onClick={() => setActiveTab('departments')}
-                    style={
-                      brand.primary
-                        ? {
-                            backgroundColor: brand.primary,
-                            borderColor: brand.primary,
-                          }
-                        : undefined
-                    }
-                  >
-                    View departments
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() =>
-                      window.scrollTo({
-                        top: 0,
-                        behavior: 'smooth',
-                      })
-                    }
+        <main className="container mx-auto flex-1 px-4 py-6 sm:px-6 sm:py-10">
+          <div className="flex flex-1 flex-col gap-6">
+            <TabsContent value="home" className="mt-0 flex-1">
+              <section className="mx-auto flex max-w-5xl flex-col gap-8 lg:flex-row">
+                <div className="flex-1 space-y-4 lg:space-y-6">
+                  <p
+                    className="text-sm font-medium uppercase tracking-[0.2em] text-primary"
                     style={
                       brand.secondary
-                        ? {
-                            borderColor: brand.secondary,
-                            color: brand.secondary,
-                          }
+                        ? { color: brand.secondary }
                         : undefined
                     }
                   >
-                    Back to top
-                  </Button>
+                    {moto}
+                  </p>
+                  <h1
+                    className="text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl"
+                    style={fontHeaderStyle}
+                  >
+                    {title}
+                  </h1>
+                  <p className="text-base leading-relaxed text-muted-foreground sm:text-lg">
+                    {about}
+                  </p>
 
-                  {/* Register as patient CTA */}
-                  {isAuthenticated && user ? (
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        disabled={
-                          isRegistered ||
-                          registerMutation.isPending ||
-                          meQuery.isLoading ||
-                          isRegistrationCheckPending
-                        }
-                        loading={registerMutation.isPending}
-                        onClick={handleRegisterAsPatient}
-                      >
-                        {isRegistered
-                          ? 'Registered'
-                          : isRegistrationCheckPending
-                            ? 'Checking...'
-                            : 'Register as patient'}
-                      </Button>
-                      {isRegistered ? (
-                        <>
-                          <p className="text-xs text-muted-foreground">
-                            You&apos;re registered. Add details in
-                            your Profile.
-                          </p>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() =>
-                              navigate({
-                                to: '/dashboard/profile',
-                              })
-                            }
+                  {featuredDepartments.length > 0 && (
+                    <div className="mt-4 space-y-2">
+                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                        Key departments
+                      </p>
+                      <ul className="grid gap-1 text-sm text-muted-foreground sm:grid-cols-2">
+                        {featuredDepartments.map((d) => (
+                          <li
+                            key={d.id}
+                            className="flex items-center gap-2"
                           >
-                            Go to Profile
-                          </Button>
-                        </>
-                      ) : null}
-                      {hasUnexpectedRegistrationStatusError ? (
-                        <p className="text-xs text-destructive">
-                          Unable to verify registration status right
-                          now.
-                        </p>
-                      ) : null}
+                            <span
+                              className="h-1.5 w-1.5 rounded-full"
+                              style={
+                                brand.primary
+                                  ? {
+                                      backgroundColor: brand.primary,
+                                    }
+                                  : undefined
+                              }
+                            />
+                            <span>{d.name}</span>
+                          </li>
+                        ))}
+                      </ul>
                     </div>
-                  ) : (
+                  )}
+
+                  <div className="mt-5 flex flex-wrap gap-3">
+                    <Button
+                      size="sm"
+                      onClick={() => setActiveTab('departments')}
+                      style={
+                        brand.primary
+                          ? {
+                              backgroundColor: brand.primary,
+                              borderColor: brand.primary,
+                            }
+                          : undefined
+                      }
+                    >
+                      View departments
+                    </Button>
                     <Button
                       size="sm"
                       variant="outline"
                       onClick={() =>
-                        navigate({
-                          to: '/login',
-                          search: {
-                            reason: undefined,
-                            redirect: `/landing/${slug || tenant.id}`,
-                          },
+                        window.scrollTo({
+                          top: 0,
+                          behavior: 'smooth',
                         })
                       }
+                      style={
+                        brand.secondary
+                          ? {
+                              borderColor: brand.secondary,
+                              color: brand.secondary,
+                            }
+                          : undefined
+                      }
                     >
-                      Sign in to register
+                      Back to top
                     </Button>
-                  )}
+
+                    {/* Register as patient CTA */}
+                    {isAuthenticated && user ? (
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={
+                            isRegistered ||
+                            registerMutation.isPending ||
+                            meQuery.isLoading ||
+                            isRegistrationCheckPending
+                          }
+                          loading={registerMutation.isPending}
+                          onClick={handleRegisterAsPatient}
+                        >
+                          {isRegistered
+                            ? 'Registered'
+                            : isRegistrationCheckPending
+                              ? 'Checking...'
+                              : 'Register as patient'}
+                        </Button>
+                        {isRegistered ? (
+                          <>
+                            <p className="text-xs text-muted-foreground">
+                              You&apos;re registered. Add details in
+                              your Profile.
+                            </p>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() =>
+                                navigate({
+                                  to: '/dashboard/profile',
+                                })
+                              }
+                            >
+                              Go to Profile
+                            </Button>
+                          </>
+                        ) : null}
+                        {hasUnexpectedRegistrationStatusError ? (
+                          <p className="text-xs text-destructive">
+                            Unable to verify registration status right
+                            now.
+                          </p>
+                        ) : null}
+                      </div>
+                    ) : (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() =>
+                          navigate({
+                            to: '/login',
+                            search: {
+                              reason: undefined,
+                              redirect: `/landing/${slug || tenant.id}`,
+                            },
+                          })
+                        }
+                      >
+                        Sign in to register
+                      </Button>
+                    )}
+                  </div>
                 </div>
-              </div>
-              <aside className="mt-4 flex flex-1 flex-col gap-3 rounded-xl border bg-card/60 p-4 text-sm shadow-sm sm:p-5 lg:mt-0 lg:max-w-sm">
-                <div className="relative h-40 overflow-hidden rounded-lg border bg-muted/40">
-                  {heroImage ? (
-                    <img
-                      src={heroImage}
-                      alt={title}
-                      className="h-full w-full object-cover"
-                    />
-                  ) : (
-                    <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
-                      Hero image not set
-                    </div>
-                  )}
-                </div>
-                <div className="flex items-center gap-2">
-                  {logo ? (
-                    <img
-                      src={logo}
-                      alt={title}
-                      className="h-8 w-8 rounded-md object-contain"
-                    />
-                  ) : (
-                    <div className="bg-primary/10 text-primary flex h-8 w-8 items-center justify-center rounded-md text-xs font-semibold">
-                      {title
-                        .split(' ')
-                        .map((p) => p[0])
-                        .join('')
-                        .slice(0, 2)}
-                    </div>
-                  )}
-                  <p className="text-xs text-muted-foreground">
-                    Brand preview
-                  </p>
-                </div>
-                <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                  At a glance
-                </h2>
-                <div className="space-y-2 text-sm">
-                  <p>
-                    <span className="text-muted-foreground">
-                      Tenant:
-                    </span>{' '}
-                    <code className="rounded bg-muted px-1 text-xs">
-                      {slug || tenant.name}
-                    </code>
-                  </p>
-                  {departments.length > 0 && (
-                    <p className="text-muted-foreground">
-                      {departments.length} department(s) with services
-                      listed below.
+                <aside className="mt-4 flex flex-1 flex-col gap-3 rounded-xl border bg-card/60 p-4 text-sm shadow-sm sm:p-5 lg:mt-0 lg:max-w-sm">
+                  <div className="relative h-40 overflow-hidden rounded-lg border bg-muted/40">
+                    {heroImage ? (
+                      <img
+                        src={heroImage}
+                        alt={title}
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
+                        Hero image not set
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {logo ? (
+                      <img
+                        src={logo}
+                        alt={title}
+                        className="h-8 w-8 rounded-md object-contain"
+                      />
+                    ) : (
+                      <div className="bg-primary/10 text-primary flex h-8 w-8 items-center justify-center rounded-md text-xs font-semibold">
+                        {title
+                          .split(' ')
+                          .map((p) => p[0])
+                          .join('')
+                          .slice(0, 2)}
+                      </div>
+                    )}
+                    <p className="text-xs text-muted-foreground">
+                      Brand preview
                     </p>
-                  )}
+                  </div>
+                  <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    At a glance
+                  </h2>
+                  <div className="space-y-2 text-sm">
+                    <p>
+                      <span className="text-muted-foreground">
+                        Tenant:
+                      </span>{' '}
+                      <code className="rounded bg-muted px-1 text-xs">
+                        {slug || tenant.name}
+                      </code>
+                    </p>
+                    {departments.length > 0 && (
+                      <p className="text-muted-foreground">
+                        {departments.length} department(s) with
+                        services listed below.
+                      </p>
+                    )}
+                  </div>
+                </aside>
+              </section>
+            </TabsContent>
+
+            <TabsContent value="departments" className="mt-0 flex-1">
+              <section className="mx-auto max-w-5xl space-y-4">
+                <div className="space-y-1">
+                  <h2 className="text-xl font-semibold tracking-tight sm:text-2xl">
+                    Departments & services
+                  </h2>
+                  <p className="text-sm text-muted-foreground sm:text-base">
+                    {departments.length > 0
+                      ? 'Departments and services for this tenant.'
+                      : 'No departments configured yet.'}
+                  </p>
                 </div>
-              </aside>
-            </section>
-          </TabsContent>
 
-          <TabsContent value="departments" className="mt-0 flex-1">
-            <section className="mx-auto max-w-5xl space-y-4">
-              <div className="space-y-1">
-                <h2 className="text-xl font-semibold tracking-tight sm:text-2xl">
-                  Departments & services
-                </h2>
-                <p className="text-sm text-muted-foreground sm:text-base">
-                  {departments.length > 0
-                    ? 'Departments and services for this tenant.'
-                    : 'No departments configured yet.'}
-                </p>
-              </div>
+                {departments.length > 0 ? (
+                  <div className="grid gap-4 md:grid-cols-2">
+                    {departments.map((dept) => (
+                      <article
+                        key={dept.id}
+                        className="flex h-full flex-col rounded-xl border bg-card/60 p-4 shadow-sm"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <h3 className="text-sm font-semibold sm:text-base">
+                              {dept.name}
+                            </h3>
+                            {dept.location && (
+                              <p className="text-xs text-muted-foreground sm:text-sm">
+                                {dept.location}
+                              </p>
+                            )}
+                          </div>
+                          {(dept.phone_number || dept.email) && (
+                            <div className="space-y-0.5 text-right text-[0.7rem] text-muted-foreground">
+                              {dept.phone_number && (
+                                <p>{dept.phone_number}</p>
+                              )}
+                              {dept.email && <p>{dept.email}</p>}
+                            </div>
+                          )}
+                        </div>
 
-              {departments.length > 0 ? (
-                <div className="grid gap-4 md:grid-cols-2">
-                  {departments.map((dept) => (
-                    <article
-                      key={dept.id}
-                      className="flex h-full flex-col rounded-xl border bg-card/60 p-4 shadow-sm"
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <h3 className="text-sm font-semibold sm:text-base">
-                            {dept.name}
-                          </h3>
-                          {dept.location && (
-                            <p className="text-xs text-muted-foreground sm:text-sm">
-                              {dept.location}
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          {dept.services.length > 0 ? (
+                            dept.services.map((service) => (
+                              <span
+                                key={service.id}
+                                className="rounded-full border px-2 py-1 text-xs"
+                                style={
+                                  brand.primary
+                                    ? {
+                                        borderColor: brand.primary,
+                                        color: brand.primary,
+                                      }
+                                    : undefined
+                                }
+                              >
+                                {service.name}
+                              </span>
+                            ))
+                          ) : (
+                            <p className="text-xs text-muted-foreground">
+                              No services listed.
                             </p>
                           )}
                         </div>
-                        {(dept.phone_number || dept.email) && (
-                          <div className="space-y-0.5 text-right text-[0.7rem] text-muted-foreground">
-                            {dept.phone_number && (
-                              <p>{dept.phone_number}</p>
-                            )}
-                            {dept.email && <p>{dept.email}</p>}
-                          </div>
-                        )}
-                      </div>
 
-                      <div className="mt-3 flex flex-wrap gap-2">
-                        {dept.services.length > 0 ? (
-                          dept.services.map((service) => (
-                            <span
-                              key={service.id}
-                              className="rounded-full border px-2 py-1 text-xs"
-                              style={
-                                brand.primary
-                                  ? {
-                                      borderColor: brand.primary,
-                                      color: brand.primary,
-                                    }
-                                  : undefined
-                              }
-                            >
-                              {service.name}
-                            </span>
-                          ))
-                        ) : (
-                          <p className="text-xs text-muted-foreground">
-                            No services listed.
+                        {dept.services.some((s) => s.description) && (
+                          <p className="mt-3 text-xs text-muted-foreground">
+                            {dept.services
+                              .filter((s) => s.description)
+                              .slice(0, 2)
+                              .map((s) => s.description)
+                              .join(' • ')}
                           </p>
                         )}
-                      </div>
+                      </article>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="rounded-xl border bg-card/60 p-6 text-center text-sm text-muted-foreground">
+                    No departments configured yet.
+                  </div>
+                )}
+              </section>
+            </TabsContent>
 
-                      {dept.services.some((s) => s.description) && (
-                        <p className="mt-3 text-xs text-muted-foreground">
-                          {dept.services
-                            .filter((s) => s.description)
-                            .slice(0, 2)
-                            .map((s) => s.description)
-                            .join(' • ')}
-                        </p>
-                      )}
-                    </article>
-                  ))}
+            <TabsContent value="products" className="mt-0 flex-1">
+              <section className="mx-auto max-w-5xl space-y-4">
+                <div className="space-y-1">
+                  <h2 className="text-xl font-semibold tracking-tight sm:text-2xl">
+                    Products
+                  </h2>
+                  <p className="text-sm text-muted-foreground sm:text-base">
+                    {availableProducts.length > 0
+                      ? 'Healthcare products currently available from this tenant.'
+                      : 'No products available yet.'}
+                  </p>
                 </div>
-              ) : (
-                <div className="rounded-xl border bg-card/60 p-6 text-center text-sm text-muted-foreground">
-                  No departments configured yet.
-                </div>
-              )}
-            </section>
-          </TabsContent>
-
-          <TabsContent value="products" className="mt-0 flex-1">
-            <section className="mx-auto max-w-5xl space-y-4">
-              <div className="space-y-1">
-                <h2 className="text-xl font-semibold tracking-tight sm:text-2xl">
-                  Products
-                </h2>
-                <p className="text-sm text-muted-foreground sm:text-base">
-                  {availableProducts.length > 0
-                    ? 'Healthcare products currently available from this tenant.'
-                    : 'No products available yet.'}
-                </p>
-              </div>
-
-              {availableProducts.length > 0 ? (
-                <div className="grid gap-4 md:grid-cols-2">
-                  {availableProducts.map((product) => (
-                    <article
-                      key={product.product_id}
-                      className="flex h-full flex-col rounded-xl border bg-card/60 p-4 shadow-sm"
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <h3 className="text-sm font-semibold sm:text-base">
-                          {product.name}
-                        </h3>
-                        <span
-                          className="rounded-full border px-2 py-0.5 text-xs font-medium"
-                          style={
-                            brand.primary
-                              ? {
-                                  borderColor: brand.primary,
-                                  color: brand.primary,
-                                }
-                              : undefined
-                          }
-                        >
-                          {formatCurrency(product.price)}
-                        </span>
-                      </div>
-                      <p className="mt-2 text-sm text-muted-foreground">
-                        {product.description ||
-                          'No description provided.'}
-                      </p>
-                    </article>
-                  ))}
-                </div>
-              ) : (
-                <div className="rounded-xl border bg-card/60 p-6 text-center text-sm text-muted-foreground">
-                  No products configured yet.
-                </div>
-              )}
-            </section>
-          </TabsContent>
-
-          <TabsContent value="plans" className="mt-0 flex-1">
-            <section className="mx-auto max-w-5xl space-y-4">
-              <div className="space-y-1">
-                <h2 className="text-xl font-semibold tracking-tight sm:text-2xl">
-                  Plans &amp; memberships
-                </h2>
-                <p className="text-sm text-muted-foreground sm:text-base">
-                  {plans.length > 0
-                    ? 'Explore tenant-specific pricing and coverage limits for care packages.'
-                    : 'No plans available yet.'}
-                </p>
-              </div>
-
-              {selectedPlanId &&
-                (() => {
-                  const selected = plans.find(
-                    (p) => p.id === selectedPlanId
-                  );
-                  if (!selected) return null;
-                  return (
-                    <div
-                      className="flex items-center justify-between rounded-xl border-2 p-4"
-                      style={{
-                        borderColor: brand.primary ?? undefined,
-                        backgroundColor: `${brand.primary ?? '#2563eb'}10`,
-                      }}
-                    >
-                      <div className="flex items-center gap-3">
-                        <div
-                          className="flex h-8 w-8 items-center justify-center rounded-full text-white text-sm font-bold"
-                          style={{
-                            backgroundColor:
-                              brand.primary ?? '#2563eb',
-                          }}
-                        >
-                          ✓
-                        </div>
-                        <div>
-                          <p className="text-sm font-semibold">
-                            {selected.name}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            €{Number(selected.price).toFixed(2)}
-                            {selected.duration
-                              ? ` / ${selected.duration} days`
-                              : ''}
-                          </p>
-                        </div>
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        disabled={cancelMutation.isPending}
-                        onClick={() => {
-                          if (tenantId)
-                            cancelMutation.mutate(tenantId);
-                        }}
-                      >
-                        {cancelMutation.isPending
-                          ? 'Cancelling…'
-                          : 'Change plan'}
-                      </Button>
-                    </div>
-                  );
-                })()}
-
-              {plans.length > 0 ? (
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                  {plans.map((plan) => {
-                    const isSelected = selectedPlanId === plan.id;
-                    return (
+                {availableProducts.length > 0 ? (
+                  <div className="grid gap-4 md:grid-cols-2">
+                    {availableProducts.map((product) => (
                       <article
-                        key={plan.id}
-                        className={`flex h-full flex-col rounded-xl border p-5 shadow-sm transition-all ${
-                          isSelected
-                            ? 'ring-2 bg-card/80'
-                            : 'bg-card/60'
-                        }`}
-                        style={
-                          isSelected
-                            ? {
-                                borderColor:
-                                  brand.primary ?? undefined,
-                                outlineColor:
-                                  brand.primary ?? undefined,
-                              }
-                            : undefined
-                        }
+                        key={product.product_id}
+                        className="flex h-full flex-col rounded-xl border bg-card/60 p-4 shadow-sm"
                       >
                         <div className="flex items-start justify-between gap-3">
                           <h3 className="text-sm font-semibold sm:text-base">
-                            {plan.name}
+                            {product.name}
                           </h3>
-                          <span className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
-                            {isSelected ? 'Active' : 'Available'}
+                          <span
+                            className="rounded-full border px-2 py-0.5 text-xs font-medium"
+                            style={
+                              brand.primary
+                                ? {
+                                    borderColor: brand.primary,
+                                    color: brand.primary,
+                                  }
+                                : undefined
+                            }
+                          >
+                            {formatCurrency(product.price)}
                           </span>
                         </div>
-
-                        <p className="mt-3 text-2xl font-bold tracking-tight">
-                          €{Number(plan.price).toFixed(2)}
-                        </p>
-                        {plan.duration && (
-                          <p className="text-xs text-muted-foreground">
-                            {plan.duration} day
-                            {plan.duration !== 1 ? 's' : ''} duration
-                          </p>
-                        )}
-
-                        <p className="mt-3 flex-1 text-sm text-muted-foreground">
-                          {plan.description ||
+                        <p className="mt-2 text-sm text-muted-foreground">
+                          {product.description ||
                             'No description provided.'}
                         </p>
+                      </article>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="rounded-xl border bg-card/60 p-6 text-center text-sm text-muted-foreground">
+                    No products configured yet.
+                  </div>
+                )}
+              </section>
+            </TabsContent>
 
-                        <div className="mt-4 space-y-2 border-t pt-3">
-                          <div className="flex items-center justify-between text-sm">
-                            <span className="text-muted-foreground">
-                              Appointments
-                            </span>
-                            <span className="font-medium">
-                              {plan.max_appointments != null
-                                ? plan.max_appointments
-                                : 'Unlimited'}
-                            </span>
-                          </div>
-                          <div className="flex items-center justify-between text-sm">
-                            <span className="text-muted-foreground">
-                              Consultations
-                            </span>
-                            <span className="font-medium">
-                              {plan.max_consultations != null
-                                ? plan.max_consultations
-                                : 'Unlimited'}
-                            </span>
+            <TabsContent value="plans" className="mt-0 flex-1">
+              <section className="mx-auto max-w-5xl space-y-4">
+                <div className="space-y-1">
+                  <h2 className="text-xl font-semibold tracking-tight sm:text-2xl">
+                    Plans &amp; memberships
+                  </h2>
+                  <p className="text-sm text-muted-foreground sm:text-base">
+                    {plans.length > 0
+                      ? 'Explore tenant-specific pricing and coverage limits for care packages.'
+                      : 'No plans available yet.'}
+                  </p>
+                </div>
+
+                {checkoutRecovery && isCheckoutNoticeVisible ? (
+                  <PaymentFlowNotice
+                    phase={checkoutRecovery.phase}
+                    eyebrow="Plan checkout"
+                    title={
+                      checkoutRecovery.phase === 'collecting_payment'
+                        ? 'Your secure checkout is ready'
+                        : checkoutRecovery.phase === 'processing'
+                          ? 'We are confirming your payment'
+                          : 'Payment submitted, but activation is still pending'
+                    }
+                    description={
+                      checkoutRecovery.phase === 'collecting_payment'
+                        ? 'Return to the Stripe form to finish your payment. Your current selection will stay pending until you submit the card details.'
+                        : checkoutRecovery.phase === 'processing'
+                          ? 'Stripe accepted your submission. This page will keep checking for plan activation and update automatically once the backend confirms it.'
+                          : 'We have not confirmed activation yet. You can check again now, or clear this pending checkout and start over if you need to retry.'
+                    }
+                    primaryAction={{
+                      label:
+                        checkoutRecovery.phase ===
+                        'collecting_payment'
+                          ? 'Resume checkout'
+                          : 'Check status now',
+                      onClick: async () => {
+                        if (
+                          checkoutRecovery.phase ===
+                          'collecting_payment'
+                        ) {
+                          setShowStripeModal(true);
+                          setActiveTab('plans');
+                          return;
+                        }
+
+                        await handleCheckEnrollmentStatus();
+                      },
+                    }}
+                    secondaryAction={{
+                      label:
+                        checkoutRecovery.phase ===
+                        'attention_required'
+                          ? 'Clear pending checkout'
+                          : 'Close notice',
+                      onClick: () => {
+                        if (
+                          checkoutRecovery.phase ===
+                          'attention_required'
+                        ) {
+                          clearEnrollmentCheckout();
+                          return;
+                        }
+
+                        setShowStripeModal(false);
+                        setIsCheckoutNoticeVisible(false);
+                      },
+                      variant: 'outline',
+                    }}
+                  />
+                ) : null}
+
+                {checkoutRecovery && !isCheckoutNoticeVisible ? (
+                  <div className="flex flex-col gap-3 rounded-xl border border-border/70 bg-card/70 p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+                    <div className="space-y-1">
+                      <p className="text-sm font-semibold">
+                        Plan checkout is still pending
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        Reopen the notice, resume checkout, or review
+                        the current status.
+                      </p>
+                    </div>
+                    <div className="flex flex-col gap-2 sm:flex-row">
+                      <Button
+                        variant="outline"
+                        onClick={() =>
+                          setIsCheckoutNoticeVisible(true)
+                        }
+                      >
+                        Open notice
+                      </Button>
+                      <Button
+                        onClick={async () => {
+                          if (
+                            checkoutRecovery.phase ===
+                            'collecting_payment'
+                          ) {
+                            setShowStripeModal(true);
+                            setActiveTab('plans');
+                            return;
+                          }
+
+                          await handleCheckEnrollmentStatus();
+                        }}
+                      >
+                        {checkoutRecovery.phase ===
+                        'collecting_payment'
+                          ? 'Open checkout'
+                          : 'Check status'}
+                      </Button>
+                    </div>
+                  </div>
+                ) : null}
+
+                <Dialog
+                  open={showCheckoutStatusModal && !!checkoutRecovery}
+                  onOpenChange={setShowCheckoutStatusModal}
+                >
+                  <DialogContent className="sm:max-w-lg">
+                    <DialogHeader>
+                      <DialogTitle>{checkoutStatusTitle}</DialogTitle>
+                      <DialogDescription>
+                        {checkoutStatusDescription}
+                      </DialogDescription>
+                    </DialogHeader>
+
+                    {checkoutRecovery ? (
+                      <div className="space-y-3">
+                        <div className="rounded-lg border bg-muted/30 p-4">
+                          <div className="grid gap-3 text-sm sm:grid-cols-2">
+                            <div>
+                              <p className="text-muted-foreground">
+                                Plan
+                              </p>
+                              <p className="font-medium">
+                                {pendingPlan?.name ?? 'Pending plan'}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-muted-foreground">
+                                Payment ID
+                              </p>
+                              <p className="font-medium">
+                                #{checkoutRecovery.paymentId}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-muted-foreground">
+                                Enrollment ID
+                              </p>
+                              <p className="font-medium">
+                                #{checkoutRecovery.referenceId}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-muted-foreground">
+                                Current phase
+                              </p>
+                              <p className="font-medium capitalize">
+                                {checkoutRecovery.phase.replaceAll(
+                                  '_',
+                                  ' '
+                                )}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-muted-foreground">
+                                Started
+                              </p>
+                              <p className="font-medium">
+                                {formatStatusTimestamp(
+                                  checkoutRecovery.startedAt
+                                )}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-muted-foreground">
+                                Last updated
+                              </p>
+                              <p className="font-medium">
+                                {formatStatusTimestamp(
+                                  checkoutRecovery.updatedAt
+                                )}
+                              </p>
+                            </div>
                           </div>
                         </div>
 
+                        <div className="rounded-lg border border-border/70 bg-card/70 p-4 text-sm text-muted-foreground">
+                          {checkoutRecovery.phase === 'processing'
+                            ? 'Stripe accepted your payment submission. Activation will finish once the backend confirms the enrollment update.'
+                            : 'The payment has not been confirmed yet. If this status does not change after another refresh, clear the pending checkout and try again.'}
+                        </div>
+                      </div>
+                    ) : null}
+
+                    <DialogFooter>
+                      {checkoutRecovery?.phase ===
+                      'attention_required' ? (
                         <Button
+                          variant="outline"
+                          onClick={clearEnrollmentCheckout}
+                        >
+                          Clear pending checkout
+                        </Button>
+                      ) : null}
+                      <Button
+                        variant="outline"
+                        onClick={() =>
+                          setShowCheckoutStatusModal(false)
+                        }
+                      >
+                        Close
+                      </Button>
+                      <Button
+                        onClick={handleCheckEnrollmentStatus}
+                        loading={isCheckingCheckoutStatus}
+                      >
+                        Refresh status
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+
+                {selectedPlanId &&
+                  (() => {
+                    const selected = plans.find(
+                      (p) => p.id === selectedPlanId
+                    );
+                    if (!selected) return null;
+
+                    return (
+                      <div
+                        className="flex items-center justify-between rounded-xl border-2 p-4"
+                        style={{
+                          borderColor: brand.primary ?? undefined,
+                          backgroundColor: `${brand.primary ?? '#2563eb'}10`,
+                        }}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div
+                            className="flex h-8 w-8 items-center justify-center rounded-full text-white text-sm font-bold"
+                            style={{
+                              backgroundColor:
+                                brand.primary ?? '#2563eb',
+                            }}
+                          >
+                            ✓
+                          </div>
+                          <div>
+                            <p className="text-sm font-semibold">
+                              {selected.name}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              €{Number(selected.price).toFixed(2)}
+                              {selected.duration
+                                ? ` / ${selected.duration} days`
+                                : ''}
+                            </p>
+                          </div>
+                        </div>
+                        <Button
+                          variant="ghost"
                           size="sm"
-                          className="mt-4 w-full"
-                          variant={isSelected ? 'outline' : 'default'}
-                          disabled={
-                            isSelected || enrollMutation.isPending
-                          }
+                          disabled={cancelMutation.isPending}
+                          onClick={() => {
+                            if (tenantId)
+                              cancelMutation.mutate(tenantId);
+                          }}
+                        >
+                          {cancelMutation.isPending
+                            ? 'Cancelling…'
+                            : 'Change plan'}
+                        </Button>
+                      </div>
+                    );
+                  })()}
+
+                {plans.length > 0 ? (
+                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                    {plans.map((plan) => {
+                      const isSelected = selectedPlanId === plan.id;
+                      const isCheckoutPending =
+                        enrollMutation.isPending &&
+                        pendingPlanId === plan.id;
+                      const isRecoveryLocked =
+                        !!checkoutRecovery &&
+                        checkoutRecovery.phase !==
+                          'attention_required';
+                      const isFreePlan = Number(plan.price) <= 0;
+
+                      return (
+                        <article
+                          key={plan.id}
+                          className={`flex h-full flex-col rounded-xl border p-5 shadow-sm transition-all ${
+                            isSelected
+                              ? 'ring-2 bg-card/80'
+                              : 'bg-card/60'
+                          }`}
                           style={
                             isSelected
                               ? {
                                   borderColor:
                                     brand.primary ?? undefined,
-                                  color: brand.primary ?? undefined,
+                                  outlineColor:
+                                    brand.primary ?? undefined,
                                 }
-                              : brand.primary
-                                ? {
-                                    backgroundColor: brand.primary,
-                                    borderColor: brand.primary,
-                                  }
-                                : undefined
+                              : undefined
                           }
-                          onClick={() => {
-                            if (!isAuthenticated) {
-                              toast.error(
-                                'Please log in to subscribe to a plan.'
-                              );
-                              return;
-                            }
-                            enrollMutation.mutate({
-                              tenantId: tenant.id,
-                              planId: plan.id,
-                            });
-                          }}
                         >
-                          {isSelected
-                            ? 'You have selected this plan'
-                            : enrollMutation.isPending
-                              ? 'Subscribing…'
-                              : 'Subscribe to this plan'}
-                        </Button>
-                      </article>
+                          <div className="flex items-start justify-between gap-3">
+                            <h3 className="text-sm font-semibold sm:text-base">
+                              {plan.name}
+                            </h3>
+                            <span className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+                              {isSelected ? 'Active' : 'Available'}
+                            </span>
+                          </div>
+
+                          <p className="mt-3 text-2xl font-bold tracking-tight">
+                            €{Number(plan.price).toFixed(2)}
+                          </p>
+                          {plan.duration && (
+                            <p className="text-xs text-muted-foreground">
+                              {plan.duration} day
+                              {plan.duration !== 1 ? 's' : ''}{' '}
+                              duration
+                            </p>
+                          )}
+
+                          <p className="mt-3 flex-1 text-sm text-muted-foreground">
+                            {plan.description ||
+                              'No description provided.'}
+                          </p>
+
+                          <div className="mt-4 space-y-2 border-t pt-3">
+                            <div className="flex items-center justify-between text-sm">
+                              <span className="text-muted-foreground">
+                                Appointments
+                              </span>
+                              <span className="font-medium">
+                                {plan.max_appointments != null
+                                  ? plan.max_appointments
+                                  : 'Unlimited'}
+                              </span>
+                            </div>
+                            <div className="flex items-center justify-between text-sm">
+                              <span className="text-muted-foreground">
+                                Consultations
+                              </span>
+                              <span className="font-medium">
+                                {plan.max_consultations != null
+                                  ? plan.max_consultations
+                                  : 'Unlimited'}
+                              </span>
+                            </div>
+                          </div>
+
+                          <Button
+                            size="sm"
+                            className="mt-4 w-full"
+                            variant={
+                              isSelected ? 'outline' : 'default'
+                            }
+                            disabled={
+                              isSelected ||
+                              enrollMutation.isPending ||
+                              isRecoveryLocked
+                            }
+                            style={
+                              isSelected
+                                ? {
+                                    borderColor:
+                                      brand.primary ?? undefined,
+                                    color: brand.primary ?? undefined,
+                                  }
+                                : brand.primary
+                                  ? {
+                                      backgroundColor: brand.primary,
+                                      borderColor: brand.primary,
+                                    }
+                                  : undefined
+                            }
+                            onClick={() => {
+                              if (!isAuthenticated) {
+                                toast.error(
+                                  'Please log in to subscribe to a plan.'
+                                );
+                                return;
+                              }
+
+                              enrollMutation.mutate({
+                                tenantId: tenant.id,
+                                planId: plan.id,
+                                price: Number(plan.price),
+                              });
+                            }}
+                          >
+                            {isSelected
+                              ? 'You have selected this plan'
+                              : isCheckoutPending
+                                ? isFreePlan
+                                  ? 'Activating free plan…'
+                                  : 'Redirecting to payment…'
+                                : isFreePlan
+                                  ? 'Choose this free plan'
+                                  : 'Subscribe to this plan'}
+                          </Button>
+                        </article>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="rounded-xl border bg-card/60 p-6 text-center text-sm text-muted-foreground">
+                    No plans configured yet.
+                  </div>
+                )}
+
+                <StripePaymentModal
+                  clientSecret={stripeClientSecret ?? ''}
+                  open={showStripeModal && !!stripeClientSecret}
+                  onClose={async () => {
+                    if (
+                      checkoutRecovery?.phase === 'collecting_payment'
+                    ) {
+                      await handleEnrollmentCheckoutCancelled();
+                      return;
+                    }
+
+                    if (
+                      checkoutRecovery?.phase === 'attention_required'
+                    ) {
+                      clearEnrollmentCheckout();
+                      return;
+                    }
+
+                    setShowStripeModal(false);
+                  }}
+                  onPaymentConfirmed={async () => {
+                    if (!checkoutRecovery) return;
+
+                    setShowStripeModal(false);
+                    setEnrollmentCheckoutRecovery({
+                      ...checkoutRecovery,
+                      clientSecret: null,
+                      phase: 'processing',
+                    });
+                    await queryClient.invalidateQueries({
+                      queryKey: ['my-enrollment', tenantId],
+                    });
+                  }}
+                  onPaymentFailed={async (errorMessage) => {
+                    await handleEnrollmentPaymentFailure(
+                      errorMessage
                     );
-                  })}
-                </div>
-              ) : (
-                <div className="rounded-xl border bg-card/60 p-6 text-center text-sm text-muted-foreground">
-                  No plans configured yet.
-                </div>
-              )}
-            </section>
-          </TabsContent>
-        </div>
-      </main>
-    </Tabs>
+                  }}
+                />
+              </section>
+            </TabsContent>
+          </div>
+        </main>
+      </Tabs>
+    </div>
   );
 }

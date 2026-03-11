@@ -27,6 +27,7 @@ export interface FormSelectProps {
   helperText?: string;
   wrapperClassName?: string;
   triggerClassName?: string;
+  contentClassName?: string;
   'aria-invalid'?: boolean;
 }
 
@@ -47,59 +48,65 @@ export const FormSelect = React.forwardRef<
       helperText,
       wrapperClassName,
       triggerClassName,
+      contentClassName,
       'aria-invalid': ariaInvalid,
     },
     ref
-  ) => (
-    <div className={cn('space-y-2', wrapperClassName)}>
-      <Label htmlFor={id}>{label}</Label>
-      <Select
-        value={value}
-        onValueChange={onValueChange}
-        disabled={disabled}
-      >
-        <SelectTrigger
-          ref={ref}
-          id={id}
-          className={cn('w-full', triggerClassName)}
-          aria-invalid={ariaInvalid ?? !!error}
-          aria-describedby={
-            error
-              ? `${id}-error`
-              : helperText
-                ? `${id}-helper`
-                : undefined
-          }
+  ) => {
+    return (
+      <div className={cn('w-full space-y-2', wrapperClassName)}>
+        <Label htmlFor={id}>{label}</Label>
+        <Select
+          value={value}
+          onValueChange={onValueChange}
+          disabled={disabled}
         >
-          <SelectValue placeholder={placeholder} />
-        </SelectTrigger>
-        <SelectContent>
-          {options.map((opt) => (
-            <SelectItem key={opt.value} value={opt.value}>
-              {opt.label}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-      {error && (
-        <p
-          id={`${id}-error`}
-          className="text-xs text-destructive"
-          role="alert"
-        >
-          {error}
-        </p>
-      )}
-      {helperText && !error && (
-        <p
-          id={`${id}-helper`}
-          className="text-xs text-muted-foreground"
-        >
-          {helperText}
-        </p>
-      )}
-    </div>
-  )
+          <SelectTrigger
+            ref={ref}
+            id={id}
+            className={cn('w-full', triggerClassName)}
+            aria-invalid={ariaInvalid ?? !!error}
+            aria-describedby={
+              error
+                ? `${id}-error`
+                : helperText
+                  ? `${id}-helper`
+                  : undefined
+            }
+          >
+            <SelectValue placeholder={placeholder} />
+          </SelectTrigger>
+          <SelectContent
+            position="popper"
+            className={cn('max-h-72', contentClassName)}
+          >
+            {options.map((opt) => (
+              <SelectItem key={opt.value} value={opt.value}>
+                {opt.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {error && (
+          <p
+            id={`${id}-error`}
+            className="text-xs text-destructive"
+            role="alert"
+          >
+            {error}
+          </p>
+        )}
+        {helperText && !error && (
+          <p
+            id={`${id}-helper`}
+            className="text-xs text-muted-foreground"
+          >
+            {helperText}
+          </p>
+        )}
+      </div>
+    );
+  }
 );
 
 FormSelect.displayName = 'FormSelect';

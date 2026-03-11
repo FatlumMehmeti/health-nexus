@@ -154,8 +154,8 @@ def test_get_pricing_bounds_returns_expected_values(client, db_session):
     assert response.status_code == 200
 
     data = response.json()
-    assert data["min_price"] == 50  # 100 * 0.5
-    assert data["max_price"] == 200  # 100 * 2
+    assert data["min_price"] == 5  # 100 * 0.05
+    assert data["max_price"] == 35  # 100 * 0.35
 
 
 def test_create_plan_enforces_tenant_pricing_bounds(client, db_session):
@@ -173,13 +173,13 @@ def test_create_plan_enforces_tenant_pricing_bounds(client, db_session):
     db_session.add(subscription)
     db_session.commit()
 
-    # For a base price of 100, valid tenant plan price range is [50, 200].
+    # For a base price of 100, valid tenant plan price range is [5, 35].
     low = client.post(
         "/user-tenant-plans/",
         json={
             "tenant_id": client.tenant_id,
             "name": "Too Low",
-            "price": "49.99",
+            "price": "4.99",
         },
     )
     assert low.status_code == 400
@@ -189,7 +189,7 @@ def test_create_plan_enforces_tenant_pricing_bounds(client, db_session):
         json={
             "tenant_id": client.tenant_id,
             "name": "Too High",
-            "price": "200.01",
+            "price": "35.01",
         },
     )
     assert high.status_code == 400
@@ -199,7 +199,7 @@ def test_create_plan_enforces_tenant_pricing_bounds(client, db_session):
         json={
             "tenant_id": client.tenant_id,
             "name": "In Range",
-            "price": "150",
+            "price": "20",
         },
     )
     assert ok.status_code == 200
@@ -513,7 +513,8 @@ def test_enroll_happy_path_creates_enrollment(client, db_session):
     assert data["tenant_id"] == client.tenant_id
     assert data["patient_user_id"] == patient_user.id
     assert data["user_tenant_plan_id"] == plan.id
-    assert data["status"] == "ACTIVE"
+    assert data["status"] == "PENDING"
+    assert data["activated_at"] is None
 
 
 def test_enroll_returns_404_when_plan_belongs_to_other_tenant(client, db_session):
@@ -643,7 +644,8 @@ def test_enroll_existing_enrollment_switches_plan(client, db_session):
     second_data = second.json()
     assert second_data["id"] == first_data["id"]
     assert second_data["user_tenant_plan_id"] == second_plan.id
-    assert second_data["status"] == "ACTIVE"
+    assert second_data["status"] == "PENDING"
+    assert second_data["activated_at"] is None
 
 
 def test_enroll_rejects_non_patient_roles(client, db_session):
@@ -695,3 +697,58 @@ def test_delete_plan_for_other_tenant_returns_403(client, db_session):
     response = client.delete(f"/user-tenant-plans/{other_plan.id}")
 
     assert response.status_code == 403
+
+
+def test_delete_plan_with_enrollments_returns_409(client, db_session):
+    plan = UserTenantPlan(
+        tenant_id=client.tenant_id,
+        name="Protected Delete",
+        price=9.99,
+        is_active=True,
+    )
+    db_session.add(plan)
+    db_session.flush()
+
+    enrollment = Enrollment(
+        tenant_id=client.tenant_id,
+        patient_user_id=client.user_id,
+        user_tenant_plan_id=plan.id,
+        created_by=client.user_id,
+        status=EnrollmentStatusModel.PENDING,
+    )
+    db_session.add(enrollment)
+    db_session.commit()
+
+    response = client.delete(f"/user-tenant-plans/{plan.id}")
+
+    assert response.status_code == 200
+    assert response.json()["message"] == "Plan archived successfully"
+
+    db_session.refresh(plan)
+    assert plan.is_active is False
+
+
+def test_delete_plan_with_active_enrollments_returns_409(client, db_session):
+    plan = UserTenantPlan(
+        tenant_id=client.tenant_id,
+        name="Active Protected Delete",
+        price=9.99,
+        is_active=True,
+    )
+    db_session.add(plan)
+    db_session.flush()
+
+    enrollment = Enrollment(
+        tenant_id=client.tenant_id,
+        patient_user_id=client.user_id,
+        user_tenant_plan_id=plan.id,
+        created_by=client.user_id,
+        status=EnrollmentStatusModel.ACTIVE,
+    )
+    db_session.add(enrollment)
+    db_session.commit()
+
+    response = client.delete(f"/user-tenant-plans/{plan.id}")
+
+    assert response.status_code == 409
+    assert "active or pending enrollments" in response.json()["detail"].lower()

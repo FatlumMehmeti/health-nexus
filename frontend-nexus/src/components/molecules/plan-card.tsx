@@ -16,6 +16,8 @@ export function PlanCard({
   canFitStats = true,
   onChangePlan,
   isChanging = false,
+  changingLabel = 'Updating...',
+  buttonLabel = 'Choose Plan',
 }: {
   plan: SubscriptionPlan;
   isCurrentPlan?: boolean;
@@ -23,6 +25,8 @@ export function PlanCard({
   canFitStats?: boolean;
   onChangePlan?: (planId: number) => void;
   isChanging?: boolean;
+  changingLabel?: string;
+  buttonLabel?: string;
 }) {
   const price = parseFloat(plan.price);
 
@@ -140,7 +144,7 @@ export function PlanCard({
                 : 'dark:bg-zinc-800 dark:hover:bg-zinc-700 dark:text-white bg-gray-800 hover:bg-gray-900 text-white'
         }`}
       >
-        {isChanging ? 'Updating...' : 'Choose Plan'}
+        {isChanging ? changingLabel : buttonLabel}
       </Button>
     </div>
   );

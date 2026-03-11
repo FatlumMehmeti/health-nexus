@@ -6,10 +6,7 @@ import { isApiError } from '@/lib/api-client';
 import { tenantsService } from '@/services/tenants.service';
 import { useDialogStore } from '@/stores/use-dialog-store';
 import { zodResolver } from '@hookform/resolvers/zod';
-import {
-  useMutation,
-  useQueryClient,
-} from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Controller, useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { QUERY_KEYS } from '../../-constants';
