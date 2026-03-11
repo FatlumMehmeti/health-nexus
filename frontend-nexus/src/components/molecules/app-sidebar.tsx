@@ -1,14 +1,18 @@
 import {
   IconBuildingStore,
+  IconBox,
   IconCalendarCheck,
+  IconClipboardList,
   IconDashboard,
   IconFileDescription,
   IconFolder,
   IconHistory,
   IconInnerShadowTop,
   IconLock,
+  IconPackage,
   IconReport,
   IconSettings,
+  IconShoppingCart,
   IconStethoscope,
   IconUserCircle,
   type Icon,
@@ -77,7 +81,12 @@ const superAdminRoutes = [
   },
 ] as const;
 
-const tenantManagerDocuments = [
+const tenantManagerDocuments: Array<{
+  title: string;
+  url: string;
+  icon: Icon;
+  routeKey?: RouteKey;
+}> = [
   {
     title: 'Settings',
     url: '/dashboard/tenant/settings',
@@ -96,7 +105,14 @@ const tenantManagerDocuments = [
   {
     title: 'Products',
     url: '/dashboard/tenant/products',
-    icon: IconBuildingStore,
+    icon: IconBox,
+    routeKey: 'DASHBOARD_TENANT_PRODUCTS',
+  },
+  {
+    title: 'Orders',
+    url: '/dashboard/tenant/orders',
+    icon: IconClipboardList,
+    routeKey: 'DASHBOARD_TENANT_ORDERS',
   },
   {
     title: 'Plans',
@@ -113,8 +129,25 @@ const tenantManagerDocuments = [
     url: '/dashboard/tenant/enrollments',
     icon: IconHistory,
   },
-] as const;
-const clientsDocuments = [
+];
+const clientsDocuments: Array<{
+  title: string;
+  url: string;
+  icon: Icon;
+  routeKey?: RouteKey;
+}> = [
+  {
+    title: 'Shop',
+    url: '/dashboard/shop',
+    icon: IconShoppingCart,
+    routeKey: 'DASHBOARD_SHOP',
+  },
+  {
+    title: 'My Orders',
+    url: '/dashboard/shop/orders',
+    icon: IconPackage,
+    routeKey: 'DASHBOARD_MY_ORDERS',
+  },
   {
     title: 'Enrollments',
     url: '/dashboard/client/enrollments',
@@ -135,7 +168,7 @@ const clientsDocuments = [
     url: '/dashboard/client/settings',
     icon: IconSettings,
   },
-] as const;
+];
 
 export function AppSidebar({
   ...props
@@ -186,10 +219,18 @@ export function AppSidebar({
   }, [role, user?.id, userWithRole]);
   const documentItems = React.useMemo(() => {
     if (role === 'SUPER_ADMIN') return [...superAdminRoutes];
-    if (role === 'TENANT_MANAGER') return [...tenantManagerDocuments];
-    if (role === 'CLIENT') return [...clientsDocuments];
+    if (role === 'TENANT_MANAGER') {
+      return tenantManagerDocuments.filter(
+        (item) => !item.routeKey || can(userWithRole, item.routeKey)
+      );
+    }
+    if (role === 'CLIENT') {
+      return clientsDocuments.filter(
+        (item) => !item.routeKey || can(userWithRole, item.routeKey)
+      );
+    }
     return [];
-  }, [role]);
+  }, [role, userWithRole]);
 
   const documentsLabel = React.useMemo(() => {
     if (role === 'TENANT_MANAGER') return 'My Tenant';

@@ -36,14 +36,19 @@ import { Route as AppointmentsConfirmationRouteImport } from './routes/appointme
 import { Route as AppointmentsBookRouteImport } from './routes/appointments/book'
 import { Route as AppointmentsAppointmentIdRouteImport } from './routes/appointments/$appointmentId'
 import { Route as DashboardLandingPagesRouteRouteImport } from './routes/dashboard/landing-pages/route'
+import { Route as DashboardShopIndexRouteImport } from './routes/dashboard/shop/index'
 import { Route as DashboardLandingPagesIndexRouteImport } from './routes/dashboard/landing-pages/index'
 import { Route as DashboardAuditLogsIndexRouteImport } from './routes/dashboard/audit-logs/index'
+import { Route as DashboardTenantOrdersRouteImport } from './routes/dashboard/tenant/orders'
 import { Route as DashboardTenantSectionRouteImport } from './routes/dashboard/tenant.$section'
+import { Route as DashboardShopOrdersRouteImport } from './routes/dashboard/shop/orders'
+import { Route as DashboardShopCartRouteImport } from './routes/dashboard/shop/cart'
 import { Route as DashboardSalesMyLeadsRouteImport } from './routes/dashboard/sales/my-leads'
 import { Route as DashboardSalesLeadsRouteImport } from './routes/dashboard/sales/leads'
 import { Route as DashboardLandingPagesPageIdRouteImport } from './routes/dashboard/landing-pages/$pageId'
 import { Route as DashboardContractSignDoctorContractIdRouteImport } from './routes/dashboard/contract-sign-doctor.$contractId'
 import { Route as DashboardClientSectionRouteImport } from './routes/dashboard/client.$section'
+import { Route as DashboardShopCheckoutOrderIdRouteImport } from './routes/dashboard/shop/checkout.$orderId'
 import { Route as DashboardSalesLeadsLeadIdRouteImport } from './routes/dashboard/sales/leads.$leadId'
 
 const UnauthorizedRoute = UnauthorizedRouteImport.update({
@@ -185,6 +190,11 @@ const DashboardLandingPagesRouteRoute =
     path: '/landing-pages',
     getParentRoute: () => DashboardRouteRoute,
   } as any)
+const DashboardShopIndexRoute = DashboardShopIndexRouteImport.update({
+  id: '/shop/',
+  path: '/shop/',
+  getParentRoute: () => DashboardRouteRoute,
+} as any)
 const DashboardLandingPagesIndexRoute =
   DashboardLandingPagesIndexRouteImport.update({
     id: '/',
@@ -196,10 +206,25 @@ const DashboardAuditLogsIndexRoute = DashboardAuditLogsIndexRouteImport.update({
   path: '/audit-logs/',
   getParentRoute: () => DashboardRouteRoute,
 } as any)
+const DashboardTenantOrdersRoute = DashboardTenantOrdersRouteImport.update({
+  id: '/orders',
+  path: '/orders',
+  getParentRoute: () => DashboardTenantRoute,
+} as any)
 const DashboardTenantSectionRoute = DashboardTenantSectionRouteImport.update({
   id: '/$section',
   path: '/$section',
   getParentRoute: () => DashboardTenantRoute,
+} as any)
+const DashboardShopOrdersRoute = DashboardShopOrdersRouteImport.update({
+  id: '/shop/orders',
+  path: '/shop/orders',
+  getParentRoute: () => DashboardRouteRoute,
+} as any)
+const DashboardShopCartRoute = DashboardShopCartRouteImport.update({
+  id: '/shop/cart',
+  path: '/shop/cart',
+  getParentRoute: () => DashboardRouteRoute,
 } as any)
 const DashboardSalesMyLeadsRoute = DashboardSalesMyLeadsRouteImport.update({
   id: '/sales/my-leads',
@@ -228,6 +253,12 @@ const DashboardClientSectionRoute = DashboardClientSectionRouteImport.update({
   path: '/$section',
   getParentRoute: () => DashboardClientRoute,
 } as any)
+const DashboardShopCheckoutOrderIdRoute =
+  DashboardShopCheckoutOrderIdRouteImport.update({
+    id: '/shop/checkout/$orderId',
+    path: '/shop/checkout/$orderId',
+    getParentRoute: () => DashboardRouteRoute,
+  } as any)
 const DashboardSalesLeadsLeadIdRoute =
   DashboardSalesLeadsLeadIdRouteImport.update({
     id: '/$leadId',
@@ -268,10 +299,15 @@ export interface FileRoutesByFullPath {
   '/dashboard/landing-pages/$pageId': typeof DashboardLandingPagesPageIdRoute
   '/dashboard/sales/leads': typeof DashboardSalesLeadsRouteWithChildren
   '/dashboard/sales/my-leads': typeof DashboardSalesMyLeadsRoute
+  '/dashboard/shop/cart': typeof DashboardShopCartRoute
+  '/dashboard/shop/orders': typeof DashboardShopOrdersRoute
   '/dashboard/tenant/$section': typeof DashboardTenantSectionRoute
+  '/dashboard/tenant/orders': typeof DashboardTenantOrdersRoute
   '/dashboard/audit-logs/': typeof DashboardAuditLogsIndexRoute
   '/dashboard/landing-pages/': typeof DashboardLandingPagesIndexRoute
+  '/dashboard/shop/': typeof DashboardShopIndexRoute
   '/dashboard/sales/leads/$leadId': typeof DashboardSalesLeadsLeadIdRoute
+  '/dashboard/shop/checkout/$orderId': typeof DashboardShopCheckoutOrderIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -304,10 +340,15 @@ export interface FileRoutesByTo {
   '/dashboard/landing-pages/$pageId': typeof DashboardLandingPagesPageIdRoute
   '/dashboard/sales/leads': typeof DashboardSalesLeadsRouteWithChildren
   '/dashboard/sales/my-leads': typeof DashboardSalesMyLeadsRoute
+  '/dashboard/shop/cart': typeof DashboardShopCartRoute
+  '/dashboard/shop/orders': typeof DashboardShopOrdersRoute
   '/dashboard/tenant/$section': typeof DashboardTenantSectionRoute
+  '/dashboard/tenant/orders': typeof DashboardTenantOrdersRoute
   '/dashboard/audit-logs': typeof DashboardAuditLogsIndexRoute
   '/dashboard/landing-pages': typeof DashboardLandingPagesIndexRoute
+  '/dashboard/shop': typeof DashboardShopIndexRoute
   '/dashboard/sales/leads/$leadId': typeof DashboardSalesLeadsLeadIdRoute
+  '/dashboard/shop/checkout/$orderId': typeof DashboardShopCheckoutOrderIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -343,10 +384,15 @@ export interface FileRoutesById {
   '/dashboard/landing-pages/$pageId': typeof DashboardLandingPagesPageIdRoute
   '/dashboard/sales/leads': typeof DashboardSalesLeadsRouteWithChildren
   '/dashboard/sales/my-leads': typeof DashboardSalesMyLeadsRoute
+  '/dashboard/shop/cart': typeof DashboardShopCartRoute
+  '/dashboard/shop/orders': typeof DashboardShopOrdersRoute
   '/dashboard/tenant/$section': typeof DashboardTenantSectionRoute
+  '/dashboard/tenant/orders': typeof DashboardTenantOrdersRoute
   '/dashboard/audit-logs/': typeof DashboardAuditLogsIndexRoute
   '/dashboard/landing-pages/': typeof DashboardLandingPagesIndexRoute
+  '/dashboard/shop/': typeof DashboardShopIndexRoute
   '/dashboard/sales/leads/$leadId': typeof DashboardSalesLeadsLeadIdRoute
+  '/dashboard/shop/checkout/$orderId': typeof DashboardShopCheckoutOrderIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -383,10 +429,15 @@ export interface FileRouteTypes {
     | '/dashboard/landing-pages/$pageId'
     | '/dashboard/sales/leads'
     | '/dashboard/sales/my-leads'
+    | '/dashboard/shop/cart'
+    | '/dashboard/shop/orders'
     | '/dashboard/tenant/$section'
+    | '/dashboard/tenant/orders'
     | '/dashboard/audit-logs/'
     | '/dashboard/landing-pages/'
+    | '/dashboard/shop/'
     | '/dashboard/sales/leads/$leadId'
+    | '/dashboard/shop/checkout/$orderId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -419,10 +470,15 @@ export interface FileRouteTypes {
     | '/dashboard/landing-pages/$pageId'
     | '/dashboard/sales/leads'
     | '/dashboard/sales/my-leads'
+    | '/dashboard/shop/cart'
+    | '/dashboard/shop/orders'
     | '/dashboard/tenant/$section'
+    | '/dashboard/tenant/orders'
     | '/dashboard/audit-logs'
     | '/dashboard/landing-pages'
+    | '/dashboard/shop'
     | '/dashboard/sales/leads/$leadId'
+    | '/dashboard/shop/checkout/$orderId'
   id:
     | '__root__'
     | '/'
@@ -457,10 +513,15 @@ export interface FileRouteTypes {
     | '/dashboard/landing-pages/$pageId'
     | '/dashboard/sales/leads'
     | '/dashboard/sales/my-leads'
+    | '/dashboard/shop/cart'
+    | '/dashboard/shop/orders'
     | '/dashboard/tenant/$section'
+    | '/dashboard/tenant/orders'
     | '/dashboard/audit-logs/'
     | '/dashboard/landing-pages/'
+    | '/dashboard/shop/'
     | '/dashboard/sales/leads/$leadId'
+    | '/dashboard/shop/checkout/$orderId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -674,6 +735,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardLandingPagesRouteRouteImport
       parentRoute: typeof DashboardRouteRoute
     }
+    '/dashboard/shop/': {
+      id: '/dashboard/shop/'
+      path: '/shop'
+      fullPath: '/dashboard/shop/'
+      preLoaderRoute: typeof DashboardShopIndexRouteImport
+      parentRoute: typeof DashboardRouteRoute
+    }
     '/dashboard/landing-pages/': {
       id: '/dashboard/landing-pages/'
       path: '/'
@@ -688,12 +756,33 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardAuditLogsIndexRouteImport
       parentRoute: typeof DashboardRouteRoute
     }
+    '/dashboard/tenant/orders': {
+      id: '/dashboard/tenant/orders'
+      path: '/orders'
+      fullPath: '/dashboard/tenant/orders'
+      preLoaderRoute: typeof DashboardTenantOrdersRouteImport
+      parentRoute: typeof DashboardTenantRoute
+    }
     '/dashboard/tenant/$section': {
       id: '/dashboard/tenant/$section'
       path: '/$section'
       fullPath: '/dashboard/tenant/$section'
       preLoaderRoute: typeof DashboardTenantSectionRouteImport
       parentRoute: typeof DashboardTenantRoute
+    }
+    '/dashboard/shop/orders': {
+      id: '/dashboard/shop/orders'
+      path: '/shop/orders'
+      fullPath: '/dashboard/shop/orders'
+      preLoaderRoute: typeof DashboardShopOrdersRouteImport
+      parentRoute: typeof DashboardRouteRoute
+    }
+    '/dashboard/shop/cart': {
+      id: '/dashboard/shop/cart'
+      path: '/shop/cart'
+      fullPath: '/dashboard/shop/cart'
+      preLoaderRoute: typeof DashboardShopCartRouteImport
+      parentRoute: typeof DashboardRouteRoute
     }
     '/dashboard/sales/my-leads': {
       id: '/dashboard/sales/my-leads'
@@ -729,6 +818,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/dashboard/client/$section'
       preLoaderRoute: typeof DashboardClientSectionRouteImport
       parentRoute: typeof DashboardClientRoute
+    }
+    '/dashboard/shop/checkout/$orderId': {
+      id: '/dashboard/shop/checkout/$orderId'
+      path: '/shop/checkout/$orderId'
+      fullPath: '/dashboard/shop/checkout/$orderId'
+      preLoaderRoute: typeof DashboardShopCheckoutOrderIdRouteImport
+      parentRoute: typeof DashboardRouteRoute
     }
     '/dashboard/sales/leads/$leadId': {
       id: '/dashboard/sales/leads/$leadId'
@@ -770,10 +866,12 @@ const DashboardClientRouteWithChildren = DashboardClientRoute._addFileChildren(
 
 interface DashboardTenantRouteChildren {
   DashboardTenantSectionRoute: typeof DashboardTenantSectionRoute
+  DashboardTenantOrdersRoute: typeof DashboardTenantOrdersRoute
 }
 
 const DashboardTenantRouteChildren: DashboardTenantRouteChildren = {
   DashboardTenantSectionRoute: DashboardTenantSectionRoute,
+  DashboardTenantOrdersRoute: DashboardTenantOrdersRoute,
 }
 
 const DashboardTenantRouteWithChildren = DashboardTenantRoute._addFileChildren(
@@ -804,7 +902,11 @@ interface DashboardRouteRouteChildren {
   DashboardContractSignDoctorContractIdRoute: typeof DashboardContractSignDoctorContractIdRoute
   DashboardSalesLeadsRoute: typeof DashboardSalesLeadsRouteWithChildren
   DashboardSalesMyLeadsRoute: typeof DashboardSalesMyLeadsRoute
+  DashboardShopCartRoute: typeof DashboardShopCartRoute
+  DashboardShopOrdersRoute: typeof DashboardShopOrdersRoute
   DashboardAuditLogsIndexRoute: typeof DashboardAuditLogsIndexRoute
+  DashboardShopIndexRoute: typeof DashboardShopIndexRoute
+  DashboardShopCheckoutOrderIdRoute: typeof DashboardShopCheckoutOrderIdRoute
 }
 
 const DashboardRouteRouteChildren: DashboardRouteRouteChildren = {
@@ -821,7 +923,11 @@ const DashboardRouteRouteChildren: DashboardRouteRouteChildren = {
     DashboardContractSignDoctorContractIdRoute,
   DashboardSalesLeadsRoute: DashboardSalesLeadsRouteWithChildren,
   DashboardSalesMyLeadsRoute: DashboardSalesMyLeadsRoute,
+  DashboardShopCartRoute: DashboardShopCartRoute,
+  DashboardShopOrdersRoute: DashboardShopOrdersRoute,
   DashboardAuditLogsIndexRoute: DashboardAuditLogsIndexRoute,
+  DashboardShopIndexRoute: DashboardShopIndexRoute,
+  DashboardShopCheckoutOrderIdRoute: DashboardShopCheckoutOrderIdRoute,
 }
 
 const DashboardRouteRouteWithChildren = DashboardRouteRoute._addFileChildren(

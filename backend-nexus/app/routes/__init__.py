@@ -24,6 +24,9 @@ from .consultation_bookings import router as consultation_bookings_router
 from .feature_flag import router as feature_flag_router
 from .ai_assistant import router as ai_assistant_router
 from .payment import router as payment_router
+from .product import router as product_router
+from .cart import router as cart_router
+from .order import router as order_router
 
 __all__ = [
     "role_router",
@@ -53,4 +56,7 @@ __all__ = [
     "feature_flag_router",
     "ai_assistant_router",
     "payment_router",
+    "product_router",
+    "cart_router",
+    "order_router",
 ]

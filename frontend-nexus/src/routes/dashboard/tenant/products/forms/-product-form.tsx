@@ -1,15 +1,16 @@
 import { FormField } from '@/components/atoms/form-field';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
-import type { ProductRead } from '@/interfaces';
+import { Switch } from '@/components/ui/switch';
 import { isApiError } from '@/lib/api-client';
-import { tenantsService } from '@/services/tenants.service';
+import {
+  useCreateProduct,
+  useUpdateProduct,
+  type Product,
+} from '@/services/products.service';
 import { useDialogStore } from '@/stores/use-dialog-store';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Controller, useForm } from 'react-hook-form';
 import { toast } from 'sonner';
-import { QUERY_KEYS } from '../../-constants';
 import {
   productSchema,
   toProductPayload,
@@ -18,56 +19,67 @@ import {
 
 interface ProductFormProps {
   mode: 'create' | 'edit';
-  product?: ProductRead;
+  tenantId: number;
+  product?: Product;
 }
 
-export function ProductForm({ mode, product }: ProductFormProps) {
+export function ProductForm({
+  mode,
+  tenantId,
+  product,
+}: ProductFormProps) {
   const closeDialog = useDialogStore((state) => state.close);
-  const queryClient = useQueryClient();
-
-  const createMutation = useMutation({
-    mutationFn: (values: ProductFormValues) =>
-      tenantsService.createTenantProduct(toProductPayload(values)),
-    onSuccess: () => {
-      toast.success('Product created');
-      closeDialog();
-      void queryClient.invalidateQueries({
-        queryKey: QUERY_KEYS.products,
-      });
-    },
-    onError: (err) => {
-      toast.error('Failed to create product', {
-        description: isApiError(err)
-          ? err.displayMessage
-          : 'Request failed',
-      });
-    },
-  });
-
-  const updateMutation = useMutation({
-    mutationFn: (values: ProductFormValues) =>
-      tenantsService.updateTenantProduct(
-        product!.product_id,
-        toProductPayload(values)
-      ),
-    onSuccess: () => {
-      toast.success('Product updated');
-      closeDialog();
-      void queryClient.invalidateQueries({
-        queryKey: QUERY_KEYS.products,
-      });
-    },
-    onError: (err) => {
-      toast.error('Failed to update product', {
-        description: isApiError(err)
-          ? err.displayMessage
-          : 'Request failed',
-      });
-    },
-  });
+  const createMutation = useCreateProduct();
+  const updateMutation = useUpdateProduct();
 
   const isPending =
     createMutation.isPending || updateMutation.isPending;
+
+  const onSubmit = (values: ProductFormValues) => {
+    const payload = toProductPayload(values);
+    if (mode === 'edit' && product) {
+      updateMutation.mutate(
+        {
+          productId: product.product_id,
+          payload,
+        },
+        {
+          onSuccess: () => {
+            toast.success('Product updated');
+            closeDialog();
+          },
+          onError: (err) => {
+            toast.error('Failed to update product', {
+              description: isApiError(err)
+                ? err.displayMessage
+                : 'Request failed',
+            });
+          },
+        }
+      );
+      return;
+    }
+
+    createMutation.mutate(
+      {
+        ...payload,
+        tenant_id: tenantId,
+      },
+      {
+        onSuccess: () => {
+          toast.success('Product created');
+          closeDialog();
+        },
+        onError: (err) => {
+          toast.error('Failed to create product', {
+            description: isApiError(err)
+              ? err.displayMessage
+              : 'Request failed',
+          });
+        },
+      }
+    );
+  };
 
   const {
     register,
@@ -84,14 +96,6 @@ export function ProductForm({ mode, product }: ProductFormProps) {
       is_available: product?.is_available !== false,
     },
   });
-
-  const onSubmit = (values: ProductFormValues) => {
-    if (mode === 'edit') {
-      updateMutation.mutate(values);
-      return;
-    }
-    createMutation.mutate(values);
-  };
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
@@ -138,14 +142,12 @@ export function ProductForm({ mode, product }: ProductFormProps) {
           name="is_available"
           control={control}
           render={({ field }) => (
-            <label className="inline-flex items-center gap-2 text-sm md:col-span-2">
-              <Checkbox
+            <label className="inline-flex items-center gap-3 text-sm md:col-span-2">
+              <Switch
                 checked={field.value}
-                onCheckedChange={(checked) =>
-                  field.onChange(checked === true)
-                }
+                onCheckedChange={field.onChange}
               />
-              Available on landing page
+              Available in shop
             </label>
           )}
         />
