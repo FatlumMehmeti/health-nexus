@@ -1,6 +1,7 @@
 """
 Payment service: checkout initiation with idempotency and order validation.
 """
+
 from __future__ import annotations
 
 import enum
@@ -292,7 +293,9 @@ def _resolve_payment_intent_id(event_type: str, obj: dict) -> str | None:
 
 
 def _mark_payment_as_captured(db: Session, payment: Payment) -> Payment:
-    if payment.status == PaymentStatus.CAPTURED and _is_post_payment_activation_complete(db, payment):
+    if payment.status == PaymentStatus.CAPTURED and _is_post_payment_activation_complete(
+        db, payment
+    ):
         return payment
 
     payment.status = PaymentStatus.CAPTURED
@@ -400,7 +403,9 @@ def _apply_webhook_state_transition(
 ) -> dict:
     target_status = WEBHOOK_EVENT_STATUS_MAP.get(event_type)
     if target_status is None:
-        _append_payment_audit_note(payment, f"Ignored unsupported webhook event {event_id} ({event_type})")
+        _append_payment_audit_note(
+            payment, f"Ignored unsupported webhook event {event_id} ({event_type})"
+        )
         db.commit()
         return {"processed": False, "reason": "event_ignored", "event_type": event_type}
 
@@ -578,7 +583,9 @@ def _create_or_get_payment_record(
                 db.commit()
                 db.refresh(existing)
                 return existing, client_secret
-            return existing, _get_stripe_payment_intent_client_secret(existing.stripe_payment_intent_id)
+            return existing, _get_stripe_payment_intent_client_secret(
+                existing.stripe_payment_intent_id
+            )
         raise
     except PaymentServiceError:
         db.rollback()
@@ -767,7 +774,9 @@ def create_or_get_tenant_subscription_payment(
 
     allowed_statuses = {SubscriptionStatus.EXPIRED}
     if tenant_subscription.status not in allowed_statuses:
-        allowed_status_values = [status.value for status in sorted(allowed_statuses, key=lambda s: s.value)]
+        allowed_status_values = [
+            status.value for status in sorted(allowed_statuses, key=lambda s: s.value)
+        ]
         raise PaymentServiceError(
             PaymentErrorCode.CONFLICT,
             (

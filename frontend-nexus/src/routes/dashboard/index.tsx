@@ -4,10 +4,10 @@ import { FeatureUnavailableCard } from '@/components/molecules/feature-unavailab
 import { SectionCards } from '@/components/molecules/section-cards';
 import SalesLeadsInbox from '@/components/SalesLeadsInbox';
 
-import { useAuthStore } from '@/stores/auth.store';
 import { TenantFeatureGuard } from '@/components/TenantFeatureGuard';
 import dashboardData from '@/lib/dashboard-data.json';
 import { requireAuth } from '@/lib/guards/requireAuth';
+import { useAuthStore } from '@/stores/auth.store';
 import { IconSparkles } from '@tabler/icons-react';
 import { createFileRoute } from '@tanstack/react-router';
 import { z } from 'zod';

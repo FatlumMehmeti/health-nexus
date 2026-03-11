@@ -8,348 +8,356 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
-import { Route as rootRouteImport } from './routes/__root'
-import { Route as UnauthorizedRouteImport } from './routes/unauthorized'
-import { Route as TenantsRouteImport } from './routes/tenants'
-import { Route as SignupRouteImport } from './routes/signup'
-import { Route as RegisterRouteImport } from './routes/register'
-import { Route as LoginRouteImport } from './routes/login'
-import { Route as EnrollmentRouteImport } from './routes/enrollment'
-import { Route as ContactAdminRouteImport } from './routes/contact-admin'
-import { Route as ConsultationTrackingRouteImport } from './routes/consultation-tracking'
-import { Route as LandingRouteRouteImport } from './routes/landing/route'
-import { Route as DashboardRouteRouteImport } from './routes/dashboard/route'
-import { Route as IndexRouteImport } from './routes/index'
-import { Route as DashboardIndexRouteImport } from './routes/dashboard/index'
-import { Route as LandingTenantSlugRouteImport } from './routes/landing/$tenantSlug'
-import { Route as DoctorAppointmentsRouteImport } from './routes/doctor/appointments'
-import { Route as DashboardTenantsRouteImport } from './routes/dashboard/tenants'
-import { Route as DashboardTenantRouteImport } from './routes/dashboard/tenant'
-import { Route as DashboardRolesRouteImport } from './routes/dashboard/roles'
-import { Route as DashboardProfileRouteImport } from './routes/dashboard/profile'
-import { Route as DashboardPermissionsRouteImport } from './routes/dashboard/permissions'
-import { Route as DashboardClientRouteImport } from './routes/dashboard/client'
-import { Route as DashboardAppointmentsRouteImport } from './routes/dashboard/appointments'
-import { Route as AppointmentsSelectTenantRouteImport } from './routes/appointments/select-tenant'
-import { Route as AppointmentsMyRouteImport } from './routes/appointments/my'
-import { Route as AppointmentsConfirmationRouteImport } from './routes/appointments/confirmation'
-import { Route as AppointmentsBookRouteImport } from './routes/appointments/book'
-import { Route as AppointmentsAppointmentIdRouteImport } from './routes/appointments/$appointmentId'
-import { Route as DashboardLandingPagesRouteRouteImport } from './routes/dashboard/landing-pages/route'
-import { Route as DashboardLandingPagesIndexRouteImport } from './routes/dashboard/landing-pages/index'
-import { Route as DashboardAuditLogsIndexRouteImport } from './routes/dashboard/audit-logs/index'
-import { Route as DashboardTenantSectionRouteImport } from './routes/dashboard/tenant.$section'
-import { Route as DashboardSalesMyLeadsRouteImport } from './routes/dashboard/sales/my-leads'
-import { Route as DashboardSalesLeadsRouteImport } from './routes/dashboard/sales/leads'
-import { Route as DashboardLandingPagesPageIdRouteImport } from './routes/dashboard/landing-pages/$pageId'
-import { Route as DashboardContractSignDoctorContractIdRouteImport } from './routes/dashboard/contract-sign-doctor.$contractId'
-import { Route as DashboardClientSectionRouteImport } from './routes/dashboard/client.$section'
-import { Route as DashboardSalesLeadsLeadIdRouteImport } from './routes/dashboard/sales/leads.$leadId'
+import { Route as rootRouteImport } from './routes/__root';
+import { Route as AppointmentsAppointmentIdRouteImport } from './routes/appointments/$appointmentId';
+import { Route as AppointmentsBookRouteImport } from './routes/appointments/book';
+import { Route as AppointmentsConfirmationRouteImport } from './routes/appointments/confirmation';
+import { Route as AppointmentsMyRouteImport } from './routes/appointments/my';
+import { Route as AppointmentsSelectTenantRouteImport } from './routes/appointments/select-tenant';
+import { Route as ConsultationTrackingRouteImport } from './routes/consultation-tracking';
+import { Route as ContactAdminRouteImport } from './routes/contact-admin';
+import { Route as DashboardAppointmentsRouteImport } from './routes/dashboard/appointments';
+import { Route as DashboardAuditLogsIndexRouteImport } from './routes/dashboard/audit-logs/index';
+import { Route as DashboardClientRouteImport } from './routes/dashboard/client';
+import { Route as DashboardClientSectionRouteImport } from './routes/dashboard/client.$section';
+import { Route as DashboardContractSignDoctorContractIdRouteImport } from './routes/dashboard/contract-sign-doctor.$contractId';
+import { Route as DashboardIndexRouteImport } from './routes/dashboard/index';
+import { Route as DashboardLandingPagesPageIdRouteImport } from './routes/dashboard/landing-pages/$pageId';
+import { Route as DashboardLandingPagesIndexRouteImport } from './routes/dashboard/landing-pages/index';
+import { Route as DashboardLandingPagesRouteRouteImport } from './routes/dashboard/landing-pages/route';
+import { Route as DashboardPermissionsRouteImport } from './routes/dashboard/permissions';
+import { Route as DashboardProfileRouteImport } from './routes/dashboard/profile';
+import { Route as DashboardRolesRouteImport } from './routes/dashboard/roles';
+import { Route as DashboardRouteRouteImport } from './routes/dashboard/route';
+import { Route as DashboardSalesLeadsRouteImport } from './routes/dashboard/sales/leads';
+import { Route as DashboardSalesLeadsLeadIdRouteImport } from './routes/dashboard/sales/leads.$leadId';
+import { Route as DashboardSalesMyLeadsRouteImport } from './routes/dashboard/sales/my-leads';
+import { Route as DashboardTenantRouteImport } from './routes/dashboard/tenant';
+import { Route as DashboardTenantSectionRouteImport } from './routes/dashboard/tenant.$section';
+import { Route as DashboardTenantsRouteImport } from './routes/dashboard/tenants';
+import { Route as DoctorAppointmentsRouteImport } from './routes/doctor/appointments';
+import { Route as EnrollmentRouteImport } from './routes/enrollment';
+import { Route as IndexRouteImport } from './routes/index';
+import { Route as LandingTenantSlugRouteImport } from './routes/landing/$tenantSlug';
+import { Route as LandingRouteRouteImport } from './routes/landing/route';
+import { Route as LoginRouteImport } from './routes/login';
+import { Route as RegisterRouteImport } from './routes/register';
+import { Route as SignupRouteImport } from './routes/signup';
+import { Route as TenantsRouteImport } from './routes/tenants';
+import { Route as UnauthorizedRouteImport } from './routes/unauthorized';
 
 const UnauthorizedRoute = UnauthorizedRouteImport.update({
   id: '/unauthorized',
   path: '/unauthorized',
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const TenantsRoute = TenantsRouteImport.update({
   id: '/tenants',
   path: '/tenants',
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const SignupRoute = SignupRouteImport.update({
   id: '/signup',
   path: '/signup',
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const RegisterRoute = RegisterRouteImport.update({
   id: '/register',
   path: '/register',
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const EnrollmentRoute = EnrollmentRouteImport.update({
   id: '/enrollment',
   path: '/enrollment',
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const ContactAdminRoute = ContactAdminRouteImport.update({
   id: '/contact-admin',
   path: '/contact-admin',
   getParentRoute: () => rootRouteImport,
-} as any)
-const ConsultationTrackingRoute = ConsultationTrackingRouteImport.update({
-  id: '/consultation-tracking',
-  path: '/consultation-tracking',
-  getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
+const ConsultationTrackingRoute =
+  ConsultationTrackingRouteImport.update({
+    id: '/consultation-tracking',
+    path: '/consultation-tracking',
+    getParentRoute: () => rootRouteImport,
+  } as any);
 const LandingRouteRoute = LandingRouteRouteImport.update({
   id: '/landing',
   path: '/landing',
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const DashboardRouteRoute = DashboardRouteRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const DashboardIndexRoute = DashboardIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => DashboardRouteRoute,
-} as any)
+} as any);
 const LandingTenantSlugRoute = LandingTenantSlugRouteImport.update({
   id: '/$tenantSlug',
   path: '/$tenantSlug',
   getParentRoute: () => LandingRouteRoute,
-} as any)
+} as any);
 const DoctorAppointmentsRoute = DoctorAppointmentsRouteImport.update({
   id: '/doctor/appointments',
   path: '/doctor/appointments',
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const DashboardTenantsRoute = DashboardTenantsRouteImport.update({
   id: '/tenants',
   path: '/tenants',
   getParentRoute: () => DashboardRouteRoute,
-} as any)
+} as any);
 const DashboardTenantRoute = DashboardTenantRouteImport.update({
   id: '/tenant',
   path: '/tenant',
   getParentRoute: () => DashboardRouteRoute,
-} as any)
+} as any);
 const DashboardRolesRoute = DashboardRolesRouteImport.update({
   id: '/roles',
   path: '/roles',
   getParentRoute: () => DashboardRouteRoute,
-} as any)
+} as any);
 const DashboardProfileRoute = DashboardProfileRouteImport.update({
   id: '/profile',
   path: '/profile',
   getParentRoute: () => DashboardRouteRoute,
-} as any)
-const DashboardPermissionsRoute = DashboardPermissionsRouteImport.update({
-  id: '/permissions',
-  path: '/permissions',
-  getParentRoute: () => DashboardRouteRoute,
-} as any)
+} as any);
+const DashboardPermissionsRoute =
+  DashboardPermissionsRouteImport.update({
+    id: '/permissions',
+    path: '/permissions',
+    getParentRoute: () => DashboardRouteRoute,
+  } as any);
 const DashboardClientRoute = DashboardClientRouteImport.update({
   id: '/client',
   path: '/client',
   getParentRoute: () => DashboardRouteRoute,
-} as any)
-const DashboardAppointmentsRoute = DashboardAppointmentsRouteImport.update({
-  id: '/appointments',
-  path: '/appointments',
-  getParentRoute: () => DashboardRouteRoute,
-} as any)
+} as any);
+const DashboardAppointmentsRoute =
+  DashboardAppointmentsRouteImport.update({
+    id: '/appointments',
+    path: '/appointments',
+    getParentRoute: () => DashboardRouteRoute,
+  } as any);
 const AppointmentsSelectTenantRoute =
   AppointmentsSelectTenantRouteImport.update({
     id: '/appointments/select-tenant',
     path: '/appointments/select-tenant',
     getParentRoute: () => rootRouteImport,
-  } as any)
+  } as any);
 const AppointmentsMyRoute = AppointmentsMyRouteImport.update({
   id: '/appointments/my',
   path: '/appointments/my',
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const AppointmentsConfirmationRoute =
   AppointmentsConfirmationRouteImport.update({
     id: '/appointments/confirmation',
     path: '/appointments/confirmation',
     getParentRoute: () => rootRouteImport,
-  } as any)
+  } as any);
 const AppointmentsBookRoute = AppointmentsBookRouteImport.update({
   id: '/appointments/book',
   path: '/appointments/book',
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const AppointmentsAppointmentIdRoute =
   AppointmentsAppointmentIdRouteImport.update({
     id: '/appointments/$appointmentId',
     path: '/appointments/$appointmentId',
     getParentRoute: () => rootRouteImport,
-  } as any)
+  } as any);
 const DashboardLandingPagesRouteRoute =
   DashboardLandingPagesRouteRouteImport.update({
     id: '/landing-pages',
     path: '/landing-pages',
     getParentRoute: () => DashboardRouteRoute,
-  } as any)
+  } as any);
 const DashboardLandingPagesIndexRoute =
   DashboardLandingPagesIndexRouteImport.update({
     id: '/',
     path: '/',
     getParentRoute: () => DashboardLandingPagesRouteRoute,
-  } as any)
-const DashboardAuditLogsIndexRoute = DashboardAuditLogsIndexRouteImport.update({
-  id: '/audit-logs/',
-  path: '/audit-logs/',
-  getParentRoute: () => DashboardRouteRoute,
-} as any)
-const DashboardTenantSectionRoute = DashboardTenantSectionRouteImport.update({
-  id: '/$section',
-  path: '/$section',
-  getParentRoute: () => DashboardTenantRoute,
-} as any)
-const DashboardSalesMyLeadsRoute = DashboardSalesMyLeadsRouteImport.update({
-  id: '/sales/my-leads',
-  path: '/sales/my-leads',
-  getParentRoute: () => DashboardRouteRoute,
-} as any)
-const DashboardSalesLeadsRoute = DashboardSalesLeadsRouteImport.update({
-  id: '/sales/leads',
-  path: '/sales/leads',
-  getParentRoute: () => DashboardRouteRoute,
-} as any)
+  } as any);
+const DashboardAuditLogsIndexRoute =
+  DashboardAuditLogsIndexRouteImport.update({
+    id: '/audit-logs/',
+    path: '/audit-logs/',
+    getParentRoute: () => DashboardRouteRoute,
+  } as any);
+const DashboardTenantSectionRoute =
+  DashboardTenantSectionRouteImport.update({
+    id: '/$section',
+    path: '/$section',
+    getParentRoute: () => DashboardTenantRoute,
+  } as any);
+const DashboardSalesMyLeadsRoute =
+  DashboardSalesMyLeadsRouteImport.update({
+    id: '/sales/my-leads',
+    path: '/sales/my-leads',
+    getParentRoute: () => DashboardRouteRoute,
+  } as any);
+const DashboardSalesLeadsRoute =
+  DashboardSalesLeadsRouteImport.update({
+    id: '/sales/leads',
+    path: '/sales/leads',
+    getParentRoute: () => DashboardRouteRoute,
+  } as any);
 const DashboardLandingPagesPageIdRoute =
   DashboardLandingPagesPageIdRouteImport.update({
     id: '/$pageId',
     path: '/$pageId',
     getParentRoute: () => DashboardLandingPagesRouteRoute,
-  } as any)
+  } as any);
 const DashboardContractSignDoctorContractIdRoute =
   DashboardContractSignDoctorContractIdRouteImport.update({
     id: '/contract-sign-doctor/$contractId',
     path: '/contract-sign-doctor/$contractId',
     getParentRoute: () => DashboardRouteRoute,
-  } as any)
-const DashboardClientSectionRoute = DashboardClientSectionRouteImport.update({
-  id: '/$section',
-  path: '/$section',
-  getParentRoute: () => DashboardClientRoute,
-} as any)
+  } as any);
+const DashboardClientSectionRoute =
+  DashboardClientSectionRouteImport.update({
+    id: '/$section',
+    path: '/$section',
+    getParentRoute: () => DashboardClientRoute,
+  } as any);
 const DashboardSalesLeadsLeadIdRoute =
   DashboardSalesLeadsLeadIdRouteImport.update({
     id: '/$leadId',
     path: '/$leadId',
     getParentRoute: () => DashboardSalesLeadsRoute,
-  } as any)
+  } as any);
 
 export interface FileRoutesByFullPath {
-  '/': typeof IndexRoute
-  '/dashboard': typeof DashboardRouteRouteWithChildren
-  '/landing': typeof LandingRouteRouteWithChildren
-  '/consultation-tracking': typeof ConsultationTrackingRoute
-  '/contact-admin': typeof ContactAdminRoute
-  '/enrollment': typeof EnrollmentRoute
-  '/login': typeof LoginRoute
-  '/register': typeof RegisterRoute
-  '/signup': typeof SignupRoute
-  '/tenants': typeof TenantsRoute
-  '/unauthorized': typeof UnauthorizedRoute
-  '/dashboard/landing-pages': typeof DashboardLandingPagesRouteRouteWithChildren
-  '/appointments/$appointmentId': typeof AppointmentsAppointmentIdRoute
-  '/appointments/book': typeof AppointmentsBookRoute
-  '/appointments/confirmation': typeof AppointmentsConfirmationRoute
-  '/appointments/my': typeof AppointmentsMyRoute
-  '/appointments/select-tenant': typeof AppointmentsSelectTenantRoute
-  '/dashboard/appointments': typeof DashboardAppointmentsRoute
-  '/dashboard/client': typeof DashboardClientRouteWithChildren
-  '/dashboard/permissions': typeof DashboardPermissionsRoute
-  '/dashboard/profile': typeof DashboardProfileRoute
-  '/dashboard/roles': typeof DashboardRolesRoute
-  '/dashboard/tenant': typeof DashboardTenantRouteWithChildren
-  '/dashboard/tenants': typeof DashboardTenantsRoute
-  '/doctor/appointments': typeof DoctorAppointmentsRoute
-  '/landing/$tenantSlug': typeof LandingTenantSlugRoute
-  '/dashboard/': typeof DashboardIndexRoute
-  '/dashboard/client/$section': typeof DashboardClientSectionRoute
-  '/dashboard/contract-sign-doctor/$contractId': typeof DashboardContractSignDoctorContractIdRoute
-  '/dashboard/landing-pages/$pageId': typeof DashboardLandingPagesPageIdRoute
-  '/dashboard/sales/leads': typeof DashboardSalesLeadsRouteWithChildren
-  '/dashboard/sales/my-leads': typeof DashboardSalesMyLeadsRoute
-  '/dashboard/tenant/$section': typeof DashboardTenantSectionRoute
-  '/dashboard/audit-logs/': typeof DashboardAuditLogsIndexRoute
-  '/dashboard/landing-pages/': typeof DashboardLandingPagesIndexRoute
-  '/dashboard/sales/leads/$leadId': typeof DashboardSalesLeadsLeadIdRoute
+  '/': typeof IndexRoute;
+  '/dashboard': typeof DashboardRouteRouteWithChildren;
+  '/landing': typeof LandingRouteRouteWithChildren;
+  '/consultation-tracking': typeof ConsultationTrackingRoute;
+  '/contact-admin': typeof ContactAdminRoute;
+  '/enrollment': typeof EnrollmentRoute;
+  '/login': typeof LoginRoute;
+  '/register': typeof RegisterRoute;
+  '/signup': typeof SignupRoute;
+  '/tenants': typeof TenantsRoute;
+  '/unauthorized': typeof UnauthorizedRoute;
+  '/dashboard/landing-pages': typeof DashboardLandingPagesRouteRouteWithChildren;
+  '/appointments/$appointmentId': typeof AppointmentsAppointmentIdRoute;
+  '/appointments/book': typeof AppointmentsBookRoute;
+  '/appointments/confirmation': typeof AppointmentsConfirmationRoute;
+  '/appointments/my': typeof AppointmentsMyRoute;
+  '/appointments/select-tenant': typeof AppointmentsSelectTenantRoute;
+  '/dashboard/appointments': typeof DashboardAppointmentsRoute;
+  '/dashboard/client': typeof DashboardClientRouteWithChildren;
+  '/dashboard/permissions': typeof DashboardPermissionsRoute;
+  '/dashboard/profile': typeof DashboardProfileRoute;
+  '/dashboard/roles': typeof DashboardRolesRoute;
+  '/dashboard/tenant': typeof DashboardTenantRouteWithChildren;
+  '/dashboard/tenants': typeof DashboardTenantsRoute;
+  '/doctor/appointments': typeof DoctorAppointmentsRoute;
+  '/landing/$tenantSlug': typeof LandingTenantSlugRoute;
+  '/dashboard/': typeof DashboardIndexRoute;
+  '/dashboard/client/$section': typeof DashboardClientSectionRoute;
+  '/dashboard/contract-sign-doctor/$contractId': typeof DashboardContractSignDoctorContractIdRoute;
+  '/dashboard/landing-pages/$pageId': typeof DashboardLandingPagesPageIdRoute;
+  '/dashboard/sales/leads': typeof DashboardSalesLeadsRouteWithChildren;
+  '/dashboard/sales/my-leads': typeof DashboardSalesMyLeadsRoute;
+  '/dashboard/tenant/$section': typeof DashboardTenantSectionRoute;
+  '/dashboard/audit-logs/': typeof DashboardAuditLogsIndexRoute;
+  '/dashboard/landing-pages/': typeof DashboardLandingPagesIndexRoute;
+  '/dashboard/sales/leads/$leadId': typeof DashboardSalesLeadsLeadIdRoute;
 }
 export interface FileRoutesByTo {
-  '/': typeof IndexRoute
-  '/landing': typeof LandingRouteRouteWithChildren
-  '/consultation-tracking': typeof ConsultationTrackingRoute
-  '/contact-admin': typeof ContactAdminRoute
-  '/enrollment': typeof EnrollmentRoute
-  '/login': typeof LoginRoute
-  '/register': typeof RegisterRoute
-  '/signup': typeof SignupRoute
-  '/tenants': typeof TenantsRoute
-  '/unauthorized': typeof UnauthorizedRoute
-  '/appointments/$appointmentId': typeof AppointmentsAppointmentIdRoute
-  '/appointments/book': typeof AppointmentsBookRoute
-  '/appointments/confirmation': typeof AppointmentsConfirmationRoute
-  '/appointments/my': typeof AppointmentsMyRoute
-  '/appointments/select-tenant': typeof AppointmentsSelectTenantRoute
-  '/dashboard/appointments': typeof DashboardAppointmentsRoute
-  '/dashboard/client': typeof DashboardClientRouteWithChildren
-  '/dashboard/permissions': typeof DashboardPermissionsRoute
-  '/dashboard/profile': typeof DashboardProfileRoute
-  '/dashboard/roles': typeof DashboardRolesRoute
-  '/dashboard/tenant': typeof DashboardTenantRouteWithChildren
-  '/dashboard/tenants': typeof DashboardTenantsRoute
-  '/doctor/appointments': typeof DoctorAppointmentsRoute
-  '/landing/$tenantSlug': typeof LandingTenantSlugRoute
-  '/dashboard': typeof DashboardIndexRoute
-  '/dashboard/client/$section': typeof DashboardClientSectionRoute
-  '/dashboard/contract-sign-doctor/$contractId': typeof DashboardContractSignDoctorContractIdRoute
-  '/dashboard/landing-pages/$pageId': typeof DashboardLandingPagesPageIdRoute
-  '/dashboard/sales/leads': typeof DashboardSalesLeadsRouteWithChildren
-  '/dashboard/sales/my-leads': typeof DashboardSalesMyLeadsRoute
-  '/dashboard/tenant/$section': typeof DashboardTenantSectionRoute
-  '/dashboard/audit-logs': typeof DashboardAuditLogsIndexRoute
-  '/dashboard/landing-pages': typeof DashboardLandingPagesIndexRoute
-  '/dashboard/sales/leads/$leadId': typeof DashboardSalesLeadsLeadIdRoute
+  '/': typeof IndexRoute;
+  '/landing': typeof LandingRouteRouteWithChildren;
+  '/consultation-tracking': typeof ConsultationTrackingRoute;
+  '/contact-admin': typeof ContactAdminRoute;
+  '/enrollment': typeof EnrollmentRoute;
+  '/login': typeof LoginRoute;
+  '/register': typeof RegisterRoute;
+  '/signup': typeof SignupRoute;
+  '/tenants': typeof TenantsRoute;
+  '/unauthorized': typeof UnauthorizedRoute;
+  '/appointments/$appointmentId': typeof AppointmentsAppointmentIdRoute;
+  '/appointments/book': typeof AppointmentsBookRoute;
+  '/appointments/confirmation': typeof AppointmentsConfirmationRoute;
+  '/appointments/my': typeof AppointmentsMyRoute;
+  '/appointments/select-tenant': typeof AppointmentsSelectTenantRoute;
+  '/dashboard/appointments': typeof DashboardAppointmentsRoute;
+  '/dashboard/client': typeof DashboardClientRouteWithChildren;
+  '/dashboard/permissions': typeof DashboardPermissionsRoute;
+  '/dashboard/profile': typeof DashboardProfileRoute;
+  '/dashboard/roles': typeof DashboardRolesRoute;
+  '/dashboard/tenant': typeof DashboardTenantRouteWithChildren;
+  '/dashboard/tenants': typeof DashboardTenantsRoute;
+  '/doctor/appointments': typeof DoctorAppointmentsRoute;
+  '/landing/$tenantSlug': typeof LandingTenantSlugRoute;
+  '/dashboard': typeof DashboardIndexRoute;
+  '/dashboard/client/$section': typeof DashboardClientSectionRoute;
+  '/dashboard/contract-sign-doctor/$contractId': typeof DashboardContractSignDoctorContractIdRoute;
+  '/dashboard/landing-pages/$pageId': typeof DashboardLandingPagesPageIdRoute;
+  '/dashboard/sales/leads': typeof DashboardSalesLeadsRouteWithChildren;
+  '/dashboard/sales/my-leads': typeof DashboardSalesMyLeadsRoute;
+  '/dashboard/tenant/$section': typeof DashboardTenantSectionRoute;
+  '/dashboard/audit-logs': typeof DashboardAuditLogsIndexRoute;
+  '/dashboard/landing-pages': typeof DashboardLandingPagesIndexRoute;
+  '/dashboard/sales/leads/$leadId': typeof DashboardSalesLeadsLeadIdRoute;
 }
 export interface FileRoutesById {
-  __root__: typeof rootRouteImport
-  '/': typeof IndexRoute
-  '/dashboard': typeof DashboardRouteRouteWithChildren
-  '/landing': typeof LandingRouteRouteWithChildren
-  '/consultation-tracking': typeof ConsultationTrackingRoute
-  '/contact-admin': typeof ContactAdminRoute
-  '/enrollment': typeof EnrollmentRoute
-  '/login': typeof LoginRoute
-  '/register': typeof RegisterRoute
-  '/signup': typeof SignupRoute
-  '/tenants': typeof TenantsRoute
-  '/unauthorized': typeof UnauthorizedRoute
-  '/dashboard/landing-pages': typeof DashboardLandingPagesRouteRouteWithChildren
-  '/appointments/$appointmentId': typeof AppointmentsAppointmentIdRoute
-  '/appointments/book': typeof AppointmentsBookRoute
-  '/appointments/confirmation': typeof AppointmentsConfirmationRoute
-  '/appointments/my': typeof AppointmentsMyRoute
-  '/appointments/select-tenant': typeof AppointmentsSelectTenantRoute
-  '/dashboard/appointments': typeof DashboardAppointmentsRoute
-  '/dashboard/client': typeof DashboardClientRouteWithChildren
-  '/dashboard/permissions': typeof DashboardPermissionsRoute
-  '/dashboard/profile': typeof DashboardProfileRoute
-  '/dashboard/roles': typeof DashboardRolesRoute
-  '/dashboard/tenant': typeof DashboardTenantRouteWithChildren
-  '/dashboard/tenants': typeof DashboardTenantsRoute
-  '/doctor/appointments': typeof DoctorAppointmentsRoute
-  '/landing/$tenantSlug': typeof LandingTenantSlugRoute
-  '/dashboard/': typeof DashboardIndexRoute
-  '/dashboard/client/$section': typeof DashboardClientSectionRoute
-  '/dashboard/contract-sign-doctor/$contractId': typeof DashboardContractSignDoctorContractIdRoute
-  '/dashboard/landing-pages/$pageId': typeof DashboardLandingPagesPageIdRoute
-  '/dashboard/sales/leads': typeof DashboardSalesLeadsRouteWithChildren
-  '/dashboard/sales/my-leads': typeof DashboardSalesMyLeadsRoute
-  '/dashboard/tenant/$section': typeof DashboardTenantSectionRoute
-  '/dashboard/audit-logs/': typeof DashboardAuditLogsIndexRoute
-  '/dashboard/landing-pages/': typeof DashboardLandingPagesIndexRoute
-  '/dashboard/sales/leads/$leadId': typeof DashboardSalesLeadsLeadIdRoute
+  __root__: typeof rootRouteImport;
+  '/': typeof IndexRoute;
+  '/dashboard': typeof DashboardRouteRouteWithChildren;
+  '/landing': typeof LandingRouteRouteWithChildren;
+  '/consultation-tracking': typeof ConsultationTrackingRoute;
+  '/contact-admin': typeof ContactAdminRoute;
+  '/enrollment': typeof EnrollmentRoute;
+  '/login': typeof LoginRoute;
+  '/register': typeof RegisterRoute;
+  '/signup': typeof SignupRoute;
+  '/tenants': typeof TenantsRoute;
+  '/unauthorized': typeof UnauthorizedRoute;
+  '/dashboard/landing-pages': typeof DashboardLandingPagesRouteRouteWithChildren;
+  '/appointments/$appointmentId': typeof AppointmentsAppointmentIdRoute;
+  '/appointments/book': typeof AppointmentsBookRoute;
+  '/appointments/confirmation': typeof AppointmentsConfirmationRoute;
+  '/appointments/my': typeof AppointmentsMyRoute;
+  '/appointments/select-tenant': typeof AppointmentsSelectTenantRoute;
+  '/dashboard/appointments': typeof DashboardAppointmentsRoute;
+  '/dashboard/client': typeof DashboardClientRouteWithChildren;
+  '/dashboard/permissions': typeof DashboardPermissionsRoute;
+  '/dashboard/profile': typeof DashboardProfileRoute;
+  '/dashboard/roles': typeof DashboardRolesRoute;
+  '/dashboard/tenant': typeof DashboardTenantRouteWithChildren;
+  '/dashboard/tenants': typeof DashboardTenantsRoute;
+  '/doctor/appointments': typeof DoctorAppointmentsRoute;
+  '/landing/$tenantSlug': typeof LandingTenantSlugRoute;
+  '/dashboard/': typeof DashboardIndexRoute;
+  '/dashboard/client/$section': typeof DashboardClientSectionRoute;
+  '/dashboard/contract-sign-doctor/$contractId': typeof DashboardContractSignDoctorContractIdRoute;
+  '/dashboard/landing-pages/$pageId': typeof DashboardLandingPagesPageIdRoute;
+  '/dashboard/sales/leads': typeof DashboardSalesLeadsRouteWithChildren;
+  '/dashboard/sales/my-leads': typeof DashboardSalesMyLeadsRoute;
+  '/dashboard/tenant/$section': typeof DashboardTenantSectionRoute;
+  '/dashboard/audit-logs/': typeof DashboardAuditLogsIndexRoute;
+  '/dashboard/landing-pages/': typeof DashboardLandingPagesIndexRoute;
+  '/dashboard/sales/leads/$leadId': typeof DashboardSalesLeadsLeadIdRoute;
 }
 export interface FileRouteTypes {
-  fileRoutesByFullPath: FileRoutesByFullPath
+  fileRoutesByFullPath: FileRoutesByFullPath;
   fullPaths:
     | '/'
     | '/dashboard'
@@ -386,8 +394,8 @@ export interface FileRouteTypes {
     | '/dashboard/tenant/$section'
     | '/dashboard/audit-logs/'
     | '/dashboard/landing-pages/'
-    | '/dashboard/sales/leads/$leadId'
-  fileRoutesByTo: FileRoutesByTo
+    | '/dashboard/sales/leads/$leadId';
+  fileRoutesByTo: FileRoutesByTo;
   to:
     | '/'
     | '/landing'
@@ -422,7 +430,7 @@ export interface FileRouteTypes {
     | '/dashboard/tenant/$section'
     | '/dashboard/audit-logs'
     | '/dashboard/landing-pages'
-    | '/dashboard/sales/leads/$leadId'
+    | '/dashboard/sales/leads/$leadId';
   id:
     | '__root__'
     | '/'
@@ -460,355 +468,358 @@ export interface FileRouteTypes {
     | '/dashboard/tenant/$section'
     | '/dashboard/audit-logs/'
     | '/dashboard/landing-pages/'
-    | '/dashboard/sales/leads/$leadId'
-  fileRoutesById: FileRoutesById
+    | '/dashboard/sales/leads/$leadId';
+  fileRoutesById: FileRoutesById;
 }
 export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute
-  DashboardRouteRoute: typeof DashboardRouteRouteWithChildren
-  LandingRouteRoute: typeof LandingRouteRouteWithChildren
-  ConsultationTrackingRoute: typeof ConsultationTrackingRoute
-  ContactAdminRoute: typeof ContactAdminRoute
-  EnrollmentRoute: typeof EnrollmentRoute
-  LoginRoute: typeof LoginRoute
-  RegisterRoute: typeof RegisterRoute
-  SignupRoute: typeof SignupRoute
-  TenantsRoute: typeof TenantsRoute
-  UnauthorizedRoute: typeof UnauthorizedRoute
-  AppointmentsAppointmentIdRoute: typeof AppointmentsAppointmentIdRoute
-  AppointmentsBookRoute: typeof AppointmentsBookRoute
-  AppointmentsConfirmationRoute: typeof AppointmentsConfirmationRoute
-  AppointmentsMyRoute: typeof AppointmentsMyRoute
-  AppointmentsSelectTenantRoute: typeof AppointmentsSelectTenantRoute
-  DoctorAppointmentsRoute: typeof DoctorAppointmentsRoute
+  IndexRoute: typeof IndexRoute;
+  DashboardRouteRoute: typeof DashboardRouteRouteWithChildren;
+  LandingRouteRoute: typeof LandingRouteRouteWithChildren;
+  ConsultationTrackingRoute: typeof ConsultationTrackingRoute;
+  ContactAdminRoute: typeof ContactAdminRoute;
+  EnrollmentRoute: typeof EnrollmentRoute;
+  LoginRoute: typeof LoginRoute;
+  RegisterRoute: typeof RegisterRoute;
+  SignupRoute: typeof SignupRoute;
+  TenantsRoute: typeof TenantsRoute;
+  UnauthorizedRoute: typeof UnauthorizedRoute;
+  AppointmentsAppointmentIdRoute: typeof AppointmentsAppointmentIdRoute;
+  AppointmentsBookRoute: typeof AppointmentsBookRoute;
+  AppointmentsConfirmationRoute: typeof AppointmentsConfirmationRoute;
+  AppointmentsMyRoute: typeof AppointmentsMyRoute;
+  AppointmentsSelectTenantRoute: typeof AppointmentsSelectTenantRoute;
+  DoctorAppointmentsRoute: typeof DoctorAppointmentsRoute;
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
     '/unauthorized': {
-      id: '/unauthorized'
-      path: '/unauthorized'
-      fullPath: '/unauthorized'
-      preLoaderRoute: typeof UnauthorizedRouteImport
-      parentRoute: typeof rootRouteImport
-    }
+      id: '/unauthorized';
+      path: '/unauthorized';
+      fullPath: '/unauthorized';
+      preLoaderRoute: typeof UnauthorizedRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
     '/tenants': {
-      id: '/tenants'
-      path: '/tenants'
-      fullPath: '/tenants'
-      preLoaderRoute: typeof TenantsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
+      id: '/tenants';
+      path: '/tenants';
+      fullPath: '/tenants';
+      preLoaderRoute: typeof TenantsRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
     '/signup': {
-      id: '/signup'
-      path: '/signup'
-      fullPath: '/signup'
-      preLoaderRoute: typeof SignupRouteImport
-      parentRoute: typeof rootRouteImport
-    }
+      id: '/signup';
+      path: '/signup';
+      fullPath: '/signup';
+      preLoaderRoute: typeof SignupRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
     '/register': {
-      id: '/register'
-      path: '/register'
-      fullPath: '/register'
-      preLoaderRoute: typeof RegisterRouteImport
-      parentRoute: typeof rootRouteImport
-    }
+      id: '/register';
+      path: '/register';
+      fullPath: '/register';
+      preLoaderRoute: typeof RegisterRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
     '/login': {
-      id: '/login'
-      path: '/login'
-      fullPath: '/login'
-      preLoaderRoute: typeof LoginRouteImport
-      parentRoute: typeof rootRouteImport
-    }
+      id: '/login';
+      path: '/login';
+      fullPath: '/login';
+      preLoaderRoute: typeof LoginRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
     '/enrollment': {
-      id: '/enrollment'
-      path: '/enrollment'
-      fullPath: '/enrollment'
-      preLoaderRoute: typeof EnrollmentRouteImport
-      parentRoute: typeof rootRouteImport
-    }
+      id: '/enrollment';
+      path: '/enrollment';
+      fullPath: '/enrollment';
+      preLoaderRoute: typeof EnrollmentRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
     '/contact-admin': {
-      id: '/contact-admin'
-      path: '/contact-admin'
-      fullPath: '/contact-admin'
-      preLoaderRoute: typeof ContactAdminRouteImport
-      parentRoute: typeof rootRouteImport
-    }
+      id: '/contact-admin';
+      path: '/contact-admin';
+      fullPath: '/contact-admin';
+      preLoaderRoute: typeof ContactAdminRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
     '/consultation-tracking': {
-      id: '/consultation-tracking'
-      path: '/consultation-tracking'
-      fullPath: '/consultation-tracking'
-      preLoaderRoute: typeof ConsultationTrackingRouteImport
-      parentRoute: typeof rootRouteImport
-    }
+      id: '/consultation-tracking';
+      path: '/consultation-tracking';
+      fullPath: '/consultation-tracking';
+      preLoaderRoute: typeof ConsultationTrackingRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
     '/landing': {
-      id: '/landing'
-      path: '/landing'
-      fullPath: '/landing'
-      preLoaderRoute: typeof LandingRouteRouteImport
-      parentRoute: typeof rootRouteImport
-    }
+      id: '/landing';
+      path: '/landing';
+      fullPath: '/landing';
+      preLoaderRoute: typeof LandingRouteRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
     '/dashboard': {
-      id: '/dashboard'
-      path: '/dashboard'
-      fullPath: '/dashboard'
-      preLoaderRoute: typeof DashboardRouteRouteImport
-      parentRoute: typeof rootRouteImport
-    }
+      id: '/dashboard';
+      path: '/dashboard';
+      fullPath: '/dashboard';
+      preLoaderRoute: typeof DashboardRouteRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
     '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
+      id: '/';
+      path: '/';
+      fullPath: '/';
+      preLoaderRoute: typeof IndexRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
     '/dashboard/': {
-      id: '/dashboard/'
-      path: '/'
-      fullPath: '/dashboard/'
-      preLoaderRoute: typeof DashboardIndexRouteImport
-      parentRoute: typeof DashboardRouteRoute
-    }
+      id: '/dashboard/';
+      path: '/';
+      fullPath: '/dashboard/';
+      preLoaderRoute: typeof DashboardIndexRouteImport;
+      parentRoute: typeof DashboardRouteRoute;
+    };
     '/landing/$tenantSlug': {
-      id: '/landing/$tenantSlug'
-      path: '/$tenantSlug'
-      fullPath: '/landing/$tenantSlug'
-      preLoaderRoute: typeof LandingTenantSlugRouteImport
-      parentRoute: typeof LandingRouteRoute
-    }
+      id: '/landing/$tenantSlug';
+      path: '/$tenantSlug';
+      fullPath: '/landing/$tenantSlug';
+      preLoaderRoute: typeof LandingTenantSlugRouteImport;
+      parentRoute: typeof LandingRouteRoute;
+    };
     '/doctor/appointments': {
-      id: '/doctor/appointments'
-      path: '/doctor/appointments'
-      fullPath: '/doctor/appointments'
-      preLoaderRoute: typeof DoctorAppointmentsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
+      id: '/doctor/appointments';
+      path: '/doctor/appointments';
+      fullPath: '/doctor/appointments';
+      preLoaderRoute: typeof DoctorAppointmentsRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
     '/dashboard/tenants': {
-      id: '/dashboard/tenants'
-      path: '/tenants'
-      fullPath: '/dashboard/tenants'
-      preLoaderRoute: typeof DashboardTenantsRouteImport
-      parentRoute: typeof DashboardRouteRoute
-    }
+      id: '/dashboard/tenants';
+      path: '/tenants';
+      fullPath: '/dashboard/tenants';
+      preLoaderRoute: typeof DashboardTenantsRouteImport;
+      parentRoute: typeof DashboardRouteRoute;
+    };
     '/dashboard/tenant': {
-      id: '/dashboard/tenant'
-      path: '/tenant'
-      fullPath: '/dashboard/tenant'
-      preLoaderRoute: typeof DashboardTenantRouteImport
-      parentRoute: typeof DashboardRouteRoute
-    }
+      id: '/dashboard/tenant';
+      path: '/tenant';
+      fullPath: '/dashboard/tenant';
+      preLoaderRoute: typeof DashboardTenantRouteImport;
+      parentRoute: typeof DashboardRouteRoute;
+    };
     '/dashboard/roles': {
-      id: '/dashboard/roles'
-      path: '/roles'
-      fullPath: '/dashboard/roles'
-      preLoaderRoute: typeof DashboardRolesRouteImport
-      parentRoute: typeof DashboardRouteRoute
-    }
+      id: '/dashboard/roles';
+      path: '/roles';
+      fullPath: '/dashboard/roles';
+      preLoaderRoute: typeof DashboardRolesRouteImport;
+      parentRoute: typeof DashboardRouteRoute;
+    };
     '/dashboard/profile': {
-      id: '/dashboard/profile'
-      path: '/profile'
-      fullPath: '/dashboard/profile'
-      preLoaderRoute: typeof DashboardProfileRouteImport
-      parentRoute: typeof DashboardRouteRoute
-    }
+      id: '/dashboard/profile';
+      path: '/profile';
+      fullPath: '/dashboard/profile';
+      preLoaderRoute: typeof DashboardProfileRouteImport;
+      parentRoute: typeof DashboardRouteRoute;
+    };
     '/dashboard/permissions': {
-      id: '/dashboard/permissions'
-      path: '/permissions'
-      fullPath: '/dashboard/permissions'
-      preLoaderRoute: typeof DashboardPermissionsRouteImport
-      parentRoute: typeof DashboardRouteRoute
-    }
+      id: '/dashboard/permissions';
+      path: '/permissions';
+      fullPath: '/dashboard/permissions';
+      preLoaderRoute: typeof DashboardPermissionsRouteImport;
+      parentRoute: typeof DashboardRouteRoute;
+    };
     '/dashboard/client': {
-      id: '/dashboard/client'
-      path: '/client'
-      fullPath: '/dashboard/client'
-      preLoaderRoute: typeof DashboardClientRouteImport
-      parentRoute: typeof DashboardRouteRoute
-    }
+      id: '/dashboard/client';
+      path: '/client';
+      fullPath: '/dashboard/client';
+      preLoaderRoute: typeof DashboardClientRouteImport;
+      parentRoute: typeof DashboardRouteRoute;
+    };
     '/dashboard/appointments': {
-      id: '/dashboard/appointments'
-      path: '/appointments'
-      fullPath: '/dashboard/appointments'
-      preLoaderRoute: typeof DashboardAppointmentsRouteImport
-      parentRoute: typeof DashboardRouteRoute
-    }
+      id: '/dashboard/appointments';
+      path: '/appointments';
+      fullPath: '/dashboard/appointments';
+      preLoaderRoute: typeof DashboardAppointmentsRouteImport;
+      parentRoute: typeof DashboardRouteRoute;
+    };
     '/appointments/select-tenant': {
-      id: '/appointments/select-tenant'
-      path: '/appointments/select-tenant'
-      fullPath: '/appointments/select-tenant'
-      preLoaderRoute: typeof AppointmentsSelectTenantRouteImport
-      parentRoute: typeof rootRouteImport
-    }
+      id: '/appointments/select-tenant';
+      path: '/appointments/select-tenant';
+      fullPath: '/appointments/select-tenant';
+      preLoaderRoute: typeof AppointmentsSelectTenantRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
     '/appointments/my': {
-      id: '/appointments/my'
-      path: '/appointments/my'
-      fullPath: '/appointments/my'
-      preLoaderRoute: typeof AppointmentsMyRouteImport
-      parentRoute: typeof rootRouteImport
-    }
+      id: '/appointments/my';
+      path: '/appointments/my';
+      fullPath: '/appointments/my';
+      preLoaderRoute: typeof AppointmentsMyRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
     '/appointments/confirmation': {
-      id: '/appointments/confirmation'
-      path: '/appointments/confirmation'
-      fullPath: '/appointments/confirmation'
-      preLoaderRoute: typeof AppointmentsConfirmationRouteImport
-      parentRoute: typeof rootRouteImport
-    }
+      id: '/appointments/confirmation';
+      path: '/appointments/confirmation';
+      fullPath: '/appointments/confirmation';
+      preLoaderRoute: typeof AppointmentsConfirmationRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
     '/appointments/book': {
-      id: '/appointments/book'
-      path: '/appointments/book'
-      fullPath: '/appointments/book'
-      preLoaderRoute: typeof AppointmentsBookRouteImport
-      parentRoute: typeof rootRouteImport
-    }
+      id: '/appointments/book';
+      path: '/appointments/book';
+      fullPath: '/appointments/book';
+      preLoaderRoute: typeof AppointmentsBookRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
     '/appointments/$appointmentId': {
-      id: '/appointments/$appointmentId'
-      path: '/appointments/$appointmentId'
-      fullPath: '/appointments/$appointmentId'
-      preLoaderRoute: typeof AppointmentsAppointmentIdRouteImport
-      parentRoute: typeof rootRouteImport
-    }
+      id: '/appointments/$appointmentId';
+      path: '/appointments/$appointmentId';
+      fullPath: '/appointments/$appointmentId';
+      preLoaderRoute: typeof AppointmentsAppointmentIdRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
     '/dashboard/landing-pages': {
-      id: '/dashboard/landing-pages'
-      path: '/landing-pages'
-      fullPath: '/dashboard/landing-pages'
-      preLoaderRoute: typeof DashboardLandingPagesRouteRouteImport
-      parentRoute: typeof DashboardRouteRoute
-    }
+      id: '/dashboard/landing-pages';
+      path: '/landing-pages';
+      fullPath: '/dashboard/landing-pages';
+      preLoaderRoute: typeof DashboardLandingPagesRouteRouteImport;
+      parentRoute: typeof DashboardRouteRoute;
+    };
     '/dashboard/landing-pages/': {
-      id: '/dashboard/landing-pages/'
-      path: '/'
-      fullPath: '/dashboard/landing-pages/'
-      preLoaderRoute: typeof DashboardLandingPagesIndexRouteImport
-      parentRoute: typeof DashboardLandingPagesRouteRoute
-    }
+      id: '/dashboard/landing-pages/';
+      path: '/';
+      fullPath: '/dashboard/landing-pages/';
+      preLoaderRoute: typeof DashboardLandingPagesIndexRouteImport;
+      parentRoute: typeof DashboardLandingPagesRouteRoute;
+    };
     '/dashboard/audit-logs/': {
-      id: '/dashboard/audit-logs/'
-      path: '/audit-logs'
-      fullPath: '/dashboard/audit-logs/'
-      preLoaderRoute: typeof DashboardAuditLogsIndexRouteImport
-      parentRoute: typeof DashboardRouteRoute
-    }
+      id: '/dashboard/audit-logs/';
+      path: '/audit-logs';
+      fullPath: '/dashboard/audit-logs/';
+      preLoaderRoute: typeof DashboardAuditLogsIndexRouteImport;
+      parentRoute: typeof DashboardRouteRoute;
+    };
     '/dashboard/tenant/$section': {
-      id: '/dashboard/tenant/$section'
-      path: '/$section'
-      fullPath: '/dashboard/tenant/$section'
-      preLoaderRoute: typeof DashboardTenantSectionRouteImport
-      parentRoute: typeof DashboardTenantRoute
-    }
+      id: '/dashboard/tenant/$section';
+      path: '/$section';
+      fullPath: '/dashboard/tenant/$section';
+      preLoaderRoute: typeof DashboardTenantSectionRouteImport;
+      parentRoute: typeof DashboardTenantRoute;
+    };
     '/dashboard/sales/my-leads': {
-      id: '/dashboard/sales/my-leads'
-      path: '/sales/my-leads'
-      fullPath: '/dashboard/sales/my-leads'
-      preLoaderRoute: typeof DashboardSalesMyLeadsRouteImport
-      parentRoute: typeof DashboardRouteRoute
-    }
+      id: '/dashboard/sales/my-leads';
+      path: '/sales/my-leads';
+      fullPath: '/dashboard/sales/my-leads';
+      preLoaderRoute: typeof DashboardSalesMyLeadsRouteImport;
+      parentRoute: typeof DashboardRouteRoute;
+    };
     '/dashboard/sales/leads': {
-      id: '/dashboard/sales/leads'
-      path: '/sales/leads'
-      fullPath: '/dashboard/sales/leads'
-      preLoaderRoute: typeof DashboardSalesLeadsRouteImport
-      parentRoute: typeof DashboardRouteRoute
-    }
+      id: '/dashboard/sales/leads';
+      path: '/sales/leads';
+      fullPath: '/dashboard/sales/leads';
+      preLoaderRoute: typeof DashboardSalesLeadsRouteImport;
+      parentRoute: typeof DashboardRouteRoute;
+    };
     '/dashboard/landing-pages/$pageId': {
-      id: '/dashboard/landing-pages/$pageId'
-      path: '/$pageId'
-      fullPath: '/dashboard/landing-pages/$pageId'
-      preLoaderRoute: typeof DashboardLandingPagesPageIdRouteImport
-      parentRoute: typeof DashboardLandingPagesRouteRoute
-    }
+      id: '/dashboard/landing-pages/$pageId';
+      path: '/$pageId';
+      fullPath: '/dashboard/landing-pages/$pageId';
+      preLoaderRoute: typeof DashboardLandingPagesPageIdRouteImport;
+      parentRoute: typeof DashboardLandingPagesRouteRoute;
+    };
     '/dashboard/contract-sign-doctor/$contractId': {
-      id: '/dashboard/contract-sign-doctor/$contractId'
-      path: '/contract-sign-doctor/$contractId'
-      fullPath: '/dashboard/contract-sign-doctor/$contractId'
-      preLoaderRoute: typeof DashboardContractSignDoctorContractIdRouteImport
-      parentRoute: typeof DashboardRouteRoute
-    }
+      id: '/dashboard/contract-sign-doctor/$contractId';
+      path: '/contract-sign-doctor/$contractId';
+      fullPath: '/dashboard/contract-sign-doctor/$contractId';
+      preLoaderRoute: typeof DashboardContractSignDoctorContractIdRouteImport;
+      parentRoute: typeof DashboardRouteRoute;
+    };
     '/dashboard/client/$section': {
-      id: '/dashboard/client/$section'
-      path: '/$section'
-      fullPath: '/dashboard/client/$section'
-      preLoaderRoute: typeof DashboardClientSectionRouteImport
-      parentRoute: typeof DashboardClientRoute
-    }
+      id: '/dashboard/client/$section';
+      path: '/$section';
+      fullPath: '/dashboard/client/$section';
+      preLoaderRoute: typeof DashboardClientSectionRouteImport;
+      parentRoute: typeof DashboardClientRoute;
+    };
     '/dashboard/sales/leads/$leadId': {
-      id: '/dashboard/sales/leads/$leadId'
-      path: '/$leadId'
-      fullPath: '/dashboard/sales/leads/$leadId'
-      preLoaderRoute: typeof DashboardSalesLeadsLeadIdRouteImport
-      parentRoute: typeof DashboardSalesLeadsRoute
-    }
+      id: '/dashboard/sales/leads/$leadId';
+      path: '/$leadId';
+      fullPath: '/dashboard/sales/leads/$leadId';
+      preLoaderRoute: typeof DashboardSalesLeadsLeadIdRouteImport;
+      parentRoute: typeof DashboardSalesLeadsRoute;
+    };
   }
 }
 
 interface DashboardLandingPagesRouteRouteChildren {
-  DashboardLandingPagesPageIdRoute: typeof DashboardLandingPagesPageIdRoute
-  DashboardLandingPagesIndexRoute: typeof DashboardLandingPagesIndexRoute
+  DashboardLandingPagesPageIdRoute: typeof DashboardLandingPagesPageIdRoute;
+  DashboardLandingPagesIndexRoute: typeof DashboardLandingPagesIndexRoute;
 }
 
 const DashboardLandingPagesRouteRouteChildren: DashboardLandingPagesRouteRouteChildren =
   {
-    DashboardLandingPagesPageIdRoute: DashboardLandingPagesPageIdRoute,
+    DashboardLandingPagesPageIdRoute:
+      DashboardLandingPagesPageIdRoute,
     DashboardLandingPagesIndexRoute: DashboardLandingPagesIndexRoute,
-  }
+  };
 
 const DashboardLandingPagesRouteRouteWithChildren =
   DashboardLandingPagesRouteRoute._addFileChildren(
-    DashboardLandingPagesRouteRouteChildren,
-  )
+    DashboardLandingPagesRouteRouteChildren
+  );
 
 interface DashboardClientRouteChildren {
-  DashboardClientSectionRoute: typeof DashboardClientSectionRoute
+  DashboardClientSectionRoute: typeof DashboardClientSectionRoute;
 }
 
 const DashboardClientRouteChildren: DashboardClientRouteChildren = {
   DashboardClientSectionRoute: DashboardClientSectionRoute,
-}
+};
 
-const DashboardClientRouteWithChildren = DashboardClientRoute._addFileChildren(
-  DashboardClientRouteChildren,
-)
+const DashboardClientRouteWithChildren =
+  DashboardClientRoute._addFileChildren(DashboardClientRouteChildren);
 
 interface DashboardTenantRouteChildren {
-  DashboardTenantSectionRoute: typeof DashboardTenantSectionRoute
+  DashboardTenantSectionRoute: typeof DashboardTenantSectionRoute;
 }
 
 const DashboardTenantRouteChildren: DashboardTenantRouteChildren = {
   DashboardTenantSectionRoute: DashboardTenantSectionRoute,
-}
+};
 
-const DashboardTenantRouteWithChildren = DashboardTenantRoute._addFileChildren(
-  DashboardTenantRouteChildren,
-)
+const DashboardTenantRouteWithChildren =
+  DashboardTenantRoute._addFileChildren(DashboardTenantRouteChildren);
 
 interface DashboardSalesLeadsRouteChildren {
-  DashboardSalesLeadsLeadIdRoute: typeof DashboardSalesLeadsLeadIdRoute
+  DashboardSalesLeadsLeadIdRoute: typeof DashboardSalesLeadsLeadIdRoute;
 }
 
-const DashboardSalesLeadsRouteChildren: DashboardSalesLeadsRouteChildren = {
-  DashboardSalesLeadsLeadIdRoute: DashboardSalesLeadsLeadIdRoute,
-}
+const DashboardSalesLeadsRouteChildren: DashboardSalesLeadsRouteChildren =
+  {
+    DashboardSalesLeadsLeadIdRoute: DashboardSalesLeadsLeadIdRoute,
+  };
 
 const DashboardSalesLeadsRouteWithChildren =
-  DashboardSalesLeadsRoute._addFileChildren(DashboardSalesLeadsRouteChildren)
+  DashboardSalesLeadsRoute._addFileChildren(
+    DashboardSalesLeadsRouteChildren
+  );
 
 interface DashboardRouteRouteChildren {
-  DashboardLandingPagesRouteRoute: typeof DashboardLandingPagesRouteRouteWithChildren
-  DashboardAppointmentsRoute: typeof DashboardAppointmentsRoute
-  DashboardClientRoute: typeof DashboardClientRouteWithChildren
-  DashboardPermissionsRoute: typeof DashboardPermissionsRoute
-  DashboardProfileRoute: typeof DashboardProfileRoute
-  DashboardRolesRoute: typeof DashboardRolesRoute
-  DashboardTenantRoute: typeof DashboardTenantRouteWithChildren
-  DashboardTenantsRoute: typeof DashboardTenantsRoute
-  DashboardIndexRoute: typeof DashboardIndexRoute
-  DashboardContractSignDoctorContractIdRoute: typeof DashboardContractSignDoctorContractIdRoute
-  DashboardSalesLeadsRoute: typeof DashboardSalesLeadsRouteWithChildren
-  DashboardSalesMyLeadsRoute: typeof DashboardSalesMyLeadsRoute
-  DashboardAuditLogsIndexRoute: typeof DashboardAuditLogsIndexRoute
+  DashboardLandingPagesRouteRoute: typeof DashboardLandingPagesRouteRouteWithChildren;
+  DashboardAppointmentsRoute: typeof DashboardAppointmentsRoute;
+  DashboardClientRoute: typeof DashboardClientRouteWithChildren;
+  DashboardPermissionsRoute: typeof DashboardPermissionsRoute;
+  DashboardProfileRoute: typeof DashboardProfileRoute;
+  DashboardRolesRoute: typeof DashboardRolesRoute;
+  DashboardTenantRoute: typeof DashboardTenantRouteWithChildren;
+  DashboardTenantsRoute: typeof DashboardTenantsRoute;
+  DashboardIndexRoute: typeof DashboardIndexRoute;
+  DashboardContractSignDoctorContractIdRoute: typeof DashboardContractSignDoctorContractIdRoute;
+  DashboardSalesLeadsRoute: typeof DashboardSalesLeadsRouteWithChildren;
+  DashboardSalesMyLeadsRoute: typeof DashboardSalesMyLeadsRoute;
+  DashboardAuditLogsIndexRoute: typeof DashboardAuditLogsIndexRoute;
 }
 
 const DashboardRouteRouteChildren: DashboardRouteRouteChildren = {
-  DashboardLandingPagesRouteRoute: DashboardLandingPagesRouteRouteWithChildren,
+  DashboardLandingPagesRouteRoute:
+    DashboardLandingPagesRouteRouteWithChildren,
   DashboardAppointmentsRoute: DashboardAppointmentsRoute,
   DashboardClientRoute: DashboardClientRouteWithChildren,
   DashboardPermissionsRoute: DashboardPermissionsRoute,
@@ -822,23 +833,21 @@ const DashboardRouteRouteChildren: DashboardRouteRouteChildren = {
   DashboardSalesLeadsRoute: DashboardSalesLeadsRouteWithChildren,
   DashboardSalesMyLeadsRoute: DashboardSalesMyLeadsRoute,
   DashboardAuditLogsIndexRoute: DashboardAuditLogsIndexRoute,
-}
+};
 
-const DashboardRouteRouteWithChildren = DashboardRouteRoute._addFileChildren(
-  DashboardRouteRouteChildren,
-)
+const DashboardRouteRouteWithChildren =
+  DashboardRouteRoute._addFileChildren(DashboardRouteRouteChildren);
 
 interface LandingRouteRouteChildren {
-  LandingTenantSlugRoute: typeof LandingTenantSlugRoute
+  LandingTenantSlugRoute: typeof LandingTenantSlugRoute;
 }
 
 const LandingRouteRouteChildren: LandingRouteRouteChildren = {
   LandingTenantSlugRoute: LandingTenantSlugRoute,
-}
+};
 
-const LandingRouteRouteWithChildren = LandingRouteRoute._addFileChildren(
-  LandingRouteRouteChildren,
-)
+const LandingRouteRouteWithChildren =
+  LandingRouteRoute._addFileChildren(LandingRouteRouteChildren);
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
@@ -858,7 +867,7 @@ const rootRouteChildren: RootRouteChildren = {
   AppointmentsMyRoute: AppointmentsMyRoute,
   AppointmentsSelectTenantRoute: AppointmentsSelectTenantRoute,
   DoctorAppointmentsRoute: DoctorAppointmentsRoute,
-}
+};
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
-  ._addFileTypes<FileRouteTypes>()
+  ._addFileTypes<FileRouteTypes>();

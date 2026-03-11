@@ -10,19 +10,8 @@ import { aiAssistantService } from '@/services/ai-assistant.service';
 import { useAuthStore } from '@/stores/auth.store';
 import { useMutation } from '@tanstack/react-query';
 import { useRouterState } from '@tanstack/react-router';
-import {
-  Bot,
-  MessageSquare,
-  RotateCcw,
-  Send,
-  X,
-} from 'lucide-react';
-import {
-  Fragment,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
+import { Bot, MessageSquare, RotateCcw, Send, X } from 'lucide-react';
+import { Fragment, useEffect, useMemo, useState } from 'react';
 
 interface ChatMessage {
   id: string;
@@ -67,7 +56,9 @@ function getWelcomeMessage(role?: Role): ChatMessage {
   };
 }
 
-function loadStoredMessages(welcomeMessage: ChatMessage): ChatMessage[] {
+function loadStoredMessages(
+  welcomeMessage: ChatMessage
+): ChatMessage[] {
   if (!globalThis.sessionStorage) {
     return [welcomeMessage];
   }
@@ -142,7 +133,10 @@ function getWorkflowContext(pathname: string): string {
   if (pathname.startsWith('/login')) {
     return 'Authentication';
   }
-  if (pathname.startsWith('/register') || pathname.startsWith('/signup')) {
+  if (
+    pathname.startsWith('/register') ||
+    pathname.startsWith('/signup')
+  ) {
     return 'Client registration';
   }
   return 'General navigation';
@@ -176,9 +170,15 @@ function getNavigationLinks(pathname: string): NavigationLink[] {
   if (pathname.startsWith('/dashboard/tenant')) {
     return [
       { label: 'Dashboard', href: '/dashboard' },
-      { label: 'Tenant settings', href: '/dashboard/tenant/settings' },
+      {
+        label: 'Tenant settings',
+        href: '/dashboard/tenant/settings',
+      },
       { label: 'Tenant plans', href: '/dashboard/tenant/plans' },
-      { label: 'Tenant enrollments', href: '/dashboard/tenant/enrollments' },
+      {
+        label: 'Tenant enrollments',
+        href: '/dashboard/tenant/enrollments',
+      },
     ];
   }
 
@@ -225,13 +225,20 @@ function renderInlineFormatting(text: string) {
       part.length > 4
     ) {
       return (
-        <strong key={`${part}-${index}`} className="font-semibold text-foreground">
+        <strong
+          key={`${part}-${index}`}
+          className="font-semibold text-foreground"
+        >
           {part.slice(2, -2)}
         </strong>
       );
     }
 
-    if (part.startsWith('`') && part.endsWith('`') && part.length > 2) {
+    if (
+      part.startsWith('`') &&
+      part.endsWith('`') &&
+      part.length > 2
+    ) {
       const codeText = part.slice(1, -1);
 
       if (codeText.startsWith('/')) {
@@ -316,7 +323,10 @@ function MessageContent({ content }: { content: string }) {
       {blocks.map((block, index) => {
         if (block.type === 'paragraph') {
           return (
-            <p key={`paragraph-${index}`} className="whitespace-pre-wrap">
+            <p
+              key={`paragraph-${index}`}
+              className="whitespace-pre-wrap"
+            >
               {renderInlineFormatting(block.text)}
             </p>
           );
@@ -359,12 +369,15 @@ export function AIAssistantWidget() {
     select: (s) => s.location.pathname,
   });
   const role = useAuthStore((s) => s.role);
-  const welcomeMessage = useMemo(() => getWelcomeMessage(role), [role]);
+  const welcomeMessage = useMemo(
+    () => getWelcomeMessage(role),
+    [role]
+  );
 
   const [isOpen, setIsOpen] = useState(false);
   const [message, setMessage] = useState('');
-  const [messages, setMessages] = useState<ChatMessage[]>(
-    () => loadStoredMessages(welcomeMessage)
+  const [messages, setMessages] = useState<ChatMessage[]>(() =>
+    loadStoredMessages(welcomeMessage)
   );
 
   const pageLabel = useMemo(
@@ -395,10 +408,7 @@ export function AIAssistantWidget() {
 
   useEffect(() => {
     setMessages((current) => {
-      if (
-        current.length === 1 &&
-        current[0]?.id === 'welcome'
-      ) {
+      if (current.length === 1 && current[0]?.id === 'welcome') {
         return [welcomeMessage];
       }
       return current;

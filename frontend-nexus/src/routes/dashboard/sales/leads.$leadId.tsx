@@ -8,7 +8,6 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { isApiError } from '@/lib/api-client';
 import {
   Select,
   SelectContent,
@@ -16,15 +15,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { isApiError } from '@/lib/api-client';
 import { requireAuth } from '@/lib/guards/requireAuth';
 import {
   buildLeadRoadmap,
   getAllowedLeadTransitions,
   type SalesLeadStatus,
   useClaimLead,
-  useLeadStatusHistory,
   useCompleteLatestLeadConsultation,
   useCreateLeadConsultation,
+  useLeadStatusHistory,
   useReleaseLead,
   useSalesLead,
   useTransitionLead,

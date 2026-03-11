@@ -12,6 +12,7 @@ from app.routes.appointment import (
 )
 from app.models.notification import NotificationType
 from app.services.notification_service import create_notification
+from app.services.offer_service import on_appointment_completed
 
 router = APIRouter(prefix="/appointments", tags=["Doctor Appointments"])
 
@@ -159,6 +160,7 @@ def complete_appointment(
         entity_type="appointment",
         entity_id=appointment.id,
     )
+    on_appointment_completed(db, appointment)
     db.commit()
     db.refresh(appointment)
     return {"id": appointment.id, "status": appointment.status.value}

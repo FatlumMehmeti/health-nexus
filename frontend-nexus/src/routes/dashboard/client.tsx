@@ -1,5 +1,6 @@
 import { requireAuth } from '@/lib/guards/requireAuth';
 import { enrollmentsService } from '@/services/enrollments.service';
+import { useAuthStore } from '@/stores/auth.store';
 import { useQuery } from '@tanstack/react-query';
 import {
   createFileRoute,
@@ -7,6 +8,7 @@ import {
   useRouterState,
 } from '@tanstack/react-router';
 
+import { ClientOffersPanel } from '@/components/ClientOffersPanel';
 import { Badge } from '@/components/ui/badge';
 import {
   Card,
@@ -25,6 +27,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 
+// Route definition for the client dashboard. Requires authentication.
 export const Route = createFileRoute('/dashboard/client')({
   beforeLoad: requireAuth({
     routeKey: 'DASHBOARD_CLIENTS',
@@ -36,14 +39,21 @@ export const Route = createFileRoute('/dashboard/client')({
 /* Section handling                                                            */
 /* -------------------------------------------------------------------------- */
 
+// Available sections in the client dashboard
 export const CLIENT_SECTION_KEYS = [
   'profile',
   'enrollments',
+  'offers',
   'settings',
 ] as const;
 
+// Type for section keys
 export type ClientSectionKey = (typeof CLIENT_SECTION_KEYS)[number];
 
+/**
+ * Normalize a section string to a valid ClientSectionKey.
+ * Defaults to 'profile' if not recognized.
+ */
 export function normalizeClientSection(
   rawSection: string | null | undefined
 ): ClientSectionKey {
@@ -58,6 +68,10 @@ export function normalizeClientSection(
 /* Root route wrapper                                                          */
 /* -------------------------------------------------------------------------- */
 
+/**
+ * Root route wrapper for the client dashboard.
+ * Shows section content or nested routes.
+ */
 function ClientPage() {
   const pathname = useRouterState({
     select: (s) => s.location.pathname,
@@ -79,6 +93,11 @@ export function ClientPageContent({
 }: {
   activeSection: ClientSectionKey;
 }) {
+  /**
+   * Main content for the client dashboard.
+   * Handles section switching, enrollments, offers, and settings.
+   */
+  const user = useAuthStore((state) => state.user);
   const enrollmentsQuery = useQuery({
     queryKey: ['client-manager', 'my-enrollments'],
     queryFn: () => enrollmentsService.listMyEnrollments(),
@@ -92,6 +111,7 @@ export function ClientPageContent({
 
   return (
     <div className="space-y-4 p-4 sm:space-y-6 sm:p-6 lg:p-8">
+      {/* Dashboard header */}
       <div className="space-y-2">
         <h1 className="text-2xl font-bold sm:text-3xl">
           Client Dashboard
@@ -101,19 +121,21 @@ export function ClientPageContent({
         </p>
       </div>
 
-      {/* ----------------------- Profile SECTION -----------------------
-          {activeSection === "profile" && (
-              <Card>
-                  <CardHeader>
-                      <CardTitle>Profile</CardTitle>
-                      <CardDescription>
-                          Manage your client account profile.
-                      </CardDescription>
-                  </CardHeader>
-                  <CardContent>Profile content goes here.</CardContent>
-              </Card>)} */}
+      {/* Profile section */}
+      {/* Uncomment to show profile section */}
+      {/* {activeSection === "profile" && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Profile</CardTitle>
+            <CardDescription>
+              Manage your client account profile.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>Profile content goes here.</CardContent>
+        </Card>
+      )} */}
 
-      {/* ----------------------- ENROLLMENTS SECTION ----------------------- */}
+      {/* Enrollments section */}
 
       {activeSection === 'enrollments' && (
         <Card>
@@ -125,6 +147,7 @@ export function ClientPageContent({
           </CardHeader>
 
           <CardContent>
+            {/* Loading state for enrollments */}
             {isLoading ? (
               <div className="space-y-2">
                 {Array.from({ length: 3 }).map((_, i) => (
@@ -155,6 +178,7 @@ export function ClientPageContent({
                   </TableHeader>
 
                   <TableBody>
+                    {/* Render each enrollment row */}
                     {enrollments.map((enrollment: any) => (
                       <TableRow key={enrollment.id}>
                         <TableCell className="font-medium">
@@ -198,8 +222,12 @@ export function ClientPageContent({
         </Card>
       )}
 
-      {/* ------------------------- SETTINGS SECTION ------------------------ */}
+      {/* Offers section */}
+      {activeSection === 'offers' && (
+        <ClientOffersPanel clientId={user?.id} />
+      )}
 
+      {/* Settings section */}
       {activeSection === 'settings' && (
         <Card>
           <CardHeader>
@@ -219,6 +247,10 @@ export function ClientPageContent({
 /* Helpers                                                                     */
 /* -------------------------------------------------------------------------- */
 
+/**
+ * Formats a date string for display in enrollment tables.
+ * Returns '—' if null.
+ */
 function formatDate(dateString: string | null) {
   if (!dateString) return '—';
   return new Date(dateString).toLocaleDateString('en-US', {

@@ -3,6 +3,7 @@
 Health Nexus is a multi-tenant healthcare SaaS platform.
 
 The platform supports:
+
 - tenant-branded landing pages
 - patient registration and enrollment
 - doctor assignment and appointment booking

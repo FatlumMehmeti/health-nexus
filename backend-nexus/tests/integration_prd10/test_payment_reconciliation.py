@@ -49,7 +49,9 @@ def test_reconciliation_recovers_missed_webhook(
     def fake_retrieve(intent_id, **kwargs):
         return {"id": intent_id, "status": "succeeded"}
 
-    monkeypatch.setattr("app.services.reconciliation_service.stripe.PaymentIntent.retrieve", fake_retrieve)
+    monkeypatch.setattr(
+        "app.services.reconciliation_service.stripe.PaymentIntent.retrieve", fake_retrieve
+    )
 
     result = reconcile_stale_payments(db_session)
     assert result["processed"] >= 1
@@ -104,8 +106,12 @@ def test_reconciliation_fails_transiently_reaches_threshold(
     def fake_mark_payment(*args, **kwargs):
         raise Exception("Database timeout")
 
-    monkeypatch.setattr("app.services.reconciliation_service.stripe.PaymentIntent.retrieve", fake_retrieve)
-    monkeypatch.setattr("app.services.reconciliation_service._mark_payment_as_captured", fake_mark_payment)
+    monkeypatch.setattr(
+        "app.services.reconciliation_service.stripe.PaymentIntent.retrieve", fake_retrieve
+    )
+    monkeypatch.setattr(
+        "app.services.reconciliation_service._mark_payment_as_captured", fake_mark_payment
+    )
 
     result = reconcile_stale_payments(db_session)
     assert result["failures"] == 1
@@ -156,7 +162,9 @@ def test_reconciliation_retry_succeeds_after_transient_failure(
     def fake_retrieve(intent_id, **kwargs):
         return {"id": intent_id, "status": "succeeded"}
 
-    original_mark = __import__("app.services.reconciliation_service", fromlist=["_mark_payment_as_captured"])._mark_payment_as_captured
+    original_mark = __import__(
+        "app.services.reconciliation_service", fromlist=["_mark_payment_as_captured"]
+    )._mark_payment_as_captured
     call_count = {"value": 0}
 
     def flaky_mark(*args, **kwargs):
@@ -165,7 +173,9 @@ def test_reconciliation_retry_succeeds_after_transient_failure(
             raise Exception("Temporary activation failure")
         return original_mark(*args, **kwargs)
 
-    monkeypatch.setattr("app.services.reconciliation_service.stripe.PaymentIntent.retrieve", fake_retrieve)
+    monkeypatch.setattr(
+        "app.services.reconciliation_service.stripe.PaymentIntent.retrieve", fake_retrieve
+    )
     monkeypatch.setattr("app.services.reconciliation_service._mark_payment_as_captured", flaky_mark)
 
     first = reconcile_payments(db_session)
@@ -217,7 +227,9 @@ def test_reconciliation_recovers_captured_payment_missing_activation(
     def fake_retrieve(intent_id, **kwargs):
         return {"id": intent_id, "status": "succeeded"}
 
-    monkeypatch.setattr("app.services.reconciliation_service.stripe.PaymentIntent.retrieve", fake_retrieve)
+    monkeypatch.setattr(
+        "app.services.reconciliation_service.stripe.PaymentIntent.retrieve", fake_retrieve
+    )
 
     result = reconcile_payments(db_session)
     assert result["recovered"] == 1
@@ -266,7 +278,9 @@ def test_reconciliation_marks_stale_pending_payment_for_manual_intervention(
     def fake_retrieve(intent_id, **kwargs):
         return {"id": intent_id, "status": "processing"}
 
-    monkeypatch.setattr("app.services.reconciliation_service.stripe.PaymentIntent.retrieve", fake_retrieve)
+    monkeypatch.setattr(
+        "app.services.reconciliation_service.stripe.PaymentIntent.retrieve", fake_retrieve
+    )
 
     result = reconcile_payments(db_session)
     assert result["manual_intervention"] == 1
@@ -313,7 +327,9 @@ def test_reconciliation_conflict_escalates_captured_payment(
     def fake_retrieve(intent_id, **kwargs):
         return {"id": intent_id, "status": "canceled"}
 
-    monkeypatch.setattr("app.services.reconciliation_service.stripe.PaymentIntent.retrieve", fake_retrieve)
+    monkeypatch.setattr(
+        "app.services.reconciliation_service.stripe.PaymentIntent.retrieve", fake_retrieve
+    )
     monkeypatch.setattr(
         "app.services.reconciliation_service._activation_complete",
         lambda db, payment: False,
@@ -449,7 +465,9 @@ def test_activation_failure_after_webhook_success_is_recovered_by_reconciliation
     def broken_activation(db, payment_obj):
         raise RuntimeError("activation exploded")
 
-    monkeypatch.setattr("app.services.payment_service._apply_post_payment_activation", broken_activation)
+    monkeypatch.setattr(
+        "app.services.payment_service._apply_post_payment_activation", broken_activation
+    )
 
     event = {
         "id": "evt_recon_activation",

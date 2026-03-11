@@ -38,11 +38,7 @@ def apply_enrollment_state_for_plan(
         enrollment.status = EnrollmentStatusModel.ACTIVE
         enrollment.activated_at = now
         enrollment.cancelled_at = None
-        enrollment.expires_at = (
-            now + timedelta(days=int(plan.duration))
-            if plan.duration
-            else None
-        )
+        enrollment.expires_at = now + timedelta(days=int(plan.duration)) if plan.duration else None
         return
 
     enrollment.status = EnrollmentStatusModel.PENDING
@@ -500,9 +496,7 @@ def delete_plan(
         )
 
     has_enrollments = (
-        db.query(Enrollment)
-        .filter(Enrollment.user_tenant_plan_id == db_plan.id)
-        .first()
+        db.query(Enrollment).filter(Enrollment.user_tenant_plan_id == db_plan.id).first()
     )
     if has_enrollments:
         db_plan.is_active = False
