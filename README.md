@@ -22,7 +22,7 @@ On startup, backend now:
 
 - waits for Postgres,
 - runs `alembic upgrade head`,
-- seeds deterministic data  (`app.seed`),
+- seeds deterministic data (`app.seed`),
 - verifies migration + seed baseline (`app.verify_seed`).
 
 You can control bootstrap behavior via env vars:
@@ -47,4 +47,4 @@ You can control bootstrap behavior via env vars:
 3.docker compose run --rm api python -m alembic revision --autogenerate -m "...Migration Name..."  
 4.Review migration output  
 5.docker compose run --rm api python -m alembic upgrade head  
-6.Commit new file in `backend-nexus/alembic/versions/`  
+6.Commit new file in `backend-nexus/alembic/versions/`

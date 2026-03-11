@@ -5,6 +5,7 @@ from app.services.reconciliation_service import reconcile_payments
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
 def main():
     logger.info("Starting payment reconciliation job...")
     db = SessionLocal()
@@ -24,6 +25,7 @@ def main():
         logger.exception("Error running reconciliation job")
     finally:
         db.close()
+
 
 if __name__ == "__main__":
     main()

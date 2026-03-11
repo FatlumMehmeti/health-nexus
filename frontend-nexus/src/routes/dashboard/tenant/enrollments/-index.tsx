@@ -10,11 +10,13 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { Textarea } from '@/components/ui/textarea';
 import {
   enrollmentsService,
   type EnrollmentStatus,
 } from '@/services/enrollments.service';
 import { useAuthStore } from '@/stores/auth.store';
+import { useDialogStore } from '@/stores/use-dialog-store';
 import {
   useMutation,
   useQuery,
@@ -67,8 +69,56 @@ function formatDateTime(value: string | null | undefined): string {
   });
 }
 
+function EnrollmentTransitionDialogContent({
+  target,
+  pending,
+  onConfirm,
+}: {
+  target: EnrollmentStatus;
+  pending: boolean;
+  onConfirm: (reason?: string) => void;
+}) {
+  const closeDialog = useDialogStore((state) => state.close);
+  const [reason, setReason] = useState('');
+
+  return (
+    <div className="space-y-4">
+      <p className="text-sm text-muted-foreground">
+        Add an optional reason for moving this enrollment to{' '}
+        <span className="font-medium text-foreground">{target}</span>.
+      </p>
+      <Textarea
+        value={reason}
+        onChange={(event) => setReason(event.target.value)}
+        placeholder="Enter a reason for this transition..."
+        rows={4}
+      />
+      <div className="flex justify-end gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          onClick={closeDialog}
+          disabled={pending}
+        >
+          Cancel
+        </Button>
+        <Button
+          type="button"
+          onClick={() => onConfirm(reason.trim() || undefined)}
+          disabled={pending}
+          loading={pending}
+        >
+          Confirm transition
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 export function TenantEnrollmentsPanel() {
   const queryClient = useQueryClient();
+  const openDialog = useDialogStore((state) => state.open);
+  const closeDialog = useDialogStore((state) => state.close);
   const tenantIdFromStore = useAuthStore((state) => state.tenantId);
   const [activeStatus, setActiveStatus] =
     useState<TenantStatusTab>('ACTIVE');
@@ -109,6 +159,7 @@ export function TenantEnrollmentsPanel() {
       ),
     onSuccess: () => {
       toast.success('Enrollment updated');
+      closeDialog();
       void queryClient.invalidateQueries({
         queryKey: ['tenant-manager', 'enrollments', tenantId],
       });
@@ -127,11 +178,24 @@ export function TenantEnrollmentsPanel() {
     enrollmentId: number,
     target: EnrollmentStatus
   ) => {
-    const reason = window.prompt('Reason for transition?');
-    transitionMutation.mutate({
-      enrollmentId,
-      target,
-      reason: reason?.trim() || undefined,
+    openDialog({
+      title:
+        target === 'ACTIVE'
+          ? 'Approve enrollment'
+          : 'Update enrollment status',
+      content: (
+        <EnrollmentTransitionDialogContent
+          target={target}
+          pending={transitionMutation.isPending}
+          onConfirm={(reason) =>
+            transitionMutation.mutate({
+              enrollmentId,
+              target,
+              reason,
+            })
+          }
+        />
+      ),
     });
   };
 

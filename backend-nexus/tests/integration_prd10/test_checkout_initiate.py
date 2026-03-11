@@ -117,7 +117,9 @@ def test_checkout_initiate_idempotency_replay_returns_same_payment(
         )
         .count()
     )
-    assert count == 1, f"Expected exactly one Payment for order_id={order.id} and idempotency_key={key!r}, got {count}"
+    assert (
+        count == 1
+    ), f"Expected exactly one Payment for order_id={order.id} and idempotency_key={key!r}, got {count}"
 
 
 @pytest.mark.prd10
@@ -266,15 +268,11 @@ def test_checkout_initiate_different_key_creates_new_payment(
         status=OrderStatus.PENDING,
     )
 
-    resp1 = checkout_initiate_via_api(
-        prd10_client, order.id, "key-one", auth
-    )
+    resp1 = checkout_initiate_via_api(prd10_client, order.id, "key-one", auth)
     assert resp1.status_code == 200, (resp1.status_code, resp1.text)
     data1 = resp1.json()
 
-    resp2 = checkout_initiate_via_api(
-        prd10_client, order.id, "key-two", auth
-    )
+    resp2 = checkout_initiate_via_api(prd10_client, order.id, "key-two", auth)
     assert resp2.status_code == 200, (resp2.status_code, resp2.text)
     data2 = resp2.json()
 
@@ -431,7 +429,9 @@ def test_checkout_initiate_tenant_subscription_by_non_manager_returns_403(
         db_session=db_session,
         role=role_patient,
     )
-    non_manager_auth = login_client(prd10_client, "patient-not-manager@prd10.example.com", "PassPRD10!")
+    non_manager_auth = login_client(
+        prd10_client, "patient-not-manager@prd10.example.com", "PassPRD10!"
+    )
 
     plan = SubscriptionPlan(
         name="PRD10 Tenant Auth Plan",
@@ -666,7 +666,9 @@ def test_stripe_webhook_marks_order_payment_captured_and_order_paid(
     )
     assert webhook_resp.status_code == 200, (webhook_resp.status_code, webhook_resp.text)
 
-    payment = db_session.query(Payment).filter(Payment.payment_id == init_data["payment_id"]).first()
+    payment = (
+        db_session.query(Payment).filter(Payment.payment_id == init_data["payment_id"]).first()
+    )
     db_session.refresh(payment)
     db_session.refresh(order)
 
@@ -1074,7 +1076,12 @@ def test_stripe_dispute_webhook_suspends_active_enrollment(
         json={
             "id": "evt_test_dispute_enrollment",
             "type": "charge.dispute.created",
-            "data": {"object": {"id": "dp_enrollment", "payment_intent": payment.stripe_payment_intent_id}},
+            "data": {
+                "object": {
+                    "id": "dp_enrollment",
+                    "payment_intent": payment.stripe_payment_intent_id,
+                }
+            },
         },
         headers={"Stripe-Signature": "t=stripe,v1=fake"},
     )
@@ -1134,7 +1141,12 @@ def test_stripe_dispute_webhook_expires_active_tenant_subscription(
         json={
             "id": "evt_test_dispute_subscription",
             "type": "charge.dispute.created",
-            "data": {"object": {"id": "dp_subscription", "payment_intent": payment.stripe_payment_intent_id}},
+            "data": {
+                "object": {
+                    "id": "dp_subscription",
+                    "payment_intent": payment.stripe_payment_intent_id,
+                }
+            },
         },
         headers={"Stripe-Signature": "t=stripe,v1=fake"},
     )
@@ -1147,7 +1159,6 @@ def test_stripe_dispute_webhook_expires_active_tenant_subscription(
     assert tenant_subscription.status.value == "EXPIRED"
     assert tenant_subscription.cancelled_at is not None
     assert str(payment.payment_id) in (tenant_subscription.cancellation_reason or "")
-
 
 
 @pytest.mark.prd10
@@ -1199,7 +1210,9 @@ def test_stripe_webhook_payment_failed_sets_payment_status_failed(
     assert body.get("processed") is True
     assert body.get("payment_status") == "FAILED"
 
-    payment = db_session.query(Payment).filter(Payment.payment_id == init_data["payment_id"]).first()
+    payment = (
+        db_session.query(Payment).filter(Payment.payment_id == init_data["payment_id"]).first()
+    )
     db_session.refresh(payment)
     assert payment.status.value == "FAILED"
 
@@ -1253,7 +1266,9 @@ def test_stripe_webhook_payment_canceled_sets_payment_status_failed(
     assert body.get("processed") is True
     assert body.get("payment_status") == "CANCELED"
 
-    payment = db_session.query(Payment).filter(Payment.payment_id == init_data["payment_id"]).first()
+    payment = (
+        db_session.query(Payment).filter(Payment.payment_id == init_data["payment_id"]).first()
+    )
     db_session.refresh(payment)
     assert payment.status.value == "CANCELED"
 
@@ -1304,7 +1319,9 @@ def test_stripe_webhook_failed_does_not_activate_order(
     assert webhook_resp.status_code == 200, (webhook_resp.status_code, webhook_resp.text)
 
     db_session.refresh(order)
-    payment = db_session.query(Payment).filter(Payment.payment_id == init_data["payment_id"]).first()
+    payment = (
+        db_session.query(Payment).filter(Payment.payment_id == init_data["payment_id"]).first()
+    )
     db_session.refresh(payment)
 
     assert payment.status.value == "FAILED"

@@ -134,12 +134,7 @@ async def ask_assistant(message: str, context: AssistantContext) -> tuple[str, b
         ) from exc
 
     data = response.json()
-    answer = (
-        data.get("choices", [{}])[0]
-        .get("message", {})
-        .get("content", "")
-        .strip()
-    )
+    answer = data.get("choices", [{}])[0].get("message", {}).get("content", "").strip()
     if not answer:
         return FALLBACK_MESSAGE, True
 
