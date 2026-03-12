@@ -755,91 +755,181 @@ SEED_PRODUCTS = [
         "tenant_name": "Bluestone Clinic",
         "name": "Consultation Package",
         "price": 150.00,
-        "description": "3-session consultation bundle",
+        "description": "Three-session telehealth consultation bundle with follow-up notes.",
+        "category": "wellness-essentials",
+        "image_url": "https://images.unsplash.com/photo-1576091160550-2173dba999ef?w=900&q=80",
+        "stock_quantity": 25,
     },
     {
         "tenant_name": "Bluestone Clinic",
         "name": "Health Check-Up",
         "price": 99.00,
-        "description": "Comprehensive annual health screening",
+        "description": "Guided home screening kit for routine wellness tracking.",
+        "category": "diagnostics",
+        "image_url": "https://images.unsplash.com/photo-1584515933487-779824d29309?w=900&q=80",
+        "stock_quantity": 18,
     },
     {
         "tenant_name": "Bluestone Clinic",
         "name": "Blood Pressure Monitor",
         "price": 45.00,
-        "description": "Home blood pressure monitor",
+        "description": "Compact upper-arm monitor with irregular heartbeat alerts.",
+        "category": "home-monitoring",
+        "image_url": "https://images.unsplash.com/photo-1631815588090-d4bfec5b1ccb?w=900&q=80",
+        "stock_quantity": 34,
     },
     {
         "tenant_name": "Bluestone Clinic",
         "name": "First Aid Kit",
         "price": 28.00,
-        "description": "Basic first aid kit for home use",
+        "description": "Travel-ready first aid kit for home, office, or car.",
+        "category": "first-aid",
+        "image_url": "https://images.unsplash.com/photo-1603398938378-e54eab446dde?w=900&q=80",
+        "stock_quantity": 42,
     },
     {
         "tenant_name": "Bluestone Clinic",
         "name": "Thermometer",
         "price": 18.00,
-        "description": "Digital thermometer",
+        "description": "Non-contact thermometer with quick forehead readings.",
+        "category": "diagnostics",
+        "image_url": "https://images.unsplash.com/photo-1584367369853-66f7f4f3c3b8?w=900&q=80",
+        "stock_quantity": 30,
     },
     {
         "tenant_name": "Apex Medical Group",
         "name": "Vitamin D Supplement",
         "price": 25.00,
-        "description": "Daily vitamin D supplement",
+        "description": "High-strength daily vitamin D softgels for bone support.",
+        "category": "vitamins",
+        "image_url": "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=900&q=80",
+        "stock_quantity": 60,
     },
     {
         "tenant_name": "Apex Medical Group",
         "name": "Multivitamin Pack",
         "price": 35.00,
-        "description": "30-day multivitamin pack",
+        "description": "Thirty-day multivitamin pack for daily nutritional support.",
+        "category": "vitamins",
+        "image_url": "https://images.unsplash.com/photo-1615485290382-441e4d049cb5?w=900&q=80",
+        "stock_quantity": 48,
     },
     {
         "tenant_name": "Apex Medical Group",
         "name": "Blood Pressure Monitor",
         "price": 45.00,
-        "description": "Home blood pressure monitor",
+        "description": "Easy-read blood pressure monitor with memory storage.",
+        "category": "home-monitoring",
+        "image_url": "https://images.unsplash.com/photo-1631815588090-d4bfec5b1ccb?w=900&q=80",
+        "stock_quantity": 26,
     },
     {
         "tenant_name": "Apex Medical Group",
         "name": "Thermometer",
         "price": 15.00,
-        "description": "Digital thermometer",
+        "description": "Fast-reading digital thermometer for routine home use.",
+        "category": "diagnostics",
+        "image_url": "https://images.unsplash.com/photo-1584367369853-66f7f4f3c3b8?w=900&q=80",
+        "stock_quantity": 40,
     },
     {
         "tenant_name": "Apex Medical Group",
         "name": "First Aid Kit",
         "price": 30.00,
-        "description": "Basic first aid kit",
+        "description": "Comprehensive household first aid kit with refillable layout.",
+        "category": "first-aid",
+        "image_url": "https://images.unsplash.com/photo-1603398938378-e54eab446dde?w=900&q=80",
+        "stock_quantity": 24,
     },
     {
         "tenant_name": "Apex Medical Group",
         "name": "Face Masks (50-pack)",
         "price": 20.00,
-        "description": "Disposable face masks",
+        "description": "Disposable protective face masks for clinic and home use.",
+        "category": "protective-equipment",
+        "image_url": "https://images.unsplash.com/photo-1584634731339-252c581abfc5?w=900&q=80",
+        "stock_quantity": 75,
     },
     {
         "tenant_name": "Apex Medical Group",
         "name": "Hand Sanitizer (500ml)",
         "price": 12.00,
-        "description": "Alcohol-based hand sanitizer",
+        "description": "Alcohol-based hand sanitizer with aloe for frequent use.",
+        "category": "personal-care",
+        "image_url": "https://images.unsplash.com/photo-1584483766114-2cea6facdf57?w=900&q=80",
+        "stock_quantity": 80,
     },
     {
         "tenant_name": "Apex Medical Group",
         "name": "Blood Glucose Meter",
         "price": 55.00,
-        "description": "Diabetes monitoring device",
+        "description": "Portable glucose meter with starter lancets and strips.",
+        "category": "medical-devices",
+        "image_url": "https://images.unsplash.com/photo-1579154204601-01588f351e67?w=900&q=80",
+        "stock_quantity": 22,
     },
     {
         "tenant_name": "Apex Medical Group",
         "name": "Pulse Oximeter",
         "price": 40.00,
-        "description": "Finger pulse oximeter",
+        "description": "Finger pulse oximeter for oxygen saturation monitoring.",
+        "category": "home-monitoring",
+        "image_url": "https://images.unsplash.com/photo-1581594693702-fbdc51b2763b?w=900&q=80",
+        "stock_quantity": 31,
     },
     {
         "tenant_name": "Apex Medical Group",
         "name": "Heating Pad",
         "price": 28.00,
-        "description": "Electric heating pad",
+        "description": "Electric heating pad for muscle recovery and pain relief.",
+        "category": "wellness-essentials",
+        "image_url": "https://images.unsplash.com/photo-1511174511562-5f7f18b874f8?w=900&q=80",
+        "stock_quantity": 20,
+    },
+    {
+        "tenant_name": "Apex Medical Group",
+        "name": "Omega-3 Softgels",
+        "price": 24.00,
+        "description": "Daily omega-3 supplement with concentrated fish oil for heart support.",
+        "category": "supplements",
+        "image_url": "https://images.unsplash.com/photo-1577460551100-9070b7d6b6b5?w=900&q=80",
+        "stock_quantity": 52,
+    },
+    {
+        "tenant_name": "Apex Medical Group",
+        "name": "Magnesium Glycinate Capsules",
+        "price": 22.00,
+        "description": "Gentle magnesium formula designed for muscle recovery and evening relaxation.",
+        "category": "supplements",
+        "image_url": "https://images.unsplash.com/photo-1587854692152-cbe660dbde88?w=900&q=80",
+        "stock_quantity": 41,
+    },
+    {
+        "tenant_name": "Apex Medical Group",
+        "name": "Probiotic Daily Blend",
+        "price": 27.50,
+        "description": "Shelf-stable probiotic blend to support gut health and daily balance.",
+        "category": "supplements",
+        "image_url": "https://images.unsplash.com/photo-1607619056574-7b8d3ee536b2?w=900&q=80",
+        "stock_quantity": 36,
+    },
+    {
+        "tenant_name": "Apex Medical Group",
+        "name": "Collagen Peptides Powder",
+        "price": 34.00,
+        "description": "Unflavored collagen peptides powder for skin, joints, and recovery routines.",
+        "category": "supplements",
+        "image_url": "https://images.unsplash.com/photo-1611078489935-0cb964de46d6?w=900&q=80",
+        "stock_quantity": 29,
+    },
+    {
+        "tenant_name": "Apex Medical Group",
+        "name": "Electrolyte Hydration Mix",
+        "price": 19.00,
+        "description": "Single-serve electrolyte packets for hydration during travel, workouts, or recovery.",
+        "category": "supplements",
+        "image_url": "https://images.unsplash.com/photo-1622484212850-eb596d769edc?w=900&q=80",
+        "stock_quantity": 64,
     },
 ]
 
@@ -1966,25 +2056,30 @@ def seed_contracts(session, users_by_email, tenants_by_name):
 
 
 def seed_products(session, tenants_by_name):
-    existing = set()
+    existing_products = {
+        (product.tenant_id, product.name): product
+        for product in session.query(Product).all()
+    }
     for payload in SEED_PRODUCTS:
         tenant = tenants_by_name.get(payload["tenant_name"])
         if not tenant:
             continue
         key = (tenant.id, payload["name"])
-        if key in existing:
-            continue
-        existing.add(key)
-        session.add(
-            Product(
+        product = existing_products.get(key)
+        if product is None:
+            product = Product(
                 tenant_id=tenant.id,
                 name=payload["name"],
-                description=payload.get("description"),
-                price=Decimal(str(payload["price"])),
-                stock_quantity=0,
-                is_available=True,
             )
-        )
+            session.add(product)
+            existing_products[key] = product
+
+        product.description = payload.get("description")
+        product.category = payload.get("category")
+        product.image_url = payload.get("image_url")
+        product.price = Decimal(str(payload["price"]))
+        product.stock_quantity = int(payload.get("stock_quantity", 0))
+        product.is_available = bool(payload.get("is_available", True))
     session.flush()
 
 

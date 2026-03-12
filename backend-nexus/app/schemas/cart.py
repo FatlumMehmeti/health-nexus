@@ -1,25 +1,34 @@
-from pydantic import BaseModel, ConfigDict
-from typing import Optional
-from enum import Enum
+from pydantic import BaseModel, ConfigDict, Field
+
+from app.schemas.product import ProductResponse
 
 
-class CartStatus(str, Enum):
-    ACTIVE = "ACTIVE"
-    CONVERTED = "CONVERTED"
-    ABANDONDED = "ABANDONDED"
+class CartItemCreate(BaseModel):
+    tenant_id: int = Field(..., gt=0)
+    product_id: int = Field(..., gt=0)
+    quantity: int = Field(..., gt=0)
 
 
-class CartBase(BaseModel):
-    patient_user_id: int
-    tenant_id: int
+class CartItemUpdate(BaseModel):
+    quantity: int = Field(..., ge=0)
 
 
-class CartCreate(CartBase):
-    pass
-
-
-class CartRead(CartBase):
+class CartItemResponse(BaseModel):
     id: int
-    status: CartStatus
+    product_id: int
+    quantity: int
+    product: ProductResponse
+    line_total: float
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class CartResponse(BaseModel):
+    id: int
+    tenant_id: int
+    patient_user_id: int
+    status: str
+    items: list[CartItemResponse]
+    subtotal: float
 
     model_config = ConfigDict(from_attributes=True)

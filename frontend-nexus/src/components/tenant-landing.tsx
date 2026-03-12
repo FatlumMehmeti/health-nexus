@@ -33,6 +33,7 @@ import {
 import type { TenantLandingPageResponse } from '@/interfaces';
 import { isApiError } from '@/lib/api-client';
 import { resolveMediaUrl } from '@/lib/media-url';
+import { getProductCategoryLabel } from '@/lib/product-categories';
 import { can } from '@/lib/rbac';
 import {
   clearCheckoutRecovery,
@@ -62,7 +63,7 @@ import {
 } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import type { CSSProperties } from 'react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { PaymentFlowNotice } from './PaymentFlowNotice';
 import { StripePaymentModal } from './StripePaymentModal';
@@ -114,6 +115,7 @@ const usdFormatter = new Intl.NumberFormat('en-US', {
 const PAYMENT_CONFIRMATION_TIMEOUT_MS = 45_000;
 const ENROLLMENT_CANCELLATION_NOTICE_KEY_PREFIX =
   'health-nexus.enrollment-cancellation-notice';
+const CATEGORY_PREVIEW_LIMIT = 4;
 
 function getEnrollmentCancellationNoticeStorageKey(
   tenantId: number
@@ -757,6 +759,48 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
     user?.fullName?.trim().charAt(0) ||
     'U'
   ).toUpperCase();
+  const availableProducts = (landingData?.products ?? []).filter(
+    (product) => product.is_available !== false
+  );
+  const groupedProducts = useMemo(() => {
+    const groups = new Map<
+      string,
+      {
+        categoryLabel: string;
+        categoryValue?: string;
+        items: typeof availableProducts;
+      }
+    >();
+    for (const product of availableProducts) {
+      const categoryValue = product.category?.trim().toLowerCase();
+      const categoryLabel =
+        getProductCategoryLabel(product.category) ||
+        'Uncategorized';
+      const key = categoryValue ?? `uncategorized:${categoryLabel}`;
+      const existingGroup = groups.get(key);
+      if (existingGroup) {
+        existingGroup.items.push(product);
+      } else {
+        groups.set(key, {
+          categoryLabel,
+          categoryValue,
+          items: [product],
+        });
+      }
+    }
+
+    return Array.from(groups.values())
+      .sort((left, right) =>
+        left.categoryLabel.localeCompare(right.categoryLabel)
+      )
+      .map((group) => ({
+        category: group.categoryLabel,
+        categoryValue: group.categoryValue,
+        items: [...group.items].sort((left, right) =>
+          left.name.localeCompare(right.name)
+        ),
+      }));
+  }, [availableProducts]);
 
   if (!landingData) {
     return (
@@ -766,7 +810,7 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
     );
   }
 
-  const { tenant, details, departments, products } = landingData;
+  const { tenant, details, departments } = landingData;
   const plans = (landingData.plans ?? []).filter(
     (p) => p.is_active !== false
   );
@@ -782,6 +826,22 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
   const fontHeaderStyle = brand.headerStyle;
   const fontBodyStyle = brand.bodyStyle;
   const featuredDepartments = departments.slice(0, 3);
+  const handleOpenShop = (category?: string) => {
+    if (!tenantId) return;
+    useAuthStore.setState({ tenantId: String(tenantId) });
+    void navigate({
+      to: '/dashboard/shop',
+      search: category ? { category } : {},
+    });
+  };
+  const handleGoToProfile = () => {
+    if (tenantId) {
+      useAuthStore.setState({ tenantId: String(tenantId) });
+    }
+    void navigate({
+      to: '/dashboard/profile',
+    });
+  };
   const serviceCount = departments.reduce(
     (total, department) => total + department.services.length,
     0
@@ -1471,257 +1531,126 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
             </TabsContent>
 
             <TabsContent value="products" className="mt-0 flex-1">
-              <section className="mx-auto container space-y-6">
-                <div className="overflow-hidden rounded-[2rem] border border-white/40 bg-card/75 p-6 shadow-[0_24px_60px_-36px_rgba(15,23,42,0.45)] backdrop-blur dark:border-zinc-200/20 dark:bg-slate-950/55 dark:shadow-[0_24px_60px_-36px_rgba(2,6,23,0.9)] sm:p-8">
-                  <div className="flex flex-col gap-6">
-                    <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-                      <div className="max-w-3xl space-y-3">
-                        <p
-                          className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground dark:text-slate-400"
-                          style={
-                            brand.secondary
-                              ? { color: brand.secondary }
-                              : undefined
-                          }
-                        >
-                          Product shop
-                        </p>
-                        <h2
-                          className="text-2xl font-semibold tracking-tight sm:text-3xl"
-                          style={fontHeaderStyle}
-                        >
-                          Products you can browse and buy
-                        </h2>
-                        <p className="text-sm leading-6 text-muted-foreground dark:text-slate-300 sm:text-base">
-                          {availableProducts.length > 0
-                            ? 'Search the catalog, switch between curated collections, and explore health products available from this tenant.'
-                            : 'No products available yet.'}
-                        </p>
-                      </div>
-
-                      <div className="grid gap-3 sm:grid-cols-2 lg:min-w-[320px]">
-                        <div className="rounded-2xl border bg-background/70 px-4 py-3 shadow-sm dark:border-zinc-200/20 dark:bg-slate-900/65">
-                          <p className="text-[0.7rem] uppercase tracking-[0.18em] text-muted-foreground dark:text-slate-400">
-                            Available now
-                          </p>
-                          <p className="mt-2 text-2xl font-semibold">
-                            {availableProducts.length}
-                          </p>
-                        </div>
-                        <div className="rounded-2xl border bg-background/70 px-4 py-3 shadow-sm dark:border-zinc-200/20 dark:bg-slate-900/65">
-                          <p className="text-[0.7rem] uppercase tracking-[0.18em] text-muted-foreground dark:text-slate-400">
-                            Showing
-                          </p>
-                          <p className="mt-2 text-2xl font-semibold">
-                            {filteredProducts.length}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
-                    {availableProducts.length > 0 ? (
-                      <>
-                        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                          <div className="relative w-full max-w-xl">
-                            <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground dark:text-slate-400" />
-                            <Input
-                              value={productSearch}
-                              onChange={(e) =>
-                                setProductSearch(e.target.value)
+              <section className="mx-auto max-w-5xl space-y-4">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                  <div className="space-y-1">
+                    <h2 className="text-xl font-semibold tracking-tight sm:text-2xl">
+                      Products
+                    </h2>
+                    <p className="text-sm text-muted-foreground sm:text-base">
+                      {availableProducts.length > 0
+                        ? 'Healthcare products currently available from this tenant.'
+                        : 'No products available yet.'}
+                    </p>
+                  </div>
+                  {isAuthenticated && role === 'CLIENT' ? (
+                    <Button onClick={handleOpenShop}>Open Shop</Button>
+                  ) : null}
+                </div>
+                {groupedProducts.length > 0 ? (
+                  <div className="space-y-6">
+                    {groupedProducts.map((group) => (
+                      <section
+                        key={group.category}
+                        className="space-y-3"
+                      >
+                        <div className="flex items-center justify-between gap-3">
+                          <div>
+                            <h3 className="text-lg font-semibold">
+                              {group.category}
+                            </h3>
+                            <p className="text-sm text-muted-foreground">
+                              {group.items.length} product
+                              {group.items.length === 1 ? '' : 's'}
+                            </p>
+                          </div>
+                          {group.items.length > CATEGORY_PREVIEW_LIMIT &&
+                          isAuthenticated &&
+                          role === 'CLIENT' ? (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() =>
+                                handleOpenShop(group.categoryValue)
                               }
-                              placeholder="Search products by name or description..."
-                              className="h-12 rounded-full border bg-background/75 pl-11 pr-4 shadow-sm dark:border-zinc-200/20 dark:bg-slate-900/70 dark:text-slate-100 dark:placeholder:text-slate-400"
-                            />
-                          </div>
-
-                          <div className="flex flex-wrap gap-2">
-                            {productCategories.map((category) => {
-                              const isActive =
-                                category.id === activeProductCategory;
-
-                              return (
-                                <button
-                                  key={category.id}
-                                  type="button"
-                                  className="rounded-full border px-4 py-2 text-sm font-medium transition dark:border-zinc-200/20 dark:bg-slate-900/65 dark:text-slate-200"
-                                  style={
-                                    isActive
-                                      ? {
-                                          backgroundColor:
-                                            brand.primary ??
-                                            'rgb(37 99 235)',
-                                          borderColor:
-                                            brand.primary ??
-                                            'rgb(37 99 235)',
-                                          color:
-                                            brand.foreground ??
-                                            '#ffffff',
-                                        }
-                                      : brand.primary
-                                        ? {
-                                            borderColor:
-                                              resolvedTheme === 'dark'
-                                                ? 'rgba(226,232,240,0.22)'
-                                                : `${brand.primary}55`,
-                                            color: brand.primary,
-                                          }
-                                        : undefined
-                                  }
-                                  onClick={() =>
-                                    setActiveProductCategory(
-                                      category.id
-                                    )
-                                  }
-                                >
-                                  {category.label}
-                                </button>
-                              );
-                            })}
-                          </div>
+                            >
+                              Open in Shop
+                            </Button>
+                          ) : null}
                         </div>
-
-                        {filteredProducts.length > 0 ? (
-                          <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-                            {filteredProducts.map(
-                              (product, index) => (
-                                <article
-                                  key={product.product_id}
-                                  className="group flex h-full flex-col overflow-hidden rounded-[1.75rem] border bg-card/85 shadow-[0_22px_50px_-38px_rgba(15,23,42,0.7)] transition-shadow duration-300 hover:shadow-[0_28px_70px_-36px_rgba(15,23,42,0.65)] dark:border-zinc-200/20 dark:bg-slate-950/65 dark:shadow-[0_22px_50px_-38px_rgba(2,6,23,0.95)] dark:hover:shadow-[0_28px_70px_-36px_rgba(8,15,32,0.98)]"
-                                  style={
-                                    brand.primary
-                                      ? resolvedTheme === 'dark'
-                                        ? {
-                                            boxShadow: `inset 0 0 0 1px color-mix(in srgb, ${brand.primary} 18%, rgba(226,232,240,0.22))`,
-                                          }
-                                        : {
-                                            borderColor: `${brand.primary}33`,
-                                          }
-                                      : undefined
-                                  }
-                                >
-                                  <div
-                                    className="relative h-36 px-5 py-5"
-                                    style={{
-                                      background: `linear-gradient(135deg, ${
-                                        brand.primary ?? '#2563eb'
-                                      }22 0%, ${
-                                        brand.secondary ?? '#0f172a'
-                                      }12 100%)`,
-                                    }}
-                                  >
-                                    <div className="absolute right-5 top-5 rounded-full border bg-background/80 px-3 py-1 text-[0.7rem] font-semibold uppercase tracking-[0.16em] text-muted-foreground shadow-sm dark:border-zinc-200/20 dark:bg-slate-900/80 dark:text-slate-300">
-                                      {product.price < 50
-                                        ? 'Essential'
-                                        : product.price < 150
-                                          ? 'Popular'
-                                          : 'Premium'}
+                        <div className="grid gap-4 md:grid-cols-2">
+                          {group.items
+                            .slice(0, CATEGORY_PREVIEW_LIMIT)
+                            .map((product) => (
+                            <article
+                              key={product.product_id}
+                              className="flex h-full flex-col rounded-xl border bg-card/60 p-4 shadow-sm"
+                            >
+                              <div className="flex gap-4">
+                                <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-lg border bg-muted/30">
+                                  {product.image_url ? (
+                                    <img
+                                      src={
+                                        resolveMediaUrl(
+                                          product.image_url
+                                        ) ?? ''
+                                      }
+                                      alt={product.name}
+                                      className="h-full w-full object-cover"
+                                    />
+                                  ) : (
+                                    <span className="text-xs text-muted-foreground">
+                                      No image
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="flex-1">
+                                  <div className="flex items-start justify-between gap-3">
+                                    <div>
+                                      <h4 className="text-sm font-semibold sm:text-base">
+                                        {product.name}
+                                      </h4>
+                                      <p className="mt-1 text-xs uppercase tracking-wide text-muted-foreground">
+                                        {group.category}
+                                      </p>
                                     </div>
-                                    <div className="flex h-full items-end">
-                                      <div
-                                        className="flex h-14 w-14 items-center justify-center rounded-2xl border bg-background/80 text-lg font-semibold shadow-sm dark:border-zinc-200/20 dark:bg-slate-900/80"
-                                        style={
-                                          brand.primary
-                                            ? {
-                                                borderColor:
-                                                  resolvedTheme ===
-                                                  'dark'
-                                                    ? 'rgba(226,232,240,0.22)'
-                                                    : `${brand.primary}55`,
-                                                color: brand.primary,
-                                              }
-                                            : undefined
-                                        }
-                                      >
-                                        {String(index + 1).padStart(
-                                          2,
-                                          '0'
-                                        )}
-                                      </div>
-                                    </div>
+                                    <span
+                                      className="rounded-full border px-2 py-0.5 text-xs font-medium"
+                                      style={
+                                        brand.primary
+                                          ? {
+                                              borderColor:
+                                                brand.primary,
+                                              color: brand.primary,
+                                            }
+                                          : undefined
+                                      }
+                                    >
+                                      {formatCurrency(product.price)}
+                                    </span>
                                   </div>
-
-                                  <div className="flex flex-1 flex-col p-5">
-                                    <div className="flex items-start justify-between gap-3">
-                                      <div>
-                                        <h3 className="text-lg font-semibold">
-                                          {product.name}
-                                        </h3>
-                                        <p className="mt-1 text-xs uppercase tracking-[0.16em] text-muted-foreground dark:text-slate-400">
-                                          {product.stock_quantity > 0
-                                            ? `${product.stock_quantity} in stock`
-                                            : 'Out of stock'}
-                                        </p>
-                                      </div>
-                                      <span
-                                        className="rounded-full border px-3 py-1 text-sm font-semibold shadow-sm dark:border-zinc-200/20 dark:bg-slate-900/70"
-                                        style={
-                                          brand.primary
-                                            ? {
-                                                borderColor:
-                                                  resolvedTheme ===
-                                                  'dark'
-                                                    ? 'rgba(226,232,240,0.22)'
-                                                    : `${brand.primary}55`,
-                                                color: brand.primary,
-                                              }
-                                            : undefined
-                                        }
-                                      >
-                                        {formatCurrency(
-                                          product.price
-                                        )}
-                                      </span>
-                                    </div>
-
-                                    <p className="mt-4 flex-1 text-sm leading-6 text-muted-foreground dark:text-slate-300">
-                                      {product.description ||
-                                        'No description provided.'}
-                                    </p>
-
-                                    <div className="mt-5 flex items-center justify-between gap-3">
-                                      <div className="rounded-full border bg-background/70 px-3 py-1 text-[0.7rem] uppercase tracking-[0.16em] text-muted-foreground dark:border-zinc-200/20 dark:bg-slate-900/70 dark:text-slate-300">
-                                        Tenant catalog
-                                      </div>
-                                      <Button
-                                        size="sm"
-                                        disabled={
-                                          product.stock_quantity < 1
-                                        }
-                                        style={primaryButtonStyle}
-                                      >
-                                        {product.is_available
-                                          ? 'Buy now'
-                                          : 'Unavailable'}
-                                      </Button>
-                                    </div>
-                                  </div>
-                                </article>
-                              )
-                            )}
-                          </div>
-                        ) : (
-                          <div className="rounded-[1.75rem] border bg-card/70 p-10 text-center shadow-sm dark:border-zinc-200/20 dark:bg-slate-950/60">
-                            <p className="text-base font-medium">
-                              No products match this search.
-                            </p>
-                            <p className="mt-2 text-sm text-muted-foreground dark:text-slate-300">
-                              Try another keyword or switch to a
-                              different category tab.
-                            </p>
-                          </div>
-                        )}
-                      </>
-                    ) : (
-                      <div className="rounded-[1.75rem] border bg-card/70 p-10 text-center shadow-sm dark:border-zinc-200/20 dark:bg-slate-950/60">
-                        <p className="text-base font-medium">
-                          No products configured yet.
-                        </p>
-                        <p className="mt-2 text-sm text-muted-foreground dark:text-slate-300">
-                          Product listings will appear here once this
-                          tenant adds items to the catalog.
-                        </p>
-                      </div>
-                    )}
+                                  <p className="mt-2 text-sm text-muted-foreground">
+                                    {product.description ||
+                                      'No description provided.'}
+                                  </p>
+                                </div>
+                              </div>
+                            </article>
+                          ))}
+                        </div>
+                        {group.items.length > CATEGORY_PREVIEW_LIMIT ? (
+                          <p className="text-sm text-muted-foreground">
+                            Showing {CATEGORY_PREVIEW_LIMIT} of{' '}
+                            {group.items.length} products in this
+                            category.
+                          </p>
+                        ) : null}
+                      </section>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="rounded-xl border bg-card/60 p-6 text-center text-sm text-muted-foreground">
+                    No products configured yet.
                   </div>
                 </div>
               </section>

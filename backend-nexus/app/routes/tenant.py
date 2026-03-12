@@ -577,6 +577,8 @@ def create_tenant_product(
         tenant_id=tenant_id,
         name=payload.name,
         description=payload.description,
+        category=(payload.category or "").strip() or None,
+        image_url=(payload.image_url or "").strip() or None,
         price=payload.price,
         stock_quantity=payload.stock_quantity,
         is_available=payload.is_available,
@@ -608,6 +610,10 @@ def update_tenant_product(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Product not found")
     data = payload.model_dump(exclude_unset=True)
     for k, v in data.items():
+        if k in {"name", "category", "image_url"} and isinstance(v, str):
+            v = v.strip()
+            if k in {"category", "image_url"} and not v:
+                v = None
         setattr(product, k, v)
     if "price" in data:
         product.price = Decimal(str(data["price"]))

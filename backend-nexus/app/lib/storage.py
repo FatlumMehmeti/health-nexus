@@ -47,7 +47,7 @@ def save_signature(contract_id: int, role: SignerRole, content: bytes, content_t
 
 
 def save_tenant_brand_asset(
-    tenant_id: int, kind: Literal["logo", "hero"], content: bytes, content_type: str
+    tenant_id: int, kind: Literal["logo", "hero", "product"], content: bytes, content_type: str
 ) -> str:
     """
     Save tenant branding asset image (logo/hero) and return public URL path mounted by FastAPI.

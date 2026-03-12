@@ -1,15 +1,31 @@
 import { FormField } from '@/components/atoms/form-field';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
-import type { ProductRead } from '@/interfaces';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { resolveMediaUrl } from '@/lib/media-url';
+import {
+  getProductCategoryLabel,
+  PRODUCT_CATEGORY_OPTIONS,
+} from '@/lib/product-categories';
+import { Switch } from '@/components/ui/switch';
 import { isApiError } from '@/lib/api-client';
-import { tenantsService } from '@/services/tenants.service';
+import {
+  useCreateProduct,
+  useUpdateProduct,
+  type Product,
+} from '@/services/products.service';
 import { useDialogStore } from '@/stores/use-dialog-store';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Controller, useForm } from 'react-hook-form';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
-import { QUERY_KEYS } from '../../-constants';
 import {
   productSchema,
   toProductPayload,
@@ -18,56 +34,91 @@ import {
 
 interface ProductFormProps {
   mode: 'create' | 'edit';
-  product?: ProductRead;
+  tenantId: number;
+  product?: Product;
 }
 
-export function ProductForm({ mode, product }: ProductFormProps) {
+export function ProductForm({
+  mode,
+  tenantId,
+  product,
+}: ProductFormProps) {
   const closeDialog = useDialogStore((state) => state.close);
-  const queryClient = useQueryClient();
-
-  const createMutation = useMutation({
-    mutationFn: (values: ProductFormValues) =>
-      tenantsService.createTenantProduct(toProductPayload(values)),
-    onSuccess: () => {
-      toast.success('Product created');
-      closeDialog();
-      void queryClient.invalidateQueries({
-        queryKey: QUERY_KEYS.products,
-      });
-    },
-    onError: (err) => {
-      toast.error('Failed to create product', {
-        description: isApiError(err)
-          ? err.displayMessage
-          : 'Request failed',
-      });
-    },
-  });
-
-  const updateMutation = useMutation({
-    mutationFn: (values: ProductFormValues) =>
-      tenantsService.updateTenantProduct(
-        product!.product_id,
-        toProductPayload(values)
-      ),
-    onSuccess: () => {
-      toast.success('Product updated');
-      closeDialog();
-      void queryClient.invalidateQueries({
-        queryKey: QUERY_KEYS.products,
-      });
-    },
-    onError: (err) => {
-      toast.error('Failed to update product', {
-        description: isApiError(err)
-          ? err.displayMessage
-          : 'Request failed',
-      });
-    },
-  });
+  const createMutation = useCreateProduct();
+  const updateMutation = useUpdateProduct();
 
   const isPending =
     createMutation.isPending || updateMutation.isPending;
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(
+    null
+  );
+  const [clearImage, setClearImage] = useState(false);
+
+  useEffect(() => {
+    if (!imageFile) {
+      setImagePreviewUrl(null);
+      return;
+    }
+    const objectUrl = URL.createObjectURL(imageFile);
+    setImagePreviewUrl(objectUrl);
+    return () => URL.revokeObjectURL(objectUrl);
+  }, [imageFile]);
+  const currentImagePreview =
+    clearImage && !imagePreviewUrl
+      ? null
+      : imagePreviewUrl ?? resolveMediaUrl(product?.image_url);
+
+  const onSubmit = (values: ProductFormValues) => {
+    const payload = toProductPayload(values);
+    if (mode === 'edit' && product) {
+      updateMutation.mutate(
+        {
+          productId: product.product_id,
+          payload: {
+            ...payload,
+            ...(imageFile ? { image_file: imageFile } : {}),
+            ...(clearImage ? { clear_image: true } : {}),
+          },
+        },
+        {
+          onSuccess: () => {
+            toast.success('Product updated');
+            closeDialog();
+          },
+          onError: (err) => {
+            toast.error('Failed to update product', {
+              description: isApiError(err)
+                ? err.displayMessage
+                : 'Request failed',
+            });
+          },
+        }
+      );
+      return;
+    }
+
+    createMutation.mutate(
+      {
+        ...payload,
+        tenant_id: tenantId,
+        ...(imageFile ? { image_file: imageFile } : {}),
+      },
+      {
+        onSuccess: () => {
+          toast.success('Product created');
+          closeDialog();
+        },
+        onError: (err) => {
+          toast.error('Failed to create product', {
+            description: isApiError(err)
+              ? err.displayMessage
+              : 'Request failed',
+          });
+        },
+      }
+    );
+  };
 
   const {
     register,
@@ -78,20 +129,13 @@ export function ProductForm({ mode, product }: ProductFormProps) {
     resolver: zodResolver(productSchema),
     defaultValues: {
       name: product?.name ?? '',
+      category: product?.category ?? '',
       price: String(product?.price ?? ''),
       stock_quantity: String(product?.stock_quantity ?? '0'),
       description: product?.description ?? '',
       is_available: product?.is_available !== false,
     },
   });
-
-  const onSubmit = (values: ProductFormValues) => {
-    if (mode === 'edit') {
-      updateMutation.mutate(values);
-      return;
-    }
-    createMutation.mutate(values);
-  };
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
@@ -127,6 +171,60 @@ export function ProductForm({ mode, product }: ProductFormProps) {
           error={errors.stock_quantity?.message}
           {...register('stock_quantity')}
         />
+        <div className="space-y-2">
+          <Label htmlFor="product-category">Category</Label>
+          <Controller
+            name="category"
+            control={control}
+            render={({ field }) => (
+              <Select
+                value={field.value?.trim().toLowerCase() || 'NONE'}
+                onValueChange={(value) =>
+                  field.onChange(value === 'NONE' ? '' : value)
+                }
+              >
+                <SelectTrigger
+                  id="product-category"
+                  className="w-full"
+                  aria-invalid={!!errors.category}
+                >
+                  <SelectValue placeholder="Select a category" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="NONE">
+                    No category
+                  </SelectItem>
+                  {field.value &&
+                  field.value.trim() &&
+                  !PRODUCT_CATEGORY_OPTIONS.some(
+                    (option) =>
+                      option.value ===
+                      field.value.trim().toLowerCase()
+                  ) ? (
+                    <SelectItem
+                      value={field.value.trim().toLowerCase()}
+                    >
+                      {getProductCategoryLabel(field.value)}
+                    </SelectItem>
+                  ) : null}
+                  {PRODUCT_CATEGORY_OPTIONS.map((option) => (
+                    <SelectItem
+                      key={option.value}
+                      value={option.value}
+                    >
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          />
+          {errors.category?.message ? (
+            <p className="text-xs text-destructive" role="alert">
+              {errors.category.message}
+            </p>
+          ) : null}
+        </div>
         <FormField
           id="product-description"
           label="Description"
@@ -134,18 +232,57 @@ export function ProductForm({ mode, product }: ProductFormProps) {
           error={errors.description?.message}
           {...register('description')}
         />
+        <div className="space-y-2 md:col-span-2">
+          <Label htmlFor="product-image-upload">Product Image</Label>
+          <Input
+            id="product-image-upload"
+            type="file"
+            accept="image/png,image/jpeg,image/jpg,image/webp"
+            onChange={(event) => {
+              const file = event.target.files?.[0] ?? null;
+              setImageFile(file);
+              if (file) setClearImage(false);
+            }}
+          />
+          <p className="text-xs text-muted-foreground">
+            PNG, JPG, or WebP up to 5MB.
+          </p>
+          {currentImagePreview ? (
+            <div className="space-y-2">
+              <div className="h-28 w-28 overflow-hidden rounded-lg border bg-muted/30">
+                <img
+                  src={currentImagePreview}
+                  alt={product?.name ?? 'Product preview'}
+                  className="h-full w-full object-cover"
+                />
+              </div>
+              {mode === 'edit' && product?.image_url ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setImageFile(null);
+                    setClearImage(true);
+                    setImagePreviewUrl(null);
+                  }}
+                >
+                  Remove image
+                </Button>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
         <Controller
           name="is_available"
           control={control}
           render={({ field }) => (
-            <label className="inline-flex items-center gap-2 text-sm md:col-span-2">
-              <Checkbox
+            <label className="inline-flex items-center gap-3 text-sm md:col-span-2">
+              <Switch
                 checked={field.value}
-                onCheckedChange={(checked) =>
-                  field.onChange(checked === true)
-                }
+                onCheckedChange={field.onChange}
               />
-              Available on landing page
+              Available in shop
             </label>
           )}
         />

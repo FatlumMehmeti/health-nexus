@@ -26,6 +26,7 @@ export const Route = createFileRoute('/')({
 
 export function LandingPage() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const role = useAuthStore((s) => s.role);
   const { data: publicTenants = [] } = useQuery({
     queryKey: ['public-tenants'],
     queryFn: () => tenantsService.listPublicTenants(),
@@ -79,11 +80,21 @@ export function LandingPage() {
               className="rounded-full bg-card/80 px-3"
             />
             {isAuthenticated ? (
-              <Link to="/dashboard">
-                <Button size="sm" className="rounded-full px-4">
-                  Dashboard
-                </Button>
-              </Link>
+              <>
+                <Link
+                  to={role === 'CLIENT' ? '/tenants' : '/dashboard'}
+                >
+                  <Button
+                    size="sm"
+                    variant={role === 'CLIENT' ? 'outline' : 'default'}
+                    className="rounded-full px-4"
+                  >
+                    {role === 'CLIENT'
+                      ? 'Choose Tenant'
+                      : 'Dashboard'}
+                  </Button>
+                </Link>
+              </>
             ) : (
               <Link to="/register">
                 <Button size="sm" className="rounded-full px-4">

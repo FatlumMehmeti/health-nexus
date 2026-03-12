@@ -3,6 +3,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import sessionmaker
 
+from app.auth.auth_utils import create_access_token
 from app.main import app
 from app.models import Patient, Tenant, TenantStatus, User
 from app.models.base import Base
@@ -162,3 +163,62 @@ def test_patient_rows_always_include_tenant_id(client):
         assert len({patient.user_id for patient in patients}) == 1
     finally:
         session.close()
+
+
+def test_authenticated_client_can_register_in_another_tenant(client):
+    payload = {
+        "email": "seeded-client@example.com",
+        "first_name": "Seeded",
+        "last_name": "Client",
+        "password": "Pass12345",
+    }
+    first = client.post("/api/public/tenants/1/clients/register", json=payload)
+    assert first.status_code == 201
+
+    token = create_access_token(
+        {
+            "user_id": first.json()["user_id"],
+            "email": payload["email"],
+            "role": "CLIENT",
+            "tenant_id": 1,
+        }
+    )
+    second = client.post(
+        "/api/public/tenants/2/clients/register",
+        json=payload,
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert second.status_code == 201
+    assert second.json()["tenant_id"] == 2
+
+
+def test_authenticated_client_cannot_register_different_email(client):
+    payload = {
+        "email": "seeded-client@example.com",
+        "first_name": "Seeded",
+        "last_name": "Client",
+        "password": "Pass12345",
+    }
+    first = client.post("/api/public/tenants/1/clients/register", json=payload)
+    assert first.status_code == 201
+
+    token = create_access_token(
+        {
+            "user_id": first.json()["user_id"],
+            "email": payload["email"],
+            "role": "CLIENT",
+            "tenant_id": 1,
+        }
+    )
+    mismatched = client.post(
+        "/api/public/tenants/2/clients/register",
+        json={
+            **payload,
+            "email": "someone-else@example.com",
+        },
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert mismatched.status_code == 403
+    assert mismatched.json()["detail"] == "Email does not match authenticated user"
