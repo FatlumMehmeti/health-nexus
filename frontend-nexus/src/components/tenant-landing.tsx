@@ -1491,7 +1491,9 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
                     </p>
                   </div>
                   {isAuthenticated && role === 'CLIENT' ? (
-                    <Button onClick={handleOpenShop}>Open Shop</Button>
+                    <Button onClick={() => handleOpenShop()}>
+                      Open Shop
+                    </Button>
                   ) : null}
                 </div>
                 {groupedProducts.length > 0 ? (
