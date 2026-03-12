@@ -64,9 +64,13 @@ class DoctorLandingItem(BaseModel):
 
 class ProductLandingItem(BaseModel):
     product_id: int
+    tenant_id: int
     name: str
     description: Optional[str] = None
+    category: Optional[str] = None
+    image_url: Optional[str] = None
     price: float
+    stock_quantity: int = 0
     is_available: bool = True
 
     class Config:

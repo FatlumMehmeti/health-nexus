@@ -28,9 +28,9 @@ from .report import Report
 from .recommendation import Recommendation
 from .offer_acceptance import OfferAcceptance
 from .product import Product
-from .cart import Cart
+from .cart import Cart, CartStatus
 from .cart_item import CartItem
-from .order import Order
+from .order import Order, OrderStatus
 from .order_item import OrderItem
 from .payment import Payment
 from .enrollment_status_history import EnrollmentStatusHistory
@@ -59,8 +59,10 @@ __all__ = [
     "Patient",
     "Product",
     "Cart",
+    "CartStatus",
     "CartItem",
     "Order",
+    "OrderStatus",
     "OrderItem",
     "Payment",
     "TenantManager",

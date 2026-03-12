@@ -10,6 +10,8 @@ class Product(Base):
 
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str | None]
+    category: Mapped[str | None] = mapped_column(String(100))
+    image_url: Mapped[str | None] = mapped_column(String(1024))
     price: Mapped[float] = mapped_column(DECIMAL, nullable=False)
     stock_quantity: Mapped[int] = mapped_column(default=0)
     is_available: Mapped[bool] = mapped_column(Boolean, default=True)

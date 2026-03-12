@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import pytest
 from fastapi.testclient import TestClient
@@ -18,6 +18,35 @@ from app.models import (
     User,
     UserTenantPlan,
 )
+
+
+def _future_day(weekday: int) -> datetime:
+    base_date = (datetime.now(timezone.utc) + timedelta(days=7)).date()
+    days_until_weekday = (weekday - base_date.weekday()) % 7
+    target_date = base_date + timedelta(days=days_until_weekday)
+    return datetime(
+        target_date.year,
+        target_date.month,
+        target_date.day,
+        tzinfo=timezone.utc,
+    )
+
+
+def _future_slot(weekday: int, hour: int, minute: int = 0) -> str:
+    target_day = _future_day(weekday)
+    return (
+        target_day.replace(hour=hour, minute=minute, second=0, microsecond=0)
+        .isoformat()
+        .replace("+00:00", "Z")
+    )
+
+
+MONDAY_SLOT_10 = _future_slot(0, 10)
+MONDAY_SLOT_11 = _future_slot(0, 11)
+MONDAY_SLOT_0830 = _future_slot(0, 8, 30)
+TUESDAY_SLOT_10 = _future_slot(1, 10)
+WEDNESDAY_SLOT_10 = _future_slot(2, 10)
+MONDAY_DATE = _future_day(0).date().isoformat()
 
 
 def _login(client: TestClient, email: str, password: str) -> str:
@@ -209,7 +238,7 @@ def test_booking_lifecycle_end_to_end(appointment_client):
             "tenant_id": ctx["tenant_id"],
             "doctor_id": ctx["doctor_id"],
             "department_id": ctx["department_id"],
-            "appointment_datetime": "2026-03-09T10:00:00Z",
+            "appointment_datetime": MONDAY_SLOT_10,
             "duration_minutes": 30,
             "description": "Initial consultation",
         },
@@ -239,7 +268,7 @@ def test_booking_lifecycle_end_to_end(appointment_client):
             "tenant_id": ctx["tenant_id"],
             "doctor_id": ctx["doctor_id"],
             "department_id": ctx["department_id"],
-            "appointment_datetime": "2026-03-09T11:00:00Z",
+            "appointment_datetime": MONDAY_SLOT_11,
             "duration_minutes": 30,
             "description": "Rescheduled consultation",
         },
@@ -281,7 +310,7 @@ def test_availability_and_conflict_checks(appointment_client):
             "tenant_id": ctx["tenant_id"],
             "doctor_id": ctx["doctor_id"],
             "department_id": ctx["department_id"],
-            "appointment_datetime": "2026-03-09T10:00:00Z",
+            "appointment_datetime": MONDAY_SLOT_10,
             "duration_minutes": 30,
             "description": "Slot one",
         },
@@ -296,7 +325,7 @@ def test_availability_and_conflict_checks(appointment_client):
             "tenant_id": ctx["tenant_id"],
             "doctor_id": ctx["doctor_id"],
             "department_id": ctx["department_id"],
-            "appointment_datetime": "2026-03-09T10:00:00Z",
+            "appointment_datetime": MONDAY_SLOT_10,
             "duration_minutes": 30,
             "description": "Slot overlap",
         },
@@ -320,7 +349,7 @@ def test_availability_and_conflict_checks(appointment_client):
             "tenant_id": ctx["tenant_id"],
             "doctor_id": ctx["doctor_id"],
             "department_id": ctx["department_id"],
-            "appointment_datetime": "2026-03-09T10:00:00Z",
+            "appointment_datetime": MONDAY_SLOT_10,
             "duration_minutes": 30,
             "description": "Slot conflict after confirm",
         },
@@ -332,10 +361,10 @@ def test_availability_and_conflict_checks(appointment_client):
 
     availability = client.get(
         f"/appointments/doctor/{ctx['doctor_id']}/availability",
-        params={"date": "2026-03-09"},
+        params={"date": MONDAY_DATE},
     )
     assert availability.status_code == 200
-    assert "2026-03-09T10:00:00" not in "".join(availability.json())
+    assert MONDAY_SLOT_10.removesuffix("Z") not in "".join(availability.json())
 
 
 def test_patient_without_enrollment_cannot_book(appointment_client, db_session):
@@ -369,7 +398,7 @@ def test_patient_without_enrollment_cannot_book(appointment_client, db_session):
             "tenant_id": ctx["tenant_id"],
             "doctor_id": ctx["doctor_id"],
             "department_id": ctx["department_id"],
-            "appointment_datetime": "2026-03-10T10:00:00Z",
+            "appointment_datetime": TUESDAY_SLOT_10,
             "duration_minutes": 30,
             "description": "Should fail",
         },
@@ -404,7 +433,7 @@ def test_past_datetime_rejected_for_booking_and_reschedule(appointment_client):
             "tenant_id": ctx["tenant_id"],
             "doctor_id": ctx["doctor_id"],
             "department_id": ctx["department_id"],
-            "appointment_datetime": "2026-03-09T10:00:00Z",
+            "appointment_datetime": MONDAY_SLOT_10,
             "duration_minutes": 30,
             "description": "Future booking for reschedule test",
         },
@@ -441,7 +470,7 @@ def test_tenant_isolation_for_doctor_actions(appointment_client):
             "tenant_id": ctx["tenant_id"],
             "doctor_id": ctx["doctor_id"],
             "department_id": ctx["department_id"],
-            "appointment_datetime": "2026-03-10T10:00:00Z",
+            "appointment_datetime": TUESDAY_SLOT_10,
             "duration_minutes": 30,
             "description": "Isolation test",
         },
@@ -499,7 +528,7 @@ def test_booking_rejected_when_plan_max_appointments_reached(appointment_client,
             "tenant_id": ctx["tenant_id"],
             "doctor_id": ctx["doctor_id"],
             "department_id": ctx["department_id"],
-            "appointment_datetime": "2026-03-09T10:00:00Z",
+            "appointment_datetime": MONDAY_SLOT_10,
             "duration_minutes": 30,
             "description": "First booking",
         },
@@ -513,7 +542,7 @@ def test_booking_rejected_when_plan_max_appointments_reached(appointment_client,
             "tenant_id": ctx["tenant_id"],
             "doctor_id": ctx["doctor_id"],
             "department_id": ctx["department_id"],
-            "appointment_datetime": "2026-03-09T11:00:00Z",
+            "appointment_datetime": MONDAY_SLOT_11,
             "duration_minutes": 30,
             "description": "Second booking should fail",
         },
@@ -533,7 +562,7 @@ def test_booking_outside_working_hours_returns_400(appointment_client):
             "tenant_id": ctx["tenant_id"],
             "doctor_id": ctx["doctor_id"],
             "department_id": ctx["department_id"],
-            "appointment_datetime": "2026-03-09T08:30:00Z",
+            "appointment_datetime": MONDAY_SLOT_0830,
             "duration_minutes": 30,
             "description": "Outside working hours",
         },
@@ -553,7 +582,7 @@ def test_booking_on_non_working_day_returns_400(appointment_client):
             "tenant_id": ctx["tenant_id"],
             "doctor_id": ctx["doctor_id"],
             "department_id": ctx["department_id"],
-            "appointment_datetime": "2026-03-11T10:00:00Z",
+            "appointment_datetime": WEDNESDAY_SLOT_10,
             "duration_minutes": 30,
             "description": "Non-working day",
         },
@@ -573,7 +602,7 @@ def test_patient_me_lists_and_filters_by_status(appointment_client):
             "tenant_id": ctx["tenant_id"],
             "doctor_id": ctx["doctor_id"],
             "department_id": ctx["department_id"],
-            "appointment_datetime": "2026-03-09T10:00:00Z",
+            "appointment_datetime": MONDAY_SLOT_10,
             "duration_minutes": 30,
             "description": "Requested appointment",
         },
@@ -587,7 +616,7 @@ def test_patient_me_lists_and_filters_by_status(appointment_client):
             "tenant_id": ctx["tenant_id"],
             "doctor_id": ctx["doctor_id"],
             "department_id": ctx["department_id"],
-            "appointment_datetime": "2026-03-10T10:00:00Z",
+            "appointment_datetime": TUESDAY_SLOT_10,
             "duration_minutes": 30,
             "description": "Will be cancelled",
         },

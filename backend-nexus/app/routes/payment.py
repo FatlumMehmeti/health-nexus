@@ -11,11 +11,14 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
-from app.auth.auth_utils import get_current_user
+from app.auth.auth_utils import get_current_user, normalize_role
 from app.db import get_db
+from app.models.payment import Payment, PaymentStatus, PaymentType
+from app.models.tenant_manager import TenantManager
 from app.schemas.payment import (
     CheckoutInitiateRequest,
     CheckoutInitiateResponse,
+    CheckoutPaymentStatusResponse,
 )
 from app.services.payment_service import (
     PaymentServiceError,
@@ -23,8 +26,8 @@ from app.services.payment_service import (
     create_or_get_order_payment,
     create_or_get_tenant_subscription_payment,
     process_stripe_webhook,
+    sync_payment_status_with_provider,
 )
-from app.models.payment import PaymentStatus
 
 logger = logging.getLogger(__name__)
 
@@ -33,6 +36,35 @@ router = APIRouter(
     prefix="/checkout",
     tags=["Checkout"],
 )
+
+
+def _ensure_payment_sync_access(
+    db: Session,
+    payment: Payment,
+    user: Dict[str, Any],
+):
+    if normalize_role(user.get("role")) == "super_admin":
+        return
+
+    if payment.payment_type != PaymentType.TENANT_SUBSCRIPTION:
+        raise HTTPException(
+            status_code=403,
+            detail="Only super admins can sync this payment type",
+        )
+
+    manager = (
+        db.query(TenantManager)
+        .filter(
+            TenantManager.user_id == int(user.get("user_id") or 0),
+            TenantManager.tenant_id == payment.tenant_id,
+        )
+        .first()
+    )
+    if manager is None:
+        raise HTTPException(
+            status_code=403,
+            detail="You do not have access to this payment",
+        )
 
 
 def _error_response(exc: PaymentServiceError) -> JSONResponse:
@@ -129,6 +161,34 @@ def checkout_initiate(
         stripe_client_secret=stripe_client_secret,
         amount=float(payment.price),
         tenant_id=payment.tenant_id,
+    )
+
+
+@router.post(
+    "/payments/{payment_id}/sync",
+    response_model=CheckoutPaymentStatusResponse,
+    status_code=200,
+)
+def sync_checkout_payment_status(
+    payment_id: int,
+    db: Session = Depends(get_db),
+    user: Dict[str, Any] = Depends(get_current_user),
+):
+    payment = db.get(Payment, payment_id)
+    if payment is None:
+        raise HTTPException(status_code=404, detail="Payment not found")
+
+    _ensure_payment_sync_access(db, payment, user)
+
+    try:
+        payment = sync_payment_status_with_provider(db, payment_id)
+    except PaymentServiceError as exc:
+        return _error_response(exc)
+
+    return CheckoutPaymentStatusResponse(
+        payment_id=payment.payment_id,
+        status=payment.status.value,
+        stripe_payment_intent_id=payment.stripe_payment_intent_id,
     )
 
 

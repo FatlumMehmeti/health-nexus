@@ -16,6 +16,7 @@ export function PlanCard({
   canFitStats = true,
   onChangePlan,
   isChanging = false,
+  isActionDisabled = false,
   changingLabel = 'Updating...',
   buttonLabel = 'Choose Plan',
 }: {
@@ -25,6 +26,7 @@ export function PlanCard({
   canFitStats?: boolean;
   onChangePlan?: (planId: number) => void;
   isChanging?: boolean;
+  isActionDisabled?: boolean;
   changingLabel?: string;
   buttonLabel?: string;
 }) {
@@ -132,16 +134,23 @@ export function PlanCard({
 
       {/* Action button - disabled if this is the current plan or too small */}
       <Button
-        disabled={isCurrentPlan || isChanging || !canFitStats}
+        disabled={
+          isCurrentPlan ||
+          isChanging ||
+          isActionDisabled ||
+          !canFitStats
+        }
         onClick={() => onChangePlan?.(plan.id)}
         className={`w-full mt-6 ${
           isCurrentPlan
             ? 'dark:bg-zinc-600 dark:hover:bg-zinc-600 dark:text-white dark:cursor-not-allowed dark:opacity-60 bg-gray-300 hover:bg-gray-300 text-gray-600 cursor-not-allowed opacity-60'
             : !canFitStats
               ? 'dark:bg-red-900 dark:hover:bg-red-900 dark:text-white dark:cursor-not-allowed dark:opacity-60 bg-red-200 hover:bg-red-200 text-red-700 cursor-not-allowed opacity-60'
-              : isRecommended
-                ? 'dark:bg-blue-600 dark:hover:bg-blue-700 dark:text-white bg-blue-500 hover:bg-blue-600 text-white'
-                : 'dark:bg-zinc-800 dark:hover:bg-zinc-700 dark:text-white bg-gray-800 hover:bg-gray-900 text-white'
+              : isActionDisabled
+                ? 'dark:bg-zinc-700 dark:hover:bg-zinc-700 dark:text-white dark:cursor-not-allowed dark:opacity-60 bg-gray-300 hover:bg-gray-300 text-gray-600 cursor-not-allowed opacity-60'
+                : isRecommended
+                  ? 'dark:bg-blue-600 dark:hover:bg-blue-700 dark:text-white bg-blue-500 hover:bg-blue-600 text-white'
+                  : 'dark:bg-zinc-800 dark:hover:bg-zinc-700 dark:text-white bg-gray-800 hover:bg-gray-900 text-white'
         }`}
       >
         {isChanging ? changingLabel : buttonLabel}

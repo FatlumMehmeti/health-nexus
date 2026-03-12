@@ -58,7 +58,7 @@ def test_get_tenant_details_with_auth(client, auth_headers):
 def test_put_tenant_details(client, auth_headers):
     """PUT /api/tenants/details updates details."""
     payload = {"moto": "Updated motto for testing"}
-    resp = client.put("/api/tenants/details", json=payload, headers=auth_headers)
+    resp = client.put("/api/tenants/details", data=payload, headers=auth_headers)
     assert resp.status_code == 200
     data = resp.json()
     assert data["moto"] == "Updated motto for testing"
@@ -160,13 +160,19 @@ def test_update_tenant_doctor(client, auth_headers):
 def test_delete_tenant_doctor(client, auth_headers):
     """DELETE /api/tenants/doctors/{user_id} removes doctor."""
     from app.db import SessionLocal
-    from app.models import User, Role, Doctor, Tenant
+    from app.models import User, Role, Doctor, Tenant, TenantDepartment
     from app.auth.auth_utils import hash_password
 
     session = SessionLocal()
     try:
         doctor_role = session.query(Role).filter(Role.name == "DOCTOR").first()
         bluestone = session.query(Tenant).filter(Tenant.name == "Bluestone Clinic").first()
+        tenant_department = (
+            session.query(TenantDepartment)
+            .filter(TenantDepartment.tenant_id == bluestone.id)
+            .order_by(TenantDepartment.id.asc())
+            .first()
+        )
         new_user = User(
             first_name="Del",
             last_name="Doc",
@@ -176,7 +182,14 @@ def test_delete_tenant_doctor(client, auth_headers):
         )
         session.add(new_user)
         session.flush()
-        session.add(Doctor(user_id=new_user.id, tenant_id=bluestone.id, specialization="ToDelete"))
+        session.add(
+            Doctor(
+                user_id=new_user.id,
+                tenant_id=bluestone.id,
+                tenant_department_id=tenant_department.id,
+                specialization="ToDelete",
+            )
+        )
         session.commit()
         session.refresh(new_user)
         user_id = new_user.id
@@ -208,7 +221,6 @@ def test_post_tenant_departments_bulk(client, auth_headers):
     """POST /api/tenants/departments bulk sets departments."""
     resp = client.get("/api/tenants/departments", headers=auth_headers)
     existing = resp.json()
-    existing_ids = [d["id"] for d in existing]
 
     from app.db import SessionLocal
     from app.models import Department
@@ -218,10 +230,30 @@ def test_post_tenant_departments_bulk(client, auth_headers):
     session.close()
     assert len(depts) >= 2
 
-    items = [
-        {"department_id": depts[0].id, "phone_number": "+1-555-9999", "location": "Test"},
-        {"department_id": depts[1].id},
-    ]
+    existing_by_department_id = {d["department_id"]: d for d in existing}
+    items = []
+    for index, dept in enumerate(depts[:2]):
+        current = existing_by_department_id.get(dept.id, {})
+        item = {
+            "department_id": dept.id,
+            "phone_number": "+1-555-9999" if index == 0 else current.get("phone_number"),
+            "location": "Test" if index == 0 else current.get("location"),
+        }
+        if current.get("email") is not None:
+            item["email"] = current["email"]
+        items.append(item)
+
+    for existing_item in existing:
+        if existing_item["department_id"] not in {item["department_id"] for item in items}:
+            item = {
+                "department_id": existing_item["department_id"],
+                "phone_number": existing_item.get("phone_number"),
+                "location": existing_item.get("location"),
+            }
+            if existing_item.get("email") is not None:
+                item["email"] = existing_item["email"]
+            items.append(item)
+
     resp = client.post("/api/tenants/departments", json={"items": items}, headers=auth_headers)
     assert resp.status_code == 200
     data = resp.json()
@@ -231,10 +263,25 @@ def test_post_tenant_departments_bulk(client, auth_headers):
 
 def test_delete_tenant_department(client, auth_headers):
     """DELETE /api/tenants/departments/{id} removes department."""
-    resp = client.get("/api/tenants/departments", headers=auth_headers)
-    depts = resp.json()
-    assert len(depts) >= 1
-    td_id = depts[0]["id"]
+    from app.db import SessionLocal
+    from app.models import Department, Tenant, TenantDepartment
+
+    session = SessionLocal()
+    try:
+        tenant = session.query(Tenant).filter(Tenant.name == "Bluestone Clinic").first()
+        department = Department(name="Disposable Department")
+        session.add(department)
+        session.flush()
+        tenant_department = TenantDepartment(
+            tenant_id=tenant.id,
+            department_id=department.id,
+            phone_number="+1-555-0000",
+        )
+        session.add(tenant_department)
+        session.commit()
+        td_id = tenant_department.id
+    finally:
+        session.close()
 
     resp = client.delete(f"/api/tenants/departments/{td_id}", headers=auth_headers)
     assert resp.status_code == 204
@@ -306,6 +353,95 @@ def test_delete_tenant_product(client, auth_headers):
     get_resp = client.get("/api/tenants/products", headers=auth_headers)
     ids = [p["product_id"] for p in get_resp.json()]
     assert pid not in ids
+
+
+def test_list_products_via_catalog_api_for_tenant_manager(client, auth_headers):
+    """GET /api/products respects the tenant manager tenant from JWT."""
+    current_resp = client.get("/api/tenants/current", headers=auth_headers)
+    assert current_resp.status_code == 200
+    tenant_id = current_resp.json()["id"]
+
+    resp = client.get(
+        f"/api/products?tenant_id={tenant_id}&page=1&size=20",
+        headers=auth_headers,
+    )
+    assert resp.status_code == 200, resp.text
+    data = resp.json()
+    assert data["items"]
+    assert all(item["tenant_id"] == tenant_id for item in data["items"])
+
+
+def test_create_and_update_product_via_catalog_api_for_tenant_manager(
+    client, auth_headers
+):
+    """POST/PUT /api/products use the tenant manager tenant from JWT."""
+    current_resp = client.get("/api/tenants/current", headers=auth_headers)
+    assert current_resp.status_code == 200
+    tenant_id = current_resp.json()["id"]
+
+    create_resp = client.post(
+        "/api/products",
+        json={
+            "tenant_id": tenant_id,
+            "name": "Catalog API Product",
+            "description": "Created through /api/products",
+            "category": "supplements",
+            "image_url": None,
+            "price": 14.5,
+            "stock_quantity": 6,
+            "is_available": True,
+        },
+        headers=auth_headers,
+    )
+    assert create_resp.status_code == 201, create_resp.text
+    created = create_resp.json()
+    assert created["tenant_id"] == tenant_id
+
+    update_resp = client.put(
+        f"/api/products/{created['product_id']}",
+        json={
+            "name": "Updated Catalog API Product",
+            "price": 18.0,
+            "stock_quantity": 4,
+        },
+        headers=auth_headers,
+    )
+    assert update_resp.status_code == 200, update_resp.text
+    updated = update_resp.json()
+    assert updated["name"] == "Updated Catalog API Product"
+    assert float(updated["price"]) == 18.0
+    assert updated["stock_quantity"] == 4
+
+
+def test_list_products_filters_by_string_category(client, auth_headers):
+    """GET /api/products treats category as a string query param."""
+    current_resp = client.get("/api/tenants/current", headers=auth_headers)
+    assert current_resp.status_code == 200
+    tenant_id = current_resp.json()["id"]
+
+    client.post(
+        "/api/products",
+        json={
+            "tenant_id": tenant_id,
+            "name": "Category Filter Vitamins",
+            "description": "Test",
+            "category": "Vitamins",
+            "image_url": None,
+            "price": 7.0,
+            "stock_quantity": 3,
+            "is_available": True,
+        },
+        headers=auth_headers,
+    )
+
+    resp = client.get(
+        f"/api/products?tenant_id={tenant_id}&category=Vitamins&page=1&size=20",
+        headers=auth_headers,
+    )
+    assert resp.status_code == 200, resp.text
+    data = resp.json()
+    assert data["items"]
+    assert all(item["category"] == "Vitamins" for item in data["items"])
 
 
 def test_list_tenant_services(client, auth_headers):

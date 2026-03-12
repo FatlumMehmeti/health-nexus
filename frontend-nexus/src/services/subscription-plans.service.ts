@@ -23,10 +23,16 @@ export interface TenantSubscription {
   tenant_id: number;
   subscription_plan_id: number;
   status: 'ACTIVE' | 'EXPIRED';
-  activated_at: string;
-  expires_at: string;
+  activated_at: string | null;
+  expires_at: string | null;
   cancelled_at: string | null; // When subscription was cancelled by tenant
   cancellation_reason: string | null;
+}
+
+export interface TenantSubscriptionRequest extends TenantSubscription {
+  admin_status: 'ACTIVE' | 'PENDING' | 'CANCELLED' | 'EXPIRED';
+  latest_payment_status: string | null;
+  latest_payment_amount: number | null;
 }
 
 /**
@@ -36,8 +42,8 @@ export interface SubscriptionStats {
   doctors_used: number;
   patients_used: number;
   departments_used: number;
-  current_plan_id: number;
-  current_plan_name: string;
+  current_plan_id: number | null;
+  current_plan_name: string | null;
 }
 
 /**
@@ -65,6 +71,14 @@ export async function getCurrentSubscription(): Promise<TenantSubscription> {
  */
 export async function getSubscriptionStats(): Promise<SubscriptionStats> {
   return apiFetch(`${BASE}/stats`, {
+    method: 'GET',
+  });
+}
+
+export async function getSubscriptionRequest(
+  subscriptionId: number
+): Promise<TenantSubscriptionRequest> {
+  return apiFetch(`${BASE}/request/${subscriptionId}`, {
     method: 'GET',
   });
 }
