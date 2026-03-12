@@ -2068,6 +2068,10 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
                   <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
                     {plans.map((plan, index) => {
                       const isSelected = selectedPlanId === plan.id;
+                      const isLockedByActiveEnrollment =
+                        enrollmentData?.status === 'ACTIVE' &&
+                        enrollmentData.user_tenant_plan_id !==
+                          plan.id;
                       const isCheckoutPending =
                         enrollMutation.isPending &&
                         pendingPlanId === plan.id;
@@ -2240,6 +2244,7 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
                               }
                               disabled={
                                 isSelected ||
+                                isLockedByActiveEnrollment ||
                                 enrollMutation.isPending ||
                                 isRecoveryLocked
                               }
@@ -2269,13 +2274,15 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
                             >
                               {isSelected
                                 ? 'You have selected this plan'
-                                : isCheckoutPending
-                                  ? isFreePlan
-                                    ? 'Activating free plan…'
-                                    : 'Redirecting to payment…'
-                                  : isFreePlan
-                                    ? 'Choose this free plan'
-                                    : 'Subscribe to this plan'}
+                                : isLockedByActiveEnrollment
+                                  ? 'Unavailable until current plan expires'
+                                  : isCheckoutPending
+                                    ? isFreePlan
+                                      ? 'Activating free plan…'
+                                      : 'Redirecting to payment…'
+                                    : isFreePlan
+                                      ? 'Choose this free plan'
+                                      : 'Subscribe to this plan'}
                             </Button>
                           </div>
                         </article>
