@@ -12,6 +12,7 @@ export interface CheckoutRecoveryRecord {
   kind: CheckoutRecoveryKind;
   tenantId: number;
   planId: number;
+  previousPlanId?: number | null;
   paymentId: number;
   referenceId: number;
   phase: CheckoutRecoveryPhase;
@@ -73,7 +74,10 @@ export function loadCheckoutRecovery(
       typeof parsed.paymentId !== 'number' ||
       typeof parsed.planId !== 'number' ||
       typeof parsed.referenceId !== 'number' ||
-      typeof parsed.tenantId !== 'number'
+      typeof parsed.tenantId !== 'number' ||
+      (parsed.previousPlanId !== undefined &&
+        parsed.previousPlanId !== null &&
+        typeof parsed.previousPlanId !== 'number')
     ) {
       writeStorage(getStorageKey(kind), null);
       return null;

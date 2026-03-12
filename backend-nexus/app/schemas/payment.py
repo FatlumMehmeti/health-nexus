@@ -44,6 +44,7 @@ class PaymentRead(PaymentBase):
 class CheckoutInitiateRequest(BaseModel):
     order_id: Optional[int] = None
     enrollment_id: Optional[int] = None
+    user_tenant_plan_id: Optional[int] = None
     tenant_subscription_id: Optional[int] = None
 
 

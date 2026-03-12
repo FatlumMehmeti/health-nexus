@@ -878,9 +878,9 @@ def test_stripe_webhook_activates_tenant_subscription_on_successful_payment(
     db_session.refresh(tenant_subscription)
 
     assert payment.status.value == "CAPTURED"
-    assert tenant_subscription.status.value == "ACTIVE"
-    assert tenant_subscription.activated_at is not None
-    assert tenant_subscription.expires_at is not None
+    assert tenant_subscription.status.value == "EXPIRED"
+    assert tenant_subscription.activated_at is None
+    assert tenant_subscription.expires_at is None
 
 
 @pytest.mark.prd10

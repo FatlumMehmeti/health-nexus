@@ -466,6 +466,17 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
   async function handleEnrollmentPaymentFailure(
     errorMessage: string
   ) {
+    if (checkoutRecovery?.previousPlanId != null) {
+      setSelectedPlanId(checkoutRecovery.previousPlanId);
+      setEnrollmentCheckoutRecovery({
+        ...checkoutRecovery,
+        clientSecret: null,
+        phase: 'attention_required',
+      });
+      toast.error(errorMessage);
+      return;
+    }
+
     if (!tenantId) {
       toast.error(errorMessage);
       return;
@@ -499,6 +510,13 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
   }
 
   async function handleEnrollmentCheckoutCancelled() {
+    if (checkoutRecovery?.previousPlanId != null) {
+      setSelectedPlanId(checkoutRecovery.previousPlanId);
+      clearEnrollmentCheckout();
+      toast.message('Checkout cancelled.');
+      return;
+    }
+
     if (!tenantId) {
       clearEnrollmentCheckout();
       return;
@@ -539,6 +557,42 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
       price: number;
     }) => {
       localEnrollmentCancellationRef.current = false;
+
+      const activeEnrollment =
+        enrollmentData?.status === 'ACTIVE' ? enrollmentData : null;
+
+      if (
+        activeEnrollment &&
+        price > 0 &&
+        activeEnrollment.user_tenant_plan_id !== planId
+      ) {
+        const idempotencyKey = crypto.randomUUID();
+        const checkout = await checkoutService.initiate(
+          {
+            enrollment_id: activeEnrollment.id,
+            user_tenant_plan_id: planId,
+          },
+          idempotencyKey
+        );
+        setEnrollmentCheckoutRecovery({
+          kind: 'enrollment',
+          tenantId,
+          planId,
+          previousPlanId: activeEnrollment.user_tenant_plan_id,
+          paymentId: checkout.payment_id,
+          referenceId: activeEnrollment.id,
+          phase: 'collecting_payment',
+          startedAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          clientSecret: checkout.stripe_client_secret,
+        });
+        setShowStripeModal(true);
+        return {
+          enrollment: activeEnrollment,
+          planId,
+          requiresPayment: true,
+        };
+      }
 
       // 1. Enroll
       const enrollment = await tenantPlansService.enroll(
@@ -753,6 +807,9 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
   const plans = (landingData.plans ?? []).filter(
     (p) => p.is_active !== false
   );
+  const currentPlan = selectedPlanId
+    ? (plans.find((plan) => plan.id === selectedPlanId) ?? null)
+    : null;
   const title = details?.title ?? tenant.name;
   const subtitle = details?.slogan ?? 'Welcome to our landing page.';
   const logo = resolveMediaUrl(details?.logo);
@@ -1470,9 +1527,7 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
 
               {selectedPlanId &&
                 (() => {
-                  const selected = plans.find(
-                    (p) => p.id === selectedPlanId
-                  );
+                  const selected = currentPlan;
                   if (!selected) return null;
                   return (
                     <div
@@ -1532,6 +1587,11 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
                       !!checkoutRecovery &&
                       checkoutRecovery.phase !== 'attention_required';
                     const isFreePlan = Number(plan.price) <= 0;
+                    const isDowngradeBlocked =
+                      !!currentPlan &&
+                      !isSelected &&
+                      enrollmentData?.status === 'ACTIVE' &&
+                      Number(plan.price) < Number(currentPlan.price);
                     return (
                       <article
                         key={plan.id}
@@ -1604,6 +1664,7 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
                           variant={isSelected ? 'outline' : 'default'}
                           disabled={
                             isSelected ||
+                            isDowngradeBlocked ||
                             enrollMutation.isPending ||
                             isRecoveryLocked
                           }
@@ -1628,6 +1689,12 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
                               );
                               return;
                             }
+                            if (isDowngradeBlocked) {
+                              toast.error(
+                                'Wait until your current plan expires before downgrading.'
+                              );
+                              return;
+                            }
                             enrollMutation.mutate({
                               tenantId: tenant.id,
                               planId: plan.id,
@@ -1645,6 +1712,12 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
                                 ? 'Choose this free plan'
                                 : 'Subscribe to this plan'}
                         </Button>
+                        {isDowngradeBlocked && (
+                          <p className="mt-2 text-xs text-muted-foreground">
+                            Wait until your current plan expires
+                            before choosing a cheaper plan.
+                          </p>
+                        )}
                         {/* Stripe Payment Modal */}
                         <StripePaymentModal
                           clientSecret={stripeClientSecret ?? ''}

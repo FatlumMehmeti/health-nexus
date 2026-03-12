@@ -20,6 +20,7 @@ from app.schemas.user_tenant_plan import (
     UserTenantPlanRead,
     UserTenantPlanUpdate,
 )
+from app.services.enrollment_stream import dispatch_enrollment_changed
 
 router = APIRouter(
     prefix="/user-tenant-plans",
@@ -271,6 +272,10 @@ def enroll_in_plan(
         apply_enrollment_state_for_plan(existing, plan)
         db.commit()
         db.refresh(existing)
+        dispatch_enrollment_changed(
+            enrollment_id=existing.id,
+            tenant_id=existing.tenant_id,
+        )
         return existing
 
     # Create a brand-new enrollment for this user + tenant + plan
@@ -286,6 +291,10 @@ def enroll_in_plan(
     db.add(enrollment)
     db.commit()
     db.refresh(enrollment)
+    dispatch_enrollment_changed(
+        enrollment_id=enrollment.id,
+        tenant_id=enrollment.tenant_id,
+    )
     return enrollment
 
 
@@ -320,6 +329,10 @@ def cancel_enrollment(
     enrollment.cancelled_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(enrollment)
+    dispatch_enrollment_changed(
+        enrollment_id=enrollment.id,
+        tenant_id=enrollment.tenant_id,
+    )
     return enrollment
 
 

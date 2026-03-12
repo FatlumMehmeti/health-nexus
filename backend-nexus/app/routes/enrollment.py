@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+import asyncio
 from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, Depends, Query, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from sqlalchemy.orm import Session
 
 from app.auth.auth_utils import get_current_user
@@ -26,6 +27,10 @@ from app.services.enrollment_service import (
     list_enrollments_scoped,
     get_operational_status,
     get_enrollment_history_scoped,
+)
+from app.services.enrollment_stream import (
+    enrollment_stream,
+    format_sse_message,
 )
 from app.models.enrollment import EnrollmentStatus
 
@@ -207,6 +212,54 @@ def create_enrollment_endpoint(
         )
     except EnrollmentServiceError as exc:
         return _error_response(exc)
+
+
+@router.get("/stream")
+async def stream_enrollments_endpoint(
+    tenant_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    user: Dict[str, Any] = Depends(get_current_user),
+):
+    actor = _actor_from_user_payload(user)
+
+    try:
+        _ensure_tenant_context_consistency(
+            requested_tenant_id=tenant_id,
+            user_payload=user,
+            request=request,
+        )
+        list_enrollments_scoped(
+            db,
+            tenant_id=tenant_id,
+            actor=actor,
+        )
+    except EnrollmentServiceError as exc:
+        return _error_response(exc)
+
+    async def event_generator():
+        queue = await enrollment_stream.subscribe()
+        try:
+            while True:
+                if await request.is_disconnected():
+                    break
+
+                try:
+                    payload = await asyncio.wait_for(queue.get(), timeout=20)
+                    yield format_sse_message("enrollment-changed", payload)
+                except asyncio.TimeoutError:
+                    yield ": keep-alive\n\n"
+        finally:
+            await enrollment_stream.unsubscribe(queue)
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+        },
+    )
 
 
 @router.get(
