@@ -30,6 +30,7 @@ import {
   usersService,
   type UserRead,
 } from '@/services/users.service';
+import { useAuthStore } from '@/stores/auth.store';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { useEffect, useMemo, useState } from 'react';
@@ -98,6 +99,7 @@ function toPatientForm(
 
 export function DashboardProfilePanel() {
   const navigate = useNavigate();
+  const activeTenantId = useAuthStore((state) => state.tenantId);
   const [nexusForm, setNexusForm] = useState<NexusFormValues>({
     first_name: '',
     last_name: '',
@@ -144,11 +146,21 @@ export function DashboardProfilePanel() {
     )
       return;
     if (!selectedTenantId) {
+      const matchingTenant = tenantMembershipsQuery.data.find(
+        (tenant) => String(tenant.tenant_id) === activeTenantId
+      );
       setSelectedTenantId(
-        String(tenantMembershipsQuery.data[0]!.tenant_id)
+        String(
+          matchingTenant?.tenant_id ??
+            tenantMembershipsQuery.data[0]!.tenant_id
+        )
       );
     }
-  }, [tenantMembershipsQuery.data, selectedTenantId]);
+  }, [
+    activeTenantId,
+    selectedTenantId,
+    tenantMembershipsQuery.data,
+  ]);
 
   const patientProfileQuery = useQuery({
     queryKey: ['patient-profile', selectedTenantId],

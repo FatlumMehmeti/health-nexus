@@ -23,7 +23,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Input } from '@/components/ui/input';
 import {
   Tabs,
   TabsContent,
@@ -59,7 +58,6 @@ import {
   Instagram,
   Linkedin,
   MessageCircle,
-  Search,
 } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import type { CSSProperties } from 'react';
@@ -197,9 +195,6 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
   const [checkoutRecovery, setCheckoutRecovery] =
     useState<CheckoutRecoveryRecord | null>(null);
   const [activeTab, setActiveTab] = useState('home');
-  const [productSearch, setProductSearch] = useState('');
-  const [activeProductCategory, setActiveProductCategory] =
-    useState('all');
   const [selectedPlanId, setSelectedPlanId] = useState<number | null>(
     null
   );
@@ -846,9 +841,6 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
     (total, department) => total + department.services.length,
     0
   );
-  const availableProducts = products.filter(
-    (product) => product.is_available !== false
-  );
   const pendingPlan = checkoutRecovery
     ? plans.find((plan) => plan.id === checkoutRecovery.planId)
     : null;
@@ -864,47 +856,6 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
       : checkoutRecovery?.phase === 'attention_required'
         ? 'This payment is still pending after the expected confirmation window. You can refresh the status or clear it and retry.'
         : 'Review the current state of this pending payment.';
-  const productCategories = [
-    {
-      id: 'all',
-      label: 'All products',
-      matches: () => true,
-    },
-    {
-      id: 'essentials',
-      label: 'Essentials',
-      matches: (product: (typeof availableProducts)[number]) =>
-        product.price < 50,
-    },
-    {
-      id: 'popular',
-      label: 'Popular picks',
-      matches: (product: (typeof availableProducts)[number]) =>
-        product.price >= 50 && product.price < 150,
-    },
-    {
-      id: 'premium',
-      label: 'Premium care',
-      matches: (product: (typeof availableProducts)[number]) =>
-        product.price >= 150,
-    },
-  ];
-  const selectedProductCategory =
-    productCategories.find(
-      (category) => category.id === activeProductCategory
-    ) ?? productCategories[0];
-  const normalizedProductSearch = productSearch.trim().toLowerCase();
-  const filteredProducts = availableProducts.filter((product) => {
-    const matchesCategory = selectedProductCategory.matches(product);
-    const matchesSearch =
-      normalizedProductSearch.length === 0 ||
-      product.name.toLowerCase().includes(normalizedProductSearch) ||
-      product.description
-        ?.toLowerCase()
-        .includes(normalizedProductSearch);
-
-    return matchesCategory && matchesSearch;
-  });
   const accountButtonStyle: CSSProperties | undefined = brand.primary
     ? {
         backgroundColor: brand.primary,
@@ -1214,11 +1165,7 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
                           <Button
                             size="sm"
                             variant="ghost"
-                            onClick={() =>
-                              navigate({
-                                to: '/dashboard/profile',
-                              })
-                            }
+                            onClick={handleGoToProfile}
                           >
                             Go to Profile
                           </Button>
@@ -1652,7 +1599,7 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
                   <div className="rounded-xl border bg-card/60 p-6 text-center text-sm text-muted-foreground">
                     No products configured yet.
                   </div>
-                </div>
+                )}
               </section>
             </TabsContent>
 
