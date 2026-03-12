@@ -17,6 +17,16 @@ from app.models.tenant_audit_log import TenantAuditEventType
 router = APIRouter(prefix="/tenants", tags=["Super Admin - Tenant Management"])
 
 
+# Simple endpoint to list all tenant emails (for CI/CD test)
+@router.get("/emails", response_model=list[str])
+def list_tenant_emails(
+    db: Session = Depends(get_db),
+    user: Dict[str, Any] = Depends(require_permission("auth:admin")),
+):
+    emails = db.query(Tenant.email).all()
+    return [email for (email,) in emails]
+
+
 # Endpoint to list tenants for the Super Admin dashboard.
 # Supports optional filtering by status and search (name).
 # Supports pagination with default page size of 10.
