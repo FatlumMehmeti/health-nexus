@@ -76,6 +76,11 @@ const superAdminRoutes = [
     url: '/dashboard/permissions',
     icon: IconLock,
   },
+  {
+    title: 'Subscriptions',
+    url: '/dashboard/subscriptions',
+    icon: IconReport,
+  },
 ] as const;
 
 const tenantManagerDocuments = [

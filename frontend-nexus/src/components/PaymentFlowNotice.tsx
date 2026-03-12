@@ -16,7 +16,11 @@ interface PaymentFlowNoticeAction {
 }
 
 interface PaymentFlowNoticeProps {
-  phase: 'collecting_payment' | 'processing' | 'attention_required';
+  phase:
+    | 'collecting_payment'
+    | 'processing'
+    | 'awaiting_approval'
+    | 'attention_required';
   eyebrow?: string;
   title: string;
   description: string;
@@ -33,6 +37,10 @@ const phaseConfig = {
   processing: {
     badgeVariant: 'default' as const,
     badgeLabel: 'Awaiting confirmation',
+  },
+  awaiting_approval: {
+    badgeVariant: 'secondary' as const,
+    badgeLabel: 'Awaiting super admin approval',
   },
   attention_required: {
     badgeVariant: 'warning' as const,

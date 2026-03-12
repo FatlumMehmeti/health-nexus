@@ -37,6 +37,7 @@ from app.routes import (
     recommendation_router,
     ai_assistant_router,
     payment_router,
+    superadmin_subscription_router,
 )
 
 app = FastAPI(
@@ -119,6 +120,7 @@ app.include_router(offer_router)
 app.include_router(recommendation_router)
 app.include_router(ai_assistant_router)
 app.include_router(payment_router, prefix="/api")
+app.include_router(superadmin_subscription_router, prefix="/api")
 
 
 @app.get("/")

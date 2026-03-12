@@ -19,14 +19,34 @@ from app.main import app
 from app.models import (
     Contract,
     ContractStatus,
+    Department,
     Doctor,
     Role,
     Tenant,
+    TenantDepartment,
     TenantManager,
     User,
 )
 from app.lib.html_sanitize import sanitize_html
 from app.services.contract_service import has_active_contract, has_active_contract_for_doctor
+
+
+def _add_doctor(
+    db_session,
+    *,
+    user_id: int,
+    tenant_id: int,
+    tenant_department_id: int,
+    **kwargs,
+):
+    doctor = Doctor(
+        user_id=user_id,
+        tenant_id=tenant_id,
+        tenant_department_id=tenant_department_id,
+        **kwargs,
+    )
+    db_session.add(doctor)
+    return doctor
 
 
 @pytest.fixture
@@ -52,8 +72,22 @@ def manager_client(db_session):
     )
     tenant = Tenant(name="T1", email="t1@test.com", licence_number="CT-001")
     other = Tenant(name="T2", email="t2@test.com", licence_number="CT-002")
+    department = Department(name="Contracts")
 
-    db_session.add_all([manager, outsider, tenant, other])
+    db_session.add_all([manager, outsider, tenant, other, department])
+    db_session.flush()
+
+    tenant_department = TenantDepartment(
+        tenant_id=tenant.id,
+        department_id=department.id,
+        phone_number="123456",
+    )
+    other_tenant_department = TenantDepartment(
+        tenant_id=other.id,
+        department_id=department.id,
+        phone_number="654321",
+    )
+    db_session.add_all([tenant_department, other_tenant_department])
     db_session.flush()
 
     db_session.add(TenantManager(user_id=manager.id, tenant_id=tenant.id))
@@ -70,7 +104,9 @@ def manager_client(db_session):
     with TestClient(app) as c:
         c.manager_id = manager.id
         c.tenant_id = tenant.id
+        c.tenant_department_id = tenant_department.id
         c.other_tenant_id = other.id
+        c.other_tenant_department_id = other_tenant_department.id
         c.outsider_id = outsider.id
         yield c
     app.dependency_overrides.pop(get_current_user, None)
@@ -142,7 +178,12 @@ def test_list_contracts_with_doctor_filter(manager_client, db_session):
     doc_user = User(first_name="D", last_name="D", email="d@filter.com", password="x")
     db_session.add(doc_user)
     db_session.flush()
-    db_session.add(Doctor(user_id=doc_user.id, tenant_id=manager_client.tenant_id))
+    _add_doctor(
+        db_session,
+        user_id=doc_user.id,
+        tenant_id=manager_client.tenant_id,
+        tenant_department_id=manager_client.tenant_department_id,
+    )
     db_session.commit()
 
     c1 = Contract(
@@ -215,7 +256,12 @@ def test_doctor_can_get_own_contract(manager_client, db_session):
     doc_user = User(first_name="D", last_name="D", email="d@own.com", password="x")
     db_session.add(doc_user)
     db_session.flush()
-    db_session.add(Doctor(user_id=doc_user.id, tenant_id=manager_client.tenant_id))
+    _add_doctor(
+        db_session,
+        user_id=doc_user.id,
+        tenant_id=manager_client.tenant_id,
+        tenant_department_id=manager_client.tenant_department_id,
+    )
     db_session.commit()
 
     c = Contract(
@@ -471,9 +517,9 @@ def test_transition_creates_audit_log(manager_client, db_session):
         json={"next_status": "ACTIVE"},
     )
 
-    r = manager_client.get("/audit-logs")
+    r = manager_client.get(f"/audit-logs/{manager_client.tenant_id}")
     assert r.status_code == 200
-    logs = [x for x in r.json() if x.get("entity_name") == "contract"]
+    logs = [x for x in r.json()["items"] if x.get("entity_name") == "contract"]
     assert len(logs) >= 1
     log = next(l for l in logs if l.get("entity_id") == c.id)
     assert log["old_value"] == {"status": "DRAFT"}
@@ -541,7 +587,12 @@ def test_terms_content_sanitized(manager_client, db_session):
     doc_user = User(first_name="D", last_name="D", email="d@sanitize.com", password="x")
     db_session.add(doc_user)
     db_session.flush()
-    db_session.add(Doctor(user_id=doc_user.id, tenant_id=manager_client.tenant_id))
+    _add_doctor(
+        db_session,
+        user_id=doc_user.id,
+        tenant_id=manager_client.tenant_id,
+        tenant_department_id=manager_client.tenant_department_id,
+    )
     db_session.commit()
 
     r = manager_client.post(
@@ -563,7 +614,12 @@ def test_create_contract_doctor_from_other_tenant_returns_400(manager_client, db
     doc_user = User(first_name="D", last_name="D", email="d@other.com", password="x")
     db_session.add(doc_user)
     db_session.flush()
-    db_session.add(Doctor(user_id=doc_user.id, tenant_id=manager_client.other_tenant_id))
+    _add_doctor(
+        db_session,
+        user_id=doc_user.id,
+        tenant_id=manager_client.other_tenant_id,
+        tenant_department_id=manager_client.other_tenant_department_id,
+    )
     db_session.commit()
 
     r = manager_client.post(
@@ -579,8 +635,13 @@ def test_create_contract_with_doctor(manager_client, db_session):
     doc_user = User(first_name="Doc", last_name="User", email="doc@test.com", password="hashed")
     db_session.add(doc_user)
     db_session.flush()
-    doctor = Doctor(user_id=doc_user.id, tenant_id=manager_client.tenant_id, specialization="GP")
-    db_session.add(doctor)
+    _add_doctor(
+        db_session,
+        user_id=doc_user.id,
+        tenant_id=manager_client.tenant_id,
+        tenant_department_id=manager_client.tenant_department_id,
+        specialization="GP",
+    )
     db_session.commit()
 
     r = manager_client.post(
@@ -605,8 +666,12 @@ def test_sign_doctor_and_hospital(manager_client, db_session):
     doc_user = User(first_name="Doc", last_name="User", email="doc2@test.com", password="hashed")
     db_session.add(doc_user)
     db_session.flush()
-    doctor = Doctor(user_id=doc_user.id, tenant_id=manager_client.tenant_id)
-    db_session.add(doctor)
+    _add_doctor(
+        db_session,
+        user_id=doc_user.id,
+        tenant_id=manager_client.tenant_id,
+        tenant_department_id=manager_client.tenant_department_id,
+    )
     db_session.commit()
 
     c = Contract(
@@ -673,7 +738,12 @@ def test_sign_doctor_empty_file_rejected(manager_client, db_session):
     doc_user = User(first_name="D", last_name="D", email="d@empty.com", password="x")
     db_session.add(doc_user)
     db_session.flush()
-    db_session.add(Doctor(user_id=doc_user.id, tenant_id=manager_client.tenant_id))
+    _add_doctor(
+        db_session,
+        user_id=doc_user.id,
+        tenant_id=manager_client.tenant_id,
+        tenant_department_id=manager_client.tenant_department_id,
+    )
     db_session.commit()
     c = Contract(
         tenant_id=manager_client.tenant_id,
@@ -701,7 +771,12 @@ def test_sign_doctor_wrong_content_type_rejected(manager_client, db_session):
     doc_user = User(first_name="D", last_name="D", email="d@type.com", password="x")
     db_session.add(doc_user)
     db_session.flush()
-    db_session.add(Doctor(user_id=doc_user.id, tenant_id=manager_client.tenant_id))
+    _add_doctor(
+        db_session,
+        user_id=doc_user.id,
+        tenant_id=manager_client.tenant_id,
+        tenant_department_id=manager_client.tenant_department_id,
+    )
     db_session.commit()
     c = Contract(
         tenant_id=manager_client.tenant_id,
@@ -733,7 +808,12 @@ def test_sign_doctor_wrong_user_rejected(manager_client, db_session):
     doc_user = User(first_name="Doc", last_name="User", email="doc3@test.com", password="hashed")
     db_session.add(doc_user)
     db_session.flush()
-    db_session.add(Doctor(user_id=doc_user.id, tenant_id=manager_client.tenant_id))
+    _add_doctor(
+        db_session,
+        user_id=doc_user.id,
+        tenant_id=manager_client.tenant_id,
+        tenant_department_id=manager_client.tenant_department_id,
+    )
     db_session.commit()
 
     c = Contract(
@@ -755,11 +835,23 @@ def test_sign_doctor_wrong_user_rejected(manager_client, db_session):
 def test_has_active_contract_for_doctor(db_session):
     """Booking: doctor has active contract when status ACTIVE and dates valid."""
     tenant = Tenant(name="T", email="t2@test.com", licence_number="HAC2-001")
+    department = Department(name="Contract Helper")
     doc_user = User(first_name="D", last_name="D", email="d@test.com", password="x")
-    db_session.add_all([tenant, doc_user])
+    db_session.add_all([tenant, department, doc_user])
     db_session.flush()
-    doctor = Doctor(user_id=doc_user.id, tenant_id=tenant.id)
-    db_session.add(doctor)
+    tenant_department = TenantDepartment(
+        tenant_id=tenant.id,
+        department_id=department.id,
+        phone_number="111222",
+    )
+    db_session.add(tenant_department)
+    db_session.flush()
+    _add_doctor(
+        db_session,
+        user_id=doc_user.id,
+        tenant_id=tenant.id,
+        tenant_department_id=tenant_department.id,
+    )
     db_session.commit()
 
     now = datetime.now(timezone.utc)

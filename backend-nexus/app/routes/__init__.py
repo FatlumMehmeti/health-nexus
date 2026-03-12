@@ -26,6 +26,7 @@ from .offer import router as offer_router
 from .recommendation import router as recommendation_router
 from .ai_assistant import router as ai_assistant_router
 from .payment import router as payment_router
+from .superadmin_subscription import router as superadmin_subscription_router
 
 __all__ = [
     "role_router",
@@ -57,4 +58,5 @@ __all__ = [
     "recommendation_router",
     "ai_assistant_router",
     "payment_router",
+    "superadmin_subscription_router",
 ]
