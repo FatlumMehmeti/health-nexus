@@ -178,6 +178,12 @@ export function AppSidebar({
           icon: IconReport,
           routeKey: 'DASHBOARD_SALES_MY_LEADS',
         },
+        {
+          title: 'Consultations',
+          url: '/dashboard/sales/consultations',
+          icon: IconCalendarCheck,
+          routeKey: 'DASHBOARD_SALES_LEADS',
+        },
         ...(profileItem ? [profileItem] : []),
       ];
     }
