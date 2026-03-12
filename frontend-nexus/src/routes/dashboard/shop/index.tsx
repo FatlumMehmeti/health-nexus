@@ -1,5 +1,6 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { ActiveTenantContext } from '@/components/molecules/active-tenant-context';
 import {
   Card,
   CardContent,
@@ -40,7 +41,7 @@ import {
 } from '@/services/products.service';
 import { useAuthStore } from '@/stores/auth.store';
 import { createFileRoute, Link } from '@tanstack/react-router';
-import { ShoppingCart } from 'lucide-react';
+import { Minus, Plus, ShoppingCart } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import {
@@ -48,14 +49,50 @@ import {
   getActiveTenantId,
 } from './-utils';
 
+type ShopSearch = {
+  category?: string;
+};
+
 export const Route = createFileRoute('/dashboard/shop/')({
+  validateSearch: (
+    search: Record<string, unknown>
+  ): ShopSearch => ({
+    category:
+      typeof search.category === 'string' &&
+      search.category.trim().length > 0
+        ? search.category.trim().toLowerCase()
+        : undefined,
+  }),
   beforeLoad: requireAuth({
     routeKey: 'DASHBOARD_SHOP',
   }),
   component: ShopPage,
 });
 
+function getAvailabilityMeta(stockQuantity: number) {
+  if (stockQuantity <= 0) {
+    return {
+      label: 'Out of stock',
+      tone: 'destructive' as const,
+      detail: 'This item is currently unavailable.',
+    };
+  }
+  if (stockQuantity < 5) {
+    return {
+      label: 'Low stock',
+      tone: 'warning' as const,
+      detail: `Only ${stockQuantity} left in stock.`,
+    };
+  }
+  return {
+    label: 'In stock',
+    tone: 'success' as const,
+    detail: `${stockQuantity} available for purchase.`,
+  };
+}
+
 function ShopPage() {
+  const search = Route.useSearch();
   const authStatus = useAuthStore((state) => state.status);
   const tenantIdFromStore = useAuthStore(
     (state) => state.tenantId
@@ -63,10 +100,17 @@ function ShopPage() {
   const tenantId = getActiveTenantId(tenantIdFromStore);
   const isTenantHydrating =
     authStatus === 'loading' && tenantId === null;
+  const initialCategory =
+    search.category &&
+    PRODUCT_CATEGORY_OPTIONS.some(
+      (option) => option.value === search.category
+    )
+      ? search.category
+      : 'ALL';
   const [lastTenantId, setLastTenantId] = useState<number | null>(null);
   const [page, setPage] = useState(1);
   const [searchInput, setSearchInput] = useState('');
-  const [category, setCategory] = useState('ALL');
+  const [category, setCategory] = useState(initialCategory);
   const [sort, setSort] = useState<
     'name_asc' | 'name_desc' | 'price_asc' | 'price_desc'
   >('name_asc');
@@ -78,6 +122,7 @@ function ShopPage() {
     useState('');
   const [selectedProductId, setSelectedProductId] =
     useState<number | null>(null);
+  const [selectedQuantity, setSelectedQuantity] = useState(1);
 
   const minPrice = appliedMinPriceInput
     ? Number(appliedMinPriceInput)
@@ -112,6 +157,18 @@ function ShopPage() {
     selectedProductId,
     tenantId
   );
+  const relatedProductsQuery = useProducts(
+    tenantId === null ||
+      !productDetailQuery.data?.category
+      ? null
+      : {
+          tenantId,
+          page: 1,
+          size: 5,
+          category: productDetailQuery.data.category,
+          sort: 'name_asc',
+        }
+  );
 
   const cartCount =
     cartQuery.data?.items.reduce(
@@ -128,6 +185,20 @@ function ShopPage() {
       )
     : page;
   const categoryOptions = PRODUCT_CATEGORY_OPTIONS;
+  const productDetail = productDetailQuery.data;
+  const availability = productDetail
+    ? getAvailabilityMeta(productDetail.stock_quantity)
+    : null;
+  const maxSelectableQuantity =
+    productDetail && productDetail.stock_quantity > 0
+      ? productDetail.stock_quantity
+      : 1;
+  const relatedProducts =
+    relatedProductsQuery.data?.items
+      .filter(
+        (product) => product.product_id !== selectedProductId
+      )
+      .slice(0, 4) ?? [];
   const sortOptions = [
     { value: 'name_asc', label: 'Name (A-Z)' },
     { value: 'name_desc', label: 'Name (Z-A)' },
@@ -162,19 +233,34 @@ function ShopPage() {
     setLastTenantId(tenantId);
     setPage(1);
     setSearchInput('');
-    setCategory('ALL');
+    setCategory(initialCategory);
     setSort('name_asc');
     setMinPriceInput('');
     setMaxPriceInput('');
     setAppliedMinPriceInput('');
     setAppliedMaxPriceInput('');
-  }, [tenantId, lastTenantId]);
+  }, [tenantId, lastTenantId, initialCategory]);
+
+  useEffect(() => {
+    setCategory(initialCategory);
+  }, [initialCategory]);
 
   useEffect(() => {
     if (productsQuery.data && page > totalPages) {
       setPage(totalPages);
     }
   }, [page, productsQuery.data, totalPages]);
+
+  useEffect(() => {
+    setSelectedQuantity(1);
+  }, [selectedProductId]);
+
+  useEffect(() => {
+    if (!productDetail) return;
+    setSelectedQuantity((current) =>
+      Math.max(1, Math.min(current, maxSelectableQuantity))
+    );
+  }, [maxSelectableQuantity, productDetail]);
 
   const handlePreviousPage = () => {
     setPage((current) => Math.max(1, current - 1));
@@ -186,7 +272,10 @@ function ShopPage() {
     );
   };
 
-  const handleAddToCart = async (productId: number) => {
+  const handleAddToCart = async (
+    productId: number,
+    quantity = 1
+  ) => {
     if (tenantId === null) {
       toast.error('Select a tenant before shopping');
       return;
@@ -196,7 +285,7 @@ function ShopPage() {
       await addItem.mutateAsync({
         tenant_id: tenantId,
         product_id: productId,
-        quantity: 1,
+        quantity,
       });
       toast.success('Added to cart');
     } catch (error) {
@@ -258,6 +347,12 @@ function ShopPage() {
           </Button>
         </Link>
       </div>
+
+      <ActiveTenantContext
+        tenantId={tenantId}
+        title="Browsing products for"
+        description="Shop, cart, and checkout use the currently active tenant."
+      />
 
       {productsQuery.isLoading ? (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -512,93 +607,214 @@ function ShopPage() {
                 ? productDetailQuery.error.displayMessage
                 : 'Failed to load product details'}
             </div>
-          ) : productDetailQuery.data ? (
+          ) : productDetail ? (
             <>
               <DialogHeader>
-                <DialogTitle>{productDetailQuery.data.name}</DialogTitle>
+                <DialogTitle>{productDetail.name}</DialogTitle>
                 <DialogDescription>
                   {getProductCategoryLabel(
-                    productDetailQuery.data.category
+                    productDetail.category
                   ) || 'Uncategorized'}
                 </DialogDescription>
               </DialogHeader>
-              <div className="grid gap-6 md:grid-cols-[1.1fr_0.9fr]">
-                <div className="overflow-hidden rounded-xl border bg-muted/30">
-                  {productDetailQuery.data.image_url ? (
-                    <img
-                      src={
-                        resolveMediaUrl(
-                          productDetailQuery.data.image_url
-                        ) ?? ''
-                      }
-                      alt={productDetailQuery.data.name}
-                      className="h-full max-h-[360px] w-full object-cover"
-                    />
-                  ) : (
-                    <div className="flex h-[280px] items-center justify-center text-sm text-muted-foreground">
-                      No product image
+              <div className="space-y-6">
+                <div className="grid gap-6 md:grid-cols-[1.05fr_0.95fr]">
+                  <div className="overflow-hidden rounded-2xl border bg-gradient-to-br from-primary/10 via-muted/30 to-background shadow-sm">
+                    {productDetail.image_url ? (
+                      <img
+                        src={
+                          resolveMediaUrl(
+                            productDetail.image_url
+                          ) ?? ''
+                        }
+                        alt={productDetail.name}
+                        className="h-full max-h-[420px] w-full object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-[320px] items-center justify-center bg-grid-pattern px-6 text-center">
+                        <div className="space-y-2">
+                          <p className="text-sm uppercase tracking-[0.18em] text-muted-foreground">
+                            {getProductCategoryLabel(
+                              productDetail.category
+                            ) || 'Health product'}
+                          </p>
+                          <p className="text-lg font-semibold text-foreground">
+                            Image unavailable
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  <div className="space-y-4">
+                    <div className="space-y-3 rounded-2xl border bg-card p-5 shadow-sm">
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div>
+                          <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                            {getProductCategoryLabel(
+                              productDetail.category
+                            ) || 'Uncategorized'}
+                          </p>
+                          <h2 className="mt-2 text-2xl font-semibold">
+                            {productDetail.name}
+                          </h2>
+                        </div>
+                        <Badge variant={availability?.tone ?? 'neutral'}>
+                          {availability?.label ?? 'Unavailable'}
+                        </Badge>
+                      </div>
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <div className="rounded-xl border bg-muted/20 p-4">
+                          <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                            Price
+                          </p>
+                          <p className="mt-2 text-2xl font-semibold">
+                            {formatCurrency(productDetail.price)}
+                          </p>
+                        </div>
+                        <div className="rounded-xl border bg-muted/20 p-4">
+                          <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                            Availability
+                          </p>
+                          <p className="mt-2 text-lg font-semibold">
+                            {availability?.label ?? 'Unavailable'}
+                          </p>
+                          <p className="mt-1 text-sm text-muted-foreground">
+                            {availability?.detail}
+                          </p>
+                        </div>
+                      </div>
                     </div>
-                  )}
+
+                    <div className="space-y-3 rounded-2xl border bg-card p-5 shadow-sm">
+                      <div>
+                        <p className="text-sm font-medium text-foreground">
+                          Description
+                        </p>
+                        <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                          {productDetail.description ||
+                            'No description available for this product yet.'}
+                        </p>
+                      </div>
+
+                      <div className="space-y-2">
+                        <p className="text-sm font-medium text-foreground">
+                          Quantity
+                        </p>
+                        <div className="flex w-fit items-center gap-3 rounded-full border bg-background px-3 py-2 shadow-xs">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="size-8 rounded-full"
+                            onClick={() =>
+                              setSelectedQuantity((current) =>
+                                Math.max(1, current - 1)
+                              )
+                            }
+                            disabled={selectedQuantity <= 1}
+                          >
+                            <Minus className="size-4" />
+                          </Button>
+                          <span className="min-w-8 text-center text-sm font-semibold">
+                            {selectedQuantity}
+                          </span>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="size-8 rounded-full"
+                            onClick={() =>
+                              setSelectedQuantity((current) =>
+                                Math.min(
+                                  maxSelectableQuantity,
+                                  current + 1
+                                )
+                              )
+                            }
+                            disabled={
+                              productDetail.stock_quantity <= 0 ||
+                              selectedQuantity >= maxSelectableQuantity
+                            }
+                          >
+                            <Plus className="size-4" />
+                          </Button>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-col gap-2 sm:flex-row">
+                        <Button
+                          onClick={() =>
+                            handleAddToCart(
+                              productDetail.product_id,
+                              selectedQuantity
+                            )
+                          }
+                          disabled={
+                            productDetail.stock_quantity <= 0 ||
+                            addItem.isPending
+                          }
+                          className="sm:flex-1"
+                        >
+                          Add {selectedQuantity} to Cart
+                        </Button>
+                        <Button
+                          variant="outline"
+                          onClick={() => setSelectedProductId(null)}
+                        >
+                          Close
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                <div className="space-y-4">
-                  <div>
+
+                <div className="space-y-3 rounded-2xl border bg-card p-5 shadow-sm">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-medium text-foreground">
+                        Related products
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        More from the same category.
+                      </p>
+                    </div>
+                  </div>
+
+                  {relatedProductsQuery.isLoading ? (
+                    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                      {Array.from({ length: 4 }).map((_, index) => (
+                        <Skeleton key={index} className="h-28 w-full" />
+                      ))}
+                    </div>
+                  ) : relatedProducts.length > 0 ? (
+                    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                      {relatedProducts.map((product) => (
+                        <button
+                          key={product.product_id}
+                          type="button"
+                          className="rounded-xl border bg-background p-3 text-left transition-colors hover:border-primary/40 hover:bg-muted/20"
+                          onClick={() =>
+                            setSelectedProductId(product.product_id)
+                          }
+                        >
+                          <p className="line-clamp-1 text-sm font-medium">
+                            {product.name}
+                          </p>
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            {getProductCategoryLabel(product.category) ||
+                              'Uncategorized'}
+                          </p>
+                          <p className="mt-3 text-sm font-semibold">
+                            {formatCurrency(product.price)}
+                          </p>
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
                     <p className="text-sm text-muted-foreground">
-                      Description
+                      No related products available right now.
                     </p>
-                    <p className="mt-1">
-                      {productDetailQuery.data.description ||
-                        'No description available.'}
-                    </p>
-                  </div>
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <div className="rounded-lg border p-3">
-                      <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                        Price
-                      </p>
-                      <p className="mt-1 text-xl font-semibold">
-                        {formatCurrency(productDetailQuery.data.price)}
-                      </p>
-                    </div>
-                    <div className="rounded-lg border p-3">
-                      <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                        Stock
-                      </p>
-                      <p className="mt-1 text-xl font-semibold">
-                        {productDetailQuery.data.stock_quantity}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="rounded-lg border p-3">
-                    <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                      Category
-                    </p>
-                    <p className="mt-1 font-medium">
-                      {getProductCategoryLabel(
-                        productDetailQuery.data.category
-                      ) || 'Uncategorized'}
-                    </p>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button
-                      onClick={() =>
-                        handleAddToCart(
-                          productDetailQuery.data!.product_id
-                        )
-                      }
-                      disabled={
-                        productDetailQuery.data.stock_quantity <= 0 ||
-                        addItem.isPending
-                      }
-                    >
-                      Add to Cart
-                    </Button>
-                    <Button
-                      variant="outline"
-                      onClick={() => setSelectedProductId(null)}
-                    >
-                      Close
-                    </Button>
-                  </div>
+                  )}
                 </div>
               </div>
             </>
