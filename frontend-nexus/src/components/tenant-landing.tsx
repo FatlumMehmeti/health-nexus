@@ -33,6 +33,7 @@ import { ThemeToggle } from '@/components/theme-toggle';
 import type { TenantLandingPageResponse } from '@/interfaces';
 import { isApiError } from '@/lib/api-client';
 import { resolveMediaUrl } from '@/lib/media-url';
+import { getProductCategoryLabel } from '@/lib/product-categories';
 import { can } from '@/lib/rbac';
 import {
   clearCheckoutRecovery,
@@ -60,7 +61,7 @@ import {
   MessageCircle,
 } from 'lucide-react';
 import type { CSSProperties } from 'react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { PaymentFlowNotice } from './PaymentFlowNotice';
 import { StripePaymentModal } from './StripePaymentModal';
@@ -109,6 +110,7 @@ const usdFormatter = new Intl.NumberFormat('en-US', {
 const PAYMENT_CONFIRMATION_TIMEOUT_MS = 45_000;
 const ENROLLMENT_CANCELLATION_NOTICE_KEY_PREFIX =
   'health-nexus.enrollment-cancellation-notice';
+const CATEGORY_PREVIEW_LIMIT = 4;
 
 function getEnrollmentCancellationNoticeStorageKey(
   tenantId: number
@@ -748,6 +750,48 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
     user?.fullName?.trim().charAt(0) ||
     'U'
   ).toUpperCase();
+  const availableProducts = (landingData?.products ?? []).filter(
+    (product) => product.is_available !== false
+  );
+  const groupedProducts = useMemo(() => {
+    const groups = new Map<
+      string,
+      {
+        categoryLabel: string;
+        categoryValue?: string;
+        items: typeof availableProducts;
+      }
+    >();
+    for (const product of availableProducts) {
+      const categoryValue = product.category?.trim().toLowerCase();
+      const categoryLabel =
+        getProductCategoryLabel(product.category) ||
+        'Uncategorized';
+      const key = categoryValue ?? `uncategorized:${categoryLabel}`;
+      const existingGroup = groups.get(key);
+      if (existingGroup) {
+        existingGroup.items.push(product);
+      } else {
+        groups.set(key, {
+          categoryLabel,
+          categoryValue,
+          items: [product],
+        });
+      }
+    }
+
+    return Array.from(groups.values())
+      .sort((left, right) =>
+        left.categoryLabel.localeCompare(right.categoryLabel)
+      )
+      .map((group) => ({
+        category: group.categoryLabel,
+        categoryValue: group.categoryValue,
+        items: [...group.items].sort((left, right) =>
+          left.name.localeCompare(right.name)
+        ),
+      }));
+  }, [availableProducts]);
 
   if (!landingData) {
     return (
@@ -757,7 +801,7 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
     );
   }
 
-  const { tenant, details, departments, products } = landingData;
+  const { tenant, details, departments } = landingData;
   const plans = (landingData.plans ?? []).filter(
     (p) => p.is_active !== false
   );
@@ -772,13 +816,21 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
   const fontHeaderStyle = brand.headerStyle;
   const fontBodyStyle = brand.bodyStyle;
   const featuredDepartments = departments.slice(0, 3);
-  const availableProducts = products.filter(
-    (product) => product.is_available !== false
-  );
-  const handleOpenShop = () => {
+  const handleOpenShop = (category?: string) => {
     if (!tenantId) return;
     useAuthStore.setState({ tenantId: String(tenantId) });
-    void navigate({ to: '/dashboard/shop' });
+    void navigate({
+      to: '/dashboard/shop',
+      search: category ? { category } : {},
+    });
+  };
+  const handleGoToProfile = () => {
+    if (tenantId) {
+      useAuthStore.setState({ tenantId: String(tenantId) });
+    }
+    void navigate({
+      to: '/dashboard/profile',
+    });
   };
   const pendingPlan = checkoutRecovery
     ? plans.find((plan) => plan.id === checkoutRecovery.planId)
@@ -1097,11 +1149,7 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
                             <Button
                               size="sm"
                               variant="ghost"
-                              onClick={() =>
-                                navigate({
-                                  to: '/dashboard/profile',
-                                })
-                              }
+                              onClick={handleGoToProfile}
                             >
                               Go to Profile
                             </Button>
@@ -1293,58 +1341,105 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
                     <Button onClick={handleOpenShop}>Open Shop</Button>
                   ) : null}
                 </div>
-                {availableProducts.length > 0 ? (
-                  <div className="grid gap-4 md:grid-cols-2">
-                    {availableProducts.map((product) => (
-                      <article
-                        key={product.product_id}
-                        className="flex h-full flex-col rounded-xl border bg-card/60 p-4 shadow-sm"
+                {groupedProducts.length > 0 ? (
+                  <div className="space-y-6">
+                    {groupedProducts.map((group) => (
+                      <section
+                        key={group.category}
+                        className="space-y-3"
                       >
-                        <div className="flex gap-4">
-                          <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-lg border bg-muted/30">
-                            {product.image_url ? (
-                              <img
-                                src={resolveMediaUrl(product.image_url) ?? ''}
-                                alt={product.name}
-                                className="h-full w-full object-cover"
-                              />
-                            ) : (
-                              <span className="text-xs text-muted-foreground">
-                                No image
-                              </span>
-                            )}
-                          </div>
-                          <div className="flex-1">
-                            <div className="flex items-start justify-between gap-3">
-                              <div>
-                                <h3 className="text-sm font-semibold sm:text-base">
-                                  {product.name}
-                                </h3>
-                                <p className="mt-1 text-xs uppercase tracking-wide text-muted-foreground">
-                                  {product.category || 'Uncategorized'}
-                                </p>
-                              </div>
-                              <span
-                                className="rounded-full border px-2 py-0.5 text-xs font-medium"
-                                style={
-                                  brand.primary
-                                    ? {
-                                        borderColor: brand.primary,
-                                        color: brand.primary,
-                                      }
-                                    : undefined
-                                }
-                              >
-                                {formatCurrency(product.price)}
-                              </span>
-                            </div>
-                            <p className="mt-2 text-sm text-muted-foreground">
-                              {product.description ||
-                                'No description provided.'}
+                        <div className="flex items-center justify-between gap-3">
+                          <div>
+                            <h3 className="text-lg font-semibold">
+                              {group.category}
+                            </h3>
+                            <p className="text-sm text-muted-foreground">
+                              {group.items.length} product
+                              {group.items.length === 1 ? '' : 's'}
                             </p>
                           </div>
+                          {group.items.length > CATEGORY_PREVIEW_LIMIT &&
+                          isAuthenticated &&
+                          role === 'CLIENT' ? (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() =>
+                                handleOpenShop(group.categoryValue)
+                              }
+                            >
+                              Open in Shop
+                            </Button>
+                          ) : null}
                         </div>
-                      </article>
+                        <div className="grid gap-4 md:grid-cols-2">
+                          {group.items
+                            .slice(0, CATEGORY_PREVIEW_LIMIT)
+                            .map((product) => (
+                            <article
+                              key={product.product_id}
+                              className="flex h-full flex-col rounded-xl border bg-card/60 p-4 shadow-sm"
+                            >
+                              <div className="flex gap-4">
+                                <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-lg border bg-muted/30">
+                                  {product.image_url ? (
+                                    <img
+                                      src={
+                                        resolveMediaUrl(
+                                          product.image_url
+                                        ) ?? ''
+                                      }
+                                      alt={product.name}
+                                      className="h-full w-full object-cover"
+                                    />
+                                  ) : (
+                                    <span className="text-xs text-muted-foreground">
+                                      No image
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="flex-1">
+                                  <div className="flex items-start justify-between gap-3">
+                                    <div>
+                                      <h4 className="text-sm font-semibold sm:text-base">
+                                        {product.name}
+                                      </h4>
+                                      <p className="mt-1 text-xs uppercase tracking-wide text-muted-foreground">
+                                        {group.category}
+                                      </p>
+                                    </div>
+                                    <span
+                                      className="rounded-full border px-2 py-0.5 text-xs font-medium"
+                                      style={
+                                        brand.primary
+                                          ? {
+                                              borderColor:
+                                                brand.primary,
+                                              color: brand.primary,
+                                            }
+                                          : undefined
+                                      }
+                                    >
+                                      {formatCurrency(product.price)}
+                                    </span>
+                                  </div>
+                                  <p className="mt-2 text-sm text-muted-foreground">
+                                    {product.description ||
+                                      'No description provided.'}
+                                  </p>
+                                </div>
+                              </div>
+                            </article>
+                          ))}
+                        </div>
+                        {group.items.length > CATEGORY_PREVIEW_LIMIT ? (
+                          <p className="text-sm text-muted-foreground">
+                            Showing {CATEGORY_PREVIEW_LIMIT} of{' '}
+                            {group.items.length} products in this
+                            category.
+                          </p>
+                        ) : null}
+                      </section>
                     ))}
                   </div>
                 ) : (
