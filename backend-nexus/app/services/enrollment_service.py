@@ -22,7 +22,6 @@ from app.repositories import (
     list_enrollments_by_tenant,
     list_enrollment_status_history,
 )
-from app.services.enrollment_stream import dispatch_enrollment_changed
 
 # ============================================================================
 # Error Model
@@ -528,10 +527,6 @@ def create_enrollment(
 
         db.commit()
         db.refresh(enrollment)
-        dispatch_enrollment_changed(
-            enrollment_id=enrollment.id,
-            tenant_id=enrollment.tenant_id,
-        )
         return enrollment
     except EnrollmentServiceError:
         db.rollback()
@@ -699,10 +694,6 @@ def transition_enrollment(
         db.add(audit)
         db.commit()
         db.refresh(enrollment)
-        dispatch_enrollment_changed(
-            enrollment_id=enrollment.id,
-            tenant_id=enrollment.tenant_id,
-        )
         return enrollment
     except EnrollmentServiceError:
         db.rollback()

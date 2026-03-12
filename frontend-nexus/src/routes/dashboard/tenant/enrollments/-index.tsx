@@ -10,7 +10,6 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { API_BASE_URL, getAccessToken } from '@/lib/api-client';
 import {
   enrollmentsService,
   type EnrollmentStatus,
@@ -21,7 +20,7 @@ import {
   useQuery,
   useQueryClient,
 } from '@tanstack/react-query';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { toast } from 'sonner';
 import { QUERY_KEYS } from '../-constants';
 import {
@@ -152,82 +151,6 @@ export function TenantEnrollmentsPanel() {
     (e) => e.status === activeStatus
   );
   const historyItems = historyQuery.data ?? [];
-
-  useEffect(() => {
-    if (!tenantId) {
-      return;
-    }
-
-    const token = getAccessToken();
-    if (!token) {
-      return;
-    }
-
-    const controller = new AbortController();
-
-    const connect = async () => {
-      const response = await fetch(
-        `${API_BASE_URL}/api/tenants/${tenantId}/enrollments/stream`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            Accept: 'text/event-stream',
-          },
-          signal: controller.signal,
-        }
-      );
-
-      if (!response.ok || !response.body) {
-        throw new Error('Unable to open enrollment stream');
-      }
-
-      const reader = response.body
-        .pipeThrough(new TextDecoderStream())
-        .getReader();
-
-      let buffer = '';
-
-      while (true) {
-        const { value, done } = await reader.read();
-        if (done) {
-          break;
-        }
-
-        buffer += value;
-        const messages = buffer.split('\n\n');
-        buffer = messages.pop() ?? '';
-
-        for (const message of messages) {
-          const eventLine = message
-            .split('\n')
-            .find((line) => line.startsWith('event: '));
-
-          if (eventLine !== 'event: enrollment-changed') {
-            continue;
-          }
-
-          void queryClient.invalidateQueries({
-            queryKey: ['tenant-manager', 'enrollments', tenantId],
-          });
-          void queryClient.invalidateQueries({
-            queryKey: [
-              'tenant-manager',
-              'enrollment-history',
-              tenantId,
-            ],
-          });
-        }
-      }
-    };
-
-    void connect().catch(() => {
-      // Keep the current table visible if the stream disconnects.
-    });
-
-    return () => {
-      controller.abort();
-    };
-  }, [queryClient, tenantId]);
 
   return (
     <Card>

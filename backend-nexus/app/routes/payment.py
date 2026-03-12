@@ -133,7 +133,6 @@ def checkout_initiate(
                 db=db,
                 enrollment_id=payload.enrollment_id,
                 user_id=int(user_id),
-                user_tenant_plan_id=payload.user_tenant_plan_id,
                 idempotency_key=key,
             )
         else:

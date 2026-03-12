@@ -25,7 +25,6 @@ from app.models.subscription_plan import SubscriptionPlan
 from app.models.tenant_manager import TenantManager
 from app.models.tenant_subscription import SubscriptionStatus, TenantSubscription
 from app.models.user_tenant_plan import UserTenantPlan
-from app.services.enrollment_stream import dispatch_enrollment_changed
 from app.services.subscription_request_stream import subscription_request_stream
 
 
@@ -224,56 +223,40 @@ def _activate_enrollment_if_applicable(db: Session, enrollment_id: int) -> None:
             enrollment.expires_at = now + timedelta(days=int(plan.duration))
 
 
-def _parse_enrollment_plan_change_target(
-    reference_type: str | None,
-) -> int | None:
-    if not reference_type:
-        return None
-
-    prefix = "enrollment_plan_change:"
-    if not reference_type.startswith(prefix):
-        return None
-
-    raw_target = reference_type[len(prefix) :]
-    try:
-        target_plan_id = int(raw_target)
-    except (TypeError, ValueError):
-        return None
-
-    return target_plan_id if target_plan_id > 0 else None
-
-
-def _apply_enrollment_plan_change_if_applicable(
-    db: Session, payment: Payment
-) -> bool:
-    if payment.reference_id is None:
-        return False
-
-    target_plan_id = _parse_enrollment_plan_change_target(
-        payment.reference_type
-    )
-    if target_plan_id is None:
-        return False
-
-    enrollment = db.get(Enrollment, payment.reference_id)
-    if enrollment is None:
-        return False
-
-    plan = db.get(UserTenantPlan, target_plan_id)
-    if plan is None or plan.tenant_id != enrollment.tenant_id:
-        return False
+def _activate_tenant_subscription_if_applicable(db: Session, tenant_subscription_id: int) -> None:
+    subscription = db.get(TenantSubscription, tenant_subscription_id)
+    if subscription is None:
+        return
 
     now = datetime.now(timezone.utc)
-    enrollment.user_tenant_plan_id = plan.id
-    enrollment.status = EnrollmentStatus.ACTIVE
-    enrollment.cancelled_at = None
-    enrollment.activated_at = now
-    enrollment.expires_at = (
-        now + timedelta(days=int(plan.duration))
-        if plan.duration
-        else None
+    replacement_plan = db.get(SubscriptionPlan, subscription.subscription_plan_id)
+
+    active_subscriptions = (
+        db.query(TenantSubscription)
+        .filter(
+            TenantSubscription.tenant_id == subscription.tenant_id,
+            TenantSubscription.id != subscription.id,
+            TenantSubscription.status == SubscriptionStatus.ACTIVE,
+        )
+        .all()
     )
-    return True
+    for active_subscription in active_subscriptions:
+        active_subscription.status = SubscriptionStatus.EXPIRED
+        active_subscription.cancelled_at = now
+        active_subscription.cancellation_reason = (
+            f"Replaced with {replacement_plan.name}"
+            if replacement_plan is not None
+            else "Replaced after successful payment"
+        )
+
+    subscription.status = SubscriptionStatus.ACTIVE
+    subscription.cancelled_at = None
+    subscription.cancellation_reason = None
+    if subscription.activated_at is None:
+        subscription.activated_at = now
+    if subscription.expires_at is None:
+        if replacement_plan is not None and replacement_plan.duration:
+            subscription.expires_at = now + timedelta(days=int(replacement_plan.duration))
 
 
 def _apply_post_payment_activation(db: Session, payment: Payment) -> None:
@@ -283,12 +266,9 @@ def _apply_post_payment_activation(db: Session, payment: Payment) -> None:
     if payment.payment_type == PaymentType.ORDER:
         _activate_order_if_applicable(db, payment.reference_id)
     elif payment.payment_type == PaymentType.ENROLLMENT:
-        if not _apply_enrollment_plan_change_if_applicable(
-            db, payment
-        ):
-            _activate_enrollment_if_applicable(
-                db, payment.reference_id
-            )
+        _activate_enrollment_if_applicable(db, payment.reference_id)
+    elif payment.payment_type == PaymentType.TENANT_SUBSCRIPTION:
+        _activate_tenant_subscription_if_applicable(db, payment.reference_id)
 
 
 def _is_post_payment_activation_complete(db: Session, payment: Payment) -> bool:
@@ -301,22 +281,19 @@ def _is_post_payment_activation_complete(db: Session, payment: Payment) -> bool:
 
     if payment.payment_type == PaymentType.ENROLLMENT:
         enrollment = db.get(Enrollment, payment.reference_id)
-        target_plan_id = _parse_enrollment_plan_change_target(
-            payment.reference_type
-        )
         return bool(
             enrollment
             and enrollment.status == EnrollmentStatus.ACTIVE
             and enrollment.activated_at is not None
-            and (
-                target_plan_id is None
-                or enrollment.user_tenant_plan_id == target_plan_id
-            )
         )
 
     if payment.payment_type == PaymentType.TENANT_SUBSCRIPTION:
         subscription = db.get(TenantSubscription, payment.reference_id)
-        return subscription is not None
+        return bool(
+            subscription
+            and subscription.status == SubscriptionStatus.ACTIVE
+            and subscription.activated_at is not None
+        )
 
     return True
 
@@ -367,14 +344,6 @@ def _mark_payment_as_captured(db: Session, payment: Payment) -> Payment:
                     )
                 )
 
-    if payment.payment_type == PaymentType.ENROLLMENT and payment.reference_id is not None:
-        enrollment = db.get(Enrollment, payment.reference_id)
-        if enrollment is not None:
-            dispatch_enrollment_changed(
-                enrollment_id=enrollment.id,
-                tenant_id=enrollment.tenant_id,
-            )
-
     return payment
 
 
@@ -410,17 +379,6 @@ def _mark_payment_as_failed(
     if commit:
         db.commit()
         db.refresh(payment)
-
-        if (
-            payment.payment_type == PaymentType.ENROLLMENT
-            and payment.reference_id is not None
-        ):
-            enrollment = db.get(Enrollment, payment.reference_id)
-            if enrollment is not None:
-                dispatch_enrollment_changed(
-                    enrollment_id=enrollment.id,
-                    tenant_id=enrollment.tenant_id,
-                )
     return payment
 
 
@@ -796,7 +754,6 @@ def create_or_get_enrollment_payment(
     db: Session,
     enrollment_id: int,
     user_id: int,
-    user_tenant_plan_id: int | None,
     idempotency_key: str,
 ) -> tuple[Payment, Optional[str]]:
     enrollment = db.get(Enrollment, enrollment_id)
@@ -816,70 +773,15 @@ def create_or_get_enrollment_payment(
             details={"enrollment_id": enrollment_id},
         )
 
-    target_plan_id = user_tenant_plan_id
-    reference_type = "enrollment"
-
-    if target_plan_id is not None:
-        if enrollment.status != EnrollmentStatus.ACTIVE:
-            raise PaymentServiceError(
-                PaymentErrorCode.CONFLICT,
-                (
-                    "Only ACTIVE enrollments can start a paid plan change "
-                    f"(current status: {enrollment.status.value})"
-                ),
-                http_status=409,
-                details={
-                    "enrollment_id": enrollment_id,
-                    "enrollment_status": enrollment.status.value,
-                },
-            )
-
-        if target_plan_id == enrollment.user_tenant_plan_id:
-            raise PaymentServiceError(
-                PaymentErrorCode.CONFLICT,
-                "Enrollment is already using the requested plan",
-                http_status=409,
-                details={
-                    "enrollment_id": enrollment_id,
-                    "user_tenant_plan_id": target_plan_id,
-                },
-            )
-
-        plan = db.get(UserTenantPlan, target_plan_id)
-        reference_type = f"enrollment_plan_change:{target_plan_id}"
-
-        current_plan = db.get(
-            UserTenantPlan, enrollment.user_tenant_plan_id
+    if enrollment.status != EnrollmentStatus.PENDING:
+        raise PaymentServiceError(
+            PaymentErrorCode.CONFLICT,
+            f"Enrollment is not PENDING (current status: {enrollment.status.value}); cannot initiate checkout",
+            http_status=409,
+            details={"enrollment_id": enrollment_id, "enrollment_status": enrollment.status.value},
         )
-        if (
-            current_plan is not None
-            and float(plan.price) < float(current_plan.price)
-        ):
-            raise PaymentServiceError(
-                PaymentErrorCode.CONFLICT,
-                (
-                    "You cannot downgrade to a cheaper plan until your "
-                    "current plan expires. Please wait until expiration "
-                    "before choosing a lower-priced plan."
-                ),
-                http_status=409,
-                details={
-                    "enrollment_id": enrollment_id,
-                    "current_plan_id": current_plan.id,
-                    "requested_plan_id": target_plan_id,
-                },
-            )
-    else:
-        if enrollment.status != EnrollmentStatus.PENDING:
-            raise PaymentServiceError(
-                PaymentErrorCode.CONFLICT,
-                f"Enrollment is not PENDING (current status: {enrollment.status.value}); cannot initiate checkout",
-                http_status=409,
-                details={"enrollment_id": enrollment_id, "enrollment_status": enrollment.status.value},
-            )
 
-        plan = db.get(UserTenantPlan, enrollment.user_tenant_plan_id)
-
+    plan = db.get(UserTenantPlan, enrollment.user_tenant_plan_id)
     if plan is None:
         raise PaymentServiceError(
             PaymentErrorCode.NOT_FOUND,
@@ -887,23 +789,7 @@ def create_or_get_enrollment_payment(
             http_status=404,
             details={
                 "enrollment_id": enrollment_id,
-                "user_tenant_plan_id": (
-                    target_plan_id
-                    if target_plan_id is not None
-                    else enrollment.user_tenant_plan_id
-                ),
-            },
-        )
-
-    if plan.tenant_id != enrollment.tenant_id:
-        raise PaymentServiceError(
-            PaymentErrorCode.VALIDATION_ERROR,
-            "Requested plan does not belong to the enrollment tenant",
-            http_status=400,
-            details={
-                "enrollment_id": enrollment_id,
-                "tenant_id": enrollment.tenant_id,
-                "user_tenant_plan_id": plan.id,
+                "user_tenant_plan_id": enrollment.user_tenant_plan_id,
             },
         )
 
@@ -925,7 +811,7 @@ def create_or_get_enrollment_payment(
         tenant_id=enrollment.tenant_id,
         payment_type=PaymentType.ENROLLMENT,
         reference_id=enrollment_id,
-        reference_type=reference_type,
+        reference_type="enrollment",
         amount=amount,
         idempotency_key=idempotency_key,
     )
