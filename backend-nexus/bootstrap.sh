@@ -1,12 +1,34 @@
 #!/usr/bin/env sh
 set -eu
 
-echo "Waiting for database..."
-python << END
+# Extract DB host from DATABASE_URL (works for both local Docker and Azure)
+export DB_HOST="$(
+python - <<'END'
+import os
+import urllib.parse
+
+url = os.getenv("DATABASE_URL", "").strip()
+
+if url.startswith("postgresql+psycopg://"):
+    url = url.replace("postgresql+psycopg://", "postgresql://", 1)
+
+if url:
+    parsed = urllib.parse.urlparse(url)
+    print(parsed.hostname or "db")
+else:
+    print("db")
+END
+)"
+
+echo "Waiting for database at $DB_HOST..."
+python - <<'END'
+import os
 import socket
 import time
-host = "db"
+
+host = os.environ.get("DB_HOST", "db")
 port = 5432
+
 while True:
     try:
         s = socket.create_connection((host, port), 2)
@@ -17,10 +39,11 @@ while True:
 END
 
 echo "Running migrations..."
-NEEDS_STAMP="$(python << 'END'
+NEEDS_STAMP="$(
+python - <<'END'
+import os
 from sqlalchemy import create_engine, text
 from sqlalchemy.exc import SQLAlchemyError
-import os
 
 database_url = os.getenv("DATABASE_URL")
 if not database_url:
@@ -28,17 +51,14 @@ if not database_url:
     raise SystemExit(0)
 
 engine = create_engine(database_url)
+
 try:
     with engine.connect() as conn:
         has_roles = bool(
-            conn.execute(
-                text("SELECT to_regclass('public.roles') IS NOT NULL")
-            ).scalar()
+            conn.execute(text("SELECT to_regclass('public.roles') IS NOT NULL")).scalar()
         )
         has_alembic_version = bool(
-            conn.execute(
-                text("SELECT to_regclass('public.alembic_version') IS NOT NULL")
-            ).scalar()
+            conn.execute(text("SELECT to_regclass('public.alembic_version') IS NOT NULL")).scalar()
         )
         print("true" if has_roles and not has_alembic_version else "false")
 except SQLAlchemyError:
@@ -58,7 +78,6 @@ else
     echo "Migration failed."
     cat "$MIGRATION_LOG"
     rm -f "$MIGRATION_LOG"
-    echo "Fix (dev): docker compose down -v && docker compose up --build"
     exit 1
 fi
 rm -f "$MIGRATION_LOG"
@@ -76,9 +95,8 @@ if [ "$VERIFY_SEED_ON_BOOT" = "true" ]; then
 fi
 
 echo "Starting FastAPI..."
-# Use --reload in dev so backend restarts on code changes (no container restart needed)
 if [ "${UVICORN_RELOAD:-false}" = "true" ]; then
-  exec uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    exec uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 else
-  exec uvicorn app.main:app --host 0.0.0.0 --port 8000
+    exec uvicorn app.main:app --host 0.0.0.0 --port 8000
 fi
