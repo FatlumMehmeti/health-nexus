@@ -23,7 +23,12 @@ PENDING_RECONCILIATION_STATUSES = {
     PaymentStatus.INITIATED,
     PaymentStatus.AUTHORIZED,
 }
-PENDING_STRIPE_STATUSES = {"processing", "requires_action", "requires_confirmation", "requires_capture"}
+PENDING_STRIPE_STATUSES = {
+    "processing",
+    "requires_action",
+    "requires_confirmation",
+    "requires_capture",
+}
 FAILED_STRIPE_STATUSES = {
     "requires_payment_method",
 }
@@ -36,7 +41,9 @@ def _activation_complete(db: Session, payment: Payment) -> bool:
 def _mark_manual_intervention(payment: Payment, reason: str) -> None:
     payment.status = PaymentStatus.REQUIRES_MANUAL_INTERVENTION
     payment.last_error = reason
-    _append_payment_audit_note(payment, f"Reconciliation escalated payment to manual intervention: {reason}")
+    _append_payment_audit_note(
+        payment, f"Reconciliation escalated payment to manual intervention: {reason}"
+    )
 
 
 def _process_pending_payment(
@@ -57,7 +64,9 @@ def _process_pending_payment(
     if stripe_status == "canceled":
         payment.status = PaymentStatus.CANCELED
         payment.last_error = "Reconciled canceled payment from Stripe"
-        _append_payment_audit_note(payment, "Reconciliation marked payment as CANCELED from Stripe status canceled")
+        _append_payment_audit_note(
+            payment, "Reconciliation marked payment as CANCELED from Stripe status canceled"
+        )
         return
 
     if stripe_status in FAILED_STRIPE_STATUSES:
@@ -67,7 +76,9 @@ def _process_pending_payment(
             last_error=f"Reconciled failed payment from Stripe status {stripe_status}",
             commit=False,
         )
-        _append_payment_audit_note(payment, f"Reconciliation marked payment as FAILED from Stripe status {stripe_status}")
+        _append_payment_audit_note(
+            payment, f"Reconciliation marked payment as FAILED from Stripe status {stripe_status}"
+        )
         return
 
     if stripe_status in PENDING_STRIPE_STATUSES:
@@ -78,7 +89,10 @@ def _process_pending_payment(
             )
             stats["manual_intervention"] += 1
         else:
-            _append_payment_audit_note(payment, f"Stripe intent still pending with status {stripe_status}; no change applied")
+            _append_payment_audit_note(
+                payment,
+                f"Stripe intent still pending with status {stripe_status}; no change applied",
+            )
             stats["ignored_pending"] += 1
         return
 
@@ -99,10 +113,14 @@ def _process_captured_payment(
     if stripe_status == "succeeded":
         if not _activation_complete(db, payment):
             _mark_payment_as_captured(db, payment)
-            _append_payment_audit_note(payment, "Re-applied post-payment activation during reconciliation")
+            _append_payment_audit_note(
+                payment, "Re-applied post-payment activation during reconciliation"
+            )
             stats["recovered"] += 1
         else:
-            _append_payment_audit_note(payment, "Reconciliation confirmed captured payment side effects already complete")
+            _append_payment_audit_note(
+                payment, "Reconciliation confirmed captured payment side effects already complete"
+            )
         return
 
     _mark_manual_intervention(
@@ -150,10 +168,9 @@ def reconcile_payments(
 
     for payment in candidates:
         needs_processing = (
-            payment.status in PENDING_RECONCILIATION_STATUSES and payment.created_at < pending_threshold
-        ) or (
-            payment.status == PaymentStatus.CAPTURED and not _activation_complete(db, payment)
-        )
+            payment.status in PENDING_RECONCILIATION_STATUSES
+            and payment.created_at < pending_threshold
+        ) or (payment.status == PaymentStatus.CAPTURED and not _activation_complete(db, payment))
         if not needs_processing:
             continue
 
@@ -164,7 +181,9 @@ def reconcile_payments(
 
             intent = stripe.PaymentIntent.retrieve(payment.stripe_payment_intent_id)
             stripe_status = intent.get("status")
-            _append_payment_audit_note(payment, f"Reconciliation observed Stripe status {stripe_status}")
+            _append_payment_audit_note(
+                payment, f"Reconciliation observed Stripe status {stripe_status}"
+            )
 
             if payment.status in PENDING_RECONCILIATION_STATUSES:
                 _process_pending_payment(

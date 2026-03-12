@@ -5,6 +5,7 @@ export type CheckoutRecoveryKind =
 export type CheckoutRecoveryPhase =
   | 'collecting_payment'
   | 'processing'
+  | 'awaiting_approval'
   | 'attention_required';
 
 export interface CheckoutRecoveryRecord {

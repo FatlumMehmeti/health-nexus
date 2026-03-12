@@ -59,9 +59,7 @@ function getFeatureBadgeVariant(featureKey: string) {
     (total, char) => total + char.charCodeAt(0),
     0
   );
-  return FEATURE_BADGE_VARIANTS[
-    hash % FEATURE_BADGE_VARIANTS.length
-  ];
+  return FEATURE_BADGE_VARIANTS[hash % FEATURE_BADGE_VARIANTS.length];
 }
 
 function getScopeLabel(
@@ -198,9 +196,7 @@ export const featureFlagsService = {
             )
           : `Plan ${groupKey.replace('plan:', '')}`,
         rows: rows
-          .sort((a, b) =>
-            a.feature_key.localeCompare(b.feature_key)
-          )
+          .sort((a, b) => a.feature_key.localeCompare(b.feature_key))
           .map((row) => toGroupRow(row, tenantNameById)),
       }));
   },

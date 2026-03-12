@@ -6,6 +6,7 @@ import {
   IconDashboard,
   IconFileDescription,
   IconFolder,
+  IconGift,
   IconHistory,
   IconInnerShadowTop,
   IconLock,
@@ -78,6 +79,11 @@ const superAdminRoutes = [
     title: 'Permissions',
     url: '/dashboard/permissions',
     icon: IconLock,
+  },
+  {
+    title: 'Subscriptions',
+    url: '/dashboard/subscriptions',
+    icon: IconReport,
   },
 ] as const;
 
@@ -152,6 +158,11 @@ const clientsDocuments: Array<{
     title: 'Enrollments',
     url: '/dashboard/client/enrollments',
     icon: IconHistory,
+  },
+  {
+    title: 'Offers',
+    url: '/dashboard/client/offers',
+    icon: IconGift,
   },
   {
     title: 'My Appointments',

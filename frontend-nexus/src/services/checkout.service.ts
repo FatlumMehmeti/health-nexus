@@ -15,6 +15,12 @@ export interface CheckoutInitiateResponse {
   tenant_id: number;
 }
 
+export interface CheckoutPaymentStatusResponse {
+  payment_id: number;
+  status: string;
+  stripe_payment_intent_id: string | null;
+}
+
 export const checkoutService = {
   initiate: (body: CheckoutInitiateRequest, idempotencyKey: string) =>
     apiFetch<CheckoutInitiateResponse>('/api/checkout/initiate', {
@@ -22,4 +28,11 @@ export const checkoutService = {
       headers: { 'Idempotency-Key': idempotencyKey },
       body,
     }),
+  syncStatus: (paymentId: number) =>
+    apiFetch<CheckoutPaymentStatusResponse>(
+      `/api/checkout/payments/${paymentId}/sync`,
+      {
+        method: 'POST',
+      }
+    ),
 };

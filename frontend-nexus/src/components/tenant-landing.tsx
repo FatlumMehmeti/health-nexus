@@ -5,8 +5,8 @@
  *
  * Used by /landing/$tenantSlug. Data from GET /api/tenants/by-slug/{slug}/landing.
  */
+import { ThemeToggle } from '@/components/theme-toggle';
 import { Button } from '@/components/ui/button';
-import { Link } from '@tanstack/react-router';
 import {
   Dialog,
   DialogContent,
@@ -23,13 +23,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Input } from '@/components/ui/input';
 import {
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
 } from '@/components/ui/tabs';
-import { ThemeToggle } from '@/components/theme-toggle';
 import type { TenantLandingPageResponse } from '@/interfaces';
 import { isApiError } from '@/lib/api-client';
 import { resolveMediaUrl } from '@/lib/media-url';
@@ -52,14 +52,16 @@ import {
   useQuery,
   useQueryClient,
 } from '@tanstack/react-query';
-import { useNavigate } from '@tanstack/react-router';
+import { Link, useNavigate } from '@tanstack/react-router';
 import {
   ArrowLeft,
   Facebook,
   Instagram,
   Linkedin,
   MessageCircle,
+  Search,
 } from 'lucide-react';
+import { useTheme } from 'next-themes';
 import type { CSSProperties } from 'react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
@@ -100,6 +102,9 @@ function buildBrandStyles(
     foreground: details?.brand_color_foreground ?? null,
   };
 }
+
+const DEFAULT_TENANT_HERO_IMAGE =
+  '/images/tenant-hero-placeholder.svg';
 
 const usdFormatter = new Intl.NumberFormat('en-US', {
   style: 'currency',
@@ -192,6 +197,9 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
   const [checkoutRecovery, setCheckoutRecovery] =
     useState<CheckoutRecoveryRecord | null>(null);
   const [activeTab, setActiveTab] = useState('home');
+  const [productSearch, setProductSearch] = useState('');
+  const [activeProductCategory, setActiveProductCategory] =
+    useState('all');
   const [selectedPlanId, setSelectedPlanId] = useState<number | null>(
     null
   );
@@ -205,6 +213,7 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
   const user = useAuthStore((s) => s.user);
   const role = useAuthStore((s) => s.role);
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const { resolvedTheme } = useTheme();
 
   const tenantId = landingData?.tenant?.id;
   const stripeClientSecret = checkoutRecovery?.clientSecret ?? null;
@@ -808,7 +817,8 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
   const title = details?.title ?? tenant.name;
   const subtitle = details?.slogan ?? 'Welcome to our landing page.';
   const logo = resolveMediaUrl(details?.logo);
-  const heroImage = resolveMediaUrl(details?.image);
+  const heroImage =
+    resolveMediaUrl(details?.image) || DEFAULT_TENANT_HERO_IMAGE;
   const moto = details?.moto ?? 'Your health, our priority.';
   const about = details?.about_text ?? 'No description available.';
   const slug = tenant.slug ?? '';
@@ -832,6 +842,13 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
       to: '/dashboard/profile',
     });
   };
+  const serviceCount = departments.reduce(
+    (total, department) => total + department.services.length,
+    0
+  );
+  const availableProducts = products.filter(
+    (product) => product.is_available !== false
+  );
   const pendingPlan = checkoutRecovery
     ? plans.find((plan) => plan.id === checkoutRecovery.planId)
     : null;
@@ -847,6 +864,47 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
       : checkoutRecovery?.phase === 'attention_required'
         ? 'This payment is still pending after the expected confirmation window. You can refresh the status or clear it and retry.'
         : 'Review the current state of this pending payment.';
+  const productCategories = [
+    {
+      id: 'all',
+      label: 'All products',
+      matches: () => true,
+    },
+    {
+      id: 'essentials',
+      label: 'Essentials',
+      matches: (product: (typeof availableProducts)[number]) =>
+        product.price < 50,
+    },
+    {
+      id: 'popular',
+      label: 'Popular picks',
+      matches: (product: (typeof availableProducts)[number]) =>
+        product.price >= 50 && product.price < 150,
+    },
+    {
+      id: 'premium',
+      label: 'Premium care',
+      matches: (product: (typeof availableProducts)[number]) =>
+        product.price >= 150,
+    },
+  ];
+  const selectedProductCategory =
+    productCategories.find(
+      (category) => category.id === activeProductCategory
+    ) ?? productCategories[0];
+  const normalizedProductSearch = productSearch.trim().toLowerCase();
+  const filteredProducts = availableProducts.filter((product) => {
+    const matchesCategory = selectedProductCategory.matches(product);
+    const matchesSearch =
+      normalizedProductSearch.length === 0 ||
+      product.name.toLowerCase().includes(normalizedProductSearch) ||
+      product.description
+        ?.toLowerCase()
+        .includes(normalizedProductSearch);
+
+    return matchesCategory && matchesSearch;
+  });
   const accountButtonStyle: CSSProperties | undefined = brand.primary
     ? {
         backgroundColor: brand.primary,
@@ -859,11 +917,34 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
           color: brand.secondary,
         }
       : undefined;
+  const primaryButtonStyle: CSSProperties | undefined = brand.primary
+    ? {
+        backgroundColor: brand.primary,
+        borderColor: brand.primary,
+        color: '#ffffff',
+      }
+    : undefined;
+  const heroPanelStyle: CSSProperties | undefined =
+    brand.primary || brand.background
+      ? {
+          background: `linear-gradient(135deg, ${
+            resolvedTheme === 'dark'
+              ? 'rgba(2,6,23,0.82)'
+              : (brand.background ?? 'rgba(255,255,255,0.9)')
+          } 0%, ${
+            resolvedTheme === 'dark'
+              ? brand.primary
+                ? `color-mix(in srgb, ${brand.primary} 16%, transparent)`
+                : 'rgba(59,130,246,0.18)'
+              : (brand.primary ?? 'rgba(59,130,246,0.12)')
+          } 100%)`,
+        }
+      : undefined;
 
   return (
     <div>
       <div className="flex h-10 items-center justify-center bg-gradient-to-r from-white via-blue-100/70 to-blue-100/90  transition dark:from-[#131c33] dark:via-[#243661] dark:to-[#234586] dark:shadow-lg border-b-zinc-500">
-        <div className="container   px-6 flex w-full items-center justify-between gap-2">
+        <div className="container px-6 flex w-full items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             <Link
               to="/tenants"
@@ -1033,292 +1114,417 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
         <main className="container mx-auto flex-1 px-4 py-6 sm:px-6 sm:py-10">
           <div className="flex flex-1 flex-col gap-6">
             <TabsContent value="home" className="mt-0 flex-1">
-              <section className="mx-auto flex max-w-5xl flex-col gap-8 lg:flex-row">
-                <div className="flex-1 space-y-4 lg:space-y-6">
-                  <p
-                    className="text-sm font-medium uppercase tracking-[0.2em] text-primary"
-                    style={
-                      brand.secondary
-                        ? { color: brand.secondary }
-                        : undefined
-                    }
-                  >
-                    {moto}
-                  </p>
-                  <h1
-                    className="text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl"
-                    style={fontHeaderStyle}
-                  >
-                    {title}
-                  </h1>
-                  <p className="text-base leading-relaxed text-muted-foreground sm:text-lg">
-                    {about}
-                  </p>
+              <section className="mx-auto container">
+                <div
+                  className="relative overflow-hidden rounded-[2rem] border border-white/40 bg-card/80 px-6 py-8 shadow-[0_30px_80px_-40px_rgba(15,23,42,0.45)] backdrop-blur dark:border-zinc-200/20 dark:bg-slate-950/55 dark:shadow-[0_30px_80px_-40px_rgba(2,6,23,0.9)] sm:px-8 sm:py-10 lg:px-10 lg:py-12"
+                  style={heroPanelStyle}
+                >
+                  <div className="pointer-events-none absolute inset-y-0 right-0 hidden w-1/2 bg-gradient-to-l from-white/35 via-white/10 to-transparent dark:from-cyan-400/10 dark:via-sky-300/5 dark:to-transparent lg:block" />
+                  <div className="pointer-events-none absolute -left-20 top-0 h-56 w-56 rounded-full bg-white/25 blur-3xl dark:bg-cyan-300/10" />
+                  <div className="pointer-events-none absolute bottom-0 right-0 h-64 w-64 rounded-full bg-white/20 blur-3xl dark:bg-blue-400/10" />
 
-                  {featuredDepartments.length > 0 && (
-                    <div className="mt-4 space-y-2">
-                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-                        Key departments
-                      </p>
-                      <ul className="grid gap-1 text-sm text-muted-foreground sm:grid-cols-2">
-                        {featuredDepartments.map((d) => (
-                          <li
-                            key={d.id}
-                            className="flex items-center gap-2"
+                  <div className="relative grid gap-10 lg:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)] lg:items-center">
+                    <div className="space-y-6">
+                      <div className="space-y-4">
+                        <div className="flex flex-wrap items-center gap-3">
+                          <span
+                            className="inline-flex rounded-full border border-white/50 bg-white/70 px-3 py-1 text-[0.7rem] font-semibold uppercase tracking-[0.24em] text-foreground/80 shadow-sm dark:border-zinc-200/20 dark:bg-slate-900/70 dark:text-slate-100"
+                            style={
+                              brand.secondary
+                                ? { color: brand.secondary }
+                                : undefined
+                            }
                           >
-                            <span
-                              className="h-1.5 w-1.5 rounded-full"
-                              style={
-                                brand.primary
-                                  ? {
-                                      backgroundColor: brand.primary,
-                                    }
-                                  : undefined
-                              }
-                            />
-                            <span>{d.name}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
+                            {moto}
+                          </span>
+                          <span className="text-xs uppercase tracking-[0.18em] text-muted-foreground dark:text-slate-300/80">
+                            {subtitle}
+                          </span>
+                        </div>
 
-                  <div className="mt-5 flex flex-wrap gap-3">
-                    <Button
-                      size="sm"
-                      onClick={() => setActiveTab('departments')}
-                      style={
-                        brand.primary
-                          ? {
-                              backgroundColor: brand.primary,
-                              borderColor: brand.primary,
-                            }
-                          : undefined
-                      }
-                    >
-                      View departments
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() =>
-                        window.scrollTo({
-                          top: 0,
-                          behavior: 'smooth',
-                        })
-                      }
-                      style={
-                        brand.secondary
-                          ? {
-                              borderColor: brand.secondary,
-                              color: brand.secondary,
-                            }
-                          : undefined
-                      }
-                    >
-                      Back to top
-                    </Button>
+                        <div className="space-y-4">
+                          <h1
+                            className="max-w-3xl text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl"
+                            style={fontHeaderStyle}
+                          >
+                            {title}
+                          </h1>
+                          <p className="max-w-2xl text-base leading-7 text-muted-foreground dark:text-slate-300 sm:text-lg">
+                            {about}
+                          </p>
+                        </div>
+                      </div>
 
-                    {/* Register as patient CTA */}
-                    {isAuthenticated && user ? (
-                      <div className="flex flex-wrap items-center gap-2">
+                      <div className="flex flex-wrap gap-3">
                         <Button
                           size="sm"
-                          variant="outline"
-                          disabled={
-                            isRegistered ||
-                            registerMutation.isPending ||
-                            meQuery.isLoading ||
-                            isRegistrationCheckPending
-                          }
-                          loading={registerMutation.isPending}
-                          onClick={handleRegisterAsPatient}
+                          className="min-w-36 shadow-sm"
+                          onClick={() => setActiveTab('departments')}
+                          style={primaryButtonStyle}
                         >
-                          {isRegistered
-                            ? 'Registered'
-                            : isRegistrationCheckPending
-                              ? 'Checking...'
-                              : 'Register as patient'}
+                          Explore departments
                         </Button>
-                        {isRegistered ? (
-                          <>
-                            <p className="text-xs text-muted-foreground">
-                              You&apos;re registered. Add details in
-                              your Profile.
-                            </p>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={handleGoToProfile}
-                            >
-                              Go to Profile
-                            </Button>
-                          </>
-                        ) : null}
-                        {hasUnexpectedRegistrationStatusError ? (
-                          <p className="text-xs text-destructive">
-                            Unable to verify registration status right
-                            now.
-                          </p>
-                        ) : null}
+
+                        {isAuthenticated && user ? (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="min-w-36 bg-background/70 dark:border-zinc-200/20 dark:bg-slate-900/70 dark:text-slate-100"
+                            disabled={
+                              isRegistered ||
+                              registerMutation.isPending ||
+                              meQuery.isLoading ||
+                              isRegistrationCheckPending
+                            }
+                            loading={registerMutation.isPending}
+                            onClick={handleRegisterAsPatient}
+                          >
+                            {isRegistered
+                              ? 'Already registered'
+                              : isRegistrationCheckPending
+                                ? 'Checking...'
+                                : 'Register as patient'}
+                          </Button>
+                        ) : (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="min-w-36 bg-background/70 dark:border-zinc-200/20 dark:bg-slate-900/70 dark:text-slate-100"
+                            onClick={() =>
+                              navigate({
+                                to: '/login',
+                                search: {
+                                  reason: undefined,
+                                  redirect: `/landing/${slug || tenant.id}`,
+                                },
+                              })
+                            }
+                          >
+                            Sign in to register
+                          </Button>
+                        )}
                       </div>
-                    ) : (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() =>
-                          navigate({
-                            to: '/login',
-                            search: {
-                              reason: undefined,
-                              redirect: `/landing/${slug || tenant.id}`,
-                            },
-                          })
-                        }
-                      >
-                        Sign in to register
-                      </Button>
-                    )}
+
+                      {isAuthenticated && user && isRegistered ? (
+                        <div className="flex flex-wrap items-center gap-3 rounded-2xl border bg-background/70 px-4 py-3 text-sm shadow-sm dark:border-zinc-200/20 dark:bg-slate-900/65">
+                          <p className="text-muted-foreground dark:text-slate-300">
+                            You&apos;re registered. Complete your
+                            patient details from your profile.
+                          </p>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() =>
+                              navigate({
+                                to: '/dashboard/profile',
+                              })
+                            }
+                          >
+                            Go to Profile
+                          </Button>
+                        </div>
+                      ) : null}
+
+                      {hasUnexpectedRegistrationStatusError ? (
+                        <p className="text-sm text-destructive">
+                          Unable to verify registration status right
+                          now.
+                        </p>
+                      ) : null}
+
+                      <div className="grid gap-3 sm:grid-cols-3">
+                        <div className="rounded-2xl border bg-background/70 p-4 shadow-sm dark:border-zinc-200/20 dark:bg-slate-900/65">
+                          <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground dark:text-slate-400">
+                            Departments
+                          </p>
+                          <p className="mt-2 text-2xl font-semibold">
+                            {departments.length}
+                          </p>
+                        </div>
+                        <div className="rounded-2xl border bg-background/70 p-4 shadow-sm dark:border-zinc-200/20 dark:bg-slate-900/65">
+                          <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground dark:text-slate-400">
+                            Services
+                          </p>
+                          <p className="mt-2 text-2xl font-semibold">
+                            {serviceCount}
+                          </p>
+                        </div>
+                        <div className="rounded-2xl border bg-background/70 p-4 shadow-sm dark:border-zinc-200/20 dark:bg-slate-900/65">
+                          <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground dark:text-slate-400">
+                            Plans
+                          </p>
+                          <p className="mt-2 text-2xl font-semibold">
+                            {plans.length}
+                          </p>
+                        </div>
+                      </div>
+
+                      {featuredDepartments.length > 0 && (
+                        <div className="space-y-3">
+                          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground dark:text-slate-400">
+                            Popular care areas
+                          </p>
+                          <ul className="flex flex-wrap gap-2">
+                            {featuredDepartments.map((d) => (
+                              <li
+                                key={d.id}
+                                className="rounded-full border bg-background/70 px-3 py-1.5 text-sm text-foreground/80 shadow-sm dark:border-zinc-200/20 dark:bg-slate-900/65 dark:text-slate-100"
+                              >
+                                {d.name}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+
+                    <aside className="relative">
+                      <div className="overflow-hidden rounded-[1.75rem] border border-white/50 bg-background/85 p-3 shadow-[0_24px_60px_-32px_rgba(15,23,42,0.6)] backdrop-blur dark:border-zinc-200/20 dark:bg-slate-950/70 dark:shadow-[0_24px_60px_-32px_rgba(2,6,23,0.95)]">
+                        <div className="relative h-[260px] overflow-hidden rounded-[1.25rem] bg-muted/40 dark:bg-slate-900/70 sm:h-[320px]">
+                          <>
+                            <img
+                              src={heroImage}
+                              alt={title}
+                              className="h-full w-full object-cover"
+                            />
+                            <div className="absolute inset-0 bg-gradient-to-t from-slate-950/60 via-slate-900/10 to-transparent" />
+                          </>
+
+                          <div className="absolute inset-x-0 bottom-0 p-5 text-white">
+                            <div className="flex items-center gap-3">
+                              {logo ? (
+                                <img
+                                  src={logo}
+                                  alt={title}
+                                  className="h-12 w-12 rounded-xl bg-white/90 p-1 object-contain"
+                                />
+                              ) : (
+                                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white/85 text-sm font-semibold text-slate-900">
+                                  {title
+                                    .split(' ')
+                                    .map((p) => p[0])
+                                    .join('')
+                                    .slice(0, 2)}
+                                </div>
+                              )}
+                              <div>
+                                <p className="text-xs uppercase tracking-[0.18em] text-white/70">
+                                  Welcome
+                                </p>
+                                <p
+                                  className="text-lg font-semibold"
+                                  style={fontHeaderStyle}
+                                >
+                                  {title}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="grid gap-3 p-4 sm:grid-cols-2">
+                          <div className="rounded-2xl border bg-card/70 p-4 dark:border-zinc-200/20 dark:bg-slate-900/70">
+                            <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground dark:text-slate-400">
+                              Tenant
+                            </p>
+                            <code className="mt-2 inline-flex rounded bg-muted px-2 py-1 text-xs dark:bg-slate-800 dark:text-slate-100">
+                              {slug || tenant.name}
+                            </code>
+                          </div>
+                          <div className="rounded-2xl border bg-card/70 p-4 dark:border-zinc-200/20 dark:bg-slate-900/70">
+                            <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground dark:text-slate-400">
+                              Products
+                            </p>
+                            <p className="mt-2 text-sm text-muted-foreground dark:text-slate-300">
+                              {availableProducts.length} available for
+                              this tenant.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </aside>
                   </div>
                 </div>
-                <aside className="mt-4 flex flex-1 flex-col gap-3 rounded-xl border bg-card/60 p-4 text-sm shadow-sm sm:p-5 lg:mt-0 lg:max-w-sm">
-                  <div className="relative h-40 overflow-hidden rounded-lg border bg-muted/40">
-                    {heroImage ? (
-                      <img
-                        src={heroImage}
-                        alt={title}
-                        className="h-full w-full object-cover"
-                      />
-                    ) : (
-                      <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
-                        Hero image not set
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {logo ? (
-                      <img
-                        src={logo}
-                        alt={title}
-                        className="h-8 w-8 rounded-md object-contain"
-                      />
-                    ) : (
-                      <div className="bg-primary/10 text-primary flex h-8 w-8 items-center justify-center rounded-md text-xs font-semibold">
-                        {title
-                          .split(' ')
-                          .map((p) => p[0])
-                          .join('')
-                          .slice(0, 2)}
-                      </div>
-                    )}
-                    <p className="text-xs text-muted-foreground">
-                      Brand preview
-                    </p>
-                  </div>
-                  <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    At a glance
-                  </h2>
-                  <div className="space-y-2 text-sm">
-                    <p>
-                      <span className="text-muted-foreground">
-                        Tenant:
-                      </span>{' '}
-                      <code className="rounded bg-muted px-1 text-xs">
-                        {slug || tenant.name}
-                      </code>
-                    </p>
-                    {departments.length > 0 && (
-                      <p className="text-muted-foreground">
-                        {departments.length} department(s) with
-                        services listed below.
-                      </p>
-                    )}
-                  </div>
-                </aside>
               </section>
             </TabsContent>
 
             <TabsContent value="departments" className="mt-0 flex-1">
-              <section className="mx-auto max-w-5xl space-y-4">
-                <div className="space-y-1">
-                  <h2 className="text-xl font-semibold tracking-tight sm:text-2xl">
-                    Departments & services
-                  </h2>
-                  <p className="text-sm text-muted-foreground sm:text-base">
-                    {departments.length > 0
-                      ? 'Departments and services for this tenant.'
-                      : 'No departments configured yet.'}
-                  </p>
+              <section className="mx-auto container space-y-6">
+                <div className="overflow-hidden rounded-[2rem] border border-white/40 bg-card/75 p-6 shadow-[0_24px_60px_-36px_rgba(15,23,42,0.45)] backdrop-blur dark:border-zinc-200/20 dark:bg-slate-950/55 dark:shadow-[0_24px_60px_-36px_rgba(2,6,23,0.9)] sm:p-8">
+                  <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+                    <div className="max-w-3xl space-y-3">
+                      <p
+                        className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground dark:text-slate-400"
+                        style={
+                          brand.secondary
+                            ? { color: brand.secondary }
+                            : undefined
+                        }
+                      >
+                        Care directory
+                      </p>
+                      <h2
+                        className="text-2xl font-semibold tracking-tight sm:text-3xl"
+                        style={fontHeaderStyle}
+                      >
+                        Departments & services
+                      </h2>
+                      <p className="text-sm leading-6 text-muted-foreground dark:text-slate-300 sm:text-base">
+                        {departments.length > 0
+                          ? 'Browse the main departments, discover available services, and find the best point of care for your visit.'
+                          : 'No departments configured yet.'}
+                      </p>
+                    </div>
+
+                    <div className="grid gap-3 sm:grid-cols-3">
+                      <div className="rounded-2xl border bg-background/70 px-4 py-3 shadow-sm dark:border-zinc-200/20 dark:bg-slate-900/65">
+                        <p className="text-[0.7rem] uppercase tracking-[0.18em] text-muted-foreground dark:text-slate-400">
+                          Departments
+                        </p>
+                        <p className="mt-2 text-2xl font-semibold">
+                          {departments.length}
+                        </p>
+                      </div>
+                      <div className="rounded-2xl border bg-background/70 px-4 py-3 shadow-sm dark:border-zinc-200/20 dark:bg-slate-900/65">
+                        <p className="text-[0.7rem] uppercase tracking-[0.18em] text-muted-foreground dark:text-slate-400">
+                          Services
+                        </p>
+                        <p className="mt-2 text-2xl font-semibold">
+                          {serviceCount}
+                        </p>
+                      </div>
+                      <div className="rounded-2xl border bg-background/70 px-4 py-3 shadow-sm dark:border-zinc-200/20 dark:bg-slate-900/65">
+                        <p className="text-[0.7rem] uppercase tracking-[0.18em] text-muted-foreground dark:text-slate-400">
+                          Featured
+                        </p>
+                        <p className="mt-2 text-sm font-medium text-foreground/80 dark:text-slate-100">
+                          {featuredDepartments[0]?.name ??
+                            'Coming soon'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
                 {departments.length > 0 ? (
-                  <div className="grid gap-4 md:grid-cols-2">
-                    {departments.map((dept) => (
-                      <article
-                        key={dept.id}
-                        className="flex h-full flex-col rounded-xl border bg-card/60 p-4 shadow-sm"
-                      >
-                        <div className="flex items-start justify-between gap-3">
-                          <div>
-                            <h3 className="text-sm font-semibold sm:text-base">
-                              {dept.name}
-                            </h3>
-                            {dept.location && (
-                              <p className="text-xs text-muted-foreground sm:text-sm">
-                                {dept.location}
+                  <div className="grid gap-5 lg:grid-cols-2">
+                    {departments.map((dept, index) => {
+                      return (
+                        <article
+                          key={dept.id}
+                          className="group relative flex h-full flex-col overflow-hidden rounded-[1.75rem] border bg-card/80 p-5  transition duration-300 hover:-translate-y-1  dark:border-zinc-200/20 dark:bg-slate-950/65  sm:p-6"
+                        >
+                          <div className="pointer-events-none absolute inset-x-0 top-0 h-24  opacity-80 dark:from-cyan-300/10 dark:to-transparent" />
+
+                          <div className="relative flex items-start justify-between gap-4">
+                            <div className="space-y-3">
+                              <div className="flex items-center gap-3">
+                                <div
+                                  className="flex h-11 w-11 items-center justify-center rounded-2xl border bg-background/80 text-sm font-semibold shadow-sm dark:border-zinc-200/20 dark:bg-slate-900/80"
+                                  style={
+                                    brand.primary
+                                      ? {
+                                          borderColor:
+                                            resolvedTheme === 'dark'
+                                              ? 'rgba(226,232,240,0.22)'
+                                              : `${brand.primary}55`,
+                                          color: 'white',
+                                        }
+                                      : undefined
+                                  }
+                                >
+                                  {String(index + 1).padStart(2, '0')}
+                                </div>
+                                <div>
+                                  <h3 className="text-lg font-semibold sm:text-xl">
+                                    {dept.name}
+                                  </h3>
+                                  {dept.location ? (
+                                    <p className="text-sm text-muted-foreground dark:text-slate-300">
+                                      {dept.location}
+                                    </p>
+                                  ) : null}
+                                </div>
+                              </div>
+
+                              <div className="flex flex-wrap gap-2">
+                                <span className="rounded-full border bg-background/70 px-3 py-1 text-[0.7rem] font-medium uppercase tracking-[0.14em] text-muted-foreground dark:border-zinc-200/20 dark:bg-slate-900/70 dark:text-slate-300">
+                                  {dept.services.length} service
+                                  {dept.services.length === 1
+                                    ? ''
+                                    : 's'}
+                                </span>
+                                {dept.phone_number ? (
+                                  <span className="rounded-full border bg-background/70 px-3 py-1 text-[0.7rem] text-muted-foreground dark:border-zinc-200/20 dark:bg-slate-900/70 dark:text-slate-300">
+                                    {dept.phone_number}
+                                  </span>
+                                ) : null}
+                                {dept.email ? (
+                                  <span className="rounded-full border bg-background/70 px-3 py-1 text-[0.7rem] text-muted-foreground dark:border-zinc-200/20 dark:bg-slate-900/70 dark:text-slate-300">
+                                    {dept.email}
+                                  </span>
+                                ) : null}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="relative mt-5 flex flex-wrap gap-2">
+                            {dept.services.length > 0 ? (
+                              dept.services.map((service) => (
+                                <span
+                                  key={service.id}
+                                  className="rounded-full border bg-background/75 px-3 py-1.5 text-xs font-medium shadow-sm dark:border-zinc-200/20 dark:bg-slate-900/75 dark:text-slate-100"
+                                  style={
+                                    brand.primary
+                                      ? {
+                                          borderColor:
+                                            resolvedTheme === 'dark'
+                                              ? 'rgba(226,232,240,0.22)'
+                                              : `${brand.primary}55`,
+                                          color: brand.primary,
+                                        }
+                                      : undefined
+                                  }
+                                >
+                                  {service.name}
+                                </span>
+                              ))
+                            ) : (
+                              <p className="text-sm text-muted-foreground dark:text-slate-300">
+                                No services listed.
                               </p>
                             )}
                           </div>
-                          {(dept.phone_number || dept.email) && (
-                            <div className="space-y-0.5 text-right text-[0.7rem] text-muted-foreground">
-                              {dept.phone_number && (
-                                <p>{dept.phone_number}</p>
-                              )}
-                              {dept.email && <p>{dept.email}</p>}
+
+                          {dept.services.some(
+                            (s) => s.description
+                          ) ? (
+                            <div className="relative mt-5 rounded-2xl border bg-background/65 p-4 dark:border-zinc-200/20 dark:bg-slate-900/65">
+                              <p className="text-[0.7rem] font-semibold uppercase tracking-[0.16em] text-muted-foreground dark:text-slate-400">
+                                Service highlights
+                              </p>
+                              <p className="mt-2 text-sm leading-6 text-muted-foreground dark:text-slate-300">
+                                {dept.services
+                                  .filter((s) => s.description)
+                                  .slice(0, 2)
+                                  .map((s) => s.description)
+                                  .join(' • ')}
+                              </p>
                             </div>
-                          )}
-                        </div>
-
-                        <div className="mt-3 flex flex-wrap gap-2">
-                          {dept.services.length > 0 ? (
-                            dept.services.map((service) => (
-                              <span
-                                key={service.id}
-                                className="rounded-full border px-2 py-1 text-xs"
-                                style={
-                                  brand.primary
-                                    ? {
-                                        borderColor: brand.primary,
-                                        color: brand.primary,
-                                      }
-                                    : undefined
-                                }
-                              >
-                                {service.name}
-                              </span>
-                            ))
-                          ) : (
-                            <p className="text-xs text-muted-foreground">
-                              No services listed.
-                            </p>
-                          )}
-                        </div>
-
-                        {dept.services.some((s) => s.description) && (
-                          <p className="mt-3 text-xs text-muted-foreground">
-                            {dept.services
-                              .filter((s) => s.description)
-                              .slice(0, 2)
-                              .map((s) => s.description)
-                              .join(' • ')}
-                          </p>
-                        )}
-                      </article>
-                    ))}
+                          ) : null}
+                        </article>
+                      );
+                    })}
                   </div>
                 ) : (
-                  <div className="rounded-xl border bg-card/60 p-6 text-center text-sm text-muted-foreground">
-                    No departments configured yet.
+                  <div className="rounded-[1.75rem] border bg-card/70 p-10 text-center shadow-sm dark:border-zinc-200/20 dark:bg-slate-950/60">
+                    <p className="text-base font-medium">
+                      No departments configured yet.
+                    </p>
+                    <p className="mt-2 text-sm text-muted-foreground dark:text-slate-300">
+                      Department information will appear here once
+                      this tenant adds care areas and services.
+                    </p>
                   </div>
                 )}
               </section>
@@ -1446,21 +1652,72 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
                   <div className="rounded-xl border bg-card/60 p-6 text-center text-sm text-muted-foreground">
                     No products configured yet.
                   </div>
-                )}
+                </div>
               </section>
             </TabsContent>
 
             <TabsContent value="plans" className="mt-0 flex-1">
-              <section className="mx-auto max-w-5xl space-y-4">
-                <div className="space-y-1">
-                  <h2 className="text-xl font-semibold tracking-tight sm:text-2xl">
-                    Plans &amp; memberships
-                  </h2>
-                  <p className="text-sm text-muted-foreground sm:text-base">
-                    {plans.length > 0
-                      ? 'Explore tenant-specific pricing and coverage limits for care packages.'
-                      : 'No plans available yet.'}
-                  </p>
+              <section className="mx-auto container space-y-6">
+                <div className="overflow-hidden rounded-[2rem] border border-white/40 bg-card/75 p-6 shadow-[0_24px_60px_-36px_rgba(15,23,42,0.45)] backdrop-blur sm:p-8">
+                  <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+                    <div className="max-w-3xl space-y-3">
+                      <p
+                        className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground"
+                        style={
+                          brand.secondary
+                            ? { color: brand.secondary }
+                            : undefined
+                        }
+                      >
+                        Membership plans
+                      </p>
+                      <h2
+                        className="text-2xl font-semibold tracking-tight sm:text-3xl"
+                        style={fontHeaderStyle}
+                      >
+                        Plans &amp; memberships
+                      </h2>
+                      <p className="text-sm leading-6 text-muted-foreground sm:text-base">
+                        {plans.length > 0
+                          ? 'Choose the plan that fits your care needs, compare limits, and subscribe directly from this page.'
+                          : 'No plans available yet.'}
+                      </p>
+                    </div>
+
+                    <div className="grid gap-3 sm:grid-cols-3">
+                      <div className="rounded-2xl border bg-background/70 px-4 py-3 shadow-sm">
+                        <p className="text-[0.7rem] uppercase tracking-[0.18em] text-muted-foreground">
+                          Available
+                        </p>
+                        <p className="mt-2 text-2xl font-semibold">
+                          {plans.length}
+                        </p>
+                      </div>
+                      <div className="rounded-2xl border bg-background/70 px-4 py-3 shadow-sm">
+                        <p className="text-[0.7rem] uppercase tracking-[0.18em] text-muted-foreground">
+                          Starting at
+                        </p>
+                        <p className="mt-2 text-2xl font-semibold">
+                          {plans.length > 0
+                            ? `€${Math.min(
+                                ...plans.map((plan) =>
+                                  Number(plan.price)
+                                )
+                              ).toFixed(2)}`
+                            : '€0.00'}
+                        </p>
+                      </div>
+                      <div className="rounded-2xl border bg-background/70 px-4 py-3 shadow-sm">
+                        <p className="text-[0.7rem] uppercase tracking-[0.18em] text-muted-foreground">
+                          Active plan
+                        </p>
+                        <p className="mt-2 text-sm font-medium text-foreground/80">
+                          {plans.find((p) => p.id === selectedPlanId)
+                            ?.name ?? 'None selected'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
                 {checkoutRecovery && isCheckoutNoticeVisible ? (
@@ -1685,15 +1942,17 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
 
                     return (
                       <div
-                        className="flex items-center justify-between rounded-xl border-2 p-4"
+                        className="flex flex-col gap-4 rounded-[1.75rem] border p-5 shadow-sm sm:flex-row sm:items-center sm:justify-between"
                         style={{
                           borderColor: brand.primary ?? undefined,
-                          backgroundColor: `${brand.primary ?? '#2563eb'}10`,
+                          background: `linear-gradient(135deg, ${
+                            brand.primary ?? '#2563eb'
+                          }14 0%, rgba(255,255,255,0.9) 100%)`,
                         }}
                       >
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-4">
                           <div
-                            className="flex h-8 w-8 items-center justify-center rounded-full text-white text-sm font-bold"
+                            className="flex h-11 w-11 items-center justify-center rounded-2xl text-white text-base font-bold shadow-sm"
                             style={{
                               backgroundColor:
                                 brand.primary ?? '#2563eb',
@@ -1702,10 +1961,13 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
                             ✓
                           </div>
                           <div>
-                            <p className="text-sm font-semibold">
+                            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                              Your current plan
+                            </p>
+                            <p className="mt-1 text-lg font-semibold">
                               {selected.name}
                             </p>
-                            <p className="text-xs text-muted-foreground">
+                            <p className="text-sm text-muted-foreground">
                               €{Number(selected.price).toFixed(2)}
                               {selected.duration
                                 ? ` / ${selected.duration} days`
@@ -1716,6 +1978,7 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
                         <Button
                           variant="ghost"
                           size="sm"
+                          className="sm:min-w-32"
                           disabled={cancelMutation.isPending}
                           onClick={() => {
                             if (tenantId)
@@ -1731,9 +1994,13 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
                   })()}
 
                 {plans.length > 0 ? (
-                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                    {plans.map((plan) => {
+                  <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+                    {plans.map((plan, index) => {
                       const isSelected = selectedPlanId === plan.id;
+                      const isLockedByActiveEnrollment =
+                        enrollmentData?.status === 'ACTIVE' &&
+                        enrollmentData.user_tenant_plan_id !==
+                          plan.id;
                       const isCheckoutPending =
                         enrollMutation.isPending &&
                         pendingPlanId === plan.id;
@@ -1742,14 +2009,36 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
                         checkoutRecovery.phase !==
                           'attention_required';
                       const isFreePlan = Number(plan.price) <= 0;
+                      const featureItems = [
+                        {
+                          label: 'Appointments',
+                          value:
+                            plan.max_appointments != null
+                              ? String(plan.max_appointments)
+                              : 'Unlimited',
+                        },
+                        {
+                          label: 'Consultations',
+                          value:
+                            plan.max_consultations != null
+                              ? String(plan.max_consultations)
+                              : 'Unlimited',
+                        },
+                        {
+                          label: 'Billing cycle',
+                          value: plan.duration
+                            ? `${plan.duration} day${
+                                plan.duration !== 1 ? 's' : ''
+                              }`
+                            : 'Flexible',
+                        },
+                      ];
 
                       return (
                         <article
                           key={plan.id}
-                          className={`flex h-full flex-col rounded-xl border p-5 shadow-sm transition-all ${
-                            isSelected
-                              ? 'ring-2 bg-card/80'
-                              : 'bg-card/60'
+                          className={`relative flex h-full flex-col overflow-hidden rounded-[1.85rem] border bg-card/85 shadow-[0_22px_50px_-38px_rgba(15,23,42,0.7)] ${
+                            isSelected ? 'ring-2' : ''
                           }`}
                           style={
                             isSelected
@@ -1758,115 +2047,186 @@ export function TenantLanding({ landingData }: TenantLandingProps) {
                                     brand.primary ?? undefined,
                                   outlineColor:
                                     brand.primary ?? undefined,
+                                  boxShadow: `0 0 0 1px ${
+                                    brand.primary ?? '#2563eb'
+                                  }`,
                                 }
-                              : undefined
+                              : brand.primary
+                                ? {
+                                    borderColor: `${brand.primary}33`,
+                                  }
+                                : undefined
                           }
                         >
-                          <div className="flex items-start justify-between gap-3">
-                            <h3 className="text-sm font-semibold sm:text-base">
-                              {plan.name}
-                            </h3>
-                            <span className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
-                              {isSelected ? 'Active' : 'Available'}
-                            </span>
-                          </div>
-
-                          <p className="mt-3 text-2xl font-bold tracking-tight">
-                            €{Number(plan.price).toFixed(2)}
-                          </p>
-                          {plan.duration && (
-                            <p className="text-xs text-muted-foreground">
-                              {plan.duration} day
-                              {plan.duration !== 1 ? 's' : ''}{' '}
-                              duration
-                            </p>
-                          )}
-
-                          <p className="mt-3 flex-1 text-sm text-muted-foreground">
-                            {plan.description ||
-                              'No description provided.'}
-                          </p>
-
-                          <div className="mt-4 space-y-2 border-t pt-3">
-                            <div className="flex items-center justify-between text-sm">
-                              <span className="text-muted-foreground">
-                                Appointments
-                              </span>
-                              <span className="font-medium">
-                                {plan.max_appointments != null
-                                  ? plan.max_appointments
-                                  : 'Unlimited'}
-                              </span>
-                            </div>
-                            <div className="flex items-center justify-between text-sm">
-                              <span className="text-muted-foreground">
-                                Consultations
-                              </span>
-                              <span className="font-medium">
-                                {plan.max_consultations != null
-                                  ? plan.max_consultations
-                                  : 'Unlimited'}
-                              </span>
-                            </div>
-                          </div>
-
-                          <Button
-                            size="sm"
-                            className="mt-4 w-full"
-                            variant={
-                              isSelected ? 'outline' : 'default'
-                            }
-                            disabled={
-                              isSelected ||
-                              enrollMutation.isPending ||
-                              isRecoveryLocked
-                            }
-                            style={
-                              isSelected
-                                ? {
-                                    borderColor:
-                                      brand.primary ?? undefined,
-                                    color: brand.primary ?? undefined,
-                                  }
-                                : brand.primary
-                                  ? {
-                                      backgroundColor: brand.primary,
-                                      borderColor: brand.primary,
-                                    }
-                                  : undefined
-                            }
-                            onClick={() => {
-                              if (!isAuthenticated) {
-                                toast.error(
-                                  'Please log in to subscribe to a plan.'
-                                );
-                                return;
-                              }
-
-                              enrollMutation.mutate({
-                                tenantId: tenant.id,
-                                planId: plan.id,
-                                price: Number(plan.price),
-                              });
+                          <div
+                            className="relative px-5 py-5 sm:px-6"
+                            style={{
+                              background: `linear-gradient(135deg, ${
+                                brand.primary ?? '#2563eb'
+                              }18 0%, ${
+                                brand.secondary ?? '#0f172a'
+                              }10 100%)`,
                             }}
                           >
-                            {isSelected
-                              ? 'You have selected this plan'
-                              : isCheckoutPending
-                                ? isFreePlan
-                                  ? 'Activating free plan…'
-                                  : 'Redirecting to payment…'
-                                : isFreePlan
-                                  ? 'Choose this free plan'
-                                  : 'Subscribe to this plan'}
-                          </Button>
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="space-y-2">
+                                <div
+                                  className="flex h-11 w-11 items-center justify-center rounded-2xl border bg-background/80 text-sm font-semibold shadow-sm"
+                                  style={
+                                    brand.primary
+                                      ? {
+                                          borderColor: `${brand.primary}55`,
+                                          color: brand.primary,
+                                        }
+                                      : undefined
+                                  }
+                                >
+                                  {String(index + 1).padStart(2, '0')}
+                                </div>
+                                <div>
+                                  <h3 className="text-xl font-semibold">
+                                    {plan.name}
+                                  </h3>
+                                  <p className="text-sm text-muted-foreground">
+                                    {plan.duration
+                                      ? `${plan.duration} day${
+                                          plan.duration !== 1
+                                            ? 's'
+                                            : ''
+                                        } access`
+                                      : 'Flexible duration'}
+                                  </p>
+                                </div>
+                              </div>
+                              <span
+                                className="inline-flex items-center rounded-full border bg-background/80 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] shadow-sm"
+                                style={
+                                  isSelected
+                                    ? {
+                                        borderColor:
+                                          brand.primary ?? undefined,
+                                        color:
+                                          brand.primary ?? undefined,
+                                      }
+                                    : undefined
+                                }
+                              >
+                                {isSelected ? 'Active' : 'Available'}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="flex flex-1 flex-col p-5 sm:p-6">
+                            <div className="flex items-end justify-between gap-3">
+                              <div>
+                                <p className="text-4xl font-bold tracking-tight">
+                                  €{Number(plan.price).toFixed(2)}
+                                </p>
+                                <p className="mt-1 text-xs uppercase tracking-[0.16em] text-muted-foreground">
+                                  {plan.duration
+                                    ? `Per ${plan.duration} day${
+                                        plan.duration !== 1 ? 's' : ''
+                                      }`
+                                    : 'Custom period'}
+                                </p>
+                              </div>
+                            </div>
+
+                            <p className="mt-4 min-h-16 text-sm leading-6 text-muted-foreground">
+                              {plan.description ||
+                                'A structured care membership tailored for ongoing access and recurring support.'}
+                            </p>
+
+                            <div className="mt-5 space-y-3 rounded-2xl border bg-background/65 p-4">
+                              {featureItems.map((item) => (
+                                <div
+                                  key={item.label}
+                                  className="flex items-center justify-between gap-4 text-sm"
+                                >
+                                  <span className="text-muted-foreground">
+                                    {item.label}
+                                  </span>
+                                  <span className="font-medium">
+                                    {item.value}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+
+                            <div className="mt-5 rounded-2xl border bg-background/50 px-4 py-3">
+                              <p className="text-[0.7rem] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                                Ideal for
+                              </p>
+                              <p className="mt-2 text-sm text-muted-foreground">
+                                {plan.max_consultations == null &&
+                                plan.max_appointments == null
+                                  ? 'Patients who want broad, ongoing access without strict limits.'
+                                  : 'Patients who want clearer usage limits and predictable coverage.'}
+                              </p>
+                            </div>
+
+                            <Button
+                              size="sm"
+                              className="mt-5 w-full"
+                              variant={
+                                isSelected ? 'outline' : 'default'
+                              }
+                              disabled={
+                                isSelected ||
+                                isLockedByActiveEnrollment ||
+                                enrollMutation.isPending ||
+                                isRecoveryLocked
+                              }
+                              style={
+                                isSelected
+                                  ? {
+                                      borderColor:
+                                        brand.primary ?? undefined,
+                                      color:
+                                        brand.primary ?? undefined,
+                                    }
+                                  : primaryButtonStyle
+                              }
+                              onClick={() => {
+                                if (!isAuthenticated) {
+                                  toast.error(
+                                    'Please log in to subscribe to a plan.'
+                                  );
+                                  return;
+                                }
+                                enrollMutation.mutate({
+                                  tenantId: tenant.id,
+                                  planId: plan.id,
+                                  price: Number(plan.price),
+                                });
+                              }}
+                            >
+                              {isSelected
+                                ? 'You have selected this plan'
+                                : isLockedByActiveEnrollment
+                                  ? 'Unavailable until current plan expires'
+                                  : isCheckoutPending
+                                    ? isFreePlan
+                                      ? 'Activating free plan…'
+                                      : 'Redirecting to payment…'
+                                    : isFreePlan
+                                      ? 'Choose this free plan'
+                                      : 'Subscribe to this plan'}
+                            </Button>
+                          </div>
                         </article>
                       );
                     })}
                   </div>
                 ) : (
-                  <div className="rounded-xl border bg-card/60 p-6 text-center text-sm text-muted-foreground">
-                    No plans configured yet.
+                  <div className="rounded-[1.75rem] border bg-card/70 p-10 text-center shadow-sm">
+                    <p className="text-base font-medium">
+                      No plans configured yet.
+                    </p>
+                    <p className="mt-2 text-sm text-muted-foreground">
+                      Membership options will appear here once this
+                      tenant publishes plan pricing and coverage.
+                    </p>
                   </div>
                 )}
 

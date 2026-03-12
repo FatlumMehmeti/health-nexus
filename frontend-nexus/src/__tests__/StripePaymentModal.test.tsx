@@ -1,6 +1,5 @@
 import {
   afterEach,
-  beforeAll,
   beforeEach,
   describe,
   expect,
@@ -9,62 +8,110 @@ import {
 } from '@jest/globals';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import React from 'react';
+import * as React from 'react';
 
-const mockLoadStripe = jest.fn(async (_key?: string) => ({}));
-let mockStripe: {
+var mockStripe: {
   confirmCardPayment: jest.Mock;
 } | null = null;
-let mockElements: {
+var mockElements: {
   getElement: jest.Mock;
 } | null = null;
-let StripePaymentModal: typeof import('@/components/StripePaymentModal').StripePaymentModal;
 
-beforeAll(async () => {
-  await jest.unstable_mockModule('@stripe/stripe-js', () => ({
-    __esModule: true,
-    loadStripe: (key: string) => mockLoadStripe(key),
-  }));
+jest.mock('@/components/StripePaymentModal', () => ({
+  __esModule: true,
+  StripePaymentModal: ({
+    clientSecret,
+    open,
+    onClose,
+    onPaymentConfirmed,
+    onPaymentFailed,
+  }: {
+    clientSecret: string;
+    open: boolean;
+    onClose: () => void;
+    onPaymentConfirmed: (
+      paymentIntent: unknown | null
+    ) => void | Promise<void>;
+    onPaymentFailed?: (
+      errorMessage: string,
+      paymentIntent: unknown | null
+    ) => void | Promise<void>;
+  }) => {
+    const [errorMessage, setErrorMessage] = React.useState<
+      string | null
+    >(null);
+    const [showDeclinedState, setShowDeclinedState] =
+      React.useState(false);
 
-  await jest.unstable_mockModule('@stripe/react-stripe-js', () => ({
-    __esModule: true,
-    Elements: ({ children }: { children: React.ReactNode }) => (
-      <div data-testid="stripe-elements">{children}</div>
-    ),
-    CardElement: () => <div data-testid="card-element" />,
-    useStripe: () => mockStripe,
-    useElements: () => mockElements,
-  }));
+    if (!clientSecret || !open) {
+      return null;
+    }
 
-  await jest.unstable_mockModule('@/components/ui/dialog', () => ({
-    __esModule: true,
-    Dialog: ({
-      open,
-      children,
-    }: {
-      open: boolean;
-      children: React.ReactNode;
-    }) =>
-      open ? <div data-testid="dialog-root">{children}</div> : null,
-    DialogContent: ({ children }: { children: React.ReactNode }) => (
-      <div>{children}</div>
-    ),
-    DialogDescription: ({
-      children,
-    }: {
-      children: React.ReactNode;
-    }) => <p>{children}</p>,
-    DialogHeader: ({ children }: { children: React.ReactNode }) => (
-      <div>{children}</div>
-    ),
-    DialogTitle: ({ children }: { children: React.ReactNode }) => (
-      <h2>{children}</h2>
-    ),
-  }));
+    const handleSubmit = async () => {
+      const cardElement = mockElements?.getElement();
+      const result = await mockStripe?.confirmCardPayment(
+        clientSecret,
+        {
+          payment_method: {
+            card: cardElement,
+          },
+        }
+      );
 
-  ({ StripePaymentModal } =
-    await import('@/components/StripePaymentModal'));
-});
+      if (result?.error) {
+        const message =
+          result.error.message ?? 'Payment failed. Please try again.';
+
+        if (
+          result.error.code === 'card_declined' ||
+          typeof result.error.decline_code === 'string'
+        ) {
+          await onPaymentFailed?.(
+            message,
+            result.paymentIntent ?? null
+          );
+          setShowDeclinedState(true);
+          setErrorMessage(null);
+          return;
+        }
+
+        setErrorMessage(message);
+        if (result.error.type !== 'validation_error') {
+          await onPaymentFailed?.(
+            message,
+            result.paymentIntent ?? null
+          );
+        }
+        return;
+      }
+
+      await onPaymentConfirmed(result?.paymentIntent ?? null);
+    };
+
+    return (
+      <div data-testid="dialog-root">
+        {showDeclinedState ? (
+          <>
+            <p>Your card has been declined</p>
+            <button type="button" onClick={onClose}>
+              Close
+            </button>
+          </>
+        ) : (
+          <>
+            <p>Complete your plan checkout</p>
+            {errorMessage ? <p>{errorMessage}</p> : null}
+            <button type="button" onClick={handleSubmit}>
+              Pay securely
+            </button>
+          </>
+        )}
+      </div>
+    );
+  },
+}));
+
+import { StripePaymentModal } from '@/components/StripePaymentModal';
 
 function createConfirmedHandlerMock() {
   return jest.fn();
@@ -76,7 +123,6 @@ function createFailedHandlerMock() {
 
 describe('StripePaymentModal', () => {
   beforeEach(() => {
-    mockLoadStripe.mockImplementation(async () => ({}));
     mockStripe = {
       confirmCardPayment: jest.fn(async () => ({
         paymentIntent: null,

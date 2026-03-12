@@ -26,6 +26,7 @@ from .appointment import AppointmentStatus
 from .appointment_status_history import AppointmentStatusHistory
 from .report import Report
 from .recommendation import Recommendation
+from .offer_acceptance import OfferAcceptance
 from .product import Product
 from .cart import Cart, CartStatus
 from .cart_item import CartItem
@@ -74,6 +75,7 @@ __all__ = [
     "AppointmentStatusHistory",
     "Report",
     "Recommendation",
+    "OfferAcceptance",
     "Enrollment",
     "UserTenantMembership",
     "EnrollmentStatus",

@@ -16,16 +16,19 @@ from app.models import (
     ContractStatus,
     Appointment,
     AppointmentStatus,
+    AppointmentStatusHistory,
     BrandPalette,
     Department,
     Doctor,
     Enrollment,
     EnrollmentStatusHistory,
+    OfferDelivery,
     Font,
     Lead,
     LeadStatus,
     Patient,
     Product,
+    Recommendation,
     Role,
     Service,
     SubscriptionPlan,
@@ -39,6 +42,7 @@ from app.models import (
     FeatureFlag,
 )
 from app.models.enrollment import EnrollmentStatus
+from app.models.offer_delivery import OfferDeliveryChannel, OfferDeliveryStatus
 
 ROLE_NAMES = [
     "SUPER_ADMIN",
@@ -2198,6 +2202,209 @@ def seed_appointments(session):
     session.commit()
 
 
+def seed_prd12_offer_fixture(session):
+    tenant = session.query(Tenant).filter_by(name="Bluestone Clinic").first()
+    doctor_user = session.query(User).filter_by(email="doctor.one@seed.com").first()
+    client_user = session.query(User).filter_by(email="client.user@seed.com").first()
+
+    if tenant is None or doctor_user is None or client_user is None:
+        return
+
+    doctor = (
+        session.query(Doctor)
+        .filter_by(tenant_id=tenant.id, user_id=doctor_user.id)
+        .first()
+    )
+    patient = (
+        session.query(Patient)
+        .filter_by(tenant_id=tenant.id, user_id=client_user.id)
+        .first()
+    )
+    plan = session.query(UserTenantPlan).filter_by(tenant_id=tenant.id, name="FREE").first()
+    manager = session.query(User).filter_by(email="tenant.manager@seed.com").first()
+
+    if doctor is None or patient is None or plan is None or manager is None:
+        return
+
+    enrollment = (
+        session.query(Enrollment)
+        .filter_by(tenant_id=tenant.id, patient_user_id=client_user.id)
+        .first()
+    )
+    if enrollment is None:
+        enrollment = Enrollment(
+            tenant_id=tenant.id,
+            patient_user_id=client_user.id,
+            user_tenant_plan_id=plan.id,
+            created_by=manager.id,
+            status=EnrollmentStatus.ACTIVE,
+            activated_at=datetime.now(timezone.utc) - timedelta(days=7),
+            expires_at=datetime.now(timezone.utc) + timedelta(days=23),
+        )
+        session.add(enrollment)
+        session.flush()
+    else:
+        enrollment.user_tenant_plan_id = plan.id
+        enrollment.created_by = manager.id
+        enrollment.status = EnrollmentStatus.ACTIVE
+        enrollment.activated_at = datetime.now(timezone.utc) - timedelta(days=7)
+        enrollment.cancelled_at = None
+        enrollment.expires_at = datetime.now(timezone.utc) + timedelta(days=23)
+
+    appointment_dt = datetime(2026, 3, 9, 14, 0, tzinfo=timezone.utc)
+    appointment = (
+        session.query(Appointment)
+        .filter_by(
+            tenant_id=tenant.id,
+            doctor_user_id=doctor.user_id,
+            patient_user_id=client_user.id,
+            appointment_datetime=appointment_dt,
+        )
+        .first()
+    )
+    if appointment is None:
+        appointment = Appointment(
+            tenant_id=tenant.id,
+            doctor_user_id=doctor.user_id,
+            patient_user_id=client_user.id,
+            appointment_datetime=appointment_dt,
+            description="PRD-12 completed appointment with seeded recommendations",
+            status=AppointmentStatus.COMPLETED,
+        )
+        session.add(appointment)
+        session.flush()
+    else:
+        appointment.description = "PRD-12 completed appointment with seeded recommendations"
+        appointment.status = AppointmentStatus.COMPLETED
+
+    history_entries = [
+        (None, AppointmentStatus.REQUESTED, datetime(2026, 3, 7, 9, 0, tzinfo=timezone.utc)),
+        (
+            AppointmentStatus.REQUESTED,
+            AppointmentStatus.CONFIRMED,
+            datetime(2026, 3, 8, 11, 0, tzinfo=timezone.utc),
+        ),
+        (
+            AppointmentStatus.CONFIRMED,
+            AppointmentStatus.COMPLETED,
+            datetime(2026, 3, 9, 15, 0, tzinfo=timezone.utc),
+        ),
+    ]
+    for old_status, new_status, changed_at in history_entries:
+        exists = (
+            session.query(AppointmentStatusHistory)
+            .filter(
+                AppointmentStatusHistory.appointment_id == appointment.id,
+                AppointmentStatusHistory.old_status == old_status,
+                AppointmentStatusHistory.new_status == new_status,
+                AppointmentStatusHistory.changed_at == changed_at,
+            )
+            .first()
+        )
+        if exists is None:
+            session.add(
+                AppointmentStatusHistory(
+                    appointment_id=appointment.id,
+                    old_status=old_status,
+                    new_status=new_status,
+                    changed_by=manager.id,
+                    changed_at=changed_at,
+                )
+            )
+
+    recommendation_payloads = [
+        {
+            "category": "CARE_PLAN",
+            "recommendation_type": "Nutrition care plan",
+            "approved": True,
+        },
+        {
+            "category": "FOLLOW_UP",
+            "recommendation_type": "Follow-up consultation in two weeks",
+            "approved": True,
+        },
+        {
+            "category": "UNSUPPORTED",
+            "recommendation_type": "Should be filtered out",
+            "approved": True,
+        },
+        {
+            "category": "LAB_TEST",
+            "recommendation_type": "Unapproved lab recommendation",
+            "approved": False,
+        },
+    ]
+    existing_recommendations = {
+        (rec.appointment_id, rec.category, rec.recommendation_type): rec
+        for rec in session.query(Recommendation).filter_by(appointment_id=appointment.id).all()
+    }
+    for payload in recommendation_payloads:
+        key = (appointment.id, payload["category"], payload["recommendation_type"])
+        recommendation = existing_recommendations.get(key)
+        if recommendation is None:
+            session.add(
+                Recommendation(
+                    appointment_id=appointment.id,
+                    doctor_id=doctor.user_id,
+                    client_id=client_user.id,
+                    category=payload["category"],
+                    recommendation_type=payload["recommendation_type"],
+                    approved=payload["approved"],
+                )
+            )
+            continue
+
+        recommendation.doctor_id = doctor.user_id
+        recommendation.client_id = client_user.id
+        recommendation.approved = payload["approved"]
+
+    session.flush()
+
+    approved_recommendations = (
+        session.query(Recommendation)
+        .filter(
+            Recommendation.appointment_id == appointment.id,
+            Recommendation.doctor_id == doctor.user_id,
+            Recommendation.client_id == client_user.id,
+            Recommendation.approved == True,
+            Recommendation.category.in_(
+                ["FOLLOW_UP", "CARE_PLAN", "LAB_TEST", "THERAPY", "WELLNESS", "SUPPLEMENT"]
+            ),
+        )
+        .all()
+    )
+    existing_deliveries = {
+        (offer.recommendation_id, offer.client_id): offer
+        for offer in session.query(OfferDelivery)
+        .filter(OfferDelivery.client_id == client_user.id)
+        .all()
+    }
+    sent_at = datetime.now(timezone.utc) - timedelta(days=1)
+    expires_at = datetime.now(timezone.utc) + timedelta(days=13)
+    for recommendation in approved_recommendations:
+        key = (recommendation.id, client_user.id)
+        offer = existing_deliveries.get(key)
+        if offer is None:
+            session.add(
+                OfferDelivery(
+                    recommendation_id=recommendation.id,
+                    client_id=client_user.id,
+                    offer_status=OfferDeliveryStatus.DELIVERED,
+                    delivery_channel=OfferDeliveryChannel.IN_APP,
+                    sent_at=sent_at,
+                    expires_at=expires_at,
+                )
+            )
+            continue
+
+        offer.offer_status = OfferDeliveryStatus.DELIVERED
+        offer.delivery_channel = OfferDeliveryChannel.IN_APP
+        offer.sent_at = sent_at
+        offer.expires_at = expires_at
+
+    session.commit()
+
+
 def run_seed() -> None:
     session = SessionLocal()
     try:
@@ -2230,6 +2437,7 @@ def run_seed() -> None:
         seed_leads(session)
         seed_lead_assignments(session)
         seed_appointments(session)
+        seed_prd12_offer_fixture(session)
         enrollment_count = session.query(Enrollment).count()
         history_count = session.query(EnrollmentStatusHistory).count()
         leads_count = session.query(Lead).count()

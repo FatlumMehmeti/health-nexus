@@ -1,3 +1,4 @@
+from enum import Enum
 from pydantic import BaseModel, ConfigDict
 from datetime import datetime
 from typing import Optional
@@ -15,8 +16,8 @@ class SubscriptionStatsRead(BaseModel):
     doctors_used: int
     patients_used: int
     departments_used: int
-    current_plan_id: int
-    current_plan_name: str
+    current_plan_id: Optional[int]
+    current_plan_name: Optional[str]
 
 
 class TenantSubscriptionBase(BaseModel):
@@ -37,3 +38,29 @@ class TenantSubscriptionRead(TenantSubscriptionBase):
     cancellation_reason: Optional[str]
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class AdminTenantSubscriptionStatus(str, Enum):
+    ACTIVE = "ACTIVE"
+    PENDING = "PENDING"
+    CANCELLED = "CANCELLED"
+    EXPIRED = "EXPIRED"
+
+
+class TenantSubscriptionRequestRead(TenantSubscriptionRead):
+    admin_status: AdminTenantSubscriptionStatus
+    latest_payment_status: Optional[str] = None
+    latest_payment_amount: Optional[float] = None
+
+
+class AdminTenantSubscriptionRead(TenantSubscriptionRequestRead):
+    tenant_name: str
+    subscription_plan_name: str
+    created_at: datetime
+    updated_at: datetime
+    latest_payment_id: Optional[int] = None
+
+
+class AdminTenantSubscriptionTransitionRequest(BaseModel):
+    target: AdminTenantSubscriptionStatus
+    reason: Optional[str] = None

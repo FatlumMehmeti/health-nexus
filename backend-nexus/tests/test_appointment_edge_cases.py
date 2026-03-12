@@ -12,7 +12,7 @@ test_appointment_lifecycle.py:
   • book → confirm → complete happy path
 """
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import pytest
 from fastapi.testclient import TestClient
@@ -47,10 +47,29 @@ def _auth(token: str) -> dict:
     return {"Authorization": f"Bearer {token}"}
 
 
-# Monday 2026-03-09 falls on a working day (Monday)
-_SLOT_1 = "2026-03-09T10:00:00Z"
-_SLOT_2 = "2026-03-09T11:00:00Z"
-_SLOT_3 = "2026-03-10T09:00:00Z"  # Tuesday
+def _future_slot(weekday: int, hour: int) -> str:
+    base_date = (datetime.now(timezone.utc) + timedelta(days=7)).date()
+    days_until_weekday = (weekday - base_date.weekday()) % 7
+    target_date = base_date + timedelta(days=days_until_weekday)
+    return (
+        datetime(
+            target_date.year,
+            target_date.month,
+            target_date.day,
+            hour,
+            0,
+            tzinfo=timezone.utc,
+        )
+        .replace(microsecond=0)
+        .isoformat()
+        .replace("+00:00", "Z")
+    )
+
+
+# Use future working-day slots so the suite remains valid over time.
+_SLOT_1 = _future_slot(0, 10)  # Monday 10:00 UTC
+_SLOT_2 = _future_slot(0, 11)  # Monday 11:00 UTC
+_SLOT_3 = _future_slot(1, 9)  # Tuesday 09:00 UTC
 
 
 # ── fixtures ────────────────────────────────────────────────────────────────

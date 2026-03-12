@@ -16,9 +16,9 @@ import { tenantsService } from '@/services/tenants.service';
 import { useAuthStore } from '@/stores/auth.store';
 import { useQuery } from '@tanstack/react-query';
 import { createFileRoute, Link } from '@tanstack/react-router';
-import { TenantShowcaseSection } from './home/tenant-showcase-section';
-import { HeroSection } from './home/hero-section';
 import { benefits } from './home/data';
+import { HeroSection } from './home/hero-section';
+import { TenantShowcaseSection } from './home/tenant-showcase-section';
 
 export const Route = createFileRoute('/')({
   component: LandingPage,
@@ -39,9 +39,7 @@ export function LandingPage() {
     name: tenant.name,
     image: resolveMediaUrl(tenant.image) ?? '/images/logo.webp',
     logo: resolveMediaUrl(tenant.logo),
-    accent:
-      tenant.brand_color_primary ??
-      'from-slate-900/70',
+    accent: tenant.brand_color_primary ?? 'from-slate-900/70',
   }));
 
   const featuredTenants = displayTenants.slice(0, 4);

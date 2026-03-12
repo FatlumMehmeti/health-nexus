@@ -8,7 +8,9 @@ pytest_plugins = ["tests.integration_prd10.fixtures"]
 
 
 def pytest_configure(config):
-    config.addinivalue_line("markers", "prd10: PRD-10 checkout initiation and idempotency integration tests.")
+    config.addinivalue_line(
+        "markers", "prd10: PRD-10 checkout initiation and idempotency integration tests."
+    )
 
 
 @pytest.fixture(autouse=True)

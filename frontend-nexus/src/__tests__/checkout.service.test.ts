@@ -6,6 +6,32 @@ import {
   jest,
 } from '@jest/globals';
 
+jest.mock('@/lib/api-client', () => ({
+  __esModule: true,
+  apiFetch: async (
+    path: string,
+    options: {
+      method?: string;
+      headers?: Record<string, string>;
+      body?: unknown;
+    } = {}
+  ) => {
+    const response = await fetch(`http://localhost:8000${path}`, {
+      method: options.method,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(options.headers ?? {}),
+      },
+      body:
+        options.body === undefined
+          ? undefined
+          : JSON.stringify(options.body),
+    });
+
+    return response.json();
+  },
+}));
+
 import { checkoutService } from '@/services/checkout.service';
 
 describe('checkout.service', () => {

@@ -4,7 +4,6 @@ import {
   QueryClient,
   QueryClientProvider,
 } from '@tanstack/react-query';
-import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { RouterProvider, createRouter } from '@tanstack/react-router';
 import { ThemeProvider } from 'next-themes';
 import React from 'react';
@@ -42,7 +41,6 @@ ReactDOM.createRoot(root).render(
           <Toaster />
         </TooltipProvider>
       </ThemeProvider>
-      <ReactQueryDevtools buttonPosition="bottom-right" />
     </QueryClientProvider>
   </React.StrictMode>
 );

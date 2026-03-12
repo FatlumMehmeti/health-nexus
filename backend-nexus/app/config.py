@@ -43,6 +43,8 @@ def get_deepseek_api_key() -> str | None:
 
 def get_deepseek_model() -> str:
     return os.getenv("DEEPSEEK_MODEL", "deepseek-chat")
+
+
 def get_stripe_secret_key() -> str | None:
     """Stripe secret API key used for PaymentIntent creation."""
     return os.getenv("STRIPE_SECRET_KEY")

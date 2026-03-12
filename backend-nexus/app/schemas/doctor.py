@@ -30,11 +30,11 @@ class DoctorCreateForTenant(BaseModel):
 
 
 class DoctorUpdate(BaseModel):
-    specialization: Optional[str]
-    education: Optional[str]
-    licence_number: Optional[str]
-    working_hours: Optional[dict]
-    is_active: Optional[bool]
+    specialization: Optional[str] = None
+    education: Optional[str] = None
+    licence_number: Optional[str] = None
+    working_hours: Optional[dict] = None
+    is_active: Optional[bool] = None
 
 
 class DoctorRead(DoctorBase):

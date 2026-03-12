@@ -25,6 +25,7 @@ import { Route as LandingTenantSlugRouteImport } from './routes/landing/$tenantS
 import { Route as DoctorAppointmentsRouteImport } from './routes/doctor/appointments'
 import { Route as DashboardTenantsRouteImport } from './routes/dashboard/tenants'
 import { Route as DashboardTenantRouteImport } from './routes/dashboard/tenant'
+import { Route as DashboardSubscriptionsRouteImport } from './routes/dashboard/subscriptions'
 import { Route as DashboardRolesRouteImport } from './routes/dashboard/roles'
 import { Route as DashboardProfileRouteImport } from './routes/dashboard/profile'
 import { Route as DashboardPermissionsRouteImport } from './routes/dashboard/permissions'
@@ -129,6 +130,11 @@ const DashboardTenantsRoute = DashboardTenantsRouteImport.update({
 const DashboardTenantRoute = DashboardTenantRouteImport.update({
   id: '/tenant',
   path: '/tenant',
+  getParentRoute: () => DashboardRouteRoute,
+} as any)
+const DashboardSubscriptionsRoute = DashboardSubscriptionsRouteImport.update({
+  id: '/subscriptions',
+  path: '/subscriptions',
   getParentRoute: () => DashboardRouteRoute,
 } as any)
 const DashboardRolesRoute = DashboardRolesRouteImport.update({
@@ -289,6 +295,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/permissions': typeof DashboardPermissionsRoute
   '/dashboard/profile': typeof DashboardProfileRoute
   '/dashboard/roles': typeof DashboardRolesRoute
+  '/dashboard/subscriptions': typeof DashboardSubscriptionsRoute
   '/dashboard/tenant': typeof DashboardTenantRouteWithChildren
   '/dashboard/tenants': typeof DashboardTenantsRoute
   '/doctor/appointments': typeof DoctorAppointmentsRoute
@@ -330,6 +337,7 @@ export interface FileRoutesByTo {
   '/dashboard/permissions': typeof DashboardPermissionsRoute
   '/dashboard/profile': typeof DashboardProfileRoute
   '/dashboard/roles': typeof DashboardRolesRoute
+  '/dashboard/subscriptions': typeof DashboardSubscriptionsRoute
   '/dashboard/tenant': typeof DashboardTenantRouteWithChildren
   '/dashboard/tenants': typeof DashboardTenantsRoute
   '/doctor/appointments': typeof DoctorAppointmentsRoute
@@ -374,6 +382,7 @@ export interface FileRoutesById {
   '/dashboard/permissions': typeof DashboardPermissionsRoute
   '/dashboard/profile': typeof DashboardProfileRoute
   '/dashboard/roles': typeof DashboardRolesRoute
+  '/dashboard/subscriptions': typeof DashboardSubscriptionsRoute
   '/dashboard/tenant': typeof DashboardTenantRouteWithChildren
   '/dashboard/tenants': typeof DashboardTenantsRoute
   '/doctor/appointments': typeof DoctorAppointmentsRoute
@@ -419,6 +428,7 @@ export interface FileRouteTypes {
     | '/dashboard/permissions'
     | '/dashboard/profile'
     | '/dashboard/roles'
+    | '/dashboard/subscriptions'
     | '/dashboard/tenant'
     | '/dashboard/tenants'
     | '/doctor/appointments'
@@ -460,6 +470,7 @@ export interface FileRouteTypes {
     | '/dashboard/permissions'
     | '/dashboard/profile'
     | '/dashboard/roles'
+    | '/dashboard/subscriptions'
     | '/dashboard/tenant'
     | '/dashboard/tenants'
     | '/doctor/appointments'
@@ -503,6 +514,7 @@ export interface FileRouteTypes {
     | '/dashboard/permissions'
     | '/dashboard/profile'
     | '/dashboard/roles'
+    | '/dashboard/subscriptions'
     | '/dashboard/tenant'
     | '/dashboard/tenants'
     | '/doctor/appointments'
@@ -656,6 +668,13 @@ declare module '@tanstack/react-router' {
       path: '/tenant'
       fullPath: '/dashboard/tenant'
       preLoaderRoute: typeof DashboardTenantRouteImport
+      parentRoute: typeof DashboardRouteRoute
+    }
+    '/dashboard/subscriptions': {
+      id: '/dashboard/subscriptions'
+      path: '/subscriptions'
+      fullPath: '/dashboard/subscriptions'
+      preLoaderRoute: typeof DashboardSubscriptionsRouteImport
       parentRoute: typeof DashboardRouteRoute
     }
     '/dashboard/roles': {
@@ -896,6 +915,7 @@ interface DashboardRouteRouteChildren {
   DashboardPermissionsRoute: typeof DashboardPermissionsRoute
   DashboardProfileRoute: typeof DashboardProfileRoute
   DashboardRolesRoute: typeof DashboardRolesRoute
+  DashboardSubscriptionsRoute: typeof DashboardSubscriptionsRoute
   DashboardTenantRoute: typeof DashboardTenantRouteWithChildren
   DashboardTenantsRoute: typeof DashboardTenantsRoute
   DashboardIndexRoute: typeof DashboardIndexRoute
@@ -916,6 +936,7 @@ const DashboardRouteRouteChildren: DashboardRouteRouteChildren = {
   DashboardPermissionsRoute: DashboardPermissionsRoute,
   DashboardProfileRoute: DashboardProfileRoute,
   DashboardRolesRoute: DashboardRolesRoute,
+  DashboardSubscriptionsRoute: DashboardSubscriptionsRoute,
   DashboardTenantRoute: DashboardTenantRouteWithChildren,
   DashboardTenantsRoute: DashboardTenantsRoute,
   DashboardIndexRoute: DashboardIndexRoute,
