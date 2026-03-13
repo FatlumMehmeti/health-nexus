@@ -1,5 +1,6 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { SalesConsultationsPanel } from '@/components/SalesConsultationsPanel';
 import {
   Card,
   CardContent,
@@ -19,7 +20,9 @@ import { isApiError } from '@/lib/api-client';
 import { requireAuth } from '@/lib/guards/requireAuth';
 import {
   buildLeadRoadmap,
+  type ConsultationStatus,
   getAllowedLeadTransitions,
+  useLeadConsultations,
   type SalesLeadStatus,
   useClaimLead,
   useCompleteLatestLeadConsultation,
@@ -28,17 +31,20 @@ import {
   useReleaseLead,
   useSalesLead,
   useTransitionLead,
+  useUpdateLeadFollowUp,
 } from '@/services/sales-leads.service';
 import { useAuthStore } from '@/stores/auth.store';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import {
   Building2,
   CalendarClock,
+  ChevronDown,
+  ChevronUp,
   Mail,
   Phone,
   User2,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
 /** Dedicated lead detail page for deep sales work (claim + status transitions). */
@@ -111,6 +117,43 @@ function isReasonRequiredForTransition(
   );
 }
 
+function getFollowUpState(nextActionDueAt: string | null) {
+  if (!nextActionDueAt) {
+    return {
+      label: 'Not Planned',
+      tone: 'border-border bg-muted/20 text-muted-foreground',
+      helper: 'No deadline has been set yet.',
+    };
+  }
+
+  const due = new Date(nextActionDueAt).getTime();
+  const now = Date.now();
+  const hoursUntilDue = (due - now) / (1000 * 60 * 60);
+
+  if (hoursUntilDue < 0) {
+    return {
+      label: 'Overdue',
+      tone: 'border-amber-500/40 bg-amber-500/10 text-amber-300',
+      helper:
+        'This follow-up is past due and should be addressed now.',
+    };
+  }
+
+  if (hoursUntilDue <= 24) {
+    return {
+      label: 'Due Soon',
+      tone: 'border-sky-500/40 bg-sky-500/10 text-sky-300',
+      helper: 'This follow-up is due within the next 24 hours.',
+    };
+  }
+
+  return {
+    label: 'Planned',
+    tone: 'border-emerald-500/40 bg-emerald-500/10 text-emerald-300',
+    helper: 'A next step and deadline are already scheduled.',
+  };
+}
+
 function SalesLeadDetailsPage() {
   const { leadId } = Route.useParams();
   const navigate = useNavigate();
@@ -127,12 +170,20 @@ function SalesLeadDetailsPage() {
   } = useLeadStatusHistory(
     Number.isFinite(leadIdNum) ? leadIdNum : null
   );
+  const {
+    data: leadConsultations,
+    isLoading: isConsultationsLoading,
+    isError: isConsultationsError,
+  } = useLeadConsultations(
+    Number.isFinite(leadIdNum) ? leadIdNum : null
+  );
   const claimLead = useClaimLead();
   const completeLatestLeadConsultation =
     useCompleteLatestLeadConsultation();
   const createLeadConsultation = useCreateLeadConsultation();
   const releaseLead = useReleaseLead();
   const transitionLead = useTransitionLead();
+  const updateLeadFollowUp = useUpdateLeadFollowUp();
   const [nextStatus, setNextStatus] = useState<SalesLeadStatus | ''>(
     ''
   );
@@ -145,6 +196,39 @@ function SalesLeadDetailsPage() {
     useState('Google Meet');
   const [consultationMeetingLink, setConsultationMeetingLink] =
     useState('');
+  const [
+    leadConsultationStatusFilter,
+    setLeadConsultationStatusFilter,
+  ] = useState<'ALL' | ConsultationStatus>('ALL');
+  const [consultationsOpen, setConsultationsOpen] = useState(true);
+  const [historyOpen, setHistoryOpen] = useState(true);
+  const [nextAction, setNextAction] = useState('');
+  const [nextActionDueAt, setNextActionDueAt] = useState('');
+  const consultationItems = leadConsultations?.items ?? [];
+
+  useEffect(() => {
+    setNextAction(lead?.next_action ?? '');
+    setNextActionDueAt(
+      lead?.next_action_due_at
+        ? new Date(lead.next_action_due_at).toISOString().slice(0, 16)
+        : ''
+    );
+  }, [lead?.next_action, lead?.next_action_due_at]);
+
+  const consultationsForLead = useMemo(
+    () =>
+      consultationItems
+        .filter((consultation) =>
+          leadConsultationStatusFilter === 'ALL'
+            ? true
+            : consultation.status === leadConsultationStatusFilter
+        )
+        .map((consultation) => ({
+          ...consultation,
+          lead: lead ?? null,
+        })),
+    [consultationItems, lead, leadConsultationStatusFilter]
+  );
 
   if (isLoading) {
     return (
@@ -192,6 +276,12 @@ function SalesLeadDetailsPage() {
   const allowedTransitions = getAllowedLeadTransitions(lead.status);
   const roadmap = buildLeadRoadmap(lead.status);
   const historyItems = leadHistory?.items ?? [];
+  const hasScheduledConsultation = consultationItems.some(
+    (consultation) => consultation.status === 'SCHEDULED'
+  );
+  const hasCompletedConsultation = consultationItems.some(
+    (consultation) => consultation.status === 'COMPLETED'
+  );
 
   const ownershipInsight = !lead.assigned_sales_user_id
     ? {
@@ -210,6 +300,9 @@ function SalesLeadDetailsPage() {
           variant: 'neutral' as const,
           text: `Assigned to user #${lead.assigned_sales_user_id}`,
         };
+  const followUpState = getFollowUpState(lead.next_action_due_at);
+  const hasFollowUpPlan =
+    !!lead.next_action || !!lead.next_action_due_at;
 
   const formatHistoryActor = (changedByUserId: number) => {
     const currentUserId = Number(user?.id);
@@ -312,6 +405,27 @@ function SalesLeadDetailsPage() {
         return;
       }
       toast.error('Failed to update status');
+    }
+  };
+
+  const handleSaveFollowUp = async () => {
+    try {
+      await updateLeadFollowUp.mutateAsync({
+        leadId: lead.id,
+        payload: {
+          next_action: nextAction,
+          next_action_due_at: nextActionDueAt
+            ? new Date(nextActionDueAt).toISOString()
+            : null,
+        },
+      });
+      toast.success('Follow-up updated');
+    } catch (err) {
+      if (isApiError(err)) {
+        toast.error(err.displayMessage);
+        return;
+      }
+      toast.error('Failed to update follow-up');
     }
   };
 
@@ -454,6 +568,112 @@ function SalesLeadDetailsPage() {
 
           <div className="rounded-lg border p-4">
             <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              Next Action
+            </p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Keep the follow-up note and due date current so the
+              consultation handoff stays visible in the pipeline.
+            </p>
+            <div className="mt-4 grid gap-3 lg:grid-cols-[1.7fr_1fr_1fr]">
+              <div className="rounded-md border bg-muted/15 p-3">
+                <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                  Current Plan
+                </p>
+                <p className="mt-2 text-sm font-medium text-foreground">
+                  {lead.next_action || 'No follow-up planned yet.'}
+                </p>
+              </div>
+              <div className="rounded-md border bg-muted/15 p-3">
+                <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                  Due At
+                </p>
+                <p className="mt-2 text-sm font-medium text-foreground">
+                  {lead.next_action_due_at
+                    ? new Date(
+                        lead.next_action_due_at
+                      ).toLocaleString()
+                    : 'Not scheduled'}
+                </p>
+              </div>
+              <div className="rounded-md border bg-muted/15 p-3">
+                <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                  Status
+                </p>
+                <span
+                  className={`mt-2 inline-flex rounded-full border px-2 py-1 text-xs font-medium ${followUpState.tone}`}
+                >
+                  {followUpState.label}
+                </span>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  {followUpState.helper}
+                </p>
+              </div>
+            </div>
+            <div className="mt-3 grid gap-3 md:grid-cols-2">
+              <div className="space-y-1">
+                <p className="text-xs text-muted-foreground">
+                  Next action
+                </p>
+                <Input
+                  value={nextAction}
+                  onChange={(event) =>
+                    setNextAction(event.target.value)
+                  }
+                  placeholder="Follow up with availability options"
+                  disabled={!isMine || updateLeadFollowUp.isPending}
+                />
+              </div>
+              <div className="space-y-1">
+                <p className="text-xs text-muted-foreground">
+                  Due at
+                </p>
+                <Input
+                  type="datetime-local"
+                  value={nextActionDueAt}
+                  onChange={(event) =>
+                    setNextActionDueAt(event.target.value)
+                  }
+                  disabled={!isMine || updateLeadFollowUp.isPending}
+                />
+              </div>
+            </div>
+            {!hasFollowUpPlan ? (
+              <p className="mt-3 text-xs text-muted-foreground">
+                Add the next planned step so the lead does not stall
+                in the pipeline.
+              </p>
+            ) : null}
+            {isMine ? (
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <Button
+                  variant="outline"
+                  onClick={handleSaveFollowUp}
+                  disabled={updateLeadFollowUp.isPending}
+                >
+                  {updateLeadFollowUp.isPending
+                    ? 'Saving...'
+                    : 'Save Follow-up'}
+                </Button>
+                <Button
+                  variant="ghost"
+                  onClick={() => {
+                    setNextAction('');
+                    setNextActionDueAt('');
+                  }}
+                  disabled={updateLeadFollowUp.isPending}
+                >
+                  Clear Draft
+                </Button>
+              </div>
+            ) : (
+              <p className="mt-3 text-xs text-muted-foreground">
+                Claim this lead to manage follow-up notes.
+              </p>
+            )}
+          </div>
+
+          <div className="rounded-lg border p-4">
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
               Status Transition
             </p>
             <p className="mt-1 text-sm text-muted-foreground">
@@ -466,6 +686,23 @@ function SalesLeadDetailsPage() {
                 ? allowedTransitions.join(', ')
                 : 'Terminal status'}
             </p>
+            {lead.status === 'CONSULTATION_SCHEDULED' &&
+            !hasScheduledConsultation &&
+            !hasCompletedConsultation ? (
+              <p className="mt-2 text-xs text-amber-600 dark:text-amber-300">
+                There is no active scheduled consultation on this
+                lead. Create or reschedule a consultation before
+                moving to consultation completed.
+              </p>
+            ) : null}
+            {lead.status === 'CONSULTATION_SCHEDULED' &&
+            hasCompletedConsultation ? (
+              <p className="mt-2 text-xs text-muted-foreground">
+                A completed consultation record already exists. You
+                can advance the lead status without creating a new
+                one.
+              </p>
+            ) : null}
 
             {!isMine ? (
               <p className="mt-3 text-xs text-muted-foreground">
@@ -640,71 +877,178 @@ function SalesLeadDetailsPage() {
           </div>
 
           <div className="rounded-lg border p-4">
-            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              Lead Status History
-            </p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Audit trail of actual status transitions for this lead.
-            </p>
-            {isHistoryLoading ? (
-              <div className="mt-3 rounded-md border bg-muted/20 p-3 text-sm text-muted-foreground">
-                Loading status history...
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Consultations
+                </p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Consultation records linked to this lead. Scheduled
+                  consultations can be completed, marked no-show, or
+                  cancelled here.
+                </p>
               </div>
-            ) : isHistoryError ? (
-              <div className="mt-3 rounded-md border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-800 dark:text-amber-200">
-                Lead history is not available from backend yet.
-              </div>
-            ) : historyItems.length === 0 ? (
-              <p className="mt-3 rounded-md border bg-muted/20 p-3 text-sm text-muted-foreground">
-                No status transitions recorded yet.
-              </p>
-            ) : (
-              <ol className="mt-3 space-y-3">
-                {historyItems.map((item, index) => (
-                  <li
-                    key={item.id}
-                    className="rounded-lg border bg-muted/10 overflow-hidden"
+              <div className="flex w-full items-center justify-end gap-2 sm:w-auto">
+                <div className="w-full sm:w-52">
+                  <Select
+                    value={leadConsultationStatusFilter}
+                    onValueChange={(value) =>
+                      setLeadConsultationStatusFilter(
+                        value as 'ALL' | ConsultationStatus
+                      )
+                    }
                   >
-                    <div className="flex flex-wrap items-center justify-between gap-3 border-b bg-muted/20 px-3 py-2">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="inline-flex size-5 items-center justify-center rounded-full bg-primary/10 text-[11px] font-semibold text-primary">
-                          {index + 1}
-                        </span>
-                        <StatusPill
-                          status={item.old_status ?? 'UNKNOWN'}
-                        />
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Filter by status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ALL">All</SelectItem>
+                      <SelectItem value="SCHEDULED">
+                        SCHEDULED
+                      </SelectItem>
+                      <SelectItem value="COMPLETED">
+                        COMPLETED
+                      </SelectItem>
+                      <SelectItem value="NO_SHOW">NO_SHOW</SelectItem>
+                      <SelectItem value="CANCELLED">
+                        CANCELLED
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() =>
+                    setConsultationsOpen((current) => !current)
+                  }
+                >
+                  {consultationsOpen ? (
+                    <>
+                      <ChevronUp className="size-4" />
+                      Hide
+                    </>
+                  ) : (
+                    <>
+                      <ChevronDown className="size-4" />
+                      Show
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+            {consultationsOpen ? (
+              <div className="mt-4">
+                <SalesConsultationsPanel
+                  consultations={consultationsForLead}
+                  isLoading={isConsultationsLoading}
+                  isError={isConsultationsError}
+                  emptyMessage="No consultations found for this lead."
+                  showLeadContext={false}
+                  actionEnabled={isMine}
+                />
+              </div>
+            ) : (
+              <div className="mt-4 rounded-md border bg-muted/15 px-4 py-3 text-sm text-muted-foreground">
+                Consultations section collapsed.
+              </div>
+            )}
+          </div>
+
+          <div className="rounded-lg border p-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Lead Status History
+                </p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Audit trail of actual status transitions for this
+                  lead.
+                </p>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setHistoryOpen((current) => !current)}
+              >
+                {historyOpen ? (
+                  <>
+                    <ChevronUp className="size-4" />
+                    Hide
+                  </>
+                ) : (
+                  <>
+                    <ChevronDown className="size-4" />
+                    Show
+                  </>
+                )}
+              </Button>
+            </div>
+            {historyOpen ? (
+              isHistoryLoading ? (
+                <div className="mt-3 rounded-md border bg-muted/20 p-3 text-sm text-muted-foreground">
+                  Loading status history...
+                </div>
+              ) : isHistoryError ? (
+                <div className="mt-3 rounded-md border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-800 dark:text-amber-200">
+                  Lead history is not available from backend yet.
+                </div>
+              ) : historyItems.length === 0 ? (
+                <p className="mt-3 rounded-md border bg-muted/20 p-3 text-sm text-muted-foreground">
+                  No status transitions recorded yet.
+                </p>
+              ) : (
+                <ol className="mt-3 space-y-3">
+                  {historyItems.map((item, index) => (
+                    <li
+                      key={item.id}
+                      className="rounded-lg border bg-muted/10 overflow-hidden"
+                    >
+                      <div className="flex flex-wrap items-center justify-between gap-3 border-b bg-muted/20 px-3 py-2">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="inline-flex size-5 items-center justify-center rounded-full bg-primary/10 text-[11px] font-semibold text-primary">
+                            {index + 1}
+                          </span>
+                          <StatusPill
+                            status={item.old_status ?? 'UNKNOWN'}
+                          />
+                          <span className="text-xs text-muted-foreground">
+                            →
+                          </span>
+                          <StatusPill status={item.new_status} />
+                        </div>
                         <span className="text-xs text-muted-foreground">
-                          →
+                          {new Date(item.changed_at).toLocaleString()}
                         </span>
-                        <StatusPill status={item.new_status} />
                       </div>
-                      <span className="text-xs text-muted-foreground">
-                        {new Date(item.changed_at).toLocaleString()}
-                      </span>
-                    </div>
-                    <div className="grid gap-3 px-3 py-3 md:grid-cols-2">
-                      <div className="rounded-md border bg-background/60 p-2">
-                        <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
-                          Changed By
-                        </p>
-                        <p className="mt-1 text-sm font-medium">
-                          {formatHistoryActor(
-                            item.changed_by_user_id
-                          )}
-                        </p>
+                      <div className="grid gap-3 px-3 py-3 md:grid-cols-2">
+                        <div className="rounded-md border bg-background/60 p-2">
+                          <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                            Changed By
+                          </p>
+                          <p className="mt-1 text-sm font-medium">
+                            {formatHistoryActor(
+                              item.changed_by_user_id
+                            )}
+                          </p>
+                        </div>
+                        <div className="rounded-md border bg-background/60 p-2">
+                          <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                            Details
+                          </p>
+                          <p className="mt-1 text-sm">
+                            {item.reason || 'No details provided.'}
+                          </p>
+                        </div>
                       </div>
-                      <div className="rounded-md border bg-background/60 p-2">
-                        <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
-                          Details
-                        </p>
-                        <p className="mt-1 text-sm">
-                          {item.reason || 'No details provided.'}
-                        </p>
-                      </div>
-                    </div>
-                  </li>
-                ))}
-              </ol>
+                    </li>
+                  ))}
+                </ol>
+              )
+            ) : (
+              <div className="mt-4 rounded-md border bg-muted/15 px-4 py-3 text-sm text-muted-foreground">
+                Lead status history section collapsed.
+              </div>
             )}
           </div>
         </CardContent>

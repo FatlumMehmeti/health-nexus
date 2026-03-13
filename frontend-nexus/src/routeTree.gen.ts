@@ -46,6 +46,7 @@ import { Route as DashboardShopOrdersRouteImport } from './routes/dashboard/shop
 import { Route as DashboardShopCartRouteImport } from './routes/dashboard/shop/cart'
 import { Route as DashboardSalesMyLeadsRouteImport } from './routes/dashboard/sales/my-leads'
 import { Route as DashboardSalesLeadsRouteImport } from './routes/dashboard/sales/leads'
+import { Route as DashboardSalesConsultationsRouteImport } from './routes/dashboard/sales/consultations'
 import { Route as DashboardLandingPagesPageIdRouteImport } from './routes/dashboard/landing-pages/$pageId'
 import { Route as DashboardContractSignDoctorContractIdRouteImport } from './routes/dashboard/contract-sign-doctor.$contractId'
 import { Route as DashboardClientSectionRouteImport } from './routes/dashboard/client.$section'
@@ -242,6 +243,12 @@ const DashboardSalesLeadsRoute = DashboardSalesLeadsRouteImport.update({
   path: '/sales/leads',
   getParentRoute: () => DashboardRouteRoute,
 } as any)
+const DashboardSalesConsultationsRoute =
+  DashboardSalesConsultationsRouteImport.update({
+    id: '/sales/consultations',
+    path: '/sales/consultations',
+    getParentRoute: () => DashboardRouteRoute,
+  } as any)
 const DashboardLandingPagesPageIdRoute =
   DashboardLandingPagesPageIdRouteImport.update({
     id: '/$pageId',
@@ -304,6 +311,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/client/$section': typeof DashboardClientSectionRoute
   '/dashboard/contract-sign-doctor/$contractId': typeof DashboardContractSignDoctorContractIdRoute
   '/dashboard/landing-pages/$pageId': typeof DashboardLandingPagesPageIdRoute
+  '/dashboard/sales/consultations': typeof DashboardSalesConsultationsRoute
   '/dashboard/sales/leads': typeof DashboardSalesLeadsRouteWithChildren
   '/dashboard/sales/my-leads': typeof DashboardSalesMyLeadsRoute
   '/dashboard/shop/cart': typeof DashboardShopCartRoute
@@ -346,6 +354,7 @@ export interface FileRoutesByTo {
   '/dashboard/client/$section': typeof DashboardClientSectionRoute
   '/dashboard/contract-sign-doctor/$contractId': typeof DashboardContractSignDoctorContractIdRoute
   '/dashboard/landing-pages/$pageId': typeof DashboardLandingPagesPageIdRoute
+  '/dashboard/sales/consultations': typeof DashboardSalesConsultationsRoute
   '/dashboard/sales/leads': typeof DashboardSalesLeadsRouteWithChildren
   '/dashboard/sales/my-leads': typeof DashboardSalesMyLeadsRoute
   '/dashboard/shop/cart': typeof DashboardShopCartRoute
@@ -391,6 +400,7 @@ export interface FileRoutesById {
   '/dashboard/client/$section': typeof DashboardClientSectionRoute
   '/dashboard/contract-sign-doctor/$contractId': typeof DashboardContractSignDoctorContractIdRoute
   '/dashboard/landing-pages/$pageId': typeof DashboardLandingPagesPageIdRoute
+  '/dashboard/sales/consultations': typeof DashboardSalesConsultationsRoute
   '/dashboard/sales/leads': typeof DashboardSalesLeadsRouteWithChildren
   '/dashboard/sales/my-leads': typeof DashboardSalesMyLeadsRoute
   '/dashboard/shop/cart': typeof DashboardShopCartRoute
@@ -437,6 +447,7 @@ export interface FileRouteTypes {
     | '/dashboard/client/$section'
     | '/dashboard/contract-sign-doctor/$contractId'
     | '/dashboard/landing-pages/$pageId'
+    | '/dashboard/sales/consultations'
     | '/dashboard/sales/leads'
     | '/dashboard/sales/my-leads'
     | '/dashboard/shop/cart'
@@ -479,6 +490,7 @@ export interface FileRouteTypes {
     | '/dashboard/client/$section'
     | '/dashboard/contract-sign-doctor/$contractId'
     | '/dashboard/landing-pages/$pageId'
+    | '/dashboard/sales/consultations'
     | '/dashboard/sales/leads'
     | '/dashboard/sales/my-leads'
     | '/dashboard/shop/cart'
@@ -523,6 +535,7 @@ export interface FileRouteTypes {
     | '/dashboard/client/$section'
     | '/dashboard/contract-sign-doctor/$contractId'
     | '/dashboard/landing-pages/$pageId'
+    | '/dashboard/sales/consultations'
     | '/dashboard/sales/leads'
     | '/dashboard/sales/my-leads'
     | '/dashboard/shop/cart'
@@ -817,6 +830,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardSalesLeadsRouteImport
       parentRoute: typeof DashboardRouteRoute
     }
+    '/dashboard/sales/consultations': {
+      id: '/dashboard/sales/consultations'
+      path: '/sales/consultations'
+      fullPath: '/dashboard/sales/consultations'
+      preLoaderRoute: typeof DashboardSalesConsultationsRouteImport
+      parentRoute: typeof DashboardRouteRoute
+    }
     '/dashboard/landing-pages/$pageId': {
       id: '/dashboard/landing-pages/$pageId'
       path: '/$pageId'
@@ -920,6 +940,7 @@ interface DashboardRouteRouteChildren {
   DashboardTenantsRoute: typeof DashboardTenantsRoute
   DashboardIndexRoute: typeof DashboardIndexRoute
   DashboardContractSignDoctorContractIdRoute: typeof DashboardContractSignDoctorContractIdRoute
+  DashboardSalesConsultationsRoute: typeof DashboardSalesConsultationsRoute
   DashboardSalesLeadsRoute: typeof DashboardSalesLeadsRouteWithChildren
   DashboardSalesMyLeadsRoute: typeof DashboardSalesMyLeadsRoute
   DashboardShopCartRoute: typeof DashboardShopCartRoute
@@ -927,6 +948,7 @@ interface DashboardRouteRouteChildren {
   DashboardAuditLogsIndexRoute: typeof DashboardAuditLogsIndexRoute
   DashboardShopIndexRoute: typeof DashboardShopIndexRoute
   DashboardShopCheckoutOrderIdRoute: typeof DashboardShopCheckoutOrderIdRoute
+
 }
 
 const DashboardRouteRouteChildren: DashboardRouteRouteChildren = {
@@ -942,6 +964,7 @@ const DashboardRouteRouteChildren: DashboardRouteRouteChildren = {
   DashboardIndexRoute: DashboardIndexRoute,
   DashboardContractSignDoctorContractIdRoute:
     DashboardContractSignDoctorContractIdRoute,
+  DashboardSalesConsultationsRoute: DashboardSalesConsultationsRoute,
   DashboardSalesLeadsRoute: DashboardSalesLeadsRouteWithChildren,
   DashboardSalesMyLeadsRoute: DashboardSalesMyLeadsRoute,
   DashboardShopCartRoute: DashboardShopCartRoute,
